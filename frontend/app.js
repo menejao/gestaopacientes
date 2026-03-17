@@ -1800,14 +1800,23 @@ el.sendMsgBtn.addEventListener("click", async () => {
 
 // -- Init ----------------------------------------------------------------------
 async function initApp() {
-  await bootstrapBeforeLogin();
   const raw = localStorage.getItem(SESSION_KEY);
-  if (!raw) return;
+  if (!raw) {
+    await bootstrapBeforeLogin();
+    return;
+  }
+
+  // Evita flicker da tela de login quando a sessao ainda e valida.
+  el.authScreen.classList.add("hidden");
+  el.appScreen.classList.remove("hidden");
 
   try {
     const parsed = JSON.parse(raw);
     if (!parsed?.token || !parsed?.expiresAt || Date.now() > Number(parsed.expiresAt)) {
       clearSessionStore();
+      el.appScreen.classList.add("hidden");
+      el.authScreen.classList.remove("hidden");
+      await bootstrapBeforeLogin();
       return;
     }
 
@@ -1821,6 +1830,9 @@ async function initApp() {
     clearSessionStore();
     state.token = null;
     state.user = null;
+    el.appScreen.classList.add("hidden");
+    el.authScreen.classList.remove("hidden");
+    await bootstrapBeforeLogin();
   }
 }
 
