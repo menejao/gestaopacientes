@@ -734,7 +734,9 @@ function buildAiPatientContext(db, user, patient) {
 function buildAiTeamContexts(db, user) {
   const patients = getAllowedPatients(db, user, {});
   return patients.map((patient) => buildAiPatientContext(db, user, patient));
-}app.get("/health", (_req, res) => {
+}
+
+app.get("/health", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
