@@ -1,212 +1,375 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gestao de Pacientes - Enfermagem</title>
+    <title>Saúde+ | Gestão de Pacientes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header>
-      <h1>Gestao de Pacientes e ACS</h1>
-      <div id="sessionInfo" class="small">Nao autenticado</div>
+
+    <!-- HEADER -->
+    <header id="appHeader">
+      <div class="header-brand">
+        <div class="brand-icon">＋</div>
+        <div>
+          <span class="brand-name">Saúde<strong>+</strong></span>
+          <span class="brand-sub">Gestão de Pacientes · ACS</span>
+        </div>
+      </div>
+      <div id="sessionInfo" class="session-info">
+        <span class="session-dot"></span>
+        <span id="sessionText">Não autenticado</span>
+        <button id="logoutBtn" class="btn-logout hidden">Sair</button>
+      </div>
     </header>
 
-    <main>
-      <section class="card" id="leftPanel">
-        <div id="loginCard">
-          <h2>Entrar</h2>
-          <label>Email
-            <input id="loginEmail" placeholder="ana@clinica.local" />
-          </label>
-          <label>Senha
-            <input id="loginPassword" type="password" placeholder="123456" />
-          </label>
-          <button id="loginBtn">Entrar</button>
-          <p class="small">Gestora demo: ana@clinica.local / 123456</p>
-          <hr />
-          <h3>Novo cadastro (equipe)</h3>
-          <label>Nome
-            <input id="registerName" placeholder="Nome completo" />
-          </label>
-          <label>Email
-            <input id="registerEmail" placeholder="voce@unidade.local" />
-          </label>
-          <label>Senha
-            <input id="registerPassword" type="password" placeholder="Minimo 6 caracteres" />
-          </label>
-          <label>Perfil
-            <select id="registerRole">
-              <option value="acs">ACS</option>
-              <option value="doctor">Medica</option>
-              <option value="nurse_manager">Enfermeiro(a) Gestor(a)</option>
-            </select>
-          </label>
-          <label id="registerTeamWrap">Equipe
-            <select id="registerTeam"></select>
-          </label>
-          <label id="registerTeamNameWrap" class="hidden">Nome da equipe
-            <input id="registerTeamName" placeholder="Ex: Equipe Enfermeira Maria" />
-          </label>
-          <label id="registerCouncilNumberWrap" class="hidden">Numero do conselho
-            <input id="registerCouncilNumber" placeholder="Somente numeros" inputmode="numeric" />
-          </label>
-          <label id="registerCouncilUfWrap" class="hidden">UF do conselho
-            <input id="registerCouncilUf" placeholder="Ex: SP" maxlength="2" />
-          </label>
-          <button id="registerBtn" class="secondary">Criar cadastro</button>
-        </div>
+    <main id="mainContent">
 
-        <div id="patientPanel" class="hidden">
-          <h3>Pacientes</h3>
-          <div class="grid-2 compact-grid">
-            <label>Microarea
-              <input id="filterMicroArea" placeholder="Ex: MA-03" />
-            </label>
-            <label>ACS
-              <select id="filterAcs"></select>
-            </label>
-            <label>Categoria
-              <select id="filterCategory"></select>
-            </label>
+      <!-- ===================== LOGIN SCREEN ===================== -->
+      <div id="authScreen" class="auth-screen">
+        <div class="auth-card">
+          <div class="auth-header">
+            <div class="auth-icon">＋</div>
+            <h1>Saúde<strong>+</strong></h1>
+            <p>Plataforma de Gestão em Atenção Básica</p>
           </div>
-          <button id="applyFilterBtn" class="secondary">Aplicar filtros</button>
-          <div id="patientList" class="patient-list"></div>
-        </div>
 
-        <div id="newPatientPanel" class="hidden">
-          <h3>Novo paciente</h3>
-          <label>Nome
-            <input id="pName" />
-          </label>
-          <label>Telefone
-            <input id="pPhone" />
-          </label>
-          <label>CNS/CPF
-            <input id="pDoc" />
-          </label>
-          <label>Endereco
-            <input id="pAddress" />
-          </label>
-          <label>Microarea
-            <input id="pMicroArea" placeholder="Ex: MA-03" />
-          </label>
-          <label>Categoria de cuidado
-            <select id="pCareCategory"></select>
-          </label>
-          <label>ACS responsavel
-            <select id="pAcs"></select>
-          </label>
-          <label>Comorbidades
-            <textarea id="pComorb"></textarea>
-          </label>
-          <label>Medicacoes
-            <textarea id="pMeds"></textarea>
-          </label>
-          <label>Alergias
-            <textarea id="pAllergies"></textarea>
-          </label>
-          <button id="createPatientBtn">Salvar paciente</button>
-        </div>
-      </section>
+          <!-- Tabs -->
+          <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="login">Entrar</button>
+            <button class="auth-tab" data-tab="register">Novo cadastro</button>
+          </div>
 
-      <section class="card" id="contentPanel">
-        <h2 id="selectedPatientTitle">Selecione um paciente</h2>
-        <p id="selectedPatientInfo" class="small"></p>
-
-        <div id="patientContent" class="hidden">
-          <div class="grid-2">
-            <div class="card">
-              <h3>Resumo do protocolo</h3>
-              <div id="protocolSummary"></div>
+          <!-- Login Tab -->
+          <div id="loginTab" class="auth-form">
+            <div class="form-group">
+              <label for="loginEmail">E-mail</label>
+              <input id="loginEmail" type="email" placeholder="ana@clinica.local" autocomplete="email" />
             </div>
-
-            <div class="card">
-              <h3>Novo registro clinico</h3>
-              <label>Tipo
-                <select id="rType">
-                  <option value="visit">Visita</option>
-                  <option value="consultation">Consulta</option>
-                  <option value="vaccine">Vacina</option>
-                  <option value="procedure">Procedimento</option>
-                  <option value="note">Observacao</option>
-                </select>
-              </label>
-              <label>Data/Hora
-                <input id="rDate" type="datetime-local" />
-              </label>
-              <label>Titulo
-                <input id="rTitle" placeholder="Ex: Visita domiciliar 1" />
-              </label>
-              <label>Detalhes
-                <textarea id="rDetails"></textarea>
-              </label>
-              <label>Nome da vacina (opcional)
-                <input id="rVaccineName" placeholder="Ex: Influenza" />
-              </label>
-              <button id="addRecordBtn">Salvar registro</button>
+            <div class="form-group">
+              <label for="loginPassword">Senha</label>
+              <div class="input-with-toggle">
+                <input id="loginPassword" type="password" placeholder="••••••" autocomplete="current-password" />
+                <button type="button" class="toggle-pass" tabindex="-1">👁</button>
+              </div>
             </div>
+            <button id="loginBtn" class="btn-primary btn-full">
+              <span class="btn-label">Entrar</span>
+              <span class="btn-spinner hidden"></span>
+            </button>
+            <p class="auth-hint">Demo: <code>ana@clinica.local</code> / <code>123456</code></p>
           </div>
 
-          <div class="grid-2">
-            <div class="card">
-              <h3>Atendimentos (legado)</h3>
-              <label>Data/Hora
-                <input id="aDate" type="datetime-local" />
-              </label>
-              <label>Resumo
-                <textarea id="aSummary"></textarea>
-              </label>
-              <label>Conduta
-                <textarea id="aConduct"></textarea>
-              </label>
-              <label>Proximo passo
-                <textarea id="aNext"></textarea>
-              </label>
-              <button id="addAppointmentBtn">Adicionar atendimento</button>
-              <div id="appointmentList"></div>
+          <!-- Register Tab -->
+          <div id="registerTab" class="auth-form hidden">
+            <div class="form-group">
+              <label for="registerName">Nome completo</label>
+              <input id="registerName" placeholder="Ex: Maria da Silva" />
             </div>
-
-            <div class="card">
-              <h3>Tarefas para ACS</h3>
-              <label>Titulo
-                <input id="tTitle" />
-              </label>
-              <label>Observacoes
-                <textarea id="tNotes"></textarea>
-              </label>
-              <label>Prazo
-                <input id="tDue" type="date" />
-              </label>
-              <label>Responsavel (ACS)
-                <select id="tAssignee"></select>
-              </label>
-              <button id="addTaskBtn">Criar tarefa</button>
-              <div id="taskList"></div>
+            <div class="form-group">
+              <label for="registerEmail">E-mail</label>
+              <input id="registerEmail" type="email" placeholder="voce@unidade.local" />
             </div>
-          </div>
-
-          <div class="card">
-            <h3>Historico completo</h3>
-            <div id="historyList"></div>
-          </div>
-
-          <div class="card">
-            <h3>Comunicacao Enfermeira x ACS</h3>
-            <label>Mensagem
-              <textarea id="mText"></textarea>
-            </label>
-            <button id="sendMsgBtn">Enviar mensagem</button>
-            <div id="messageList"></div>
-          </div>
-
-          <div class="card hidden" id="auditPanel">
-            <h3>Auditoria (ultimos registros)</h3>
-            <div id="auditList"></div>
+            <div class="form-group">
+              <label for="registerPassword">Senha</label>
+              <input id="registerPassword" type="password" placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div class="form-group">
+              <label for="registerRole">Perfil</label>
+              <select id="registerRole">
+                <option value="acs">ACS</option>
+                <option value="doctor">Médico(a)</option>
+                <option value="nurse_manager">Enfermeiro(a) Gestor(a)</option>
+              </select>
+            </div>
+            <div id="registerTeamWrap" class="form-group">
+              <label for="registerTeam">Equipe</label>
+              <select id="registerTeam"></select>
+            </div>
+            <div id="registerTeamNameWrap" class="form-group hidden">
+              <label for="registerTeamName">Nome da equipe</label>
+              <input id="registerTeamName" placeholder="Ex: Equipe Enfermeira Maria" />
+            </div>
+            <div id="registerCouncilNumberWrap" class="form-group hidden">
+              <label for="registerCouncilNumber">Número do conselho</label>
+              <input id="registerCouncilNumber" placeholder="Somente números" inputmode="numeric" />
+            </div>
+            <div id="registerCouncilUfWrap" class="form-group hidden">
+              <label for="registerCouncilUf">UF do conselho</label>
+              <input id="registerCouncilUf" placeholder="Ex: SP" maxlength="2" />
+            </div>
+            <button id="registerBtn" class="btn-primary btn-full">
+              <span class="btn-label">Criar cadastro</span>
+              <span class="btn-spinner hidden"></span>
+            </button>
           </div>
         </div>
-      </section>
+      </div>
+
+      <!-- ===================== APP SCREEN ===================== -->
+      <div id="appScreen" class="app-layout hidden">
+
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+
+          <!-- New Patient -->
+          <div id="newPatientPanel" class="hidden">
+            <div class="sidebar-section-header">
+              <h3>Novo Paciente</h3>
+              <button id="cancelNewPatientBtn" class="btn-icon" title="Cancelar">✕</button>
+            </div>
+            <div class="form-group">
+              <label>Nome</label>
+              <input id="pName" placeholder="Nome completo" />
+            </div>
+            <div class="form-group">
+              <label>Telefone</label>
+              <input id="pPhone" placeholder="(00) 00000-0000" />
+            </div>
+            <div class="form-group">
+              <label>CNS / CPF</label>
+              <input id="pDoc" placeholder="Documento" />
+            </div>
+            <div class="form-group">
+              <label>Endereço</label>
+              <input id="pAddress" placeholder="Rua, número, bairro" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Microárea</label>
+                <input id="pMicroArea" placeholder="MA-01" />
+              </div>
+              <div class="form-group">
+                <label>ACS responsável</label>
+                <select id="pAcs"></select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Categoria de cuidado</label>
+              <select id="pCareCategory"></select>
+            </div>
+            <div class="form-group">
+              <label>Comorbidades</label>
+              <textarea id="pComorb" rows="2" placeholder="HAS, DM2..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Medicações</label>
+              <textarea id="pMeds" rows="2" placeholder="Metformina 500mg..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Alergias</label>
+              <textarea id="pAllergies" rows="2" placeholder="Dipirona..."></textarea>
+            </div>
+            <button id="createPatientBtn" class="btn-primary btn-full">Salvar Paciente</button>
+          </div>
+
+          <!-- Patient List Panel -->
+          <div id="patientPanel" class="hidden">
+            <div class="sidebar-top">
+              <div class="sidebar-search">
+                <span class="search-icon">🔍</span>
+                <input id="searchInput" placeholder="Buscar paciente..." />
+              </div>
+              <button id="showNewPatientBtn" class="btn-icon-accent hidden" title="Novo paciente">＋</button>
+            </div>
+
+            <details class="filter-details" id="filterDetails">
+              <summary>Filtros</summary>
+              <div class="filter-body">
+                <div class="form-group">
+                  <label>Microárea</label>
+                  <input id="filterMicroArea" placeholder="Ex: MA-03" />
+                </div>
+                <div class="form-group">
+                  <label>ACS</label>
+                  <select id="filterAcs"></select>
+                </div>
+                <div class="form-group">
+                  <label>Categoria</label>
+                  <select id="filterCategory"></select>
+                </div>
+                <button id="applyFilterBtn" class="btn-secondary btn-full">Aplicar filtros</button>
+              </div>
+            </details>
+
+            <div class="patient-list-header">
+              <span id="patientCount" class="count-badge">0 pacientes</span>
+            </div>
+            <div id="patientList" class="patient-list"></div>
+          </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <section class="content-area" id="contentPanel">
+
+          <!-- Empty state -->
+          <div id="emptyState" class="empty-state">
+            <div class="empty-icon">👤</div>
+            <h3>Selecione um paciente</h3>
+            <p>Escolha um paciente na lista para ver o prontuário completo.</p>
+          </div>
+
+          <!-- Patient detail -->
+          <div id="patientContent" class="hidden">
+
+            <!-- Patient Header -->
+            <div class="patient-header-bar">
+              <div class="patient-header-info">
+                <div class="patient-avatar" id="patientAvatar">M</div>
+                <div>
+                  <h2 id="selectedPatientTitle">—</h2>
+                  <div id="selectedPatientMeta" class="patient-meta-chips"></div>
+                </div>
+              </div>
+              <div id="patientHeaderBadge"></div>
+            </div>
+
+            <!-- Tabs -->
+            <nav class="patient-tabs" id="patientTabs">
+              <button class="ptab active" data-panel="panelProtocol">📋 Protocolo</button>
+              <button class="ptab" data-panel="panelRecord">📝 Registro</button>
+              <button class="ptab" data-panel="panelAppointments">🩺 Atendimentos</button>
+              <button class="ptab" data-panel="panelTasks">✅ Tarefas</button>
+              <button class="ptab" data-panel="panelHistory">📁 Histórico</button>
+              <button class="ptab" data-panel="panelMessages">💬 Comunicação</button>
+              <button class="ptab audit-tab hidden" data-panel="panelAudit">🔍 Auditoria</button>
+            </nav>
+
+            <!-- Panel: Protocol Summary -->
+            <div id="panelProtocol" class="patient-panel active">
+              <div id="protocolSummary" class="protocol-content"></div>
+            </div>
+
+            <!-- Panel: New Clinical Record -->
+            <div id="panelRecord" class="patient-panel hidden">
+              <div class="panel-form-card">
+                <h3>Novo Registro Clínico</h3>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Tipo</label>
+                    <select id="rType">
+                      <option value="visit">Visita</option>
+                      <option value="consultation">Consulta</option>
+                      <option value="vaccine">Vacina</option>
+                      <option value="procedure">Procedimento</option>
+                      <option value="note">Observação</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Data / Hora</label>
+                    <input id="rDate" type="datetime-local" />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Título</label>
+                  <input id="rTitle" placeholder="Ex: Visita domiciliar 1" />
+                </div>
+                <div class="form-group">
+                  <label>Detalhes</label>
+                  <textarea id="rDetails" rows="4" placeholder="Descreva os detalhes do registro..."></textarea>
+                </div>
+                <div id="vaccineNameWrap" class="form-group hidden">
+                  <label>Nome da vacina</label>
+                  <input id="rVaccineName" placeholder="Ex: Influenza" />
+                </div>
+                <button id="addRecordBtn" class="btn-primary">Salvar Registro</button>
+              </div>
+            </div>
+
+            <!-- Panel: Appointments (legacy) -->
+            <div id="panelAppointments" class="patient-panel hidden">
+              <div class="panel-two-col">
+                <div class="panel-form-card" id="appointmentFormCard">
+                  <h3>Novo Atendimento</h3>
+                  <div class="form-group">
+                    <label>Data / Hora</label>
+                    <input id="aDate" type="datetime-local" />
+                  </div>
+                  <div class="form-group">
+                    <label>Resumo</label>
+                    <textarea id="aSummary" rows="3" placeholder="Resumo do atendimento..."></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>Conduta</label>
+                    <textarea id="aConduct" rows="2" placeholder="Conduta adotada..."></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>Próximo passo</label>
+                    <textarea id="aNext" rows="2" placeholder="Encaminhamentos..."></textarea>
+                  </div>
+                  <button id="addAppointmentBtn" class="btn-primary">Adicionar Atendimento</button>
+                </div>
+                <div class="panel-list-card">
+                  <h3>Atendimentos anteriores</h3>
+                  <div id="appointmentList"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel: Tasks -->
+            <div id="panelTasks" class="patient-panel hidden">
+              <div class="panel-two-col">
+                <div class="panel-form-card" id="taskFormCard">
+                  <h3>Nova Tarefa para ACS</h3>
+                  <div class="form-group">
+                    <label>Título</label>
+                    <input id="tTitle" placeholder="Ex: Verificar pressão arterial" />
+                  </div>
+                  <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="tNotes" rows="3" placeholder="Instruções adicionais..."></textarea>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Prazo</label>
+                      <input id="tDue" type="date" />
+                    </div>
+                    <div class="form-group">
+                      <label>ACS responsável</label>
+                      <select id="tAssignee"></select>
+                    </div>
+                  </div>
+                  <button id="addTaskBtn" class="btn-primary">Criar Tarefa</button>
+                </div>
+                <div class="panel-list-card">
+                  <h3>Tarefas pendentes</h3>
+                  <div id="taskList"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel: History -->
+            <div id="panelHistory" class="patient-panel hidden">
+              <div id="historyList" class="timeline-list"></div>
+            </div>
+
+            <!-- Panel: Messages -->
+            <div id="panelMessages" class="patient-panel hidden">
+              <div class="messages-layout">
+                <div id="messageList" class="message-thread"></div>
+                <div class="message-compose">
+                  <textarea id="mText" rows="3" placeholder="Escreva uma mensagem para a equipe..."></textarea>
+                  <button id="sendMsgBtn" class="btn-primary">Enviar</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel: Audit -->
+            <div id="panelAudit" class="patient-panel hidden">
+              <div id="auditList" class="audit-list"></div>
+            </div>
+
+          </div>
+        </section>
+      </div>
     </main>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast hidden"></div>
 
     <script src="./config.js"></script>
     <script src="./app.js"></script>
