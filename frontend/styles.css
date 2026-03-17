@@ -419,7 +419,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 /* -- App body -- */
 .app-body {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 230px 1fr;
   flex: 1;
   overflow: hidden;
 }
@@ -432,7 +432,6 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   border-right: 1px solid var(--sidebar-border);
   overflow-y: auto;
   overflow-x: hidden;
-  display: none;
 }
 .sidebar::-webkit-scrollbar { width: 3px; }
 .sidebar::-webkit-scrollbar-track { background: transparent; }
@@ -454,6 +453,39 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   color: var(--sidebar-text);
   letter-spacing: .06em;
   text-transform: uppercase;
+}
+
+.nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.nav-link {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--sidebar-text);
+  font-size: .84rem;
+  padding: .55rem .7rem;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  background: var(--sidebar-hover);
+}
+
+.nav-link.active {
+  background: var(--sidebar-active);
+  border-color: var(--blue-400);
+}
+
+.nav-actions {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
 }
 
 .np-fields { display: flex; flex-direction: column; gap: 0; }
@@ -675,7 +707,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 }
 
 .workspace-tabs {
-  display: inline-flex;
+  display: none;
   gap: .35rem;
   background: var(--surface);
   border: 1px solid var(--border);

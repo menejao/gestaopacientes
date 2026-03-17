@@ -78,14 +78,12 @@
               </div>
               <div class="field-group">
                 <label class="field-label">Senha</label>
-                <input id="registerPassword" type="password" class="field-input" placeholder="Min. 6 caracteres"/>
+                <input id="registerPassword" type="password" class="field-input" placeholder="Min. 8 + maiuscula + numero + especial"/>
               </div>
             </div>
             <div class="field-group">
               <label class="field-label">Perfil</label>
               <select id="registerRole" class="field-select">
-                <option value="acs">Agente Comunitario de Saude</option>
-                <option value="doctor">Medico(a)</option>
                 <option value="nurse_manager">Enfermeiro(a) Gestor(a)</option>
               </select>
             </div>
@@ -99,7 +97,7 @@
             </div>
             <div id="registerCouncilNumberWrap" class="field-group hidden">
               <label class="field-label" id="councilNumLabel">Numero do conselho</label>
-              <input id="registerCouncilNumber" class="field-input" placeholder="Somente numeros" inputmode="numeric"/>
+              <input id="registerCouncilNumber" class="field-input" placeholder="Somente numeros" inputmode="numeric" maxlength="10"/>
             </div>
             <div id="registerCouncilUfWrap" class="field-group hidden">
               <label class="field-label">UF do conselho</label>
@@ -158,65 +156,20 @@
         <!-- --- SIDEBAR --- -->
         <aside class="sidebar">
           <div class="sidebar-inner">
-
-            <!-- New Patient Form -->
-            <div id="newPatientPanel" class="hidden">
-              <div class="sidebar-section-hd">
-                <span class="sidebar-hd-title">Novo paciente</span>
-                <button id="cancelNewPatientBtn" class="icon-btn" title="Cancelar">
-                  <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                </button>
-              </div>
-              <div class="np-fields">
-                <div class="field-group"><label class="field-label">Nome</label><input id="pName" class="field-input" placeholder="Nome completo"/></div>
-                <div class="field-row">
-                  <div class="field-group"><label class="field-label">Telefone</label><input id="pPhone" class="field-input" placeholder="(00) 00000-0000"/></div>
-                  <div class="field-group"><label class="field-label">CNS / CPF</label><input id="pDoc" class="field-input" placeholder="Documento"/></div>
-                </div>
-                <div class="field-group"><label class="field-label">Endereco</label><input id="pAddress" class="field-input" placeholder="Rua, numero, bairro"/></div>
-                <div class="field-row">
-                  <div class="field-group"><label class="field-label">Microarea</label><input id="pMicroArea" class="field-input" placeholder="MA-01"/></div>
-                  <div class="field-group"><label class="field-label">ACS</label><select id="pAcs" class="field-select"></select></div>
-                </div>
-                <div class="field-group"><label class="field-label">Categoria</label><select id="pCareCategory" class="field-select"></select></div>
-                <div class="field-group"><label class="field-label">Comorbidades</label><textarea id="pComorb" class="field-textarea" rows="2" placeholder="HAS, DM2..."></textarea></div>
-                <div class="field-group"><label class="field-label">Medicacoes</label><textarea id="pMeds" class="field-textarea" rows="2" placeholder="Metformina 500mg..."></textarea></div>
-                <div class="field-group"><label class="field-label">Alergias</label><textarea id="pAllergies" class="field-textarea" rows="2" placeholder="Dipirona..."></textarea></div>
-                <button id="createPatientBtn" class="btn-primary btn-block">Salvar paciente</button>
-              </div>
+            <div class="sidebar-section-hd">
+              <span class="sidebar-hd-title">Navegacao</span>
             </div>
-
-            <!-- Patient List -->
-            <div id="patientPanel" class="hidden">
-              <div class="sidebar-top-bar">
-                <div class="search-wrap">
-                  <svg class="search-ico" width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-                  <input id="searchInput" class="search-input" placeholder="Buscar paciente..."/>
-                </div>
-                <button id="showNewPatientBtn" class="add-btn hidden" title="Novo paciente">
-                  <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                </button>
-              </div>
-
-              <details class="filter-panel" id="filterDetails">
-                <summary class="filter-summary">
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5 8h6M8 12h0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-                  Filtros
-                </summary>
-                <div class="filter-body">
-                  <div class="field-group"><label class="field-label">Microarea</label><input id="filterMicroArea" class="field-input" placeholder="MA-03"/></div>
-                  <div class="field-group"><label class="field-label">ACS</label><select id="filterAcs" class="field-select"></select></div>
-                  <div class="field-group"><label class="field-label">Categoria</label><select id="filterCategory" class="field-select"></select></div>
-                  <button id="applyFilterBtn" class="btn-secondary btn-block">Aplicar</button>
-                </div>
-              </details>
-
-              <div class="plist-header">
-                <span id="patientCount" class="plist-count">0 pacientes</span>
-              </div>
-              <div id="patientList" class="patient-list"></div>
+            <div class="nav-links">
+              <button id="navPatientsBtn" class="nav-link active">Pacientes</button>
+              <button id="navProtocolsBtn" class="nav-link">Protocolos</button>
+              <button id="navAcsBtn" class="nav-link">ACS</button>
+              <button id="navDoctorsBtn" class="nav-link">Medicos</button>
             </div>
-
+            <div class="form-divider"></div>
+            <div class="nav-actions">
+              <button id="openPatientModalBtn" class="btn-primary btn-block hidden">Novo paciente</button>
+              <button id="openCreateUserModalBtn" class="btn-secondary btn-block hidden">Cadastrar ACS/Medico</button>
+            </div>
           </div>
         </aside>
 
@@ -279,7 +232,6 @@
             <section class="panel-card">
               <div class="panel-card-hd">Pacientes da equipe</div>
               <div class="table-toolbar">
-                <input id="homePatientSearchInput" class="field-input" placeholder="Buscar por nome, telefone, microarea ou categoria"/>
                 <select id="homePatientSortSelect" class="field-select">
                   <option value="name_asc">Nome (A-Z)</option>
                   <option value="name_desc">Nome (Z-A)</option>
@@ -325,11 +277,21 @@
                 </div>
               </div>
             </section>
+
+            <section id="acsAdminSection" class="panel-card workspace-pane hidden">
+              <div class="panel-card-hd">ACS da equipe</div>
+              <div id="acsList"></div>
+            </section>
+
+            <section id="doctorsAdminSection" class="panel-card workspace-pane hidden">
+              <div class="panel-card-hd">Medicos da equipe</div>
+              <div id="doctorList"></div>
+            </section>
             </div>
 
             <section id="protocolAdminSection" class="panel-card workspace-pane hidden">
-              <div class="panel-card-hd">Administracao de protocolos</div>
-              <p class="home-task-meta">Protocolos por categoria com base nas referencias oficiais (Ministerio da Saude/INCA).</p>
+              <div class="panel-card-hd">Protocolos da UBS</div>
+              <p class="home-task-meta">Gerencie categorias e metas de protocolo da sua unidade.</p>
               <div class="inline-actions" style="margin-top:.6rem; margin-bottom:.6rem;">
                 <button id="openProtocolModalBtn" class="btn-primary">Novo protocolo</button>
               </div>
@@ -498,10 +460,10 @@
         </div>
         <div class="field-group"><label class="field-label">Nome</label><input id="profileName" class="field-input"/></div>
         <div class="field-group"><label class="field-label">Email</label><input id="profileEmail" type="email" class="field-input"/></div>
-        <div class="field-group"><label class="field-label">Nova senha</label><input id="profilePassword" type="password" class="field-input" placeholder="Opcional"/></div>
+          <div class="field-group"><label class="field-label">Nova senha</label><input id="profilePassword" type="password" class="field-input" placeholder="Min 8, maiuscula, numero e especial"/></div>
         <div id="profileCouncilWrap" class="hidden">
           <div class="field-row">
-            <div class="field-group"><label class="field-label">Numero conselho</label><input id="profileCouncilNumber" class="field-input"/></div>
+            <div class="field-group"><label class="field-label">Numero conselho</label><input id="profileCouncilNumber" class="field-input" inputmode="numeric" maxlength="10"/></div>
             <div class="field-group"><label class="field-label">UF conselho</label><input id="profileCouncilUf" maxlength="2" class="field-input"/></div>
           </div>
         </div>
@@ -589,6 +551,66 @@
         <div class="inline-actions" style="justify-content:flex-end;">
           <button id="cancelProtocolModalBtn" class="btn-secondary">Cancelar</button>
           <button id="createProtocolBtn" class="btn-primary">Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATIENT MODAL -->
+    <div id="patientModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-hd">
+          <h3 id="patientModalTitle">Novo cadastro de paciente</h3>
+          <button id="closePatientModalBtn" class="icon-btn">X</button>
+        </div>
+        <div class="field-group"><label class="field-label">Nome</label><input id="pName" class="field-input" placeholder="Nome completo"/></div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Telefone</label><input id="pPhone" class="field-input" placeholder="(00) 00000-0000" inputmode="numeric" maxlength="15"/></div>
+          <div class="field-group"><label class="field-label">CNS / CPF</label><input id="pDoc" class="field-input" placeholder="000.000.000-00" inputmode="numeric" maxlength="14"/></div>
+        </div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">CEP</label><input id="pCep" class="field-input" placeholder="00000-000" inputmode="numeric" maxlength="9"/></div>
+          <div class="field-group"><label class="field-label">Microarea</label><input id="pMicroArea" class="field-input" placeholder="MA-01"/></div>
+        </div>
+        <div class="field-group"><label class="field-label">Endereco</label><input id="pAddress" class="field-input" placeholder="Rua, numero, bairro"/></div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">ACS</label><select id="pAcs" class="field-select"></select></div>
+          <div class="field-group"><label class="field-label">Categoria</label><select id="pCareCategory" class="field-select"></select></div>
+        </div>
+        <div class="field-group"><label class="field-label">Comorbidades</label><textarea id="pComorb" class="field-textarea" rows="2"></textarea></div>
+        <div class="field-group"><label class="field-label">Medicacoes</label><textarea id="pMeds" class="field-textarea" rows="2"></textarea></div>
+        <div class="field-group"><label class="field-label">Alergias</label><textarea id="pAllergies" class="field-textarea" rows="2"></textarea></div>
+        <div class="inline-actions" style="justify-content:flex-end;">
+          <button id="cancelPatientModalBtn" class="btn-secondary">Cancelar</button>
+          <button id="createPatientBtn" class="btn-primary">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CREATE USER MODAL -->
+    <div id="createUserModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-hd">
+          <h3>Cadastrar ACS ou Medico</h3>
+          <button id="closeCreateUserModalBtn" class="icon-btn">X</button>
+        </div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Perfil</label>
+            <select id="managerCreateRole" class="field-select">
+              <option value="acs">ACS</option>
+              <option value="doctor">Medico(a)</option>
+            </select>
+          </div>
+          <div class="field-group"><label class="field-label">Nome</label><input id="managerCreateName" class="field-input"/></div>
+        </div>
+        <div class="field-group"><label class="field-label">Email</label><input id="managerCreateEmail" type="email" class="field-input"/></div>
+        <div class="field-group"><label class="field-label">Senha</label><input id="managerCreatePassword" type="password" class="field-input" placeholder="Min 8, maiuscula, numero e especial"/></div>
+        <div id="managerCreateCouncilWrap" class="field-row hidden">
+          <div class="field-group"><label class="field-label">Numero conselho</label><input id="managerCreateCouncilNumber" class="field-input" inputmode="numeric" maxlength="10"/></div>
+          <div class="field-group"><label class="field-label">UF conselho</label><input id="managerCreateCouncilUf" class="field-input" maxlength="2"/></div>
+        </div>
+        <div class="inline-actions" style="justify-content:flex-end;">
+          <button id="cancelCreateUserModalBtn" class="btn-secondary">Cancelar</button>
+          <button id="saveCreateUserBtn" class="btn-primary">Salvar</button>
         </div>
       </div>
     </div>

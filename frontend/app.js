@@ -1,4 +1,6 @@
 ﻿const API_URL = window.__APP_CONFIG?.apiUrl || "http://localhost:3001";
+const SESSION_KEY = "saudeubs_session";
+const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
 
 const state = {
   token: null, user: null, users: [], patients: [],
@@ -9,6 +11,7 @@ const state = {
   protocolByPatient: {},
   editingPatientId: null,
   editingProtocolCategory: null,
+  navSection: "patients",
   workspaceTab: "dashboard",
   dashboardQuery: "",
   dashboardSort: "name_asc",
@@ -50,21 +53,18 @@ const el = {
   topbarSearchInput:        document.getElementById("topbarSearchInput"),
   topbarFilterBtn:          document.getElementById("topbarFilterBtn"),
   topbarPatient:            document.getElementById("topbarPatient"),
-  patientPanel:             document.getElementById("patientPanel"),
-  newPatientPanel:          document.getElementById("newPatientPanel"),
-  filterDetails:            document.getElementById("filterDetails"),
   patientList:              document.getElementById("patientList"),
   patientCount:             document.getElementById("patientCount"),
-  searchInput:              document.getElementById("searchInput"),
-  showNewPatientBtn:        document.getElementById("showNewPatientBtn"),
-  cancelNewPatientBtn:      document.getElementById("cancelNewPatientBtn"),
-  filterMicroArea:          document.getElementById("filterMicroArea"),
-  filterAcs:                document.getElementById("filterAcs"),
-  filterCategory:           document.getElementById("filterCategory"),
-  applyFilterBtn:           document.getElementById("applyFilterBtn"),
+  navPatientsBtn:           document.getElementById("navPatientsBtn"),
+  navProtocolsBtn:          document.getElementById("navProtocolsBtn"),
+  navAcsBtn:                document.getElementById("navAcsBtn"),
+  navDoctorsBtn:            document.getElementById("navDoctorsBtn"),
+  openPatientModalBtn:      document.getElementById("openPatientModalBtn"),
+  openCreateUserModalBtn:   document.getElementById("openCreateUserModalBtn"),
   pName:                    document.getElementById("pName"),
   pPhone:                   document.getElementById("pPhone"),
   pDoc:                     document.getElementById("pDoc"),
+  pCep:                     document.getElementById("pCep"),
   pAddress:                 document.getElementById("pAddress"),
   pMicroArea:               document.getElementById("pMicroArea"),
   pAcs:                     document.getElementById("pAcs"),
@@ -73,6 +73,10 @@ const el = {
   pMeds:                    document.getElementById("pMeds"),
   pAllergies:               document.getElementById("pAllergies"),
   createPatientBtn:         document.getElementById("createPatientBtn"),
+  patientModal:             document.getElementById("patientModal"),
+  patientModalTitle:        document.getElementById("patientModalTitle"),
+  closePatientModalBtn:     document.getElementById("closePatientModalBtn"),
+  cancelPatientModalBtn:    document.getElementById("cancelPatientModalBtn"),
   editPatientBtn:           document.getElementById("editPatientBtn"),
   backToHomeBtn:            document.getElementById("backToHomeBtn"),
   emptyState:               document.getElementById("emptyState"),
@@ -111,8 +115,6 @@ const el = {
   auditTab:                 document.querySelector(".audit-tab"),
   toast:                    document.getElementById("toast"),
   togglePass:               document.getElementById("togglePass"),
-  quickNewPatientBtn:       document.getElementById("quickNewPatientBtn"),
-  quickOpenFiltersBtn:      document.getElementById("quickOpenFiltersBtn"),
   quickSelectFirstPatientBtn: document.getElementById("quickSelectFirstPatientBtn"),
   homeTabDashboardBtn:      document.getElementById("homeTabDashboardBtn"),
   homeTabProtocolsBtn:      document.getElementById("homeTabProtocolsBtn"),
@@ -123,7 +125,6 @@ const el = {
   kpiCategories:            document.getElementById("kpiCategories"),
   categorySummaryList:      document.getElementById("categorySummaryList"),
   priorityTaskList:         document.getElementById("priorityTaskList"),
-  homePatientSearchInput:   document.getElementById("homePatientSearchInput"),
   homePatientSortSelect:    document.getElementById("homePatientSortSelect"),
   homePatientCategoryFilter: document.getElementById("homePatientCategoryFilter"),
   homePatientAcsFilter:     document.getElementById("homePatientAcsFilter"),
@@ -134,6 +135,10 @@ const el = {
   homePatientPrevBtn:       document.getElementById("homePatientPrevBtn"),
   homePatientNextBtn:       document.getElementById("homePatientNextBtn"),
   protocolAdminSection:     document.getElementById("protocolAdminSection"),
+  acsAdminSection:          document.getElementById("acsAdminSection"),
+  doctorsAdminSection:      document.getElementById("doctorsAdminSection"),
+  acsList:                  document.getElementById("acsList"),
+  doctorList:               document.getElementById("doctorList"),
   protocolAdminList:        document.getElementById("protocolAdminList"),
   protocolCategoryInput:    document.getElementById("protocolCategoryInput"),
   protocolLabelInput:       document.getElementById("protocolLabelInput"),
@@ -159,6 +164,17 @@ const el = {
   profileCouncilNumber:     document.getElementById("profileCouncilNumber"),
   profileCouncilUf:         document.getElementById("profileCouncilUf"),
   saveProfileBtn:           document.getElementById("saveProfileBtn"),
+  createUserModal:          document.getElementById("createUserModal"),
+  closeCreateUserModalBtn:  document.getElementById("closeCreateUserModalBtn"),
+  cancelCreateUserModalBtn: document.getElementById("cancelCreateUserModalBtn"),
+  managerCreateRole:        document.getElementById("managerCreateRole"),
+  managerCreateName:        document.getElementById("managerCreateName"),
+  managerCreateEmail:       document.getElementById("managerCreateEmail"),
+  managerCreatePassword:    document.getElementById("managerCreatePassword"),
+  managerCreateCouncilWrap: document.getElementById("managerCreateCouncilWrap"),
+  managerCreateCouncilNumber: document.getElementById("managerCreateCouncilNumber"),
+  managerCreateCouncilUf:   document.getElementById("managerCreateCouncilUf"),
+  saveCreateUserBtn:        document.getElementById("saveCreateUserBtn"),
   filterModal:              document.getElementById("filterModal"),
   closeFilterModalBtn:      document.getElementById("closeFilterModalBtn"),
   topFilterMicroArea:       document.getElementById("topFilterMicroArea"),
@@ -235,10 +251,12 @@ el.logoutBtn?.addEventListener("click", () => {
   Object.assign(state, { token: null, user: null, patients: [], selectedPatient: null, globalTasks: [] });
   el.appScreen.classList.add("hidden");
   el.authScreen.classList.remove("hidden");
-  el.patientPanel.classList.add("hidden");
   el.emptyState.classList.remove("hidden");
   el.patientContent.classList.add("hidden");
   el.profileModal.classList.add("hidden");
+  el.patientModal?.classList.add("hidden");
+  el.createUserModal?.classList.add("hidden");
+  clearSessionStore();
   updateSessionView();
 });
 
@@ -296,7 +314,6 @@ function fillTeamSelect() {
 async function reloadTemplateData() {
   state.protocolTemplates = await api("/protocol/templates");
   fillCategorySelect(el.pCareCategory);
-  fillCategorySelect(el.filterCategory, true);
   fillCategorySelect(el.topFilterCategory, true);
   renderWorkspaceHome();
   renderPatients();
@@ -314,7 +331,6 @@ function applyRolePermissions() {
   const clinFields = ["aDate","aSummary","aConduct","aNext"];
 
   if (isManager()) {
-    el.showNewPatientBtn.classList.remove("hidden");
     el.addAppointmentBtn.classList.remove("hidden");
     el.addTaskBtn.classList.remove("hidden");
     el.editPatientBtn.classList.remove("hidden");
@@ -324,10 +340,9 @@ function applyRolePermissions() {
     mgrFields.forEach(id => { document.getElementById(id).disabled = false; });
     clinFields.forEach(id => { document.getElementById(id).disabled = false; });
     [...el.rType.options].forEach(o => { o.disabled = false; });
-    el.filterAcs.disabled = false;
+    el.topFilterAcs?.closest(".field-group")?.classList.remove("hidden");
     return;
   }
-  el.showNewPatientBtn.classList.add("hidden");
   el.addTaskBtn.classList.add("hidden");
   el.auditTab.classList.add("hidden");
   el.taskFormCard.classList.add("hidden");
@@ -342,7 +357,7 @@ function applyRolePermissions() {
     taskFields.forEach(id => { document.getElementById(id).disabled = true; });
     [...el.rType.options].forEach(o => { o.disabled = o.value === "visit"; });
     if (el.rType.value === "visit") el.rType.value = "consultation";
-    el.filterAcs.disabled = false;
+    el.topFilterAcs?.closest(".field-group")?.classList.add("hidden");
     return;
   }
   // ACS
@@ -350,10 +365,9 @@ function applyRolePermissions() {
   el.addAppointmentBtn.classList.add("hidden");
   el.appointmentFormCard.classList.add("hidden");
   clinFields.forEach(id => { document.getElementById(id).disabled = true; });
-  el.filterAcs.value = state.user.id;
-  el.filterAcs.disabled = true;
   [...el.rType.options].forEach(o => { o.disabled = !["visit","note"].includes(o.value); });
   el.rType.value = "visit";
+  el.topFilterAcs?.closest(".field-group")?.classList.add("hidden");
 }
 
 // -- Topbar patient breadcrumb --------------------------------------------------
@@ -371,27 +385,7 @@ function updateTopbarPatient() {
 
 // -- Render: patients ----------------------------------------------------------
 function renderPatients() {
-  el.patientList.innerHTML = "";
-  const q = (el.searchInput?.value || "").toLowerCase();
-  const list = q ? state.patients.filter(p => p.name.toLowerCase().includes(q)) : state.patients;
-  el.patientCount.textContent = `${list.length} paciente${list.length !== 1 ? "s" : ""}`;
-  if (!list.length) {
-    el.patientList.innerHTML = '<div class="empty-msg">Nenhum paciente encontrado.</div>';
-    return;
-  }
-  list.forEach(p => {
-    const div = document.createElement("div");
-    div.className = `patient-item${state.selectedPatient?.id === p.id ? " active" : ""}`;
-    div.innerHTML = `
-      <div class="pi-name">${p.name}</div>
-      <div class="pi-meta">
-        <span class="pi-cat">${catLabel(p.careCategory)}</span>
-        ${p.microArea ? `<span>MA ${p.microArea}</span>` : ""}
-        ${p.phone ? `<span>${p.phone}</span>` : ""}
-      </div>`;
-    div.addEventListener("click", () => selectPatient(p));
-    el.patientList.appendChild(div);
-  });
+  renderHomePatientTable();
 }
 
 // -- Render: patient header -----------------------------------------------------
@@ -631,6 +625,7 @@ async function loadProtocolStatusesForDashboard() {
 }
 
 function goHomeDashboard() {
+  switchNavSection("patients");
   switchWorkspaceTab("dashboard");
   state.selectedPatient = null;
   renderPatients();
@@ -663,6 +658,49 @@ function switchWorkspaceTab(tab) {
   el.homeTabProtocolsBtn.classList.toggle("active", state.workspaceTab === "protocols");
   el.homeDashboardPane.classList.toggle("hidden", state.workspaceTab !== "dashboard");
   el.protocolAdminSection.classList.toggle("hidden", state.workspaceTab !== "protocols");
+}
+
+function renderTeamUsersLists() {
+  const acsUsers = state.users.filter((u) => u.role === "acs");
+  const doctorUsers = state.users.filter((u) => u.role === "doctor");
+
+  el.acsList.innerHTML = acsUsers.length
+    ? acsUsers.map((u) => `<div class="home-list-row"><span class="home-list-main">${u.name}</span><span class="home-task-meta">${u.email}</span></div>`).join("")
+    : '<div class="empty-msg">Nenhum ACS cadastrado.</div>';
+
+  el.doctorList.innerHTML = doctorUsers.length
+    ? doctorUsers.map((u) => `<div class="home-list-row"><span class="home-list-main">${u.name}</span><span class="home-task-meta">${u.email}</span></div>`).join("")
+    : '<div class="empty-msg">Nenhum medico cadastrado.</div>';
+}
+
+function switchNavSection(section) {
+  const isMgr = isManager();
+  const next = String(section || "patients");
+  const allowed = ["patients", "protocols", "acs", "doctors"];
+  state.navSection = allowed.includes(next) ? next : "patients";
+
+  if (!isMgr && ["protocols", "acs", "doctors"].includes(state.navSection)) {
+    state.navSection = "patients";
+  }
+
+  el.navPatientsBtn.classList.toggle("active", state.navSection === "patients");
+  el.navProtocolsBtn.classList.toggle("active", state.navSection === "protocols");
+  el.navAcsBtn.classList.toggle("active", state.navSection === "acs");
+  el.navDoctorsBtn.classList.toggle("active", state.navSection === "doctors");
+
+  el.navProtocolsBtn.classList.toggle("hidden", !isMgr);
+  el.navAcsBtn.classList.toggle("hidden", !isMgr);
+  el.navDoctorsBtn.classList.toggle("hidden", !isMgr);
+
+  el.openPatientModalBtn.classList.toggle("hidden", !isMgr);
+  el.openCreateUserModalBtn.classList.toggle("hidden", !isMgr);
+
+  el.homeDashboardPane.classList.toggle("hidden", state.navSection !== "patients");
+  el.protocolAdminSection.classList.toggle("hidden", state.navSection !== "protocols");
+  el.acsAdminSection.classList.toggle("hidden", state.navSection !== "acs");
+  el.doctorsAdminSection.classList.toggle("hidden", state.navSection !== "doctors");
+
+  if (state.navSection === "patients") switchWorkspaceTab("dashboard");
 }
 
 function openProtocolModal() {
@@ -815,8 +853,8 @@ function openPatientEdit() {
   el.pMeds.value = p.medications || "";
   el.pAllergies.value = p.allergies || "";
   el.createPatientBtn.textContent = "Salvar alteracoes";
-  el.newPatientPanel.classList.remove("hidden");
-  el.patientPanel.classList.add("hidden");
+  el.patientModalTitle.textContent = "Editar paciente";
+  el.patientModal.classList.remove("hidden");
 }
 
 // -- Tab switching -------------------------------------------------------------
@@ -1003,34 +1041,10 @@ function renderAuditLogs() {
   });
 }
 
-// -- Sidebar new patient toggle -------------------------------------------------
-el.showNewPatientBtn?.addEventListener("click", () => {
-  state.editingPatientId = null;
-  el.createPatientBtn.textContent = "Salvar paciente";
-  el.patientPanel.classList.add("hidden");
-  el.newPatientPanel.classList.remove("hidden");
-});
-el.cancelNewPatientBtn?.addEventListener("click", () => {
-  state.editingPatientId = null;
-  el.createPatientBtn.textContent = "Salvar paciente";
-  el.newPatientPanel.classList.add("hidden");
-  el.patientPanel.classList.remove("hidden");
-});
-
-// -- Search --------------------------------------------------------------------
-el.searchInput?.addEventListener("input", renderPatients);
-
 // -- Vaccine field -------------------------------------------------------------
 el.rType?.addEventListener("change", () => {
   el.vaccineNameWrap.classList.toggle("hidden", el.rType.value !== "vaccine");
 });
-
-// -- Filter --------------------------------------------------------------------
-function applyPatientFilterValues() {
-  state.filters.microArea    = el.filterMicroArea.value.trim();
-  state.filters.acsId        = el.filterAcs.value;
-  state.filters.careCategory = el.filterCategory.value;
-}
 
 // -- Load data -----------------------------------------------------------------
 async function loadPatients() {
@@ -1088,15 +1102,17 @@ async function selectPatient(patient) {
 async function bootstrapAfterLogin() {
   const [users] = await Promise.all([api("/users")]);
   state.users = users;
-  fillAcsSelect(el.tAssignee); fillAcsSelect(el.pAcs); fillAcsSelect(el.filterAcs, true); fillAcsSelect(el.topFilterAcs, true);
+  fillAcsSelect(el.tAssignee);
+  fillAcsSelect(el.pAcs);
+  fillAcsSelect(el.topFilterAcs, true);
   await reloadTemplateData();
   el.authScreen.classList.add("hidden");
   el.appScreen.classList.remove("hidden");
-  el.patientPanel.classList.remove("hidden");
-  if (isAcs()) { el.filterAcs.value = state.user.id; state.filters.acsId = state.user.id; }
+  if (isAcs()) { state.filters.acsId = state.user.id; }
   applyRolePermissions();
   resetProtocolForm();
   renderProtocolAdminList();
+  renderTeamUsersLists();
   state.dashboardQuery = "";
   state.dashboardSort = "name_asc";
   state.dashboardPage = 1;
@@ -1104,7 +1120,6 @@ async function bootstrapAfterLogin() {
   state.dashboardAcsId = "";
   state.dashboardProtocolStatus = "all";
   state.workspaceTab = "dashboard";
-  if (el.homePatientSearchInput) el.homePatientSearchInput.value = "";
   if (el.topbarSearchInput) el.topbarSearchInput.value = "";
   if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
   if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
@@ -1114,6 +1129,7 @@ async function bootstrapAfterLogin() {
   if (el.topFilterAcs) el.topFilterAcs.value = "";
   if (el.topFilterCategory) el.topFilterCategory.value = "";
   switchWorkspaceTab("dashboard");
+  switchNavSection("patients");
   await loadPatients();
   await loadGlobalTasks();
   renderWorkspaceHome();
@@ -1138,11 +1154,15 @@ function withSpinner(btn, fn) {
 el.loginBtn.addEventListener("click", withSpinner(el.loginBtn, async () => {
   const payload = await api("/auth/login", { method:"POST", body:JSON.stringify({ email:el.loginEmail.value.trim(), password:el.loginPassword.value }) });
   state.user = payload.user; state.token = payload.token;
+  persistSession();
   updateSessionView(); await bootstrapAfterLogin();
 }));
 
 el.registerBtn.addEventListener("click", withSpinner(el.registerBtn, async () => {
   const role = el.registerRole.value;
+  if (!passwordStrong(el.registerPassword.value)) {
+    throw new Error("Senha fraca: minimo 8 caracteres, 1 maiuscula, 1 numero e 1 especial.");
+  }
   const check = validateCouncil(role, el.registerCouncilNumber.value, el.registerCouncilUf.value);
   if (!check.ok) { showToast(check.message, "error"); throw new Error(check.message); }
   const payload = await api("/auth/register", { method:"POST", body:JSON.stringify({
@@ -1153,8 +1173,17 @@ el.registerBtn.addEventListener("click", withSpinner(el.registerBtn, async () =>
     councilNumber: check.number||"", councilUf: check.uf||""
   })});
   state.user = payload.user; state.token = payload.token;
+  persistSession();
   updateSessionView(); await bootstrapAfterLogin();
 }));
+
+function loginWithEnter(e) {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  el.loginBtn.click();
+}
+el.loginEmail?.addEventListener("keydown", loginWithEnter);
+el.loginPassword?.addEventListener("keydown", loginWithEnter);
 
 el.registerRole.addEventListener("change", updateRegisterFormVisibility);
 el.registerCouncilNumber.addEventListener("input", () => {
@@ -1170,33 +1199,115 @@ el.profileCouncilUf?.addEventListener("input", () => {
   el.profileCouncilUf.value = el.profileCouncilUf.value.replace(/[^a-zA-Z]/g,"").toUpperCase().slice(0,2);
 });
 
-el.applyFilterBtn.addEventListener("click", async () => {
-  try { applyPatientFilterValues(); await loadPatients(); }
-  catch (e) { showToast(e.message,"error"); }
-});
-
-el.quickNewPatientBtn?.addEventListener("click", () => {
-  if (!isManager()) {
-    showToast("Somente enfermeira gestora pode cadastrar paciente.", "error");
-    return;
-  }
-  state.editingPatientId = null;
-  el.createPatientBtn.textContent = "Salvar paciente";
-  el.patientPanel.classList.add("hidden");
-  el.newPatientPanel.classList.remove("hidden");
-});
-
-el.quickOpenFiltersBtn?.addEventListener("click", () => {
-  if (el.filterDetails) el.filterDetails.open = true;
-  el.filterMicroArea.focus();
-});
-
 el.quickSelectFirstPatientBtn?.addEventListener("click", async () => {
   if (!state.patients.length) {
     showToast("Nenhum paciente disponivel.", "error");
     return;
   }
   await selectPatient(state.patients[0]);
+});
+
+el.navPatientsBtn?.addEventListener("click", () => switchNavSection("patients"));
+el.navProtocolsBtn?.addEventListener("click", () => switchNavSection("protocols"));
+el.navAcsBtn?.addEventListener("click", () => switchNavSection("acs"));
+el.navDoctorsBtn?.addEventListener("click", () => switchNavSection("doctors"));
+
+el.openPatientModalBtn?.addEventListener("click", () => {
+  state.editingPatientId = null;
+  el.patientModalTitle.textContent = "Novo cadastro de paciente";
+  el.createPatientBtn.textContent = "Salvar";
+  ["pName","pPhone","pDoc","pCep","pAddress","pMicroArea","pComorb","pMeds","pAllergies"].forEach((id) => {
+    const ref = document.getElementById(id);
+    if (ref) ref.value = "";
+  });
+  el.pAcs.value = "";
+  el.pCareCategory.value = "general";
+  el.patientModal.classList.remove("hidden");
+});
+el.closePatientModalBtn?.addEventListener("click", () => el.patientModal.classList.add("hidden"));
+el.cancelPatientModalBtn?.addEventListener("click", () => el.patientModal.classList.add("hidden"));
+el.patientModal?.addEventListener("click", (e) => {
+  if (e.target === el.patientModal) el.patientModal.classList.add("hidden");
+});
+
+function updateCreateUserRoleVisibility() {
+  const isDoctorRole = el.managerCreateRole.value === "doctor";
+  el.managerCreateCouncilWrap.classList.toggle("hidden", !isDoctorRole);
+}
+
+el.openCreateUserModalBtn?.addEventListener("click", () => {
+  el.createUserModal.classList.remove("hidden");
+  updateCreateUserRoleVisibility();
+});
+el.closeCreateUserModalBtn?.addEventListener("click", () => el.createUserModal.classList.add("hidden"));
+el.cancelCreateUserModalBtn?.addEventListener("click", () => el.createUserModal.classList.add("hidden"));
+el.createUserModal?.addEventListener("click", (e) => {
+  if (e.target === el.createUserModal) el.createUserModal.classList.add("hidden");
+});
+el.managerCreateRole?.addEventListener("change", updateCreateUserRoleVisibility);
+
+el.saveCreateUserBtn?.addEventListener("click", async () => {
+  try {
+    if (!passwordStrong(el.managerCreatePassword.value)) {
+      throw new Error("Senha fraca: minimo 8 caracteres, 1 maiuscula, 1 numero e 1 especial.");
+    }
+
+    const payload = {
+      role: el.managerCreateRole.value,
+      name: el.managerCreateName.value.trim(),
+      email: el.managerCreateEmail.value.trim(),
+      password: el.managerCreatePassword.value
+    };
+
+    if (payload.role === "doctor") {
+      payload.councilNumber = onlyDigits(el.managerCreateCouncilNumber.value);
+      payload.councilUf = String(el.managerCreateCouncilUf.value || "").toUpperCase().trim();
+    }
+
+    await api("/users", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    showToast("Usuario cadastrado com sucesso.", "ok");
+    el.managerCreateName.value = "";
+    el.managerCreateEmail.value = "";
+    el.managerCreatePassword.value = "";
+    el.managerCreateCouncilNumber.value = "";
+    el.managerCreateCouncilUf.value = "";
+    el.createUserModal.classList.add("hidden");
+
+    state.users = await api("/users");
+    fillAcsSelect(el.tAssignee);
+    fillAcsSelect(el.pAcs);
+    fillAcsSelect(el.topFilterAcs, true);
+    renderTeamUsersLists();
+    renderWorkspaceHome();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+});
+
+el.pPhone?.addEventListener("input", () => { el.pPhone.value = formatPhone(el.pPhone.value); });
+el.pDoc?.addEventListener("input", () => { el.pDoc.value = formatCpf(el.pDoc.value); });
+el.pCep?.addEventListener("input", () => { el.pCep.value = formatCep(el.pCep.value); });
+el.managerCreateCouncilNumber?.addEventListener("input", () => { el.managerCreateCouncilNumber.value = onlyDigits(el.managerCreateCouncilNumber.value).slice(0, 10); });
+el.managerCreateCouncilUf?.addEventListener("input", () => { el.managerCreateCouncilUf.value = String(el.managerCreateCouncilUf.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0,2); });
+
+el.pCep?.addEventListener("blur", async () => {
+  const cep = onlyDigits(el.pCep.value);
+  if (cep.length !== 8) return;
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const data = await res.json();
+    if (data.erro) return;
+    const parts = [data.logradouro, data.bairro, data.localidade, data.uf].filter(Boolean);
+    if (!el.pAddress.value.trim()) {
+      el.pAddress.value = parts.join(", ");
+    }
+  } catch {
+    // Ignora falha de CEP para nao travar cadastro.
+  }
 });
 
 el.homeTabDashboardBtn?.addEventListener("click", () => switchWorkspaceTab("dashboard"));
@@ -1213,16 +1324,8 @@ el.protocolModal?.addEventListener("click", (e) => {
   if (e.target === el.protocolModal) closeProtocolModal();
 });
 
-el.homePatientSearchInput?.addEventListener("input", () => {
-  state.dashboardQuery = el.homePatientSearchInput.value || "";
-  if (el.topbarSearchInput) el.topbarSearchInput.value = state.dashboardQuery;
-  state.dashboardPage = 1;
-  renderHomePatientTable();
-});
-
 el.topbarSearchInput?.addEventListener("input", () => {
   state.dashboardQuery = el.topbarSearchInput.value || "";
-  if (el.homePatientSearchInput) el.homePatientSearchInput.value = state.dashboardQuery;
   state.dashboardPage = 1;
   renderHomePatientTable();
 });
@@ -1267,25 +1370,19 @@ el.filterModal?.addEventListener("click", (e) => {
 
 el.applyTopFiltersBtn?.addEventListener("click", async () => {
   state.filters.microArea = el.topFilterMicroArea.value.trim();
-  state.filters.acsId = el.topFilterAcs.value;
+  state.filters.acsId = isAcs() ? state.user.id : el.topFilterAcs.value;
   state.filters.careCategory = el.topFilterCategory.value;
-  if (el.filterMicroArea) el.filterMicroArea.value = state.filters.microArea;
-  if (el.filterAcs) el.filterAcs.value = state.filters.acsId;
-  if (el.filterCategory) el.filterCategory.value = state.filters.careCategory;
   el.filterModal.classList.add("hidden");
   await loadPatients();
 });
 
 el.clearTopFiltersBtn?.addEventListener("click", async () => {
   state.filters.microArea = "";
-  state.filters.acsId = "";
+  state.filters.acsId = isAcs() ? state.user.id : "";
   state.filters.careCategory = "";
   el.topFilterMicroArea.value = "";
   el.topFilterAcs.value = "";
   el.topFilterCategory.value = "";
-  if (el.filterMicroArea) el.filterMicroArea.value = "";
-  if (el.filterAcs) el.filterAcs.value = "";
-  if (el.filterCategory) el.filterCategory.value = "";
   el.filterModal.classList.add("hidden");
   await loadPatients();
 });
@@ -1329,6 +1426,7 @@ el.saveProfileBtn?.addEventListener("click", async () => {
 
     state.user = result.user;
     state.token = result.token;
+    persistSession();
     updateSessionView();
     showToast("Perfil atualizado com sucesso.", "ok");
     closeProfileModal();
@@ -1392,12 +1490,12 @@ el.createPatientBtn.addEventListener("click", async () => {
     }
 
     ["pName","pPhone","pDoc","pAddress","pMicroArea","pComorb","pMeds","pAllergies"].forEach(id=>{document.getElementById(id).value="";});
+    el.pCep.value = "";
     el.pAcs.value = "";
     el.pCareCategory.value = "general";
     state.editingPatientId = null;
-    el.createPatientBtn.textContent = "Salvar paciente";
-    el.newPatientPanel.classList.add("hidden");
-    el.patientPanel.classList.remove("hidden");
+    el.createPatientBtn.textContent = "Salvar";
+    el.patientModal.classList.add("hidden");
     await loadPatients();
     await loadGlobalTasks();
     if (editingId) {
@@ -1459,5 +1557,34 @@ el.sendMsgBtn.addEventListener("click", async () => {
 });
 
 // -- Init ----------------------------------------------------------------------
-bootstrapBeforeLogin();
+async function initApp() {
+  await bootstrapBeforeLogin();
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed?.token || !parsed?.expiresAt || Date.now() > Number(parsed.expiresAt)) {
+      clearSessionStore();
+      return;
+    }
+
+    state.token = parsed.token;
+    const me = await api("/me");
+    state.user = me;
+    persistSession();
+    updateSessionView();
+    await bootstrapAfterLogin();
+  } catch {
+    clearSessionStore();
+    state.token = null;
+    state.user = null;
+  }
+}
+
+initApp();
+
+
+
+
 

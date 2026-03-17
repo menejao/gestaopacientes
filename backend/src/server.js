@@ -117,6 +117,15 @@ function roleNeedsCouncil(role) {
   return ["doctor", "nurse_manager"].includes(role);
 }
 
+function isStrongPassword(password) {
+  const value = String(password || "");
+  if (value.length < 8) return false;
+  if (!/[A-Z]/.test(value)) return false;
+  if (!/\d/.test(value)) return false;
+  if (!/[!@#$%^&*(),.?":{}|<>_\-\\[\]\/+=~`]/.test(value)) return false;
+  return true;
+}
+
 function isSequentialDigits(input) {
   const chars = [...input].map((c) => Number(c));
   let asc = true;
@@ -655,12 +664,12 @@ app.post("/auth/register", async (req, res) => {
     return res.status(400).json({ error: "name, email, password e role sao obrigatorios" });
   }
 
-  if (password.length < 6) {
-    return res.status(400).json({ error: "Senha deve ter ao menos 6 caracteres" });
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ error: "Senha fraca: minimo 8 caracteres, 1 letra maiuscula, 1 numero e 1 caractere especial" });
   }
 
-  if (!ALLOWED_SELF_REGISTER_ROLES.includes(role)) {
-    return res.status(400).json({ error: "Perfil invalido para cadastro" });
+  if (!ALLOWED_SELF_REGISTER_ROLES.includes(role) || role !== "nurse_manager") {
+    return res.status(400).json({ error: "Cadastro publico permitido apenas para enfermeira gestora" });
   }
 
   const councilValidation = validateCouncilData(role, payload.councilNumber, payload.councilUf);
@@ -821,8 +830,8 @@ app.patch("/me", async (req, res) => {
 
     if (payload.password !== undefined) {
       const password = String(payload.password || "");
-      if (password.length < 6) {
-        return { error: { status: 400, message: "Senha deve ter ao menos 6 caracteres" } };
+      if (!isStrongPassword(password)) {
+        return { error: { status: 400, message: "Senha fraca: minimo 8 caracteres, 1 letra maiuscula, 1 numero e 1 caractere especial" } };
       }
       next.password = password;
     }
@@ -1027,6 +1036,95 @@ app.get("/users", async (req, res) => {
     .map((u) => sanitizeUser(u, db));
 
   return res.json(safeUsers.map(({ password, ...u }) => u));
+});
+
+app.post("/users", requireManager, async (req, res) => {
+  const payload = req.body || {};
+  const name = String(payload.name || "").trim();
+  const email = String(payload.email || "").trim().toLowerCase();
+  const password = String(payload.password || "");
+  const role = canonicalRole(payload.role);
+
+  if (!name || !email || !password || !role) {
+    return res.status(400).json({ error: "name, email, password e role sao obrigatorios" });
+  }
+
+  if (!["acs", "doctor"].includes(role)) {
+    return res.status(400).json({ error: "A enfermeira pode cadastrar apenas ACS ou Medico(a)" });
+  }
+
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ error: "Senha fraca: minimo 8 caracteres, 1 letra maiuscula, 1 numero e 1 caractere especial" });
+  }
+
+  const councilType = councilTypeForRole(role);
+  const councilValidation = validateCouncilData(role, payload.councilNumber, payload.councilUf);
+  if (!councilValidation.ok) {
+    return res.status(400).json({ error: councilValidation.message });
+  }
+
+  const externalCheck = await verifyCouncilExternally({
+    role,
+    councilType,
+    councilNumber: councilValidation.councilNumber || "",
+    councilUf: councilValidation.councilUf || "",
+    name,
+    email
+  });
+
+  if (!externalCheck.valid) {
+    return res.status(400).json({
+      error: externalCheck.error || "Conselho nao validado no provedor externo"
+    });
+  }
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    if (db.users.some((u) => String(u.email).toLowerCase() === email)) {
+      return { error: "Email ja cadastrado" };
+    }
+
+    const duplicatedCouncil = roleNeedsCouncil(role) && db.users.some((u) => {
+      const uRole = canonicalRole(u.role);
+      return roleNeedsCouncil(uRole)
+        && String(u.councilType || "").toUpperCase() === councilType
+        && String(u.councilNumber || "") === councilValidation.councilNumber
+        && String(u.councilUf || "").toUpperCase() === councilValidation.councilUf;
+    });
+
+    if (duplicatedCouncil) {
+      return { error: `${councilType} ja cadastrado para outro usuario` };
+    }
+
+    const user = {
+      id: uuidv4(),
+      name,
+      role,
+      email,
+      password,
+      teamId: req.user.teamId,
+      councilType,
+      councilNumber: councilValidation.councilNumber || "",
+      councilUf: councilValidation.councilUf || "",
+      councilVerification: {
+        checked: externalCheck.checked,
+        provider: externalCheck.provider,
+        status: externalCheck.status,
+        verifiedAt: new Date().toISOString()
+      },
+      createdAt: new Date().toISOString()
+    };
+
+    db.users.push(user);
+    addAuditLog(db, req.user, "user.created_by_manager", "user", user.id, {
+      role: user.role,
+      teamId: user.teamId
+    });
+    return { user, db };
+  });
+
+  if (result.error) return res.status(409).json({ error: result.error });
+  return res.status(201).json(sanitizeUser(result.user, result.db));
 });
 
 app.get("/patients", async (req, res) => {
