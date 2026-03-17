@@ -59,6 +59,7 @@ const el = {
   navProtocolsBtn:          document.getElementById("navProtocolsBtn"),
   navAcsBtn:                document.getElementById("navAcsBtn"),
   navDoctorsBtn:            document.getElementById("navDoctorsBtn"),
+  navAiBtn:                 document.getElementById("navAiBtn"),
   openPatientModalBtn:      document.getElementById("openPatientModalBtn"),
   openCreateUserModalBtn:   document.getElementById("openCreateUserModalBtn"),
   pName:                    document.getElementById("pName"),
@@ -137,6 +138,13 @@ const el = {
   protocolAdminSection:     document.getElementById("protocolAdminSection"),
   acsAdminSection:          document.getElementById("acsAdminSection"),
   doctorsAdminSection:      document.getElementById("doctorsAdminSection"),
+  aiHubSection:             document.getElementById("aiHubSection"),
+  aiLoadPrioritiesBtn:      document.getElementById("aiLoadPrioritiesBtn"),
+  aiLoadQualityBtn:         document.getElementById("aiLoadQualityBtn"),
+  aiLoadReportBtn:          document.getElementById("aiLoadReportBtn"),
+  aiTeamQuestionInput:      document.getElementById("aiTeamQuestionInput"),
+  aiAskTeamBtn:             document.getElementById("aiAskTeamBtn"),
+  aiHubOutput:              document.getElementById("aiHubOutput"),
   acsList:                  document.getElementById("acsList"),
   doctorList:               document.getElementById("doctorList"),
   protocolAdminList:        document.getElementById("protocolAdminList"),
@@ -182,6 +190,15 @@ const el = {
   topFilterCategory:        document.getElementById("topFilterCategory"),
   applyTopFiltersBtn:       document.getElementById("applyTopFiltersBtn"),
   clearTopFiltersBtn:       document.getElementById("clearTopFiltersBtn"),
+  aiPatientSummaryBtn:      document.getElementById("aiPatientSummaryBtn"),
+  aiPatientProtocolBtn:     document.getElementById("aiPatientProtocolBtn"),
+  aiPatientAcsMsgBtn:       document.getElementById("aiPatientAcsMsgBtn"),
+  aiPatientSuggestBtn:      document.getElementById("aiPatientSuggestBtn"),
+  aiEvolutionInput:         document.getElementById("aiEvolutionInput"),
+  aiEvolutionBtn:           document.getElementById("aiEvolutionBtn"),
+  aiTranscriptionInput:     document.getElementById("aiTranscriptionInput"),
+  aiTranscriptionBtn:       document.getElementById("aiTranscriptionBtn"),
+  aiPatientOutput:          document.getElementById("aiPatientOutput"),
 };
 
 // -- Toast --------------------------------------------------------------------
@@ -193,6 +210,16 @@ function showToast(msg, type = "default", ms = 3000) {
   _toastTimer = setTimeout(() => el.toast.classList.add("hidden"), ms);
 }
 
+function persistSession() {
+  if (!state.token) return;
+  const expiresAt = Date.now() + SESSION_TTL_MS;
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ token: state.token, expiresAt }));
+}
+
+function clearSessionStore() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
 // -- Helpers ------------------------------------------------------------------
 const isManager = () => state.user?.role === "nurse_manager";
 const isDoctor  = () => state.user?.role === "doctor";
@@ -201,12 +228,15 @@ const canAcsUpdateTask = t => isAcs() && t.assigneeId === state.user.id;
 const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Nao atribuido";
 const catLabel     = cat => state.protocolTemplates.find(t => t.category === cat)?.label || "Geral";
 const taskOpen     = t => ["pending", "in_progress"].includes(t.status);
+const prettyJson   = (obj) => JSON.stringify(obj, null, 2);
 
 // -- API ----------------------------------------------------------------------
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  const res = await fetch(`${API_URL}${path}`, { ...options, headers, signal: controller.signal }).finally(() => clearTimeout(timeout));
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || "Erro na requisicao");
@@ -650,6 +680,35 @@ function closeProfileModal() {
   el.profileModal.classList.add("hidden");
 }
 
+function requireSelectedPatientForAi() {
+  if (!state.selectedPatient) {
+    showToast("Selecione um paciente para usar IA.", "error");
+    switchNavSection("patients");
+    return false;
+  }
+  return true;
+}
+
+async function runTeamAi(path, payload = {}) {
+  try {
+    const data = await api(path, { method: "POST", body: JSON.stringify(payload) });
+    el.aiHubOutput.textContent = prettyJson(data);
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
+async function runPatientAi(path, payload = {}) {
+  if (!requireSelectedPatientForAi()) return;
+  try {
+    const data = await api(`/ai/patients/${state.selectedPatient.id}${path}`, { method: "POST", body: JSON.stringify(payload) });
+    el.aiPatientOutput.textContent = prettyJson(data);
+    switchToTab("panelAi");
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
 function switchWorkspaceTab(tab) {
   const allowProtocols = isManager();
   state.workspaceTab = tab === "protocols" && allowProtocols ? "protocols" : "dashboard";
@@ -676,10 +735,10 @@ function renderTeamUsersLists() {
 function switchNavSection(section) {
   const isMgr = isManager();
   const next = String(section || "patients");
-  const allowed = ["patients", "protocols", "acs", "doctors"];
+  const allowed = ["patients", "protocols", "acs", "doctors", "ai"];
   state.navSection = allowed.includes(next) ? next : "patients";
 
-  if (!isMgr && ["protocols", "acs", "doctors"].includes(state.navSection)) {
+  if (!isMgr && ["protocols", "acs", "doctors", "ai"].includes(state.navSection)) {
     state.navSection = "patients";
   }
 
@@ -687,10 +746,12 @@ function switchNavSection(section) {
   el.navProtocolsBtn.classList.toggle("active", state.navSection === "protocols");
   el.navAcsBtn.classList.toggle("active", state.navSection === "acs");
   el.navDoctorsBtn.classList.toggle("active", state.navSection === "doctors");
+  el.navAiBtn.classList.toggle("active", state.navSection === "ai");
 
   el.navProtocolsBtn.classList.toggle("hidden", !isMgr);
   el.navAcsBtn.classList.toggle("hidden", !isMgr);
   el.navDoctorsBtn.classList.toggle("hidden", !isMgr);
+  el.navAiBtn.classList.toggle("hidden", !isMgr);
 
   el.openPatientModalBtn.classList.toggle("hidden", !isMgr);
   el.openCreateUserModalBtn.classList.toggle("hidden", !isMgr);
@@ -699,6 +760,7 @@ function switchNavSection(section) {
   el.protocolAdminSection.classList.toggle("hidden", state.navSection !== "protocols");
   el.acsAdminSection.classList.toggle("hidden", state.navSection !== "acs");
   el.doctorsAdminSection.classList.toggle("hidden", state.navSection !== "doctors");
+  el.aiHubSection.classList.toggle("hidden", state.navSection !== "ai");
 
   if (state.navSection === "patients") switchWorkspaceTab("dashboard");
 }
@@ -1066,7 +1128,9 @@ async function loadPatients() {
   }
   renderPatients();
   renderWorkspaceHome();
-  await loadProtocolStatusesForDashboard();
+  loadProtocolStatusesForDashboard().catch(() => {
+    showToast("Nao foi possivel atualizar status de protocolo agora.", "error", 2500);
+  });
 }
 async function loadGlobalTasks() {
   try {
@@ -1211,6 +1275,7 @@ el.navPatientsBtn?.addEventListener("click", () => switchNavSection("patients"))
 el.navProtocolsBtn?.addEventListener("click", () => switchNavSection("protocols"));
 el.navAcsBtn?.addEventListener("click", () => switchNavSection("acs"));
 el.navDoctorsBtn?.addEventListener("click", () => switchNavSection("doctors"));
+el.navAiBtn?.addEventListener("click", () => switchNavSection("ai"));
 
 el.openPatientModalBtn?.addEventListener("click", () => {
   state.editingPatientId = null;
@@ -1395,6 +1460,51 @@ el.homePatientPrevBtn?.addEventListener("click", () => {
 el.homePatientNextBtn?.addEventListener("click", () => {
   state.dashboardPage += 1;
   renderHomePatientTable();
+});
+
+el.aiLoadPrioritiesBtn?.addEventListener("click", async () => {
+  await runTeamAi("/ai/team/priorities");
+});
+
+el.aiLoadQualityBtn?.addEventListener("click", async () => {
+  await runTeamAi("/ai/team/data-quality");
+});
+
+el.aiLoadReportBtn?.addEventListener("click", async () => {
+  await runTeamAi("/ai/team/report");
+});
+
+el.aiAskTeamBtn?.addEventListener("click", async () => {
+  const question = el.aiTeamQuestionInput.value.trim();
+  if (!question) {
+    showToast("Digite uma pergunta para o assistente.", "error");
+    return;
+  }
+  await runTeamAi("/ai/chat", { question });
+});
+
+el.aiPatientSummaryBtn?.addEventListener("click", async () => {
+  await runPatientAi("/summary");
+});
+
+el.aiPatientProtocolBtn?.addEventListener("click", async () => {
+  await runPatientAi("/protocol-highlights");
+});
+
+el.aiPatientAcsMsgBtn?.addEventListener("click", async () => {
+  await runPatientAi("/acs-message");
+});
+
+el.aiPatientSuggestBtn?.addEventListener("click", async () => {
+  await runPatientAi("/suggest-category");
+});
+
+el.aiEvolutionBtn?.addEventListener("click", async () => {
+  await runPatientAi("/evolution-draft", { freeText: el.aiEvolutionInput.value.trim() });
+});
+
+el.aiTranscriptionBtn?.addEventListener("click", async () => {
+  await runPatientAi("/transcribe", { transcript: el.aiTranscriptionInput.value.trim() });
 });
 
 el.homeBtn?.addEventListener("click", goHomeDashboard);
