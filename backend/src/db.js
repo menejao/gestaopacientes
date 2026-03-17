@@ -1,5 +1,6 @@
 ﻿import fs from "node:fs/promises";
 import path from "node:path";
+import crypto from "node:crypto";
 import { Pool } from "pg";
 
 const DB_PATH = path.resolve(process.cwd(), "data", "db.json");
@@ -14,6 +15,12 @@ const pool = DATABASE_URL
   : null;
 
 let initialized = false;
+
+function hashDefaultPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const key = crypto.scryptSync(String(password || ""), salt, 64).toString("hex");
+  return `s1$${salt}$${key}`;
+}
 
 function buildDefaultState() {
   const now = new Date().toISOString();
@@ -42,7 +49,7 @@ function buildDefaultState() {
         name: "Enfermeira Ana",
         role: "nurse_manager",
         email: "ana@clinica.local",
-        password: "123456",
+        password: hashDefaultPassword("123456"),
         teamId: "team-ana",
         councilType: "COREN",
         councilNumber: "123456",
@@ -54,7 +61,7 @@ function buildDefaultState() {
         name: "ACS Carlos",
         role: "acs",
         email: "carlos@clinica.local",
-        password: "123456",
+        password: hashDefaultPassword("123456"),
         teamId: "team-ana",
         createdAt: now
       }
@@ -170,3 +177,5 @@ async function withDb(mutator) {
 }
 
 export { readDb, withDb };
+
+

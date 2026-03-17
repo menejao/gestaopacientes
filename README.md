@@ -110,6 +110,27 @@ Arquivos de apoio ja prontos:
 ## Variavel de ambiente (opcional)
 - `JWT_SECRET`: chave usada para assinar tokens.
 - Se nao informar, a API usa uma chave padrao de desenvolvimento.
+- `NODE_ENV`: use `production` em producao.
+- `FRONTEND_ORIGINS`: lista CSV de origens permitidas (CORS), ex: `https://app.exemplo.com`.
+- `AUTH_RATE_LIMIT_WINDOW_MS`: janela de limitacao de tentativas de autenticacao (ms).
+- `AUTH_RATE_LIMIT_MAX_ATTEMPTS`: maximo de tentativas por IP na janela.
+
+## Seguranca e LGPD (baseline tecnico)
+- Senhas sao armazenadas com hash (`scrypt`) e migradas automaticamente se legadas em texto puro.
+- JWT exige segredo forte em producao (`JWT_SECRET` obrigatorio).
+- CORS restrito por allowlist via `FRONTEND_ORIGINS`.
+- Rotas de login/registro possuem limitacao de tentativas por IP.
+- Headers de seguranca HTTP basicos habilitados (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`).
+- Auditoria de acoes criticas habilitada para rastreabilidade.
+
+## Governanca recomendada (operacao real)
+- Definir base legal e finalidade por dado coletado (minimizacao obrigatoria).
+- Nomear encarregado (DPO) e manter canal de atendimento ao titular.
+- Publicar politica de privacidade e termos de uso internos.
+- Implementar rotina de direitos do titular: acesso, correcao, eliminacao e portabilidade.
+- Definir prazo de retencao e descarte seguro por tipo de registro.
+- Manter controle de incidentes com plano de resposta e notificacao.
+- Restringir acesso por perfil, revisar logs periodicamente e registrar consentimentos quando aplicavel.
 
 ## Integracao externa de conselho (ja acoplada)
 - O cadastro ja faz chamada para um provedor externo de validacao de conselho.

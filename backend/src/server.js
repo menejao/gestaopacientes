@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
+import crypto from "node:crypto";
 import { v4 as uuidv4 } from "uuid";
 import { readDb, withDb } from "./db.js";
 import {
@@ -18,7 +19,19 @@ import {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || "troque-esta-chave-em-producao";
+const IS_PROD = String(process.env.NODE_ENV || "").trim().toLowerCase() === "production";
+const JWT_SECRET = String(process.env.JWT_SECRET || "").trim() || "dev-only-jwt-secret-change-me";
+const FRONTEND_ORIGINS = String(process.env.FRONTEND_ORIGINS || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const AUTH_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
+const AUTH_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 20);
+const authRateMap = new Map();
+
+if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
+  throw new Error("JWT_SECRET obrigatorio em producao");
+}
 
 const DEFAULT_CARE_PROTOCOLS = {
   general: {
@@ -109,7 +122,26 @@ const VALID_UF = new Set([
 ]);
 
 app.use(cors());
-app.use(express.json());
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (!FRONTEND_ORIGINS.length) return callback(null, true);
+    if (FRONTEND_ORIGINS.includes(origin)) return callback(null, true);
+    return callback(new Error("Origem nao permitida por CORS"));
+  }
+}));
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  next();
+});
+
+app.use(express.json({ limit: "1mb" }));
 
 function canonicalRole(role) {
   const input = String(role || "").trim().toLowerCase();
@@ -136,6 +168,62 @@ function isStrongPassword(password) {
   if (!/\d/.test(value)) return false;
   if (!/[!@#$%^&*(),.?":{}|<>_\-\\[\]\/+=~`]/.test(value)) return false;
   return true;
+}
+
+function isValidEmail(email) {
+  const value = String(email || "").trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const key = crypto.scryptSync(String(password || ""), salt, 64).toString("hex");
+  return `s1$${salt}$${key}`;
+}
+
+function isHashedPassword(value) {
+  return /^s1\$[a-f0-9]{32}\$[a-f0-9]{128}$/i.test(String(value || ""));
+}
+
+function verifyPassword(password, stored) {
+  const candidate = String(password || "");
+  const value = String(stored || "");
+  if (!value) return false;
+  if (!isHashedPassword(value)) return candidate === value;
+  const [, salt, key] = value.split("$");
+  const derived = crypto.scryptSync(candidate, salt, 64).toString("hex");
+  const left = Buffer.from(derived, "hex");
+  const right = Buffer.from(key, "hex");
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function getClientIp(req) {
+  const headerIp = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return headerIp || String(req.ip || req.socket?.remoteAddress || "unknown");
+}
+
+function cleanupRateMap(now = Date.now()) {
+  for (const [key, value] of authRateMap.entries()) {
+    if (now - value.firstAt > AUTH_WINDOW_MS) authRateMap.delete(key);
+  }
+}
+
+function authRateLimit(req, res, next) {
+  const now = Date.now();
+  cleanupRateMap(now);
+  const ip = getClientIp(req);
+  const bucket = authRateMap.get(ip) || { count: 0, firstAt: now };
+  if (now - bucket.firstAt > AUTH_WINDOW_MS) {
+    bucket.count = 0;
+    bucket.firstAt = now;
+  }
+  bucket.count += 1;
+  authRateMap.set(ip, bucket);
+  if (bucket.count > AUTH_MAX_ATTEMPTS) {
+    return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos." });
+  }
+  return next();
 }
 
 function isSequentialDigits(input) {
@@ -248,7 +336,7 @@ async function ensureDemoManagerIfNeeded(email, password) {
 
     if (existing) {
       // Repair mode: garante que a credencial demo volte a funcionar.
-      existing.password = demoPassword;
+      existing.password = hashPassword(demoPassword);
       existing.role = "nurse_manager";
       existing.name = existing.name || "Enfermeira Ana";
       existing.councilType = existing.councilType || "COREN";
@@ -290,7 +378,7 @@ async function ensureDemoManagerIfNeeded(email, password) {
       name: "Enfermeira Ana",
       role: "nurse_manager",
       email: demoEmail,
-      password: demoPassword,
+      password: hashPassword(demoPassword),
       teamId: team.id,
       councilType: "COREN",
       councilNumber: "123456",
@@ -303,6 +391,21 @@ async function ensureDemoManagerIfNeeded(email, password) {
       team.managerUserId = demoUser.id;
     }
     return { user: demoUser, db };
+  });
+}
+
+async function migrateLegacyPlaintextPasswords() {
+  await withDb((db) => {
+    ensureDbShape(db);
+    let changed = false;
+    db.users = db.users.map((user) => {
+      if (!isHashedPassword(user.password)) {
+        changed = true;
+        return { ...user, password: hashPassword(user.password || ""), updatedAt: new Date().toISOString() };
+      }
+      return user;
+    });
+    return changed;
   });
 }
 
@@ -762,7 +865,7 @@ app.get("/integrations/council/status", (_req, res) => {
   });
 });
 
-app.post("/auth/register", async (req, res) => {
+app.post("/auth/register", authRateLimit, async (req, res) => {
   const payload = req.body;
   const name = String(payload.name || "").trim();
   const email = String(payload.email || "").trim().toLowerCase();
@@ -772,6 +875,14 @@ app.post("/auth/register", async (req, res) => {
 
   if (!name || !email || !password || !role) {
     return res.status(400).json({ error: "name, email, password e role sao obrigatorios" });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: "Email invalido" });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: "Email invalido" });
   }
 
   if (!isStrongPassword(password)) {
@@ -850,7 +961,7 @@ app.post("/auth/register", async (req, res) => {
       name,
       role,
       email,
-      password,
+      password: hashPassword(password),
       teamId,
       councilType,
       councilNumber: councilValidation.councilNumber || "",
@@ -885,13 +996,14 @@ app.post("/auth/register", async (req, res) => {
   return res.status(201).json({ user: safeUser, token });
 });
 
-app.post("/auth/login", async (req, res) => {
+app.post("/auth/login", authRateLimit, async (req, res) => {
   const { email, password } = req.body;
   let db = await readDb();
   ensureDbShape(db);
-
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const inputPassword = String(password || "");
   let user = db.users.find(
-    (u) => String(u.email).toLowerCase() === String(email).trim().toLowerCase() && u.password === String(password)
+    (u) => String(u.email).toLowerCase() === normalizedEmail && verifyPassword(inputPassword, u.password)
   );
 
   if (!user) {
@@ -904,6 +1016,20 @@ app.post("/auth/login", async (req, res) => {
 
   if (!user) {
     return res.status(401).json({ error: "Credenciais invalidas" });
+  }
+
+  if (!isHashedPassword(user.password)) {
+    await withDb((mutableDb) => {
+      ensureDbShape(mutableDb);
+      const idx = mutableDb.users.findIndex((u) => u.id === user.id);
+      if (idx >= 0) {
+        mutableDb.users[idx].password = hashPassword(inputPassword);
+        mutableDb.users[idx].updatedAt = new Date().toISOString();
+      }
+    });
+    db = await readDb();
+    ensureDbShape(db);
+    user = db.users.find((u) => u.id === user.id) || user;
   }
 
   const safeUser = sanitizeUser(user, db);
@@ -941,6 +1067,7 @@ app.patch("/me", async (req, res) => {
     if (payload.email !== undefined) {
       const email = String(payload.email || "").trim().toLowerCase();
       if (!email) return { error: { status: 400, message: "Email nao pode ficar vazio" } };
+      if (!isValidEmail(email)) return { error: { status: 400, message: "Email invalido" } };
       const exists = db.users.some((u) => u.id !== current.id && String(u.email).toLowerCase() === email);
       if (exists) return { error: { status: 409, message: "Email ja em uso por outro usuario" } };
       next.email = email;
@@ -951,7 +1078,7 @@ app.patch("/me", async (req, res) => {
       if (!isStrongPassword(password)) {
         return { error: { status: 400, message: "Senha fraca: minimo 8 caracteres, 1 letra maiuscula, 1 numero e 1 caractere especial" } };
       }
-      next.password = password;
+      next.password = hashPassword(password);
     }
 
     const role = canonicalRole(current.role);
@@ -1219,7 +1346,7 @@ app.post("/users", requireManager, async (req, res) => {
       name,
       role,
       email,
-      password,
+      password: hashPassword(password),
       teamId: req.user.teamId,
       councilType,
       councilNumber: councilValidation.councilNumber || "",
@@ -1768,9 +1895,26 @@ app.post("/ai/chat", async (req, res) => {
   return res.json(chatAnswer(question, contexts));
 });
 
-app.listen(PORT, () => {
-  console.log(`API rodando em http://localhost:${PORT}`);
+app.use((err, _req, res, _next) => {
+  if (String(err?.message || "").includes("CORS")) {
+    return res.status(403).json({ error: "Origem bloqueada por politica de seguranca" });
+  }
+  return res.status(500).json({ error: "Erro interno do servidor" });
 });
+
+async function startServer() {
+  try {
+    await migrateLegacyPlaintextPasswords();
+    app.listen(PORT, () => {
+      console.log(`API rodando em http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("Falha ao inicializar API com seguranca de credenciais:", error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 
 
