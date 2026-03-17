@@ -1,3 +1,3 @@
-window.__APP_CONFIG = window.__APP_CONFIG || {
-  apiUrl: "http://localhost:3001"
+﻿window.__APP_CONFIG = {
+  apiUrl: "https://saude-backend-gkj7.onrender.com"
 };
