@@ -66,7 +66,7 @@ Arquivos de apoio ja prontos:
 4. Validar no celular e desktop acessando a URL do Pages.
 
 ## Logins e cadastro
-- Enfermeira gestora (conta inicial): `ana@clinica.local` / `123456`
+- Enfermeira (conta inicial): `ana@clinica.local` / `123456`
 - ACS, Medica e Enfermeiro(a) gestor(a): podem criar conta na tela inicial (`POST /auth/register`)
 - Regras de cadastro:
   - Medica e Enfermeiro(a) precisam informar conselho (numero + UF)
@@ -76,13 +76,13 @@ Arquivos de apoio ja prontos:
 
 ## Equipes
 - Todos os dados sao separados por equipe.
-- Cada equipe e vinculada a uma enfermeira gestora.
+- Cada equipe e vinculada a uma enfermeira.
 - Usuarios so acessam pacientes, tarefas e registros da propria equipe.
 
 ## Autenticacao e permissao
 - Autenticacao via JWT (`POST /auth/login` retorna `token`).
 - Rotas de dados exigem `Authorization: Bearer <token>`.
-- Perfil `nurse_manager` (enfermeira gestora):
+- Perfil `nurse_manager` (enfermeira):
   - cria/edita paciente
   - cria tarefa para ACS
   - cria atendimentos

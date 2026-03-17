@@ -85,7 +85,7 @@
             <div class="field-group">
               <label class="field-label">Perfil</label>
               <select id="registerRole" class="field-select">
-                <option value="nurse_manager">Enfermeiro(a) Gestor(a)</option>
+                <option value="nurse_manager">Enfermeira</option>
               </select>
             </div>
             <div id="registerTeamWrap" class="field-group">
@@ -125,17 +125,8 @@
           </svg>
           <span>SaudeUBS</span>
         </div>
-        <div class="topbar-center">
-          <div class="topbar-search-wrap">
-            <svg class="topbar-search-ico" width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            <input id="topbarSearchInput" class="topbar-search-input" placeholder="Buscar paciente no painel..."/>
-            <button id="topbarFilterBtn" class="topbar-filter-btn" title="Filtros">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5 8h6M7 12h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            </button>
-          </div>
-          <div id="topbarPatient" class="topbar-patient-inline"></div>
-        </div>
         <div class="topbar-right">
+          <div id="topbarPatient" class="topbar-patient-inline"></div>
           <button id="homeBtn" class="btn-ghost hidden">Painel</button>
           <div class="topbar-user" id="topbarUser">
             <div class="user-avatar" id="userAvatar">?</div>
@@ -157,6 +148,13 @@
         <!-- --- SIDEBAR --- -->
         <aside class="sidebar">
           <div class="sidebar-inner">
+            <div class="sidebar-search-wrap">
+              <svg class="sidebar-search-ico" width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <input id="topbarSearchInput" class="sidebar-search-input" placeholder="Buscar paciente no painel..."/>
+              <button id="topbarFilterBtn" class="sidebar-filter-btn" title="Filtros">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5 8h6M7 12h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              </button>
+            </div>
             <div class="sidebar-section-hd">
               <span class="sidebar-hd-title">Navegacao</span>
             </div>
@@ -169,7 +167,6 @@
             </div>
             <div class="form-divider"></div>
             <div class="nav-actions">
-              <button id="openPatientModalBtn" class="btn-primary btn-block hidden">Novo paciente</button>
               <button id="openCreateUserModalBtn" class="btn-secondary btn-block hidden">Cadastrar ACS/Medico</button>
             </div>
           </div>
@@ -187,7 +184,7 @@
                 <p class="home-sub">Acompanhe pacientes, protocolos e pendencias da equipe em tempo real.</p>
               </div>
               <div class="home-actions">
-                <button id="quickSelectFirstPatientBtn" class="btn-secondary">Abrir primeiro paciente</button>
+                <button id="quickSelectFirstPatientBtn" class="btn-secondary">Novo paciente</button>
               </div>
             </section>
 

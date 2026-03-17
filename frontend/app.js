@@ -397,7 +397,7 @@ function updateSessionView() {
     el.profileBtn.classList.add("hidden");
     return;
   }
-  const roleMap = { nurse_manager: "Enf. Gestora", doctor: "Medico(a)", acs: "ACS" };
+  const roleMap = { nurse_manager: "Enfermeira", doctor: "Medico(a)", acs: "ACS" };
   el.userName.textContent  = state.user.name;
   el.userRole.textContent  = roleMap[state.user.role] || state.user.role;
   el.userAvatar.textContent = state.user.name.charAt(0).toUpperCase();
@@ -838,7 +838,9 @@ function switchWorkspaceTab(tab) {
 }
 
 function renderTeamUsersLists() {
-  const acsUsers = state.users.filter((u) => u.role === "acs");
+  const acsUsers = state.users
+    .filter((u) => u.role === "acs")
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
   const doctorUsers = state.users.filter((u) => u.role === "doctor");
 
   el.acsList.innerHTML = acsUsers.length
@@ -871,7 +873,6 @@ function switchNavSection(section) {
   el.navDoctorsBtn.classList.toggle("hidden", !isMgr);
   el.navAiBtn.classList.toggle("hidden", !isMgr);
 
-  el.openPatientModalBtn.classList.toggle("hidden", !isMgr);
   el.openCreateUserModalBtn.classList.toggle("hidden", !isMgr);
 
   el.homeDashboardPane.classList.toggle("hidden", state.navSection !== "patients");
@@ -930,7 +931,7 @@ function resetProtocolForm() {
 function renderProtocolAdminList() {
   if (!el.protocolAdminList) return;
   if (!isManager()) {
-    el.protocolAdminList.innerHTML = '<div class="empty-msg">Somente a enfermeira gestora administra protocolos.</div>';
+    el.protocolAdminList.innerHTML = '<div class="empty-msg">Somente a enfermeira administra protocolos.</div>';
     return;
   }
 
@@ -1387,21 +1388,7 @@ el.profileCouncilUf?.addEventListener("input", () => {
   el.profileCouncilUf.value = el.profileCouncilUf.value.replace(/[^a-zA-Z]/g,"").toUpperCase().slice(0,2);
 });
 
-el.quickSelectFirstPatientBtn?.addEventListener("click", async () => {
-  if (!state.patients.length) {
-    showToast("Nenhum paciente disponivel.", "error");
-    return;
-  }
-  await selectPatient(state.patients[0]);
-});
-
-el.navPatientsBtn?.addEventListener("click", () => switchNavSection("patients"));
-el.navProtocolsBtn?.addEventListener("click", () => switchNavSection("protocols"));
-el.navAcsBtn?.addEventListener("click", () => switchNavSection("acs"));
-el.navDoctorsBtn?.addEventListener("click", () => switchNavSection("doctors"));
-el.navAiBtn?.addEventListener("click", () => switchNavSection("ai"));
-
-  el.openPatientModalBtn?.addEventListener("click", () => {
+function openPatientCreateModal() {
   state.editingPatientId = null;
   el.patientModalTitle.textContent = "Novo cadastro de paciente";
   el.createPatientBtn.textContent = "Salvar";
@@ -1412,7 +1399,23 @@ el.navAiBtn?.addEventListener("click", () => switchNavSection("ai"));
   el.pAcs.value = "";
   el.pCareCategory.value = "general";
   el.patientModal.classList.remove("hidden");
+}
+
+el.quickSelectFirstPatientBtn?.addEventListener("click", () => {
+  if (!isManager()) {
+    showToast("Somente enfermeira pode cadastrar paciente.", "error");
+    return;
+  }
+  openPatientCreateModal();
 });
+
+el.navPatientsBtn?.addEventListener("click", () => switchNavSection("patients"));
+el.navProtocolsBtn?.addEventListener("click", () => switchNavSection("protocols"));
+el.navAcsBtn?.addEventListener("click", () => switchNavSection("acs"));
+el.navDoctorsBtn?.addEventListener("click", () => switchNavSection("doctors"));
+el.navAiBtn?.addEventListener("click", () => switchNavSection("ai"));
+
+el.openPatientModalBtn?.addEventListener("click", openPatientCreateModal);
 el.closePatientModalBtn?.addEventListener("click", () => el.patientModal.classList.add("hidden"));
 el.cancelPatientModalBtn?.addEventListener("click", () => el.patientModal.classList.add("hidden"));
 el.patientModal?.addEventListener("click", (e) => {
@@ -1717,7 +1720,7 @@ el.createPatientBtn.addEventListener("click", async () => {
       showToast("Paciente atualizado com sucesso!","ok");
     } else {
       if (!isManager()) {
-        showToast("Somente enfermeira gestora pode criar paciente.", "error");
+        showToast("Somente enfermeira pode criar paciente.", "error");
         return;
       }
       await api("/patients", { method:"POST", body:JSON.stringify(payload)});

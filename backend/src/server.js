@@ -449,7 +449,7 @@ function requireAuth(req, res, next) {
 
 function requireManager(req, res, next) {
   if (!isManager(req.user)) {
-    return res.status(403).json({ error: "Somente enfermeira gestora pode executar esta acao" });
+    return res.status(403).json({ error: "Somente enfermeira pode executar esta acao" });
   }
   return next();
 }
@@ -1095,7 +1095,7 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
   }
 
   if (!ALLOWED_SELF_REGISTER_ROLES.includes(role) || role !== "nurse_manager") {
-    return res.status(400).json({ error: "Cadastro publico permitido apenas para enfermeira gestora" });
+    return res.status(400).json({ error: "Cadastro publico permitido apenas para enfermeira" });
   }
 
   const councilValidation = validateCouncilData(role, payload.councilNumber, payload.councilUf);
@@ -2377,7 +2377,7 @@ app.post("/ai/team/data-quality", async (req, res) => {
 
 app.post("/ai/team/report", async (req, res) => {
   if (!isManager(req.user)) {
-    return res.status(403).json({ error: "Somente enfermeira gestora pode gerar relatorio executivo" });
+    return res.status(403).json({ error: "Somente enfermeira pode gerar relatorio executivo" });
   }
   const db = await readDb();
   ensureDbShape(db);
