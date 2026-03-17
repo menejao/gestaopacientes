@@ -2,6 +2,11 @@
 const SESSION_KEY = "saudeubs_session";
 const SESSION_INACTIVITY_MS = 1000 * 60 * 60 * 24 * 7;
 const SESSION_TOUCH_THROTTLE_MS = 30000;
+const BRAZIL_UFS = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO",
+  "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",
+  "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+];
 
 const state = {
   token: null, user: null, users: [], patients: [],
@@ -56,6 +61,12 @@ const el = {
   topbarPatient:            document.getElementById("topbarPatient"),
   mobileMenuBtn:            document.getElementById("mobileMenuBtn"),
   sidebarBackdrop:          document.getElementById("sidebarBackdrop"),
+  mobileUserAvatar:         document.getElementById("mobileUserAvatar"),
+  mobileUserName:           document.getElementById("mobileUserName"),
+  mobileUserRole:           document.getElementById("mobileUserRole"),
+  mobileHomeBtn:            document.getElementById("mobileHomeBtn"),
+  mobileProfileBtn:         document.getElementById("mobileProfileBtn"),
+  mobileLogoutBtn:          document.getElementById("mobileLogoutBtn"),
   sidebar:                  document.querySelector(".sidebar"),
   patientList:              document.getElementById("patientList"),
   patientCount:             document.getElementById("patientCount"),
@@ -398,12 +409,20 @@ function updateSessionView() {
     el.logoutBtn.classList.add("hidden");
     el.homeBtn.classList.add("hidden");
     el.profileBtn.classList.add("hidden");
+    if (el.mobileUserName) el.mobileUserName.textContent = "-";
+    if (el.mobileUserRole) el.mobileUserRole.textContent = "-";
+    if (el.mobileUserAvatar) el.mobileUserAvatar.textContent = "?";
     return;
   }
   const roleMap = { nurse_manager: "Enfermeira", doctor: "Medico(a)", acs: "ACS" };
+  const roleText = roleMap[state.user.role] || state.user.role;
+  const avatarText = state.user.name.charAt(0).toUpperCase();
   el.userName.textContent  = state.user.name;
-  el.userRole.textContent  = roleMap[state.user.role] || state.user.role;
-  el.userAvatar.textContent = state.user.name.charAt(0).toUpperCase();
+  el.userRole.textContent  = roleText;
+  el.userAvatar.textContent = avatarText;
+  if (el.mobileUserName) el.mobileUserName.textContent = state.user.name;
+  if (el.mobileUserRole) el.mobileUserRole.textContent = roleText;
+  if (el.mobileUserAvatar) el.mobileUserAvatar.textContent = avatarText;
   el.logoutBtn.classList.remove("hidden");
   el.homeBtn.classList.remove("hidden");
   el.profileBtn.classList.remove("hidden");
@@ -449,8 +468,10 @@ function updateRegisterFormVisibility() {
   el.registerTeamWrap.classList.toggle("hidden", isNM);
   if (needsCouncil) {
     el.councilNumLabel.textContent = `Numero do conselho (${cType})`;
-    el.registerCouncilNumber.placeholder = cType === "CRM" ? "4 a 8 digitos" : "4 a 10 digitos";
-    el.registerCouncilNumber.maxLength = cType === "CRM" ? 8 : 10;
+    const maxLen = cType === "CRM" ? 8 : 10;
+    el.registerCouncilNumber.placeholder = cType === "CRM" ? "Ex: 123456" : "Ex: 1234567";
+    el.registerCouncilNumber.maxLength = maxLen;
+    el.registerCouncilNumber.value = formatCouncilNumber(el.registerCouncilNumber.value, maxLen);
   }
 }
 
@@ -486,6 +507,27 @@ function fillAcsSelect(sel, withAll=false) {
 function fillTeamSelect() {
   el.registerTeam.innerHTML = "";
   state.publicTeams.forEach(t => el.registerTeam.appendChild(Object.assign(document.createElement("option"), { value:t.id, textContent:t.name })));
+}
+
+function fillUfSelect(sel, emptyLabel = "Selecione UF") {
+  if (!sel) return;
+  const current = String(sel.value || "").toUpperCase();
+  sel.innerHTML = "";
+  sel.appendChild(Object.assign(document.createElement("option"), { value: "", textContent: emptyLabel }));
+  BRAZIL_UFS.forEach((uf) => {
+    sel.appendChild(Object.assign(document.createElement("option"), { value: uf, textContent: uf }));
+  });
+  if (current && BRAZIL_UFS.includes(current)) sel.value = current;
+}
+
+function fillCouncilUfSelects() {
+  fillUfSelect(el.registerCouncilUf);
+  fillUfSelect(el.managerCreateCouncilUf);
+  fillUfSelect(el.profileCouncilUf);
+}
+
+function formatCouncilNumber(value, maxLen) {
+  return String(value || "").replace(/\D/g, "").slice(0, Number(maxLen || 10));
 }
 
 async function reloadTemplateData() {
@@ -817,6 +859,9 @@ function openProfileModal() {
   const needsCouncil = ["doctor", "nurse_manager"].includes(state.user.role);
   el.profileCouncilWrap.classList.toggle("hidden", !needsCouncil);
   if (needsCouncil) {
+    const maxLen = state.user.role === "doctor" ? 8 : 10;
+    el.profileCouncilNumber.maxLength = maxLen;
+    el.profileCouncilNumber.placeholder = state.user.role === "doctor" ? "Ex: 123456" : "Ex: 1234567";
     el.profileCouncilNumber.value = state.user.councilNumber || "";
     el.profileCouncilUf.value = state.user.councilUf || "";
   }
@@ -870,14 +915,32 @@ function renderTeamUsersLists() {
   const acsUsers = state.users
     .filter((u) => u.role === "acs")
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-  const doctorUsers = state.users.filter((u) => u.role === "doctor");
+  const doctorUsers = state.users
+    .filter((u) => u.role === "doctor")
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+  const teamLine = (user) => user.teamName ? `Equipe: ${user.teamName}` : "Equipe: nao informada";
 
   el.acsList.innerHTML = acsUsers.length
-    ? acsUsers.map((u) => `<div class="home-list-row"><span class="home-list-main">${u.name}</span><span class="home-task-meta">${u.email}</span></div>`).join("")
+    ? acsUsers.map((u) => `
+      <div class="home-list-row">
+        <div>
+          <span class="home-list-main">${u.name}</span>
+          <p class="home-task-meta">${teamLine(u)}</p>
+        </div>
+        <span class="home-task-meta">${u.email}</span>
+      </div>`).join("")
     : '<div class="empty-msg">Nenhum ACS cadastrado.</div>';
 
   el.doctorList.innerHTML = doctorUsers.length
-    ? doctorUsers.map((u) => `<div class="home-list-row"><span class="home-list-main">${u.name}</span><span class="home-task-meta">${u.email}</span></div>`).join("")
+    ? doctorUsers.map((u) => `
+      <div class="home-list-row">
+        <div>
+          <span class="home-list-main">${u.name}</span>
+          <p class="home-task-meta">${teamLine(u)}</p>
+        </div>
+        <span class="home-task-meta">${u.email}</span>
+      </div>`).join("")
     : '<div class="empty-msg">Nenhum medico cadastrado.</div>';
 }
 
@@ -1355,7 +1418,7 @@ async function bootstrapAfterLogin() {
 }
 
 async function bootstrapBeforeLogin() {
-  try { state.publicTeams = await api("/teams/public"); fillTeamSelect(); updateRegisterFormVisibility(); }
+  try { state.publicTeams = await api("/teams/public"); fillTeamSelect(); fillCouncilUfSelects(); updateRegisterFormVisibility(); }
   catch (e) { console.warn("Could not load teams:", e.message); }
 }
 
@@ -1406,16 +1469,12 @@ el.loginPassword?.addEventListener("keydown", loginWithEnter);
 
 el.registerRole.addEventListener("change", updateRegisterFormVisibility);
 el.registerCouncilNumber.addEventListener("input", () => {
-  el.registerCouncilNumber.value = el.registerCouncilNumber.value.replace(/\D/g,"").slice(0, el.registerRole.value==="doctor"?8:10);
-});
-el.registerCouncilUf.addEventListener("input", () => {
-  el.registerCouncilUf.value = el.registerCouncilUf.value.replace(/[^a-zA-Z]/g,"").toUpperCase().slice(0,2);
+  const maxLen = el.registerRole.value === "doctor" ? 8 : 10;
+  el.registerCouncilNumber.value = formatCouncilNumber(el.registerCouncilNumber.value, maxLen);
 });
 el.profileCouncilNumber?.addEventListener("input", () => {
-  el.profileCouncilNumber.value = el.profileCouncilNumber.value.replace(/\D/g,"").slice(0,10);
-});
-el.profileCouncilUf?.addEventListener("input", () => {
-  el.profileCouncilUf.value = el.profileCouncilUf.value.replace(/[^a-zA-Z]/g,"").toUpperCase().slice(0,2);
+  const maxLen = state.user?.role === "doctor" ? 8 : 10;
+  el.profileCouncilNumber.value = formatCouncilNumber(el.profileCouncilNumber.value, maxLen);
 });
 
 function openPatientCreateModal() {
@@ -1446,6 +1505,15 @@ el.navDoctorsBtn?.addEventListener("click", () => switchNavSection("doctors"));
 el.navAiBtn?.addEventListener("click", () => switchNavSection("ai"));
 el.mobileMenuBtn?.addEventListener("click", toggleSidebarDrawer);
 el.sidebarBackdrop?.addEventListener("click", closeSidebarDrawer);
+el.mobileHomeBtn?.addEventListener("click", () => {
+  goHomeDashboard();
+  closeSidebarDrawer();
+});
+el.mobileProfileBtn?.addEventListener("click", () => {
+  openProfileModal();
+  closeSidebarDrawer();
+});
+el.mobileLogoutBtn?.addEventListener("click", () => logoutUser(false));
 window.addEventListener("resize", () => {
   if (!isMobileLayout()) closeSidebarDrawer();
 });
@@ -1460,6 +1528,11 @@ el.patientModal?.addEventListener("click", (e) => {
 function updateCreateUserRoleVisibility() {
   const isDoctorRole = el.managerCreateRole.value === "doctor";
   el.managerCreateCouncilWrap.classList.toggle("hidden", !isDoctorRole);
+  if (isDoctorRole) {
+    el.managerCreateCouncilNumber.maxLength = 8;
+    el.managerCreateCouncilNumber.placeholder = "Ex: 123456";
+    el.managerCreateCouncilNumber.value = formatCouncilNumber(el.managerCreateCouncilNumber.value, 8);
+  }
 }
 
 el.openCreateUserModalBtn?.addEventListener("click", () => {
@@ -1487,7 +1560,7 @@ el.saveCreateUserBtn?.addEventListener("click", async () => {
     };
 
     if (payload.role === "doctor") {
-      payload.councilNumber = onlyDigits(el.managerCreateCouncilNumber.value);
+      payload.councilNumber = formatCouncilNumber(el.managerCreateCouncilNumber.value, 8);
       payload.councilUf = String(el.managerCreateCouncilUf.value || "").toUpperCase().trim();
     }
 
@@ -1519,8 +1592,7 @@ el.pPhone?.addEventListener("input", () => { el.pPhone.value = formatPhone(el.pP
 el.pDoc?.addEventListener("input", () => { el.pDoc.value = formatCpf(el.pDoc.value); });
 el.pCep?.addEventListener("input", () => { el.pCep.value = formatCep(el.pCep.value); });
 el.pState?.addEventListener("input", () => { el.pState.value = String(el.pState.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2); });
-el.managerCreateCouncilNumber?.addEventListener("input", () => { el.managerCreateCouncilNumber.value = onlyDigits(el.managerCreateCouncilNumber.value).slice(0, 10); });
-el.managerCreateCouncilUf?.addEventListener("input", () => { el.managerCreateCouncilUf.value = String(el.managerCreateCouncilUf.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0,2); });
+el.managerCreateCouncilNumber?.addEventListener("input", () => { el.managerCreateCouncilNumber.value = formatCouncilNumber(el.managerCreateCouncilNumber.value, 8); });
 
 el.pCep?.addEventListener("blur", async () => {
   const cep = onlyDigits(el.pCep.value);
@@ -1835,6 +1907,7 @@ el.sendMsgBtn.addEventListener("click", async () => {
 
 // -- Init ----------------------------------------------------------------------
 async function initApp() {
+  fillCouncilUfSelects();
   const raw = localStorage.getItem(SESSION_KEY);
   if (!raw) {
     await bootstrapBeforeLogin();

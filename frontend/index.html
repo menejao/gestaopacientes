@@ -102,7 +102,7 @@
             </div>
             <div id="registerCouncilUfWrap" class="field-group hidden">
               <label class="field-label">UF do conselho</label>
-              <input id="registerCouncilUf" class="field-input" placeholder="Ex: SP" maxlength="2"/>
+              <select id="registerCouncilUf" class="field-select"></select>
             </div>
             <button id="registerBtn" class="btn-primary btn-block">
               <span class="btn-text">Criar cadastro</span>
@@ -162,6 +162,20 @@
             </div>
             <div class="sidebar-section-hd">
               <span class="sidebar-hd-title">Navegacao</span>
+            </div>
+            <div class="mobile-menu-session">
+              <div class="mobile-menu-user">
+                <div class="user-avatar" id="mobileUserAvatar">?</div>
+                <div class="user-info">
+                  <span id="mobileUserName">-</span>
+                  <span id="mobileUserRole" class="user-role">-</span>
+                </div>
+              </div>
+              <div class="mobile-menu-actions">
+                <button id="mobileHomeBtn" class="btn-secondary">Painel</button>
+                <button id="mobileProfileBtn" class="btn-secondary">Meu perfil</button>
+                <button id="mobileLogoutBtn" class="btn-secondary">Sair</button>
+              </div>
             </div>
             <div class="nav-links">
               <button id="navPatientsBtn" class="nav-link active">Pacientes</button>
@@ -282,16 +296,19 @@
               </div>
             </section>
 
+            </div>
+
             <section id="acsAdminSection" class="panel-card workspace-pane hidden">
               <div class="panel-card-hd">ACS da equipe</div>
+              <p class="home-task-meta">Lista completa de ACS com equipe vinculada.</p>
               <div id="acsList"></div>
             </section>
 
             <section id="doctorsAdminSection" class="panel-card workspace-pane hidden">
               <div class="panel-card-hd">Medicos da equipe</div>
+              <p class="home-task-meta">Lista completa de medicos com equipe vinculada.</p>
               <div id="doctorList"></div>
             </section>
-            </div>
 
             <section id="protocolAdminSection" class="panel-card workspace-pane hidden">
               <div class="panel-card-hd">Protocolos da UBS</div>
@@ -518,7 +535,7 @@
         <div id="profileCouncilWrap" class="hidden">
           <div class="field-row">
             <div class="field-group"><label class="field-label">Numero conselho</label><input id="profileCouncilNumber" class="field-input" inputmode="numeric" maxlength="10"/></div>
-            <div class="field-group"><label class="field-label">UF conselho</label><input id="profileCouncilUf" maxlength="2" class="field-input"/></div>
+            <div class="field-group"><label class="field-label">UF conselho</label><select id="profileCouncilUf" class="field-select"></select></div>
           </div>
         </div>
         <button id="saveProfileBtn" class="btn-primary btn-block">Salvar perfil</button>
@@ -668,7 +685,7 @@
         </div>
         <div id="managerCreateCouncilWrap" class="field-row hidden">
           <div class="field-group"><label class="field-label">Numero conselho</label><input id="managerCreateCouncilNumber" class="field-input" inputmode="numeric" maxlength="10"/></div>
-          <div class="field-group"><label class="field-label">UF conselho</label><input id="managerCreateCouncilUf" class="field-input" maxlength="2"/></div>
+          <div class="field-group"><label class="field-label">UF conselho</label><select id="managerCreateCouncilUf" class="field-select"></select></div>
         </div>
         <div class="inline-actions" style="justify-content:flex-end;">
           <button id="cancelCreateUserModalBtn" class="btn-secondary">Cancelar</button>
