@@ -71,16 +71,17 @@
               <label class="field-label">Nome completo</label>
               <input id="registerName" class="field-input" placeholder="Ex: Maria da Silva"/>
             </div>
-            <div class="field-row">
-              <div class="field-group">
-                <label class="field-label">E-mail</label>
-                <input id="registerEmail" type="email" class="field-input" placeholder="voce@unidade.local"/>
+              <div class="field-row">
+                <div class="field-group">
+                  <label class="field-label">E-mail</label>
+                  <input id="registerEmail" type="email" class="field-input" placeholder="voce@unidade.local"/>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Senha</label>
+                  <input id="registerPassword" type="password" class="field-input" placeholder="Digite sua senha"/>
+                  <p class="field-help">Use minimo de 8 caracteres com maiuscula, numero e simbolo.</p>
+                </div>
               </div>
-              <div class="field-group">
-                <label class="field-label">Senha</label>
-                <input id="registerPassword" type="password" class="field-input" placeholder="Min. 8 + maiuscula + numero + especial"/>
-              </div>
-            </div>
             <div class="field-group">
               <label class="field-label">Perfil</label>
               <select id="registerRole" class="field-select">
@@ -506,7 +507,11 @@
         </div>
         <div class="field-group"><label class="field-label">Nome</label><input id="profileName" class="field-input"/></div>
         <div class="field-group"><label class="field-label">Email</label><input id="profileEmail" type="email" class="field-input"/></div>
-          <div class="field-group"><label class="field-label">Nova senha</label><input id="profilePassword" type="password" class="field-input" placeholder="Min 8, maiuscula, numero e especial"/></div>
+          <div class="field-group">
+            <label class="field-label">Nova senha</label>
+            <input id="profilePassword" type="password" class="field-input" placeholder="Digite uma nova senha"/>
+            <p class="field-help">Use minimo de 8 caracteres com maiuscula, numero e simbolo.</p>
+          </div>
         <div id="profileCouncilWrap" class="hidden">
           <div class="field-row">
             <div class="field-group"><label class="field-label">Numero conselho</label><input id="profileCouncilNumber" class="field-input" inputmode="numeric" maxlength="10"/></div>
@@ -611,13 +616,17 @@
         <div class="field-group"><label class="field-label">Nome</label><input id="pName" class="field-input" placeholder="Nome completo"/></div>
         <div class="field-row">
           <div class="field-group"><label class="field-label">Telefone</label><input id="pPhone" class="field-input" placeholder="(00) 00000-0000" inputmode="numeric" maxlength="15"/></div>
-          <div class="field-group"><label class="field-label">CNS / CPF</label><input id="pDoc" class="field-input" placeholder="000.000.000-00" inputmode="numeric" maxlength="14"/></div>
+          <div class="field-group"><label class="field-label">CNS / CPF</label><input id="pDoc" class="field-input" placeholder="CPF ou CNS" inputmode="numeric" maxlength="18"/></div>
         </div>
         <div class="field-row">
           <div class="field-group"><label class="field-label">CEP</label><input id="pCep" class="field-input" placeholder="00000-000" inputmode="numeric" maxlength="9"/></div>
-          <div class="field-group"><label class="field-label">Microarea</label><input id="pMicroArea" class="field-input" placeholder="MA-01"/></div>
+          <div class="field-group"><label class="field-label">Estado (UF)</label><input id="pState" class="field-input" placeholder="Ex: SP" maxlength="2"/></div>
         </div>
-        <div class="field-group"><label class="field-label">Endereco</label><input id="pAddress" class="field-input" placeholder="Rua, numero, bairro"/></div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Rua</label><input id="pStreet" class="field-input" placeholder="Rua e numero"/></div>
+          <div class="field-group"><label class="field-label">Bairro</label><input id="pNeighborhood" class="field-input" placeholder="Bairro"/></div>
+        </div>
+        <div class="field-group"><label class="field-label">Cidade</label><input id="pCity" class="field-input" placeholder="Cidade"/></div>
         <div class="field-row">
           <div class="field-group"><label class="field-label">ACS</label><select id="pAcs" class="field-select"></select></div>
           <div class="field-group"><label class="field-label">Categoria</label><select id="pCareCategory" class="field-select"></select></div>
@@ -649,7 +658,11 @@
           <div class="field-group"><label class="field-label">Nome</label><input id="managerCreateName" class="field-input"/></div>
         </div>
         <div class="field-group"><label class="field-label">Email</label><input id="managerCreateEmail" type="email" class="field-input"/></div>
-        <div class="field-group"><label class="field-label">Senha</label><input id="managerCreatePassword" type="password" class="field-input" placeholder="Min 8, maiuscula, numero e especial"/></div>
+        <div class="field-group">
+          <label class="field-label">Senha</label>
+          <input id="managerCreatePassword" type="password" class="field-input" placeholder="Digite a senha inicial"/>
+          <p class="field-help">Use minimo de 8 caracteres com maiuscula, numero e simbolo.</p>
+        </div>
         <div id="managerCreateCouncilWrap" class="field-row hidden">
           <div class="field-group"><label class="field-label">Numero conselho</label><input id="managerCreateCouncilNumber" class="field-input" inputmode="numeric" maxlength="10"/></div>
           <div class="field-group"><label class="field-label">UF conselho</label><input id="managerCreateCouncilUf" class="field-input" maxlength="2"/></div>

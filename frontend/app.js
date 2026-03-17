@@ -1,6 +1,7 @@
 ﻿const API_URL = window.__APP_CONFIG?.apiUrl || "http://localhost:3001";
 const SESSION_KEY = "saudeubs_session";
-const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
+const SESSION_INACTIVITY_MS = 1000 * 60 * 60 * 24 * 7;
+const SESSION_TOUCH_THROTTLE_MS = 30000;
 
 const state = {
   token: null, user: null, users: [], patients: [],
@@ -66,8 +67,10 @@ const el = {
   pPhone:                   document.getElementById("pPhone"),
   pDoc:                     document.getElementById("pDoc"),
   pCep:                     document.getElementById("pCep"),
-  pAddress:                 document.getElementById("pAddress"),
-  pMicroArea:               document.getElementById("pMicroArea"),
+  pStreet:                  document.getElementById("pStreet"),
+  pNeighborhood:            document.getElementById("pNeighborhood"),
+  pCity:                    document.getElementById("pCity"),
+  pState:                   document.getElementById("pState"),
   pAcs:                     document.getElementById("pAcs"),
   pCareCategory:            document.getElementById("pCareCategory"),
   pComorb:                  document.getElementById("pComorb"),
@@ -203,6 +206,8 @@ const el = {
 
 // -- Toast --------------------------------------------------------------------
 let _toastTimer = null;
+let _lastSessionTouchAt = 0;
+let _inactivityTimer = null;
 function showToast(msg, type = "default", ms = 3000) {
   el.toast.textContent = msg;
   el.toast.className = `toast ${type}`;
@@ -212,12 +217,55 @@ function showToast(msg, type = "default", ms = 3000) {
 
 function persistSession() {
   if (!state.token) return;
-  const expiresAt = Date.now() + SESSION_TTL_MS;
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ token: state.token, expiresAt }));
+  const now = Date.now();
+  const expiresAt = now + SESSION_INACTIVITY_MS;
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ token: state.token, lastActivityAt: now, expiresAt }));
+}
+
+function touchSession(force = false) {
+  if (!state.token) return;
+  const now = Date.now();
+  if (!force && now - _lastSessionTouchAt < SESSION_TOUCH_THROTTLE_MS) return;
+  _lastSessionTouchAt = now;
+  persistSession();
 }
 
 function clearSessionStore() {
   localStorage.removeItem(SESSION_KEY);
+}
+
+function logoutUser(showReason = false) {
+  Object.assign(state, { token: null, user: null, patients: [], selectedPatient: null, globalTasks: [] });
+  el.appScreen.classList.add("hidden");
+  el.authScreen.classList.remove("hidden");
+  el.emptyState.classList.remove("hidden");
+  el.patientContent.classList.add("hidden");
+  el.profileModal.classList.add("hidden");
+  el.patientModal?.classList.add("hidden");
+  el.createUserModal?.classList.add("hidden");
+  clearSessionStore();
+  updateSessionView();
+  if (showReason) showToast("Sessao encerrada por inatividade.", "error", 3500);
+}
+
+function setupInactivityWatcher() {
+  if (_inactivityTimer) clearInterval(_inactivityTimer);
+  _inactivityTimer = setInterval(() => {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw || !state.token) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const expiresAt = Number(parsed?.expiresAt || 0);
+      if (!expiresAt) return;
+      if (Date.now() > expiresAt) {
+        clearInterval(_inactivityTimer);
+        _inactivityTimer = null;
+        logoutUser(true);
+      }
+    } catch {
+      // Ignora erros pontuais de parse.
+    }
+  }, 30000);
 }
 
 // -- Helpers ------------------------------------------------------------------
@@ -229,9 +277,102 @@ const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Nao atri
 const catLabel     = cat => state.protocolTemplates.find(t => t.category === cat)?.label || "Geral";
 const taskOpen     = t => ["pending", "in_progress"].includes(t.status);
 const prettyJson   = (obj) => JSON.stringify(obj, null, 2);
+const onlyDigits   = (v) => String(v || "").replace(/\D/g, "");
+const passwordStrong = (v) => /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(String(v || ""));
+
+function formatPhone(value) {
+  const d = onlyDigits(value).slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+function formatCpf(value) {
+  const d = onlyDigits(value).slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
+function formatCns(value) {
+  const d = onlyDigits(value).slice(0, 15);
+  if (d.length <= 3) return d;
+  if (d.length <= 7) return `${d.slice(0, 3)} ${d.slice(3)}`;
+  if (d.length <= 11) return `${d.slice(0, 3)} ${d.slice(3, 7)} ${d.slice(7)}`;
+  return `${d.slice(0, 3)} ${d.slice(3, 7)} ${d.slice(7, 11)} ${d.slice(11)}`;
+}
+
+function formatDocument(value) {
+  const d = onlyDigits(value);
+  return d.length <= 11 ? formatCpf(d) : formatCns(d);
+}
+
+function formatCep(value) {
+  const d = onlyDigits(value).slice(0, 8);
+  if (d.length <= 5) return d;
+  return `${d.slice(0, 5)}-${d.slice(5)}`;
+}
+
+function splitAddress(address) {
+  const raw = String(address || "").trim();
+  if (!raw) return { street: "", neighborhood: "", city: "", state: "", cep: "" };
+
+  let street = "";
+  let neighborhood = "";
+  let city = "";
+  let state = "";
+  let cep = "";
+
+  const pipePairs = Object.fromEntries(
+    raw.split("|").map((part) => part.trim()).map((part) => {
+      const [k, ...rest] = part.split(":");
+      return [String(k || "").trim().toLowerCase(), rest.join(":").trim()];
+    })
+  );
+  if (pipePairs.rua || pipePairs.bairro || pipePairs.cidade || pipePairs.uf || pipePairs.cep) {
+    street = pipePairs.rua || "";
+    neighborhood = pipePairs.bairro || "";
+    city = pipePairs.cidade || "";
+    state = pipePairs.uf || "";
+    cep = formatCep(pipePairs.cep || "");
+    return { street, neighborhood, city, state, cep };
+  }
+
+  const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+  street = parts[0] || "";
+  neighborhood = parts[1] || "";
+  city = parts[2] || "";
+  state = parts[3] || "";
+
+  if (!state && city && city.includes("/")) {
+    const [cityPart, ufPart] = city.split("/").map((part) => part.trim());
+    city = cityPart || "";
+    state = ufPart || "";
+  }
+
+  return { street, neighborhood, city, state, cep };
+}
+
+function buildAddress() {
+  const street = String(el.pStreet?.value || "").trim();
+  const neighborhood = String(el.pNeighborhood?.value || "").trim();
+  const city = String(el.pCity?.value || "").trim();
+  const stateUf = String(el.pState?.value || "").trim().toUpperCase();
+  const cep = formatCep(el.pCep?.value || "");
+  const parts = [];
+  if (street) parts.push(`Rua: ${street}`);
+  if (neighborhood) parts.push(`Bairro: ${neighborhood}`);
+  if (city) parts.push(`Cidade: ${city}`);
+  if (stateUf) parts.push(`UF: ${stateUf}`);
+  if (cep) parts.push(`CEP: ${cep}`);
+  return parts.join(" | ");
+}
 
 // -- API ----------------------------------------------------------------------
 async function api(path, options = {}) {
+  touchSession();
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
   const controller = new AbortController();
@@ -241,6 +382,7 @@ async function api(path, options = {}) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || "Erro na requisicao");
   }
+  touchSession();
   return res.json();
 }
 
@@ -277,18 +419,7 @@ function updateSessionView() {
   el.profileBtn.classList.remove("hidden");
 }
 
-el.logoutBtn?.addEventListener("click", () => {
-  Object.assign(state, { token: null, user: null, patients: [], selectedPatient: null, globalTasks: [] });
-  el.appScreen.classList.add("hidden");
-  el.authScreen.classList.remove("hidden");
-  el.emptyState.classList.remove("hidden");
-  el.patientContent.classList.add("hidden");
-  el.profileModal.classList.add("hidden");
-  el.patientModal?.classList.add("hidden");
-  el.createUserModal?.classList.add("hidden");
-  clearSessionStore();
-  updateSessionView();
-});
+el.logoutBtn?.addEventListener("click", () => logoutUser(false));
 
 // -- Register visibility -------------------------------------------------------
 function updateRegisterFormVisibility() {
@@ -355,9 +486,9 @@ async function reloadTemplateData() {
 
 // -- Role permissions ----------------------------------------------------------
 function applyRolePermissions() {
-  const patientFields = ["pName","pPhone","pDoc","pAddress","pComorb","pMeds","pAllergies","pMicroArea","pAcs","pCareCategory"];
+  const patientFields = ["pName","pPhone","pDoc","pCep","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory"];
   const taskFields = ["tTitle","tNotes","tDue","tAssignee"];
-  const mgrFields = ["pName","pPhone","pDoc","pAddress","pComorb","pMeds","pAllergies","pMicroArea","pAcs","pCareCategory","tTitle","tNotes","tDue","tAssignee"];
+  const mgrFields = ["pName","pPhone","pDoc","pCep","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","tTitle","tNotes","tDue","tAssignee"];
   const clinFields = ["aDate","aSummary","aConduct","aNext"];
 
   if (isManager()) {
@@ -905,10 +1036,14 @@ function openPatientEdit() {
   state.editingPatientId = state.selectedPatient.id;
   const p = state.selectedPatient;
   el.pName.value = p.name || "";
-  el.pPhone.value = p.phone || "";
-  el.pDoc.value = p.cnsCpf || "";
-  el.pAddress.value = p.address || "";
-  el.pMicroArea.value = p.microArea || "";
+  el.pPhone.value = formatPhone(p.phone || "");
+  el.pDoc.value = formatDocument(p.cnsCpf || "");
+  const addressParts = splitAddress(p.address || "");
+  el.pStreet.value = addressParts.street;
+  el.pNeighborhood.value = addressParts.neighborhood;
+  el.pCity.value = addressParts.city;
+  el.pState.value = String(addressParts.state || "").toUpperCase().slice(0, 2);
+  el.pCep.value = addressParts.cep || "";
   el.pAcs.value = p.assignedAcsId || "";
   el.pCareCategory.value = p.careCategory || "general";
   el.pComorb.value = p.comorbidities || "";
@@ -1164,6 +1299,8 @@ async function selectPatient(patient) {
 
 // -- Bootstrap -----------------------------------------------------------------
 async function bootstrapAfterLogin() {
+  touchSession(true);
+  setupInactivityWatcher();
   const [users] = await Promise.all([api("/users")]);
   state.users = users;
   fillAcsSelect(el.tAssignee);
@@ -1277,11 +1414,11 @@ el.navAcsBtn?.addEventListener("click", () => switchNavSection("acs"));
 el.navDoctorsBtn?.addEventListener("click", () => switchNavSection("doctors"));
 el.navAiBtn?.addEventListener("click", () => switchNavSection("ai"));
 
-el.openPatientModalBtn?.addEventListener("click", () => {
+  el.openPatientModalBtn?.addEventListener("click", () => {
   state.editingPatientId = null;
   el.patientModalTitle.textContent = "Novo cadastro de paciente";
   el.createPatientBtn.textContent = "Salvar";
-  ["pName","pPhone","pDoc","pCep","pAddress","pMicroArea","pComorb","pMeds","pAllergies"].forEach((id) => {
+  ["pName","pPhone","pDoc","pCep","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies"].forEach((id) => {
     const ref = document.getElementById(id);
     if (ref) ref.value = "";
   });
@@ -1354,8 +1491,9 @@ el.saveCreateUserBtn?.addEventListener("click", async () => {
 });
 
 el.pPhone?.addEventListener("input", () => { el.pPhone.value = formatPhone(el.pPhone.value); });
-el.pDoc?.addEventListener("input", () => { el.pDoc.value = formatCpf(el.pDoc.value); });
+el.pDoc?.addEventListener("input", () => { el.pDoc.value = formatDocument(el.pDoc.value); });
 el.pCep?.addEventListener("input", () => { el.pCep.value = formatCep(el.pCep.value); });
+el.pState?.addEventListener("input", () => { el.pState.value = String(el.pState.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2); });
 el.managerCreateCouncilNumber?.addEventListener("input", () => { el.managerCreateCouncilNumber.value = onlyDigits(el.managerCreateCouncilNumber.value).slice(0, 10); });
 el.managerCreateCouncilUf?.addEventListener("input", () => { el.managerCreateCouncilUf.value = String(el.managerCreateCouncilUf.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0,2); });
 
@@ -1366,10 +1504,10 @@ el.pCep?.addEventListener("blur", async () => {
     const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
     const data = await res.json();
     if (data.erro) return;
-    const parts = [data.logradouro, data.bairro, data.localidade, data.uf].filter(Boolean);
-    if (!el.pAddress.value.trim()) {
-      el.pAddress.value = parts.join(", ");
-    }
+    if (!String(el.pStreet.value || "").trim()) el.pStreet.value = data.logradouro || "";
+    if (!String(el.pNeighborhood.value || "").trim()) el.pNeighborhood.value = data.bairro || "";
+    if (!String(el.pCity.value || "").trim()) el.pCity.value = data.localidade || "";
+    if (!String(el.pState.value || "").trim()) el.pState.value = String(data.uf || "").toUpperCase().slice(0, 2);
   } catch {
     // Ignora falha de CEP para nao travar cadastro.
   }
@@ -1582,7 +1720,7 @@ el.createPatientBtn.addEventListener("click", async () => {
     const editingId = state.editingPatientId;
     const payload = {
       name:el.pName.value, phone:el.pPhone.value, cnsCpf:el.pDoc.value,
-      address:el.pAddress.value, microArea:el.pMicroArea.value,
+      address:buildAddress(),
       careCategory:el.pCareCategory.value, assignedAcsId:el.pAcs.value,
       comorbidities:el.pComorb.value, medications:el.pMeds.value, allergies:el.pAllergies.value
     };
@@ -1599,7 +1737,7 @@ el.createPatientBtn.addEventListener("click", async () => {
       showToast("Paciente cadastrado com sucesso!","ok");
     }
 
-    ["pName","pPhone","pDoc","pAddress","pMicroArea","pComorb","pMeds","pAllergies"].forEach(id=>{document.getElementById(id).value="";});
+    ["pName","pPhone","pDoc","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies"].forEach(id=>{document.getElementById(id).value="";});
     el.pCep.value = "";
     el.pAcs.value = "";
     el.pCareCategory.value = "general";
@@ -1666,6 +1804,10 @@ el.sendMsgBtn.addEventListener("click", async () => {
   } catch(e) { showToast(e.message,"error"); }
 });
 
+["click", "keydown", "mousemove", "scroll", "touchstart"].forEach((eventName) => {
+  window.addEventListener(eventName, () => touchSession());
+});
+
 // -- Init ----------------------------------------------------------------------
 async function initApp() {
   await bootstrapBeforeLogin();
@@ -1682,7 +1824,7 @@ async function initApp() {
     state.token = parsed.token;
     const me = await api("/me");
     state.user = me;
-    persistSession();
+    touchSession(true);
     updateSessionView();
     await bootstrapAfterLogin();
   } catch {

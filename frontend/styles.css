@@ -1026,6 +1026,12 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   text-transform: uppercase;
 }
 
+.field-help {
+  font-size: .72rem;
+  color: var(--text-muted);
+  margin-top: .2rem;
+}
+
 .field-input,
 .field-select,
 .field-textarea {
