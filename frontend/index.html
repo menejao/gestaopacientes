@@ -212,13 +212,54 @@
         <!-- --- MAIN --- -->
         <main class="main-area">
 
-          <!-- Empty state -->
-          <div id="emptyState" class="empty-state">
-            <div class="empty-icon">
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="14" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 36c0-8.284 6.716-15 15-15s15 6.716 15 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            </div>
-            <p class="empty-title">Nenhum paciente selecionado</p>
-            <p class="empty-sub">Selecione um paciente na lista para visualizar o prontuario.</p>
+          <!-- Workspace Dashboard -->
+          <div id="emptyState" class="workspace-home">
+            <section class="home-hero">
+              <div>
+                <p class="home-kicker">Workspace da equipe</p>
+                <h1 class="home-title">Gestao operacional da UBS em um painel</h1>
+                <p class="home-sub">Acompanhe pacientes, protocolos e pendencias da equipe em tempo real.</p>
+              </div>
+              <div class="home-actions">
+                <button id="quickNewPatientBtn" class="btn-primary">Novo paciente</button>
+                <button id="quickOpenFiltersBtn" class="btn-secondary">Abrir filtros</button>
+                <button id="quickSelectFirstPatientBtn" class="btn-secondary">Abrir primeiro paciente</button>
+              </div>
+            </section>
+
+            <section class="home-kpi-grid">
+              <article class="home-kpi-card">
+                <p class="home-kpi-label">Pacientes ativos</p>
+                <p id="kpiPatientsTotal" class="home-kpi-value">0</p>
+                <p class="home-kpi-foot">Cadastro total da equipe</p>
+              </article>
+              <article class="home-kpi-card">
+                <p class="home-kpi-label">Com ACS definido</p>
+                <p id="kpiPatientsAssigned" class="home-kpi-value">0</p>
+                <p class="home-kpi-foot">Pacientes com responsavel</p>
+              </article>
+              <article class="home-kpi-card">
+                <p class="home-kpi-label">Pendencias abertas</p>
+                <p id="kpiTasksOpen" class="home-kpi-value">0</p>
+                <p class="home-kpi-foot">Tarefas pendentes e em andamento</p>
+              </article>
+              <article class="home-kpi-card">
+                <p class="home-kpi-label">Categorias em uso</p>
+                <p id="kpiCategories" class="home-kpi-value">0</p>
+                <p class="home-kpi-foot">Protocolos ativos no territorio</p>
+              </article>
+            </section>
+
+            <section class="home-columns">
+              <article class="panel-card">
+                <div class="panel-card-hd">Pacientes por categoria</div>
+                <div id="categorySummaryList"></div>
+              </article>
+              <article class="panel-card">
+                <div class="panel-card-hd">Pendencias prioritarias</div>
+                <div id="priorityTaskList"></div>
+              </article>
+            </section>
           </div>
 
           <!-- Patient view -->

@@ -3,6 +3,7 @@
 const state = {
   token: null, user: null, users: [], patients: [],
   selectedPatient: null, appointments: [], tasks: [],
+  globalTasks: [],
   messages: [], auditLogs: [], history: [],
   protocolSummary: null, protocolTemplates: [], publicTeams: [],
   filters: { microArea: "", acsId: "", careCategory: "" }
@@ -36,6 +37,7 @@ const el = {
   topbarPatient:            document.getElementById("topbarPatient"),
   patientPanel:             document.getElementById("patientPanel"),
   newPatientPanel:          document.getElementById("newPatientPanel"),
+  filterDetails:            document.getElementById("filterDetails"),
   patientList:              document.getElementById("patientList"),
   patientCount:             document.getElementById("patientCount"),
   searchInput:              document.getElementById("searchInput"),
@@ -92,6 +94,15 @@ const el = {
   auditTab:                 document.querySelector(".audit-tab"),
   toast:                    document.getElementById("toast"),
   togglePass:               document.getElementById("togglePass"),
+  quickNewPatientBtn:       document.getElementById("quickNewPatientBtn"),
+  quickOpenFiltersBtn:      document.getElementById("quickOpenFiltersBtn"),
+  quickSelectFirstPatientBtn: document.getElementById("quickSelectFirstPatientBtn"),
+  kpiPatientsTotal:         document.getElementById("kpiPatientsTotal"),
+  kpiPatientsAssigned:      document.getElementById("kpiPatientsAssigned"),
+  kpiTasksOpen:             document.getElementById("kpiTasksOpen"),
+  kpiCategories:            document.getElementById("kpiCategories"),
+  categorySummaryList:      document.getElementById("categorySummaryList"),
+  priorityTaskList:         document.getElementById("priorityTaskList"),
 };
 
 // -- Toast --------------------------------------------------------------------
@@ -110,6 +121,7 @@ const isAcs     = () => state.user?.role === "acs";
 const canAcsUpdateTask = t => isAcs() && t.assigneeId === state.user.id;
 const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Nao atribuido";
 const catLabel     = cat => state.protocolTemplates.find(t => t.category === cat)?.label || "Geral";
+const taskOpen     = t => ["pending", "in_progress"].includes(t.status);
 
 // -- API ----------------------------------------------------------------------
 async function api(path, options = {}) {
@@ -150,7 +162,7 @@ function updateSessionView() {
 }
 
 el.logoutBtn?.addEventListener("click", () => {
-  Object.assign(state, { token: null, user: null, patients: [], selectedPatient: null });
+  Object.assign(state, { token: null, user: null, patients: [], selectedPatient: null, globalTasks: [] });
   el.appScreen.classList.add("hidden");
   el.authScreen.classList.remove("hidden");
   el.patientPanel.classList.add("hidden");
@@ -295,6 +307,7 @@ function renderPatientHeader() {
     el.emptyState.classList.remove("hidden");
     el.patientContent.classList.add("hidden");
     el.topbarPatient.innerHTML = "";
+    renderWorkspaceHome();
     return;
   }
   el.emptyState.classList.add("hidden");
@@ -311,6 +324,56 @@ function renderPatientHeader() {
   ].filter(Boolean);
   el.selectedPatientMeta.innerHTML = chips.join("");
   updateTopbarPatient();
+}
+
+function renderWorkspaceHome() {
+  if (!el.kpiPatientsTotal) return;
+  const totalPatients = state.patients.length;
+  const assignedPatients = state.patients.filter(p => p.assignedAcsId).length;
+  const openTasks = state.globalTasks.filter(taskOpen);
+  const categoryMap = new Map();
+
+  state.patients.forEach(p => {
+    const label = catLabel(p.careCategory);
+    categoryMap.set(label, (categoryMap.get(label) || 0) + 1);
+  });
+
+  const categoryEntries = [...categoryMap.entries()].sort((a, b) => b[1] - a[1]);
+  const priorityTasks = [...openTasks]
+    .sort((a, b) => {
+      const ad = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const bd = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      return ad - bd;
+    })
+    .slice(0, 6);
+
+  el.kpiPatientsTotal.textContent = String(totalPatients);
+  el.kpiPatientsAssigned.textContent = String(assignedPatients);
+  el.kpiTasksOpen.textContent = String(openTasks.length);
+  el.kpiCategories.textContent = String(categoryEntries.length);
+
+  if (!categoryEntries.length) {
+    el.categorySummaryList.innerHTML = '<div class="empty-msg">Sem categorias com pacientes no momento.</div>';
+  } else {
+    el.categorySummaryList.innerHTML = categoryEntries.map(([label, count]) => `
+      <div class="home-list-row">
+        <span class="home-list-main">${label}</span>
+        <span class="home-list-pill">${count}</span>
+      </div>`).join("");
+  }
+
+  if (!priorityTasks.length) {
+    el.priorityTaskList.innerHTML = '<div class="empty-msg">Sem pendencias prioritarias.</div>';
+  } else {
+    el.priorityTaskList.innerHTML = priorityTasks.map(t => `
+      <div class="home-task-row">
+        <div>
+          <p class="home-task-title">${t.title}</p>
+          <p class="home-task-meta">Paciente: ${(state.patients.find(p => p.id === t.patientId)?.name || "-")} | ACS: ${acsNameById(t.assigneeId)}</p>
+        </div>
+        <span class="home-task-due">${t.dueDate || "Sem prazo"}</span>
+      </div>`).join("");
+  }
 }
 
 // -- Tab switching -------------------------------------------------------------
@@ -421,7 +484,12 @@ function renderTasks() {
         sel.appendChild(Object.assign(document.createElement("option"), { value:v, textContent:l, selected:v===t.status }));
       });
       sel.addEventListener("change", async () => {
-        try { await api(`/tasks/${t.id}`, { method:"PATCH", body:JSON.stringify({ status:sel.value }) }); showToast("Status atualizado.","ok"); await refreshSelectedPatientData(); }
+        try {
+          await api(`/tasks/${t.id}`, { method:"PATCH", body:JSON.stringify({ status:sel.value }) });
+          showToast("Status atualizado.","ok");
+          await refreshSelectedPatientData();
+          await loadGlobalTasks();
+        }
         catch (e) { showToast(e.message,"error"); }
       });
       row.appendChild(sel);
@@ -525,6 +593,16 @@ async function loadPatients() {
     renderPatientHeader();
   }
   renderPatients();
+  renderWorkspaceHome();
+}
+async function loadGlobalTasks() {
+  try {
+    const allTasks = await api("/tasks");
+    state.globalTasks = Array.isArray(allTasks) ? allTasks : [];
+  } catch {
+    state.globalTasks = [];
+  }
+  renderWorkspaceHome();
 }
 async function loadAppointments()    { if (!state.selectedPatient) return; state.appointments   = await api(`/patients/${state.selectedPatient.id}/appointments`);    renderAppointments(); }
 async function loadTasks()           { if (!state.selectedPatient) return; state.tasks          = await api(`/tasks?patientId=${state.selectedPatient.id}`);          renderTasks(); }
@@ -558,6 +636,8 @@ async function bootstrapAfterLogin() {
   if (isAcs()) { el.filterAcs.value = state.user.id; state.filters.acsId = state.user.id; }
   applyRolePermissions();
   await loadPatients();
+  await loadGlobalTasks();
+  renderWorkspaceHome();
 }
 
 async function bootstrapBeforeLogin() {
@@ -610,6 +690,28 @@ el.applyFilterBtn.addEventListener("click", async () => {
   catch (e) { showToast(e.message,"error"); }
 });
 
+el.quickNewPatientBtn?.addEventListener("click", () => {
+  if (!isManager()) {
+    showToast("Somente enfermeira gestora pode cadastrar paciente.", "error");
+    return;
+  }
+  el.patientPanel.classList.add("hidden");
+  el.newPatientPanel.classList.remove("hidden");
+});
+
+el.quickOpenFiltersBtn?.addEventListener("click", () => {
+  if (el.filterDetails) el.filterDetails.open = true;
+  el.filterMicroArea.focus();
+});
+
+el.quickSelectFirstPatientBtn?.addEventListener("click", async () => {
+  if (!state.patients.length) {
+    showToast("Nenhum paciente disponivel.", "error");
+    return;
+  }
+  await selectPatient(state.patients[0]);
+});
+
 el.createPatientBtn.addEventListener("click", async () => {
   if (!isManager()) return;
   try {
@@ -624,6 +726,7 @@ el.createPatientBtn.addEventListener("click", async () => {
     el.newPatientPanel.classList.add("hidden");
     el.patientPanel.classList.remove("hidden");
     await loadPatients();
+    await loadGlobalTasks();
   } catch(e) { showToast(e.message,"error"); }
 });
 
@@ -663,6 +766,7 @@ el.addTaskBtn.addEventListener("click", async () => {
     ["tTitle","tNotes","tDue"].forEach(id=>{document.getElementById(id).value="";});
     showToast("Tarefa criada.","ok");
     await refreshSelectedPatientData();
+    await loadGlobalTasks();
   } catch(e) { showToast(e.message,"error"); }
 });
 

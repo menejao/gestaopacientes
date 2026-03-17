@@ -557,20 +557,167 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .main-area::-webkit-scrollbar { width: 5px; }
 .main-area::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
 
-/* -- Empty state -- */
-.empty-state {
-  flex: 1;
+/* -- Workspace Home (SaaS dashboard) -- */
+.workspace-home {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  text-align: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.home-hero {
+  background: linear-gradient(120deg, #0f2c42 0%, #1f4f72 60%, #2f6f96 100%);
+  border-radius: var(--r-xl);
+  padding: 1.25rem 1.5rem;
+  color: #f4f8fb;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  border: 1px solid rgba(255,255,255,.15);
+  box-shadow: var(--shadow-md);
+}
+
+.home-kicker {
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.75);
+  margin-bottom: .5rem;
+}
+
+.home-title {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  margin-bottom: .45rem;
+}
+
+.home-sub {
+  font-size: .85rem;
+  color: rgba(255,255,255,.8);
+  max-width: 620px;
+}
+
+.home-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.home-actions .btn-primary {
+  background: #f6fbff;
+  color: #12456a;
+}
+
+.home-actions .btn-primary:hover {
+  background: #ffffff;
+}
+
+.home-actions .btn-secondary {
+  border-color: rgba(255,255,255,.4);
+  color: #f4f8fb;
+  background: rgba(255,255,255,.12);
+}
+
+.home-actions .btn-secondary:hover {
+  background: rgba(255,255,255,.2);
+}
+
+.home-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .8rem;
+}
+
+.home-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: .9rem 1rem;
+  box-shadow: var(--shadow-xs);
+}
+
+.home-kpi-label {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-muted);
+  margin-bottom: .5rem;
+}
+
+.home-kpi-value {
+  font-size: 1.7rem;
+  font-family: "IBM Plex Mono", monospace;
+  line-height: 1;
+  color: var(--navy-700);
+  margin-bottom: .35rem;
+}
+
+.home-kpi-foot {
+  font-size: .74rem;
   color: var(--text-muted);
 }
-.empty-icon { margin-bottom: 1rem; opacity: .35; }
-.empty-title { font-size: .95rem; font-weight: 500; color: var(--text-secondary); margin-bottom: .35rem; }
-.empty-sub { font-size: .82rem; color: var(--text-muted); max-width: 280px; line-height: 1.5; }
+
+.home-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.home-list-row,
+.home-task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  padding: .62rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.home-list-row:last-child,
+.home-task-row:last-child {
+  border-bottom: none;
+}
+
+.home-list-main {
+  font-size: .84rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.home-list-pill {
+  font-size: .72rem;
+  color: var(--blue-600);
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: 999px;
+  padding: .15rem .55rem;
+  min-width: 32px;
+  text-align: center;
+}
+
+.home-task-title {
+  font-size: .84rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.home-task-meta {
+  font-size: .74rem;
+  color: var(--text-muted);
+  margin-top: .1rem;
+}
+
+.home-task-due {
+  font-size: .72rem;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--text-secondary);
+  background: var(--gray-50);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: .14rem .48rem;
+}
 
 /* -- Patient header -- */
 .patient-hd {
@@ -1148,6 +1295,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   .sidebar { height: auto; max-height: 50vh; border-right: none; border-bottom: 1px solid var(--sidebar-border); }
   .split-panel { grid-template-columns: 1fr; }
   .proto-stats { grid-template-columns: 1fr 1fr; }
+  .home-kpi-grid { grid-template-columns: 1fr 1fr; }
+  .home-columns { grid-template-columns: 1fr; }
+  .home-hero { flex-direction: column; }
   .field-row { grid-template-columns: 1fr; }
 }
 
@@ -1155,6 +1305,11 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   .proto-stats { grid-template-columns: 1fr; }
   .tl-item { grid-template-columns: 80px 16px 1fr; }
   .topbar-user .user-info { display: none; }
+  .workspace-home { padding: .8rem; }
+  .home-kpi-grid { grid-template-columns: 1fr; }
+  .home-actions { width: 100%; }
+  .home-actions .btn-primary,
+  .home-actions .btn-secondary { width: 100%; justify-content: center; }
   .panel { padding: .85rem; }
 }
 
