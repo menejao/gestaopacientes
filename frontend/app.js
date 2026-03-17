@@ -54,6 +54,9 @@ const el = {
   topbarSearchInput:        document.getElementById("topbarSearchInput"),
   topbarFilterBtn:          document.getElementById("topbarFilterBtn"),
   topbarPatient:            document.getElementById("topbarPatient"),
+  mobileMenuBtn:            document.getElementById("mobileMenuBtn"),
+  sidebarBackdrop:          document.getElementById("sidebarBackdrop"),
+  sidebar:                  document.querySelector(".sidebar"),
   patientList:              document.getElementById("patientList"),
   patientCount:             document.getElementById("patientCount"),
   navPatientsBtn:           document.getElementById("navPatientsBtn"),
@@ -404,6 +407,32 @@ function updateSessionView() {
   el.logoutBtn.classList.remove("hidden");
   el.homeBtn.classList.remove("hidden");
   el.profileBtn.classList.remove("hidden");
+}
+
+function isMobileLayout() {
+  return window.matchMedia("(max-width: 960px)").matches;
+}
+
+function closeSidebarDrawer() {
+  el.sidebar?.classList.remove("open");
+  el.sidebarBackdrop?.classList.remove("open");
+  el.sidebarBackdrop?.classList.add("hidden");
+}
+
+function openSidebarDrawer() {
+  if (!isMobileLayout()) return;
+  el.sidebar?.classList.add("open");
+  el.sidebarBackdrop?.classList.remove("hidden");
+  el.sidebarBackdrop?.classList.add("open");
+}
+
+function toggleSidebarDrawer() {
+  if (!isMobileLayout()) return;
+  if (el.sidebar?.classList.contains("open")) {
+    closeSidebarDrawer();
+    return;
+  }
+  openSidebarDrawer();
 }
 
 el.logoutBtn?.addEventListener("click", () => logoutUser(false));
@@ -882,6 +911,7 @@ function switchNavSection(section) {
   el.aiHubSection.classList.toggle("hidden", state.navSection !== "ai");
 
   if (state.navSection === "patients") switchWorkspaceTab("dashboard");
+  if (isMobileLayout()) closeSidebarDrawer();
 }
 
 function openProtocolModal() {
@@ -1414,6 +1444,11 @@ el.navProtocolsBtn?.addEventListener("click", () => switchNavSection("protocols"
 el.navAcsBtn?.addEventListener("click", () => switchNavSection("acs"));
 el.navDoctorsBtn?.addEventListener("click", () => switchNavSection("doctors"));
 el.navAiBtn?.addEventListener("click", () => switchNavSection("ai"));
+el.mobileMenuBtn?.addEventListener("click", toggleSidebarDrawer);
+el.sidebarBackdrop?.addEventListener("click", closeSidebarDrawer);
+window.addEventListener("resize", () => {
+  if (!isMobileLayout()) closeSidebarDrawer();
+});
 
 el.openPatientModalBtn?.addEventListener("click", openPatientCreateModal);
 el.closePatientModalBtn?.addEventListener("click", () => el.patientModal.classList.add("hidden"));
