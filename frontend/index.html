@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SaudeUBS - Gestao de Pacientes</title>
+    <title>Gestao de pacientes - UBS Francisca Lima de Lira</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -219,7 +219,7 @@
             <section class="home-hero">
               <div>
                 <p class="home-kicker">Workspace da equipe</p>
-                <h1 class="home-title">Gestao operacional da UBS em um painel</h1>
+                <h1 class="home-title">Gestao de pacientes - UBS Francisca Lima de Lira</h1>
                 <p class="home-sub">Acompanhe pacientes, protocolos e pendencias da equipe em tempo real.</p>
               </div>
               <div class="home-actions">
@@ -229,6 +229,12 @@
               </div>
             </section>
 
+            <nav class="workspace-tabs">
+              <button id="homeTabDashboardBtn" class="workspace-tab active" data-home-tab="dashboard">Painel</button>
+              <button id="homeTabProtocolsBtn" class="workspace-tab" data-home-tab="protocols">Protocolos</button>
+            </nav>
+
+            <div id="homeDashboardPane" class="workspace-pane active">
             <section class="home-kpi-grid">
               <article class="home-kpi-card">
                 <p class="home-kpi-label">Pacientes ativos</p>
@@ -312,56 +318,15 @@
                 </div>
               </div>
             </section>
+            </div>
 
-            <section id="protocolAdminSection" class="panel-card hidden">
+            <section id="protocolAdminSection" class="panel-card workspace-pane hidden">
               <div class="panel-card-hd">Administracao de protocolos</div>
+              <p class="home-task-meta">Protocolos por categoria com base nas referencias oficiais (Ministerio da Saude/INCA).</p>
+              <div class="inline-actions" style="margin-top:.6rem; margin-bottom:.6rem;">
+                <button id="openProtocolModalBtn" class="btn-primary">Novo protocolo</button>
+              </div>
               <div id="protocolAdminList"></div>
-              <div class="form-divider"></div>
-              <div class="field-row">
-                <div class="field-group">
-                  <label class="field-label">Categoria (chave)</label>
-                  <input id="protocolCategoryInput" class="field-input" placeholder="ex: hipertenso_alto_risco"/>
-                </div>
-                <div class="field-group">
-                  <label class="field-label">Nome exibicao</label>
-                  <input id="protocolLabelInput" class="field-input" placeholder="Ex: Hipertenso Alto Risco"/>
-                </div>
-              </div>
-              <div class="field-row">
-                <div class="field-group">
-                  <label class="field-label">Visitas alvo</label>
-                  <input id="protocolVisitsInput" type="number" min="0" max="99" class="field-input" value="0"/>
-                </div>
-                <div class="field-group">
-                  <label class="field-label">Consultas alvo</label>
-                  <input id="protocolConsultationsInput" type="number" min="0" max="99" class="field-input" value="0"/>
-                </div>
-              </div>
-              <div class="field-row">
-                <div class="field-group">
-                  <label class="field-label">Vacinas alvo</label>
-                  <input id="protocolVaccinesTargetInput" type="number" min="0" max="99" class="field-input" value="0"/>
-                </div>
-                <div class="field-group">
-                  <label class="field-label">Lista de vacinas (virgula)</label>
-                  <input id="protocolVaccinesListInput" class="field-input" placeholder="Influenza, COVID-19"/>
-                </div>
-              </div>
-              <div class="field-row">
-                <div class="field-group">
-                  <label class="field-label">Orgao normativo</label>
-                  <input id="protocolAuthorityInput" class="field-input" value="Ministerio da Saude"/>
-                </div>
-                <div class="field-group">
-                  <label class="field-label">Referencia normativa</label>
-                  <input id="protocolReferenceInput" class="field-input" placeholder="Ex: Caderno APS, Portaria, Nota Tecnica"/>
-                </div>
-              </div>
-              <div class="field-group">
-                <label class="field-label">Versao do protocolo</label>
-                <input id="protocolVersionInput" class="field-input" placeholder="Ex: 2026.1"/>
-              </div>
-              <button id="createProtocolBtn" class="btn-primary">Criar categoria de protocolo</button>
             </section>
           </div>
 
@@ -534,6 +499,64 @@
           </div>
         </div>
         <button id="saveProfileBtn" class="btn-primary btn-block">Salvar perfil</button>
+      </div>
+    </div>
+
+    <!-- PROTOCOL MODAL -->
+    <div id="protocolModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-hd">
+          <h3 id="protocolModalTitle">Novo protocolo</h3>
+          <button id="closeProtocolModalBtn" class="icon-btn">X</button>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label">Categoria (chave)</label>
+            <input id="protocolCategoryInput" class="field-input" placeholder="ex: hipertenso_alto_risco"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Nome exibicao</label>
+            <input id="protocolLabelInput" class="field-input" placeholder="Ex: Hipertenso Alto Risco"/>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label">Visitas alvo</label>
+            <input id="protocolVisitsInput" type="number" min="0" max="99" class="field-input" value="0"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Consultas alvo</label>
+            <input id="protocolConsultationsInput" type="number" min="0" max="99" class="field-input" value="0"/>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label">Vacinas alvo</label>
+            <input id="protocolVaccinesTargetInput" type="number" min="0" max="99" class="field-input" value="0"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Lista de vacinas (virgula)</label>
+            <input id="protocolVaccinesListInput" class="field-input" placeholder="Influenza, COVID-19"/>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label">Orgao normativo</label>
+            <input id="protocolAuthorityInput" class="field-input" value="Ministerio da Saude"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Referencia normativa</label>
+            <input id="protocolReferenceInput" class="field-input" placeholder="URL oficial da norma"/>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Versao do protocolo</label>
+          <input id="protocolVersionInput" class="field-input" placeholder="Ex: 2026.1"/>
+        </div>
+        <div class="inline-actions" style="justify-content:flex-end;">
+          <button id="cancelProtocolModalBtn" class="btn-secondary">Cancelar</button>
+          <button id="createProtocolBtn" class="btn-primary">Confirmar</button>
+        </div>
       </div>
     </div>
 

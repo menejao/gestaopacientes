@@ -48,6 +48,33 @@ const DEFAULT_CARE_PROTOCOLS = {
 };
 
 function buildDefaultProtocolTemplates() {
+  const ministryRefs = {
+    general: {
+      reference: "https://bvsms.saude.gov.br/bvs/publicacoes/politica_nacional_atencao_basica_2017.pdf",
+      version: "PNAB-2017"
+    },
+    pregnant: {
+      reference: "https://bvsms.saude.gov.br/bvs/saudelegis/gm/2011/prt1459_24_06_2011.html",
+      version: "Rede Cegonha"
+    },
+    puerperal: {
+      reference: "https://bvsms.saude.gov.br/bvs/saudelegis/gm/2011/prt1459_24_06_2011.html",
+      version: "Rede Cegonha"
+    },
+    pap_only: {
+      reference: "https://www.inca.gov.br/controle-do-cancer-do-colo-do-utero/acoes-de-controle/rastreamento",
+      version: "Rastreamento vigente"
+    },
+    child_followup: {
+      reference: "https://www.gov.br/saude/pt-br/vacinacao/calendario",
+      version: "Calendario PNI"
+    },
+    chronic: {
+      reference: "https://bvsms.saude.gov.br/bvs/publicacoes/plano_acoes_estrategicas_enfrentamento_dc_nt_2021_2030.pdf",
+      version: "DCNT 2021-2030"
+    }
+  };
+
   return Object.values(DEFAULT_CARE_PROTOCOLS).map((template) => ({
     category: template.category,
     label: template.label,
@@ -58,8 +85,8 @@ function buildDefaultProtocolTemplates() {
     },
     vaccines: Array.isArray(template.vaccines) ? template.vaccines : [],
     authority: "Ministerio da Saude",
-    reference: "",
-    version: "1.0"
+    reference: ministryRefs[template.category]?.reference || "",
+    version: ministryRefs[template.category]?.version || "1.0"
   }));
 }
 
@@ -151,11 +178,12 @@ function ensureDbShape(db) {
   if (!db.protocolTemplates.length) {
     db.protocolTemplates = buildDefaultProtocolTemplates();
   } else {
+    const defaultsByCategory = Object.fromEntries(buildDefaultProtocolTemplates().map((t) => [t.category, t]));
     db.protocolTemplates = db.protocolTemplates.map((t) => ({
       ...t,
       authority: String(t.authority || "Ministerio da Saude"),
-      reference: String(t.reference || ""),
-      version: String(t.version || "1.0")
+      reference: String(t.reference || defaultsByCategory[t.category]?.reference || ""),
+      version: String(t.version || defaultsByCategory[t.category]?.version || "1.0")
     }));
   }
 }

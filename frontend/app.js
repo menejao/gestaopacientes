@@ -9,6 +9,7 @@ const state = {
   protocolByPatient: {},
   editingPatientId: null,
   editingProtocolCategory: null,
+  workspaceTab: "dashboard",
   dashboardQuery: "",
   dashboardSort: "name_asc",
   dashboardPage: 1,
@@ -111,6 +112,9 @@ const el = {
   quickNewPatientBtn:       document.getElementById("quickNewPatientBtn"),
   quickOpenFiltersBtn:      document.getElementById("quickOpenFiltersBtn"),
   quickSelectFirstPatientBtn: document.getElementById("quickSelectFirstPatientBtn"),
+  homeTabDashboardBtn:      document.getElementById("homeTabDashboardBtn"),
+  homeTabProtocolsBtn:      document.getElementById("homeTabProtocolsBtn"),
+  homeDashboardPane:        document.getElementById("homeDashboardPane"),
   kpiPatientsTotal:         document.getElementById("kpiPatientsTotal"),
   kpiPatientsAssigned:      document.getElementById("kpiPatientsAssigned"),
   kpiTasksOpen:             document.getElementById("kpiTasksOpen"),
@@ -138,6 +142,11 @@ const el = {
   protocolAuthorityInput:   document.getElementById("protocolAuthorityInput"),
   protocolReferenceInput:   document.getElementById("protocolReferenceInput"),
   protocolVersionInput:     document.getElementById("protocolVersionInput"),
+  openProtocolModalBtn:     document.getElementById("openProtocolModalBtn"),
+  protocolModal:            document.getElementById("protocolModal"),
+  protocolModalTitle:       document.getElementById("protocolModalTitle"),
+  closeProtocolModalBtn:    document.getElementById("closeProtocolModalBtn"),
+  cancelProtocolModalBtn:   document.getElementById("cancelProtocolModalBtn"),
   createProtocolBtn:        document.getElementById("createProtocolBtn"),
   profileModal:             document.getElementById("profileModal"),
   closeProfileBtn:          document.getElementById("closeProfileBtn"),
@@ -300,7 +309,6 @@ function applyRolePermissions() {
     el.auditTab.classList.remove("hidden");
     el.appointmentFormCard.classList.remove("hidden");
     el.taskFormCard.classList.remove("hidden");
-    el.protocolAdminSection.classList.remove("hidden");
     mgrFields.forEach(id => { document.getElementById(id).disabled = false; });
     clinFields.forEach(id => { document.getElementById(id).disabled = false; });
     [...el.rType.options].forEach(o => { o.disabled = false; });
@@ -311,7 +319,6 @@ function applyRolePermissions() {
   el.addTaskBtn.classList.add("hidden");
   el.auditTab.classList.add("hidden");
   el.taskFormCard.classList.add("hidden");
-  el.protocolAdminSection.classList.add("hidden");
   mgrFields.forEach(id => { document.getElementById(id).disabled = true; });
 
   if (isDoctor()) {
@@ -612,6 +619,7 @@ async function loadProtocolStatusesForDashboard() {
 }
 
 function goHomeDashboard() {
+  switchWorkspaceTab("dashboard");
   state.selectedPatient = null;
   renderPatients();
   renderPatientHeader();
@@ -633,6 +641,25 @@ function openProfileModal() {
 
 function closeProfileModal() {
   el.profileModal.classList.add("hidden");
+}
+
+function switchWorkspaceTab(tab) {
+  const allowProtocols = isManager();
+  state.workspaceTab = tab === "protocols" && allowProtocols ? "protocols" : "dashboard";
+  el.homeTabProtocolsBtn.classList.toggle("hidden", !allowProtocols);
+  el.homeTabDashboardBtn.classList.toggle("active", state.workspaceTab === "dashboard");
+  el.homeTabProtocolsBtn.classList.toggle("active", state.workspaceTab === "protocols");
+  el.homeDashboardPane.classList.toggle("hidden", state.workspaceTab !== "dashboard");
+  el.protocolAdminSection.classList.toggle("hidden", state.workspaceTab !== "protocols");
+}
+
+function openProtocolModal() {
+  el.protocolModalTitle.textContent = state.editingProtocolCategory ? "Editar protocolo" : "Novo protocolo";
+  el.protocolModal.classList.remove("hidden");
+}
+
+function closeProtocolModal() {
+  el.protocolModal.classList.add("hidden");
 }
 
 function protocolFormPayload() {
@@ -666,7 +693,8 @@ function resetProtocolForm() {
   el.protocolAuthorityInput.value = "Ministerio da Saude";
   el.protocolReferenceInput.value = "";
   el.protocolVersionInput.value = "1.0";
-  el.createProtocolBtn.textContent = "Criar categoria de protocolo";
+  el.createProtocolBtn.textContent = "Confirmar";
+  el.protocolModalTitle.textContent = "Novo protocolo";
 }
 
 function renderProtocolAdminList() {
@@ -684,7 +712,7 @@ function renderProtocolAdminList() {
         <div>
           <p class="home-task-title">${t.label} <span class="home-task-meta">(${t.category})${isTeamOwned ? "" : " [base]"}</span></p>
           <p class="home-task-meta">Metas: ${t.targets.visits} visitas | ${t.targets.consultations} consultas | ${t.targets.vaccines} vacinas</p>
-          <p class="home-task-meta">Norma: ${t.authority || "Ministerio da Saude"} | Ref: ${t.reference || "-"} | Versao: ${t.version || "1.0"}</p>
+          <p class="home-task-meta">Norma: ${t.authority || "Ministerio da Saude"} | Ref: ${t.reference ? `<a href="${t.reference}" target="_blank" rel="noopener noreferrer">link oficial</a>` : "-"} | Versao: ${t.version || "1.0"}</p>
         </div>
         <div class="inline-actions">
           <button class="btn-secondary protocol-edit-btn" data-category="${t.category}">Editar</button>
@@ -710,7 +738,9 @@ function renderProtocolAdminList() {
       el.protocolAuthorityInput.value = template.authority || "Ministerio da Saude";
       el.protocolReferenceInput.value = template.reference || "";
       el.protocolVersionInput.value = template.version || "1.0";
-      el.createProtocolBtn.textContent = "Salvar alteracoes do protocolo";
+      el.createProtocolBtn.textContent = "Confirmar alteracoes";
+      el.protocolModalTitle.textContent = "Editar protocolo";
+      openProtocolModal();
       showToast("Editando categoria de protocolo.", "ok");
     });
   });
@@ -1061,11 +1091,13 @@ async function bootstrapAfterLogin() {
   state.dashboardCategory = "";
   state.dashboardAcsId = "";
   state.dashboardProtocolStatus = "all";
+  state.workspaceTab = "dashboard";
   if (el.homePatientSearchInput) el.homePatientSearchInput.value = "";
   if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
   if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
   if (el.homePatientAcsFilter) el.homePatientAcsFilter.value = "";
   if (el.homePatientProtocolStatusFilter) el.homePatientProtocolStatusFilter.value = "all";
+  switchWorkspaceTab("dashboard");
   await loadPatients();
   await loadGlobalTasks();
   renderWorkspaceHome();
@@ -1149,6 +1181,20 @@ el.quickSelectFirstPatientBtn?.addEventListener("click", async () => {
     return;
   }
   await selectPatient(state.patients[0]);
+});
+
+el.homeTabDashboardBtn?.addEventListener("click", () => switchWorkspaceTab("dashboard"));
+el.homeTabProtocolsBtn?.addEventListener("click", () => switchWorkspaceTab("protocols"));
+
+el.openProtocolModalBtn?.addEventListener("click", () => {
+  state.editingProtocolCategory = null;
+  resetProtocolForm();
+  openProtocolModal();
+});
+el.closeProtocolModalBtn?.addEventListener("click", closeProtocolModal);
+el.cancelProtocolModalBtn?.addEventListener("click", closeProtocolModal);
+el.protocolModal?.addEventListener("click", (e) => {
+  if (e.target === el.protocolModal) closeProtocolModal();
 });
 
 el.homePatientSearchInput?.addEventListener("input", () => {
@@ -1255,6 +1301,8 @@ el.createProtocolBtn?.addEventListener("click", async () => {
 
     resetProtocolForm();
     await reloadTemplateData();
+    closeProtocolModal();
+    switchWorkspaceTab("protocols");
   } catch (e) {
     showToast(e.message, "error");
   }

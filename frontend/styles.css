@@ -624,6 +624,36 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   background: rgba(255,255,255,.2);
 }
 
+.workspace-tabs {
+  display: inline-flex;
+  gap: .35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: .2rem;
+  width: fit-content;
+}
+
+.workspace-tab {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: .8rem;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: .35rem .75rem;
+  cursor: pointer;
+}
+
+.workspace-tab.active {
+  background: var(--blue-600);
+  color: #fff;
+}
+
+.workspace-pane.hidden {
+  display: none !important;
+}
+
 .home-kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
