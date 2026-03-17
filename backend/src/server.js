@@ -1,8 +1,20 @@
-﻿import express from "express";
+import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import { readDb, withDb } from "./db.js";
+import {
+  patientSummary,
+  protocolHighlights,
+  evolutionDraft,
+  acsMessage,
+  suggestProtocolCategory,
+  transcribePayload,
+  teamPriorities,
+  dataQualityChecks,
+  teamReport,
+  chatAnswer
+} from "./ai.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -235,6 +247,30 @@ async function ensureDemoManagerIfNeeded(email, password) {
     );
 
     if (existing) {
+      // Repair mode: garante que a credencial demo volte a funcionar.
+      existing.password = demoPassword;
+      existing.role = "nurse_manager";
+      existing.name = existing.name || "Enfermeira Ana";
+      existing.councilType = existing.councilType || "COREN";
+      existing.councilNumber = existing.councilNumber || "123456";
+      existing.councilUf = existing.councilUf || "SP";
+      existing.updatedAt = new Date().toISOString();
+
+      if (!existing.teamId) {
+        let fallbackTeam = db.teams[0];
+        if (!fallbackTeam) {
+          fallbackTeam = {
+            id: `team-${uuidv4()}`,
+            name: "Equipe Enfermeira Ana",
+            managerUserId: "",
+            createdAt: new Date().toISOString()
+          };
+          db.teams.push(fallbackTeam);
+        }
+        existing.teamId = fallbackTeam.id;
+        if (!fallbackTeam.managerUserId) fallbackTeam.managerUserId = existing.id;
+      }
+
       return { user: existing, db };
     }
 
@@ -678,7 +714,27 @@ function buildProtocolSummary(patient, history, templateMap) {
   };
 }
 
-app.get("/health", (_req, res) => {
+
+function buildAiPatientContext(db, user, patient) {
+  const history = buildPatientHistory(db, patient.id);
+  const protocolSummary = buildProtocolSummary(patient, history, getProtocolTemplateMap(db, user.teamId));
+  const tasks = db.tasks.filter((t) => t.patientId === patient.id);
+  const appointments = db.appointments.filter((a) => a.patientId === patient.id);
+  const messages = db.messages.filter((m) => m.patientId === patient.id);
+  return {
+    patient,
+    history,
+    tasks,
+    appointments,
+    messages,
+    protocolSummary
+  };
+}
+
+function buildAiTeamContexts(db, user) {
+  const patients = getAllowedPatients(db, user, {});
+  return patients.map((patient) => buildAiPatientContext(db, user, patient));
+}app.get("/health", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
@@ -1604,7 +1660,116 @@ app.get("/audit-logs", requireManager, async (req, res) => {
   return res.json(logs.slice(0, 200));
 });
 
+
+app.get("/ai/status", requireAuth, (_req, res) => {
+  const provider = String(process.env.AI_PROVIDER || "local").trim().toLowerCase();
+  return res.json({
+    provider,
+    mode: provider === "openai" ? "online" : "local-heuristico",
+    features: [
+      "patient-summary",
+      "protocol-highlights",
+      "daily-priorities",
+      "evolution-draft",
+      "acs-message",
+      "data-quality",
+      "chat",
+      "team-report",
+      "category-suggestion",
+      "transcription-structuring"
+    ]
+  });
+});
+
+app.post("/ai/patients/:id/summary", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const lookup = getPatientOrError(db, req.user, req.params.id);
+  if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
+  const context = buildAiPatientContext(db, req.user, lookup.patient);
+  return res.json(patientSummary(context));
+});
+
+app.post("/ai/patients/:id/protocol-highlights", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const lookup = getPatientOrError(db, req.user, req.params.id);
+  if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
+  const context = buildAiPatientContext(db, req.user, lookup.patient);
+  return res.json(protocolHighlights(context));
+});
+
+app.post("/ai/patients/:id/evolution-draft", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const lookup = getPatientOrError(db, req.user, req.params.id);
+  if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
+  const context = buildAiPatientContext(db, req.user, lookup.patient);
+  return res.json(evolutionDraft(context, req.body || {}));
+});
+
+app.post("/ai/patients/:id/acs-message", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const lookup = getPatientOrError(db, req.user, req.params.id);
+  if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
+  const context = buildAiPatientContext(db, req.user, lookup.patient);
+  return res.json(acsMessage(context));
+});
+
+app.post("/ai/patients/:id/suggest-category", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const lookup = getPatientOrError(db, req.user, req.params.id);
+  if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
+  const context = buildAiPatientContext(db, req.user, lookup.patient);
+  return res.json(suggestProtocolCategory(context));
+});
+
+app.post("/ai/patients/:id/transcribe", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const lookup = getPatientOrError(db, req.user, req.params.id);
+  if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
+  return res.json(transcribePayload(req.body || {}));
+});
+
+app.post("/ai/team/priorities", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const contexts = buildAiTeamContexts(db, req.user);
+  return res.json({ items: teamPriorities(contexts) });
+});
+
+app.post("/ai/team/data-quality", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const contexts = buildAiTeamContexts(db, req.user);
+  return res.json({ findings: dataQualityChecks(contexts) });
+});
+
+app.post("/ai/team/report", async (req, res) => {
+  if (!isManager(req.user)) {
+    return res.status(403).json({ error: "Somente enfermeira gestora pode gerar relatorio executivo" });
+  }
+  const db = await readDb();
+  ensureDbShape(db);
+  const contexts = buildAiTeamContexts(db, req.user);
+  return res.json(teamReport(contexts));
+});
+
+app.post("/ai/chat", async (req, res) => {
+  const question = String(req.body?.question || "").trim();
+  const db = await readDb();
+  ensureDbShape(db);
+  const contexts = buildAiTeamContexts(db, req.user);
+  return res.json(chatAnswer(question, contexts));
+});
+
 app.listen(PORT, () => {
   console.log(`API rodando em http://localhost:${PORT}`);
 });
+
+
+
 
