@@ -296,19 +296,6 @@ function formatCpf(value) {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
-function formatCns(value) {
-  const d = onlyDigits(value).slice(0, 15);
-  if (d.length <= 3) return d;
-  if (d.length <= 7) return `${d.slice(0, 3)} ${d.slice(3)}`;
-  if (d.length <= 11) return `${d.slice(0, 3)} ${d.slice(3, 7)} ${d.slice(7)}`;
-  return `${d.slice(0, 3)} ${d.slice(3, 7)} ${d.slice(7, 11)} ${d.slice(11)}`;
-}
-
-function formatDocument(value) {
-  const d = onlyDigits(value);
-  return d.length <= 11 ? formatCpf(d) : formatCns(d);
-}
-
 function formatCep(value) {
   const d = onlyDigits(value).slice(0, 8);
   if (d.length <= 5) return d;
@@ -1037,7 +1024,7 @@ function openPatientEdit() {
   const p = state.selectedPatient;
   el.pName.value = p.name || "";
   el.pPhone.value = formatPhone(p.phone || "");
-  el.pDoc.value = formatDocument(p.cnsCpf || "");
+  el.pDoc.value = formatCpf(p.cnsCpf || "");
   const addressParts = splitAddress(p.address || "");
   el.pStreet.value = addressParts.street;
   el.pNeighborhood.value = addressParts.neighborhood;
@@ -1491,7 +1478,7 @@ el.saveCreateUserBtn?.addEventListener("click", async () => {
 });
 
 el.pPhone?.addEventListener("input", () => { el.pPhone.value = formatPhone(el.pPhone.value); });
-el.pDoc?.addEventListener("input", () => { el.pDoc.value = formatDocument(el.pDoc.value); });
+el.pDoc?.addEventListener("input", () => { el.pDoc.value = formatCpf(el.pDoc.value); });
 el.pCep?.addEventListener("input", () => { el.pCep.value = formatCep(el.pCep.value); });
 el.pState?.addEventListener("input", () => { el.pState.value = String(el.pState.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2); });
 el.managerCreateCouncilNumber?.addEventListener("input", () => { el.managerCreateCouncilNumber.value = onlyDigits(el.managerCreateCouncilNumber.value).slice(0, 10); });
