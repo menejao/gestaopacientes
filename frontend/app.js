@@ -53,6 +53,7 @@ const el = {
   homeBtn:                  document.getElementById("homeBtn"),
   profileBtn:               document.getElementById("profileBtn"),
   logoutBtn:                document.getElementById("logoutBtn"),
+  topbarUser:               document.getElementById("topbarUser"),
   userName:                 document.getElementById("userName"),
   userRole:                 document.getElementById("userRole"),
   userAvatar:               document.getElementById("userAvatar"),
@@ -408,7 +409,7 @@ function updateSessionView() {
   if (!state.user) {
     el.logoutBtn.classList.add("hidden");
     el.homeBtn.classList.add("hidden");
-    el.profileBtn.classList.add("hidden");
+    el.profileBtn?.classList.add("hidden");
     if (el.mobileUserName) el.mobileUserName.textContent = "-";
     if (el.mobileUserRole) el.mobileUserRole.textContent = "-";
     if (el.mobileUserAvatar) el.mobileUserAvatar.textContent = "?";
@@ -425,7 +426,7 @@ function updateSessionView() {
   if (el.mobileUserAvatar) el.mobileUserAvatar.textContent = avatarText;
   el.logoutBtn.classList.remove("hidden");
   el.homeBtn.classList.remove("hidden");
-  el.profileBtn.classList.remove("hidden");
+  el.profileBtn?.classList.remove("hidden");
 }
 
 function isMobileLayout() {
@@ -1747,6 +1748,7 @@ el.backToHomeBtn?.addEventListener("click", goHomeDashboard);
 el.editPatientBtn?.addEventListener("click", openPatientEdit);
 
 el.profileBtn?.addEventListener("click", openProfileModal);
+el.topbarUser?.addEventListener("click", openProfileModal);
 el.closeProfileBtn?.addEventListener("click", closeProfileModal);
 el.profileModal?.addEventListener("click", (e) => {
   if (e.target === el.profileModal) closeProfileModal();
