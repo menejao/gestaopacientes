@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: saude-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: COUNCIL_VERIFY_MODE
+        value: required
+      - key: COUNCIL_VERIFY_PROVIDER
+        value: n8n
+      - key: COUNCIL_VERIFY_URL
+        sync: false
+      - key: COUNCIL_VERIFY_TOKEN
+        sync: false
