@@ -17,7 +17,17 @@ let initialized = false;
 
 function buildDefaultState() {
   const now = new Date().toISOString();
+  const protocolTemplates = [
+    { category: "general", label: "Geral", targets: { visits: 2, consultations: 2, vaccines: 1 }, vaccines: ["Influenza"], authority: "Ministerio da Saude", reference: "", version: "1.0" },
+    { category: "pregnant", label: "Gestante", targets: { visits: 6, consultations: 7, vaccines: 3 }, vaccines: ["dTpa", "Hepatite B", "Influenza"], authority: "Ministerio da Saude", reference: "", version: "1.0" },
+    { category: "puerperal", label: "Puerpera", targets: { visits: 2, consultations: 2, vaccines: 1 }, vaccines: ["dTpa"], authority: "Ministerio da Saude", reference: "", version: "1.0" },
+    { category: "pap_only", label: "Somente Papanicolau", targets: { visits: 1, consultations: 1, vaccines: 0 }, vaccines: [], authority: "Ministerio da Saude", reference: "", version: "1.0" },
+    { category: "child_followup", label: "Puericultura", targets: { visits: 4, consultations: 6, vaccines: 6 }, vaccines: ["BCG", "Pentavalente", "Polio", "Rotavirus", "Pneumococica", "Meningococica"], authority: "Ministerio da Saude", reference: "", version: "1.0" },
+    { category: "chronic", label: "Condicao Cronica", targets: { visits: 3, consultations: 3, vaccines: 2 }, vaccines: ["Influenza", "COVID-19"], authority: "Ministerio da Saude", reference: "", version: "1.0" }
+  ];
+
   return {
+    protocolTemplates,
     teams: [
       {
         id: "team-ana",

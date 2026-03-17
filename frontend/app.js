@@ -6,6 +6,16 @@ const state = {
   globalTasks: [],
   messages: [], auditLogs: [], history: [],
   protocolSummary: null, protocolTemplates: [], publicTeams: [],
+  protocolByPatient: {},
+  editingPatientId: null,
+  editingProtocolCategory: null,
+  dashboardQuery: "",
+  dashboardSort: "name_asc",
+  dashboardPage: 1,
+  dashboardPageSize: 8,
+  dashboardCategory: "",
+  dashboardAcsId: "",
+  dashboardProtocolStatus: "all",
   filters: { microArea: "", acsId: "", careCategory: "" }
 };
 
@@ -30,6 +40,8 @@ const el = {
   registerCouncilNumberWrap:document.getElementById("registerCouncilNumberWrap"),
   registerCouncilUfWrap:    document.getElementById("registerCouncilUfWrap"),
   councilNumLabel:          document.getElementById("councilNumLabel"),
+  homeBtn:                  document.getElementById("homeBtn"),
+  profileBtn:               document.getElementById("profileBtn"),
   logoutBtn:                document.getElementById("logoutBtn"),
   userName:                 document.getElementById("userName"),
   userRole:                 document.getElementById("userRole"),
@@ -58,6 +70,8 @@ const el = {
   pMeds:                    document.getElementById("pMeds"),
   pAllergies:               document.getElementById("pAllergies"),
   createPatientBtn:         document.getElementById("createPatientBtn"),
+  editPatientBtn:           document.getElementById("editPatientBtn"),
+  backToHomeBtn:            document.getElementById("backToHomeBtn"),
   emptyState:               document.getElementById("emptyState"),
   patientContent:           document.getElementById("patientContent"),
   selectedPatientTitle:     document.getElementById("selectedPatientTitle"),
@@ -103,6 +117,37 @@ const el = {
   kpiCategories:            document.getElementById("kpiCategories"),
   categorySummaryList:      document.getElementById("categorySummaryList"),
   priorityTaskList:         document.getElementById("priorityTaskList"),
+  homePatientSearchInput:   document.getElementById("homePatientSearchInput"),
+  homePatientSortSelect:    document.getElementById("homePatientSortSelect"),
+  homePatientCategoryFilter: document.getElementById("homePatientCategoryFilter"),
+  homePatientAcsFilter:     document.getElementById("homePatientAcsFilter"),
+  homePatientProtocolStatusFilter: document.getElementById("homePatientProtocolStatusFilter"),
+  homePatientExportBtn:     document.getElementById("homePatientExportBtn"),
+  homePatientTableBody:     document.getElementById("homePatientTableBody"),
+  homePatientPageInfo:      document.getElementById("homePatientPageInfo"),
+  homePatientPrevBtn:       document.getElementById("homePatientPrevBtn"),
+  homePatientNextBtn:       document.getElementById("homePatientNextBtn"),
+  protocolAdminSection:     document.getElementById("protocolAdminSection"),
+  protocolAdminList:        document.getElementById("protocolAdminList"),
+  protocolCategoryInput:    document.getElementById("protocolCategoryInput"),
+  protocolLabelInput:       document.getElementById("protocolLabelInput"),
+  protocolVisitsInput:      document.getElementById("protocolVisitsInput"),
+  protocolConsultationsInput: document.getElementById("protocolConsultationsInput"),
+  protocolVaccinesTargetInput: document.getElementById("protocolVaccinesTargetInput"),
+  protocolVaccinesListInput: document.getElementById("protocolVaccinesListInput"),
+  protocolAuthorityInput:   document.getElementById("protocolAuthorityInput"),
+  protocolReferenceInput:   document.getElementById("protocolReferenceInput"),
+  protocolVersionInput:     document.getElementById("protocolVersionInput"),
+  createProtocolBtn:        document.getElementById("createProtocolBtn"),
+  profileModal:             document.getElementById("profileModal"),
+  closeProfileBtn:          document.getElementById("closeProfileBtn"),
+  profileName:              document.getElementById("profileName"),
+  profileEmail:             document.getElementById("profileEmail"),
+  profilePassword:          document.getElementById("profilePassword"),
+  profileCouncilWrap:       document.getElementById("profileCouncilWrap"),
+  profileCouncilNumber:     document.getElementById("profileCouncilNumber"),
+  profileCouncilUf:         document.getElementById("profileCouncilUf"),
+  saveProfileBtn:           document.getElementById("saveProfileBtn"),
 };
 
 // -- Toast --------------------------------------------------------------------
@@ -153,12 +198,19 @@ el.togglePass?.addEventListener("click", () => {
 
 // -- Session view --------------------------------------------------------------
 function updateSessionView() {
-  if (!state.user) { el.logoutBtn.classList.add("hidden"); return; }
+  if (!state.user) {
+    el.logoutBtn.classList.add("hidden");
+    el.homeBtn.classList.add("hidden");
+    el.profileBtn.classList.add("hidden");
+    return;
+  }
   const roleMap = { nurse_manager: "Enf. Gestora", doctor: "Medico(a)", acs: "ACS" };
   el.userName.textContent  = state.user.name;
   el.userRole.textContent  = roleMap[state.user.role] || state.user.role;
   el.userAvatar.textContent = state.user.name.charAt(0).toUpperCase();
   el.logoutBtn.classList.remove("hidden");
+  el.homeBtn.classList.remove("hidden");
+  el.profileBtn.classList.remove("hidden");
 }
 
 el.logoutBtn?.addEventListener("click", () => {
@@ -168,6 +220,7 @@ el.logoutBtn?.addEventListener("click", () => {
   el.patientPanel.classList.add("hidden");
   el.emptyState.classList.remove("hidden");
   el.patientContent.classList.add("hidden");
+  el.profileModal.classList.add("hidden");
   updateSessionView();
 });
 
@@ -220,8 +273,22 @@ function fillTeamSelect() {
   state.publicTeams.forEach(t => el.registerTeam.appendChild(Object.assign(document.createElement("option"), { value:t.id, textContent:t.name })));
 }
 
+async function reloadTemplateData() {
+  state.protocolTemplates = await api("/protocol/templates");
+  fillCategorySelect(el.pCareCategory);
+  fillCategorySelect(el.filterCategory, true);
+  renderWorkspaceHome();
+  renderPatients();
+  renderProtocolAdminList();
+  if (state.selectedPatient) {
+    await loadProtocolSummary();
+  }
+}
+
 // -- Role permissions ----------------------------------------------------------
 function applyRolePermissions() {
+  const patientFields = ["pName","pPhone","pDoc","pAddress","pComorb","pMeds","pAllergies","pMicroArea","pAcs","pCareCategory"];
+  const taskFields = ["tTitle","tNotes","tDue","tAssignee"];
   const mgrFields = ["pName","pPhone","pDoc","pAddress","pComorb","pMeds","pAllergies","pMicroArea","pAcs","pCareCategory","tTitle","tNotes","tDue","tAssignee"];
   const clinFields = ["aDate","aSummary","aConduct","aNext"];
 
@@ -229,9 +296,11 @@ function applyRolePermissions() {
     el.showNewPatientBtn.classList.remove("hidden");
     el.addAppointmentBtn.classList.remove("hidden");
     el.addTaskBtn.classList.remove("hidden");
+    el.editPatientBtn.classList.remove("hidden");
     el.auditTab.classList.remove("hidden");
     el.appointmentFormCard.classList.remove("hidden");
     el.taskFormCard.classList.remove("hidden");
+    el.protocolAdminSection.classList.remove("hidden");
     mgrFields.forEach(id => { document.getElementById(id).disabled = false; });
     clinFields.forEach(id => { document.getElementById(id).disabled = false; });
     [...el.rType.options].forEach(o => { o.disabled = false; });
@@ -242,18 +311,23 @@ function applyRolePermissions() {
   el.addTaskBtn.classList.add("hidden");
   el.auditTab.classList.add("hidden");
   el.taskFormCard.classList.add("hidden");
+  el.protocolAdminSection.classList.add("hidden");
   mgrFields.forEach(id => { document.getElementById(id).disabled = true; });
 
   if (isDoctor()) {
     el.addAppointmentBtn.classList.remove("hidden");
+    el.editPatientBtn.classList.remove("hidden");
     el.appointmentFormCard.classList.remove("hidden");
     clinFields.forEach(id => { document.getElementById(id).disabled = false; });
+    patientFields.forEach(id => { document.getElementById(id).disabled = false; });
+    taskFields.forEach(id => { document.getElementById(id).disabled = true; });
     [...el.rType.options].forEach(o => { o.disabled = o.value === "visit"; });
     if (el.rType.value === "visit") el.rType.value = "consultation";
     el.filterAcs.disabled = false;
     return;
   }
   // ACS
+  el.editPatientBtn.classList.add("hidden");
   el.addAppointmentBtn.classList.add("hidden");
   el.appointmentFormCard.classList.add("hidden");
   clinFields.forEach(id => { document.getElementById(id).disabled = true; });
@@ -374,6 +448,333 @@ function renderWorkspaceHome() {
         <span class="home-task-due">${t.dueDate || "Sem prazo"}</span>
       </div>`).join("");
   }
+
+  renderProtocolAdminList();
+  renderDashboardFilterOptions();
+  renderHomePatientTable();
+}
+
+function protocolStatusInfo(summary) {
+  if (!summary) {
+    return { key: "loading", label: "Carregando...", className: "status progress" };
+  }
+
+  const pendingTotal = Number(summary.pending?.visits || 0)
+    + Number(summary.pending?.consultations || 0)
+    + Number(summary.pending?.vaccines || 0);
+
+  const doneTotal = Number(summary.completed?.visits || 0)
+    + Number(summary.completed?.consultations || 0)
+    + Number(summary.completed?.vaccines || 0);
+
+  const targetTotal = Number(summary.targets?.visits || 0)
+    + Number(summary.targets?.consultations || 0)
+    + Number(summary.targets?.vaccines || 0);
+
+  if (pendingTotal <= 0) {
+    return { key: "ok", label: `Em dia (${doneTotal}/${targetTotal || doneTotal || 0})`, className: "status done" };
+  }
+
+  const completion = targetTotal > 0 ? doneTotal / targetTotal : 0;
+  if (completion < 0.4) {
+    return { key: "critical", label: `Atraso critico (${doneTotal}/${targetTotal || 0})`, className: "status alert" };
+  }
+
+  return { key: "attention", label: `Atraso leve (${doneTotal}/${targetTotal || 0})`, className: "status pending" };
+}
+
+function sortedPatientsForDashboard(list) {
+  const copy = [...list];
+  const [key, direction] = state.dashboardSort.split("_");
+  const dir = direction === "desc" ? -1 : 1;
+  copy.sort((a, b) => {
+    if (key === "category") return catLabel(a.careCategory).localeCompare(catLabel(b.careCategory)) * dir;
+    if (key === "microarea") return (a.microArea || "").localeCompare(b.microArea || "") * dir;
+    return (a.name || "").localeCompare(b.name || "") * dir;
+  });
+  return copy;
+}
+
+function getFilteredDashboardPatients() {
+  const query = state.dashboardQuery.trim().toLowerCase();
+  let list = state.patients.filter((p) => {
+    if (!query) return true;
+    const hay = [
+      p.name,
+      p.phone,
+      p.microArea,
+      catLabel(p.careCategory),
+      acsNameById(p.assignedAcsId)
+    ].join(" ").toLowerCase();
+    return hay.includes(query);
+  });
+
+  if (state.dashboardCategory) list = list.filter((p) => p.careCategory === state.dashboardCategory);
+  if (state.dashboardAcsId) list = list.filter((p) => p.assignedAcsId === state.dashboardAcsId);
+  if (state.dashboardProtocolStatus !== "all") {
+    list = list.filter((p) => protocolStatusInfo(state.protocolByPatient[p.id]).key === state.dashboardProtocolStatus);
+  }
+
+  return sortedPatientsForDashboard(list);
+}
+
+function renderHomePatientTable() {
+  if (!el.homePatientTableBody) return;
+  const list = getFilteredDashboardPatients();
+  const total = list.length;
+  const totalPages = Math.max(Math.ceil(total / state.dashboardPageSize), 1);
+  if (state.dashboardPage > totalPages) state.dashboardPage = totalPages;
+  const start = (state.dashboardPage - 1) * state.dashboardPageSize;
+  const pageItems = list.slice(start, start + state.dashboardPageSize);
+
+  if (!pageItems.length) {
+    el.homePatientTableBody.innerHTML = '<tr><td colspan="6"><div class="empty-msg">Nenhum paciente encontrado para esse filtro.</div></td></tr>';
+  } else {
+    el.homePatientTableBody.innerHTML = pageItems.map((p) => {
+      const summary = state.protocolByPatient[p.id];
+      const statusInfo = protocolStatusInfo(summary);
+      return `
+        <tr>
+          <td><strong>${p.name}</strong><div class="home-task-meta">${p.phone || "-"}</div></td>
+          <td>${catLabel(p.careCategory)}</td>
+          <td>${p.microArea || "-"}</td>
+          <td>${acsNameById(p.assignedAcsId)}</td>
+          <td><span class="${statusInfo.className}">${statusInfo.label}</span></td>
+          <td><button class="btn-secondary home-open-patient-btn" data-patient-id="${p.id}">Abrir</button></td>
+        </tr>`;
+    }).join("");
+  }
+
+  el.homePatientPageInfo.textContent = `Pagina ${state.dashboardPage} de ${totalPages} | ${total} paciente(s)`;
+  el.homePatientPrevBtn.disabled = state.dashboardPage <= 1;
+  el.homePatientNextBtn.disabled = state.dashboardPage >= totalPages;
+
+  document.querySelectorAll(".home-open-patient-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const patient = state.patients.find((p) => p.id === btn.dataset.patientId);
+      if (patient) await selectPatient(patient);
+    });
+  });
+}
+
+function exportDashboardPatientsCsv() {
+  const list = getFilteredDashboardPatients();
+  if (!list.length) {
+    showToast("Nada para exportar com os filtros atuais.", "error");
+    return;
+  }
+
+  const rows = list.map((p) => {
+    const info = protocolStatusInfo(state.protocolByPatient[p.id]);
+    return [
+      p.name || "",
+      p.phone || "",
+      p.microArea || "",
+      catLabel(p.careCategory),
+      acsNameById(p.assignedAcsId),
+      info.label
+    ];
+  });
+
+  const header = ["Paciente", "Telefone", "Microarea", "Categoria", "ACS", "Status Protocolo"];
+  const csvEscape = (value) => `"${String(value || "").replace(/"/g, '""')}"`;
+  const csv = [header, ...rows].map((r) => r.map(csvEscape).join(",")).join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `pacientes-dashboard-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("CSV exportado com sucesso.", "ok");
+}
+
+async function loadProtocolStatusesForDashboard() {
+  if (!state.patients.length) {
+    state.protocolByPatient = {};
+    renderHomePatientTable();
+    return;
+  }
+  const items = state.patients.slice(0, 120);
+  const entries = await Promise.all(items.map(async (p) => {
+    try {
+      const summary = await api(`/patients/${p.id}/protocol-summary`);
+      return [p.id, summary];
+    } catch {
+      return [p.id, null];
+    }
+  }));
+  state.protocolByPatient = Object.fromEntries(entries);
+  renderHomePatientTable();
+}
+
+function goHomeDashboard() {
+  state.selectedPatient = null;
+  renderPatients();
+  renderPatientHeader();
+}
+
+function openProfileModal() {
+  if (!state.user) return;
+  el.profileName.value = state.user.name || "";
+  el.profileEmail.value = state.user.email || "";
+  el.profilePassword.value = "";
+  const needsCouncil = ["doctor", "nurse_manager"].includes(state.user.role);
+  el.profileCouncilWrap.classList.toggle("hidden", !needsCouncil);
+  if (needsCouncil) {
+    el.profileCouncilNumber.value = state.user.councilNumber || "";
+    el.profileCouncilUf.value = state.user.councilUf || "";
+  }
+  el.profileModal.classList.remove("hidden");
+}
+
+function closeProfileModal() {
+  el.profileModal.classList.add("hidden");
+}
+
+function protocolFormPayload() {
+  return {
+    category: el.protocolCategoryInput.value.trim().toLowerCase(),
+    label: el.protocolLabelInput.value.trim(),
+    targets: {
+      visits: Number(el.protocolVisitsInput.value || 0),
+      consultations: Number(el.protocolConsultationsInput.value || 0),
+      vaccines: Number(el.protocolVaccinesTargetInput.value || 0)
+    },
+    vaccines: el.protocolVaccinesListInput.value
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean),
+    authority: el.protocolAuthorityInput.value.trim() || "Ministerio da Saude",
+    reference: el.protocolReferenceInput.value.trim(),
+    version: el.protocolVersionInput.value.trim() || "1.0"
+  };
+}
+
+function resetProtocolForm() {
+  state.editingProtocolCategory = null;
+  el.protocolCategoryInput.value = "";
+  el.protocolCategoryInput.disabled = false;
+  el.protocolLabelInput.value = "";
+  el.protocolVisitsInput.value = "0";
+  el.protocolConsultationsInput.value = "0";
+  el.protocolVaccinesTargetInput.value = "0";
+  el.protocolVaccinesListInput.value = "";
+  el.protocolAuthorityInput.value = "Ministerio da Saude";
+  el.protocolReferenceInput.value = "";
+  el.protocolVersionInput.value = "1.0";
+  el.createProtocolBtn.textContent = "Criar categoria de protocolo";
+}
+
+function renderProtocolAdminList() {
+  if (!el.protocolAdminList) return;
+  if (!isManager()) {
+    el.protocolAdminList.innerHTML = '<div class="empty-msg">Somente a enfermeira gestora administra protocolos.</div>';
+    return;
+  }
+
+  el.protocolAdminList.innerHTML = state.protocolTemplates
+    .map((t) => {
+      const isTeamOwned = Boolean(t.teamId);
+      return `
+      <div class="home-task-row">
+        <div>
+          <p class="home-task-title">${t.label} <span class="home-task-meta">(${t.category})${isTeamOwned ? "" : " [base]"}</span></p>
+          <p class="home-task-meta">Metas: ${t.targets.visits} visitas | ${t.targets.consultations} consultas | ${t.targets.vaccines} vacinas</p>
+          <p class="home-task-meta">Norma: ${t.authority || "Ministerio da Saude"} | Ref: ${t.reference || "-"} | Versao: ${t.version || "1.0"}</p>
+        </div>
+        <div class="inline-actions">
+          <button class="btn-secondary protocol-edit-btn" data-category="${t.category}">Editar</button>
+          ${isTeamOwned ? `<button class="btn-secondary protocol-delete-btn" data-category="${t.category}">Excluir</button>` : ""}
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  document.querySelectorAll(".protocol-edit-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const category = btn.dataset.category;
+      const template = state.protocolTemplates.find((t) => t.category === category);
+      if (!template) return;
+      state.editingProtocolCategory = category;
+      el.protocolCategoryInput.value = template.category;
+      el.protocolCategoryInput.disabled = true;
+      el.protocolLabelInput.value = template.label;
+      el.protocolVisitsInput.value = String(template.targets.visits || 0);
+      el.protocolConsultationsInput.value = String(template.targets.consultations || 0);
+      el.protocolVaccinesTargetInput.value = String(template.targets.vaccines || 0);
+      el.protocolVaccinesListInput.value = (template.vaccines || []).join(", ");
+      el.protocolAuthorityInput.value = template.authority || "Ministerio da Saude";
+      el.protocolReferenceInput.value = template.reference || "";
+      el.protocolVersionInput.value = template.version || "1.0";
+      el.createProtocolBtn.textContent = "Salvar alteracoes do protocolo";
+      showToast("Editando categoria de protocolo.", "ok");
+    });
+  });
+
+  document.querySelectorAll(".protocol-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const category = btn.dataset.category;
+      if (!category) return;
+      try {
+        const usage = await api(`/protocol/templates/${category}/usage`);
+        if (!usage.canDelete) {
+          showToast(`Acao bloqueada: ${usage.patientCount} pacientes e ${usage.recordsCount} registros usam esta categoria.`, "error", 5000);
+          return;
+        }
+
+        if (!confirm(`Excluir categoria '${category}'? Esta acao e critica e nao pode ser desfeita.`)) return;
+        await api(`/protocol/templates/${category}`, { method: "DELETE" });
+        showToast("Categoria excluida.", "ok");
+        resetProtocolForm();
+        await reloadTemplateData();
+      } catch (e) {
+        showToast(e.message, "error");
+      }
+    });
+  });
+}
+
+function renderDashboardFilterOptions() {
+  if (!el.homePatientCategoryFilter || !el.homePatientAcsFilter) return;
+
+  const selectedCategory = state.dashboardCategory;
+  const selectedAcs = state.dashboardAcsId;
+
+  el.homePatientCategoryFilter.innerHTML = '<option value="">Todas categorias</option>'
+    + state.protocolTemplates.map((t) => `<option value="${t.category}">${t.label}</option>`).join("");
+  el.homePatientCategoryFilter.value = selectedCategory;
+
+  const acsUsers = state.users.filter((u) => u.role === "acs");
+  el.homePatientAcsFilter.innerHTML = '<option value="">Todos ACS</option>'
+    + acsUsers.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
+  el.homePatientAcsFilter.value = selectedAcs;
+
+  if (el.homePatientProtocolStatusFilter) {
+    el.homePatientProtocolStatusFilter.value = state.dashboardProtocolStatus;
+  }
+}
+
+function openPatientEdit() {
+  if (!state.selectedPatient || !(isManager() || isDoctor())) return;
+  state.editingPatientId = state.selectedPatient.id;
+  const p = state.selectedPatient;
+  el.pName.value = p.name || "";
+  el.pPhone.value = p.phone || "";
+  el.pDoc.value = p.cnsCpf || "";
+  el.pAddress.value = p.address || "";
+  el.pMicroArea.value = p.microArea || "";
+  el.pAcs.value = p.assignedAcsId || "";
+  el.pCareCategory.value = p.careCategory || "general";
+  el.pComorb.value = p.comorbidities || "";
+  el.pMeds.value = p.medications || "";
+  el.pAllergies.value = p.allergies || "";
+  el.createPatientBtn.textContent = "Salvar alteracoes";
+  el.newPatientPanel.classList.remove("hidden");
+  el.patientPanel.classList.add("hidden");
 }
 
 // -- Tab switching -------------------------------------------------------------
@@ -420,6 +821,10 @@ function renderProtocolSummary() {
 
   const alerts = stats.filter(b=>b.pending>0).map(b=>`<span class="proto-alert warn">? ${b.pending} ${b.label.toLowerCase()}</span>`).join("");
   const allOk  = !alerts ? `<span class="proto-alert ok">? Protocolo em dia</span>` : "";
+  const critical = stats.filter((b) => b.pending > 0);
+  const criticalBox = critical.length
+    ? `<div class="protocol-critical-box">Falta concluir: ${critical.map((b) => `${b.pending} ${b.label.toLowerCase()}`).join(" | ")}</div>`
+    : `<div class="protocol-ok-box">Tudo em dia para esta categoria.</div>`;
 
   const vaccines = (s.vaccines?.recommended||[]).map(v=>`
     <li class="vaccine-item">
@@ -429,6 +834,7 @@ function renderProtocolSummary() {
 
   el.protocolSummary.innerHTML = `
     ${statsHtml}
+    ${criticalBox}
     <div class="proto-alerts">${alerts||allOk}</div>
     ${s.categoryLabel?`<div class="proto-section-label">Categoria ativa: ${s.categoryLabel}</div>`:""}
     <div class="proto-section-label">Checklist de vacinas</div>
@@ -557,10 +963,14 @@ function renderAuditLogs() {
 
 // -- Sidebar new patient toggle -------------------------------------------------
 el.showNewPatientBtn?.addEventListener("click", () => {
+  state.editingPatientId = null;
+  el.createPatientBtn.textContent = "Salvar paciente";
   el.patientPanel.classList.add("hidden");
   el.newPatientPanel.classList.remove("hidden");
 });
 el.cancelNewPatientBtn?.addEventListener("click", () => {
+  state.editingPatientId = null;
+  el.createPatientBtn.textContent = "Salvar paciente";
   el.newPatientPanel.classList.add("hidden");
   el.patientPanel.classList.remove("hidden");
 });
@@ -588,12 +998,19 @@ async function loadPatients() {
   if (state.filters.careCategory) p.set("careCategory", state.filters.careCategory);
   const q = p.toString();
   state.patients = await api(`/patients${q ? `?${q}` : ""}`);
-  if (state.selectedPatient && !state.patients.some(p => p.id === state.selectedPatient.id)) {
-    state.selectedPatient = null;
-    renderPatientHeader();
+  if (state.selectedPatient) {
+    const fresh = state.patients.find((pItem) => pItem.id === state.selectedPatient.id);
+    if (!fresh) {
+      state.selectedPatient = null;
+      renderPatientHeader();
+    } else {
+      state.selectedPatient = fresh;
+      renderPatientHeader();
+    }
   }
   renderPatients();
   renderWorkspaceHome();
+  await loadProtocolStatusesForDashboard();
 }
 async function loadGlobalTasks() {
   try {
@@ -617,6 +1034,7 @@ async function refreshSelectedPatientData() {
 }
 
 async function selectPatient(patient) {
+  state.editingPatientId = null;
   state.selectedPatient = patient;
   renderPatients();
   renderPatientHeader();
@@ -626,15 +1044,28 @@ async function selectPatient(patient) {
 
 // -- Bootstrap -----------------------------------------------------------------
 async function bootstrapAfterLogin() {
-  const [users, templates] = await Promise.all([api("/users"), api("/protocol/templates")]);
-  state.users = users; state.protocolTemplates = templates;
+  const [users] = await Promise.all([api("/users")]);
+  state.users = users;
   fillAcsSelect(el.tAssignee); fillAcsSelect(el.pAcs); fillAcsSelect(el.filterAcs, true);
-  fillCategorySelect(el.pCareCategory); fillCategorySelect(el.filterCategory, true);
+  await reloadTemplateData();
   el.authScreen.classList.add("hidden");
   el.appScreen.classList.remove("hidden");
   el.patientPanel.classList.remove("hidden");
   if (isAcs()) { el.filterAcs.value = state.user.id; state.filters.acsId = state.user.id; }
   applyRolePermissions();
+  resetProtocolForm();
+  renderProtocolAdminList();
+  state.dashboardQuery = "";
+  state.dashboardSort = "name_asc";
+  state.dashboardPage = 1;
+  state.dashboardCategory = "";
+  state.dashboardAcsId = "";
+  state.dashboardProtocolStatus = "all";
+  if (el.homePatientSearchInput) el.homePatientSearchInput.value = "";
+  if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
+  if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
+  if (el.homePatientAcsFilter) el.homePatientAcsFilter.value = "";
+  if (el.homePatientProtocolStatusFilter) el.homePatientProtocolStatusFilter.value = "all";
   await loadPatients();
   await loadGlobalTasks();
   renderWorkspaceHome();
@@ -684,6 +1115,12 @@ el.registerCouncilNumber.addEventListener("input", () => {
 el.registerCouncilUf.addEventListener("input", () => {
   el.registerCouncilUf.value = el.registerCouncilUf.value.replace(/[^a-zA-Z]/g,"").toUpperCase().slice(0,2);
 });
+el.profileCouncilNumber?.addEventListener("input", () => {
+  el.profileCouncilNumber.value = el.profileCouncilNumber.value.replace(/\D/g,"").slice(0,10);
+});
+el.profileCouncilUf?.addEventListener("input", () => {
+  el.profileCouncilUf.value = el.profileCouncilUf.value.replace(/[^a-zA-Z]/g,"").toUpperCase().slice(0,2);
+});
 
 el.applyFilterBtn.addEventListener("click", async () => {
   try { applyPatientFilterValues(); await loadPatients(); }
@@ -695,6 +1132,8 @@ el.quickNewPatientBtn?.addEventListener("click", () => {
     showToast("Somente enfermeira gestora pode cadastrar paciente.", "error");
     return;
   }
+  state.editingPatientId = null;
+  el.createPatientBtn.textContent = "Salvar paciente";
   el.patientPanel.classList.add("hidden");
   el.newPatientPanel.classList.remove("hidden");
 });
@@ -712,21 +1151,152 @@ el.quickSelectFirstPatientBtn?.addEventListener("click", async () => {
   await selectPatient(state.patients[0]);
 });
 
-el.createPatientBtn.addEventListener("click", async () => {
+el.homePatientSearchInput?.addEventListener("input", () => {
+  state.dashboardQuery = el.homePatientSearchInput.value || "";
+  state.dashboardPage = 1;
+  renderHomePatientTable();
+});
+
+el.homePatientSortSelect?.addEventListener("change", () => {
+  state.dashboardSort = el.homePatientSortSelect.value || "name_asc";
+  state.dashboardPage = 1;
+  renderHomePatientTable();
+});
+
+el.homePatientCategoryFilter?.addEventListener("change", () => {
+  state.dashboardCategory = el.homePatientCategoryFilter.value || "";
+  state.dashboardPage = 1;
+  renderHomePatientTable();
+});
+
+el.homePatientAcsFilter?.addEventListener("change", () => {
+  state.dashboardAcsId = el.homePatientAcsFilter.value || "";
+  state.dashboardPage = 1;
+  renderHomePatientTable();
+});
+
+el.homePatientProtocolStatusFilter?.addEventListener("change", () => {
+  state.dashboardProtocolStatus = el.homePatientProtocolStatusFilter.value || "all";
+  state.dashboardPage = 1;
+  renderHomePatientTable();
+});
+
+el.homePatientExportBtn?.addEventListener("click", exportDashboardPatientsCsv);
+
+el.homePatientPrevBtn?.addEventListener("click", () => {
+  state.dashboardPage = Math.max(1, state.dashboardPage - 1);
+  renderHomePatientTable();
+});
+
+el.homePatientNextBtn?.addEventListener("click", () => {
+  state.dashboardPage += 1;
+  renderHomePatientTable();
+});
+
+el.homeBtn?.addEventListener("click", goHomeDashboard);
+el.backToHomeBtn?.addEventListener("click", goHomeDashboard);
+el.editPatientBtn?.addEventListener("click", openPatientEdit);
+
+el.profileBtn?.addEventListener("click", openProfileModal);
+el.closeProfileBtn?.addEventListener("click", closeProfileModal);
+el.profileModal?.addEventListener("click", (e) => {
+  if (e.target === el.profileModal) closeProfileModal();
+});
+
+el.saveProfileBtn?.addEventListener("click", async () => {
+  try {
+    const payload = {
+      name: el.profileName.value.trim(),
+      email: el.profileEmail.value.trim()
+    };
+    if (el.profilePassword.value.trim()) payload.password = el.profilePassword.value.trim();
+    if (["doctor", "nurse_manager"].includes(state.user.role)) {
+      payload.councilNumber = el.profileCouncilNumber.value.trim();
+      payload.councilUf = el.profileCouncilUf.value.trim().toUpperCase();
+    }
+
+    const result = await api("/me", {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    });
+
+    state.user = result.user;
+    state.token = result.token;
+    updateSessionView();
+    showToast("Perfil atualizado com sucesso.", "ok");
+    closeProfileModal();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+});
+
+el.createProtocolBtn?.addEventListener("click", async () => {
   if (!isManager()) return;
   try {
-    await api("/patients", { method:"POST", body:JSON.stringify({
+    const payload = protocolFormPayload();
+    if (!payload.category || !payload.label) {
+      showToast("Preencha categoria e nome.", "error");
+      return;
+    }
+
+    if (state.editingProtocolCategory) {
+      await api(`/protocol/templates/${state.editingProtocolCategory}`, {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+      showToast("Protocolo atualizado.", "ok");
+    } else {
+      await api("/protocol/templates", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      showToast("Categoria de protocolo criada.", "ok");
+    }
+
+    resetProtocolForm();
+    await reloadTemplateData();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+});
+
+el.createPatientBtn.addEventListener("click", async () => {
+  try {
+    const editingId = state.editingPatientId;
+    const payload = {
       name:el.pName.value, phone:el.pPhone.value, cnsCpf:el.pDoc.value,
       address:el.pAddress.value, microArea:el.pMicroArea.value,
       careCategory:el.pCareCategory.value, assignedAcsId:el.pAcs.value,
       comorbidities:el.pComorb.value, medications:el.pMeds.value, allergies:el.pAllergies.value
-    })});
+    };
+
+    if (editingId) {
+      await api(`/patients/${editingId}`, { method: "PUT", body: JSON.stringify(payload) });
+      showToast("Paciente atualizado com sucesso!","ok");
+    } else {
+      if (!isManager()) {
+        showToast("Somente enfermeira gestora pode criar paciente.", "error");
+        return;
+      }
+      await api("/patients", { method:"POST", body:JSON.stringify(payload)});
+      showToast("Paciente cadastrado com sucesso!","ok");
+    }
+
     ["pName","pPhone","pDoc","pAddress","pMicroArea","pComorb","pMeds","pAllergies"].forEach(id=>{document.getElementById(id).value="";});
-    showToast("Paciente cadastrado com sucesso!","ok");
+    el.pAcs.value = "";
+    el.pCareCategory.value = "general";
+    state.editingPatientId = null;
+    el.createPatientBtn.textContent = "Salvar paciente";
     el.newPatientPanel.classList.add("hidden");
     el.patientPanel.classList.remove("hidden");
     await loadPatients();
     await loadGlobalTasks();
+    if (editingId) {
+      const updatedPatient = state.patients.find((p) => p.id === editingId);
+      if (updatedPatient) {
+        await selectPatient(updatedPatient);
+      }
+    }
   } catch(e) { showToast(e.message,"error"); }
 });
 

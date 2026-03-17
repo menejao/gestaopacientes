@@ -128,6 +128,7 @@
         </div>
         <div class="topbar-center" id="topbarPatient"></div>
         <div class="topbar-right">
+          <button id="homeBtn" class="btn-ghost hidden">Painel</button>
           <div class="topbar-user" id="topbarUser">
             <div class="user-avatar" id="userAvatar">?</div>
             <div class="user-info">
@@ -135,6 +136,7 @@
               <span id="userRole" class="user-role">-</span>
             </div>
           </div>
+          <button id="profileBtn" class="btn-ghost hidden">Meu perfil</button>
           <button id="logoutBtn" class="btn-ghost hidden">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l4-4-4-4M15 8H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Sair
@@ -260,6 +262,107 @@
                 <div id="priorityTaskList"></div>
               </article>
             </section>
+
+            <section class="panel-card">
+              <div class="panel-card-hd">Pacientes da equipe</div>
+              <div class="table-toolbar">
+                <input id="homePatientSearchInput" class="field-input" placeholder="Buscar por nome, telefone, microarea ou categoria"/>
+                <select id="homePatientSortSelect" class="field-select">
+                  <option value="name_asc">Nome (A-Z)</option>
+                  <option value="name_desc">Nome (Z-A)</option>
+                  <option value="category_asc">Categoria (A-Z)</option>
+                  <option value="microarea_asc">Microarea (A-Z)</option>
+                </select>
+              </div>
+              <div class="table-filters">
+                <select id="homePatientCategoryFilter" class="field-select">
+                  <option value="">Todas categorias</option>
+                </select>
+                <select id="homePatientAcsFilter" class="field-select">
+                  <option value="">Todos ACS</option>
+                </select>
+                <select id="homePatientProtocolStatusFilter" class="field-select">
+                  <option value="all">Todos status protocolo</option>
+                  <option value="ok">Em dia</option>
+                  <option value="attention">Atraso leve</option>
+                  <option value="critical">Atraso critico</option>
+                </select>
+                <button id="homePatientExportBtn" class="btn-secondary">Exportar CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table class="saas-table">
+                  <thead>
+                    <tr>
+                      <th>Paciente</th>
+                      <th>Categoria</th>
+                      <th>Microarea</th>
+                      <th>ACS</th>
+                      <th>Protocolo</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="homePatientTableBody"></tbody>
+                </table>
+              </div>
+              <div class="table-footer">
+                <span id="homePatientPageInfo" class="home-task-meta"></span>
+                <div class="inline-actions">
+                  <button id="homePatientPrevBtn" class="btn-secondary">Anterior</button>
+                  <button id="homePatientNextBtn" class="btn-secondary">Proximo</button>
+                </div>
+              </div>
+            </section>
+
+            <section id="protocolAdminSection" class="panel-card hidden">
+              <div class="panel-card-hd">Administracao de protocolos</div>
+              <div id="protocolAdminList"></div>
+              <div class="form-divider"></div>
+              <div class="field-row">
+                <div class="field-group">
+                  <label class="field-label">Categoria (chave)</label>
+                  <input id="protocolCategoryInput" class="field-input" placeholder="ex: hipertenso_alto_risco"/>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Nome exibicao</label>
+                  <input id="protocolLabelInput" class="field-input" placeholder="Ex: Hipertenso Alto Risco"/>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-group">
+                  <label class="field-label">Visitas alvo</label>
+                  <input id="protocolVisitsInput" type="number" min="0" max="99" class="field-input" value="0"/>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Consultas alvo</label>
+                  <input id="protocolConsultationsInput" type="number" min="0" max="99" class="field-input" value="0"/>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-group">
+                  <label class="field-label">Vacinas alvo</label>
+                  <input id="protocolVaccinesTargetInput" type="number" min="0" max="99" class="field-input" value="0"/>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Lista de vacinas (virgula)</label>
+                  <input id="protocolVaccinesListInput" class="field-input" placeholder="Influenza, COVID-19"/>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-group">
+                  <label class="field-label">Orgao normativo</label>
+                  <input id="protocolAuthorityInput" class="field-input" value="Ministerio da Saude"/>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Referencia normativa</label>
+                  <input id="protocolReferenceInput" class="field-input" placeholder="Ex: Caderno APS, Portaria, Nota Tecnica"/>
+                </div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Versao do protocolo</label>
+                <input id="protocolVersionInput" class="field-input" placeholder="Ex: 2026.1"/>
+              </div>
+              <button id="createProtocolBtn" class="btn-primary">Criar categoria de protocolo</button>
+            </section>
           </div>
 
           <!-- Patient view -->
@@ -274,7 +377,10 @@
                   <div id="selectedPatientMeta" class="patient-chips"></div>
                 </div>
               </div>
-              <div id="patientHeaderBadge" class="patient-hd-right"></div>
+              <div id="patientHeaderBadge" class="patient-hd-right">
+                <button id="backToHomeBtn" class="btn-secondary">Voltar ao painel</button>
+                <button id="editPatientBtn" class="btn-secondary hidden">Editar paciente</button>
+              </div>
             </div>
 
             <!-- Tabs -->
@@ -410,6 +516,26 @@
 
     <!-- TOAST -->
     <div id="toast" class="toast hidden"></div>
+
+    <!-- PROFILE MODAL -->
+    <div id="profileModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-hd">
+          <h3>Meu perfil</h3>
+          <button id="closeProfileBtn" class="icon-btn">X</button>
+        </div>
+        <div class="field-group"><label class="field-label">Nome</label><input id="profileName" class="field-input"/></div>
+        <div class="field-group"><label class="field-label">Email</label><input id="profileEmail" type="email" class="field-input"/></div>
+        <div class="field-group"><label class="field-label">Nova senha</label><input id="profilePassword" type="password" class="field-input" placeholder="Opcional"/></div>
+        <div id="profileCouncilWrap" class="hidden">
+          <div class="field-row">
+            <div class="field-group"><label class="field-label">Numero conselho</label><input id="profileCouncilNumber" class="field-input"/></div>
+            <div class="field-group"><label class="field-label">UF conselho</label><input id="profileCouncilUf" maxlength="2" class="field-input"/></div>
+          </div>
+        </div>
+        <button id="saveProfileBtn" class="btn-primary btn-block">Salvar perfil</button>
+      </div>
+    </div>
 
     <script src="./config.js"></script>
     <script src="./app.js"></script>

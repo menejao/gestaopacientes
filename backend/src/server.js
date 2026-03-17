@@ -8,7 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || "troque-esta-chave-em-producao";
 
-const CARE_PROTOCOLS = {
+const DEFAULT_CARE_PROTOCOLS = {
   general: {
     category: "general",
     label: "Geral",
@@ -46,6 +46,22 @@ const CARE_PROTOCOLS = {
     vaccines: ["Influenza", "COVID-19"]
   }
 };
+
+function buildDefaultProtocolTemplates() {
+  return Object.values(DEFAULT_CARE_PROTOCOLS).map((template) => ({
+    category: template.category,
+    label: template.label,
+    targets: {
+      visits: Number(template.targets?.visits || 0),
+      consultations: Number(template.targets?.consultations || 0),
+      vaccines: Number(template.targets?.vaccines || 0)
+    },
+    vaccines: Array.isArray(template.vaccines) ? template.vaccines : [],
+    authority: "Ministerio da Saude",
+    reference: "",
+    version: "1.0"
+  }));
+}
 
 const ALLOWED_SELF_REGISTER_ROLES = ["acs", "doctor", "nurse_manager"];
 const VALID_UF = new Set([
@@ -118,6 +134,7 @@ function ensureDbShape(db) {
   ensureArray(db, "messages");
   ensureArray(db, "auditLogs");
   ensureArray(db, "clinicalRecords");
+  ensureArray(db, "protocolTemplates");
 
   if (!db.teams.length) {
     const defaultTeamId = "team-default";
@@ -129,6 +146,17 @@ function ensureDbShape(db) {
     });
 
     db.users = db.users.map((u) => ({ ...u, teamId: u.teamId || defaultTeamId }));
+  }
+
+  if (!db.protocolTemplates.length) {
+    db.protocolTemplates = buildDefaultProtocolTemplates();
+  } else {
+    db.protocolTemplates = db.protocolTemplates.map((t) => ({
+      ...t,
+      authority: String(t.authority || "Ministerio da Saude"),
+      reference: String(t.reference || ""),
+      version: String(t.version || "1.0")
+    }));
   }
 }
 
@@ -210,10 +238,25 @@ function addAuditLog(db, user, action, entity, entityId, details = {}) {
   });
 }
 
-function normalizeCategory(value) {
+function getProtocolTemplateMap(db, teamId = "") {
+  ensureDbShape(db);
+  const map = {};
+  db.protocolTemplates
+    .filter((t) => !teamId || !t.teamId || t.teamId === teamId)
+    .forEach((t) => {
+    map[String(t.category)] = t;
+    });
+  if (!map.general) {
+    const fallback = buildDefaultProtocolTemplates().find((t) => t.category === "general");
+    if (fallback) map.general = fallback;
+  }
+  return map;
+}
+
+function normalizeCategory(value, templateMap = DEFAULT_CARE_PROTOCOLS) {
   if (!value) return "general";
   const next = String(value).trim();
-  return CARE_PROTOCOLS[next] ? next : "general";
+  return templateMap[next] ? next : "general";
 }
 
 function validateCouncilData(role, councilNumber, councilUf) {
@@ -399,6 +442,62 @@ async function verifyCouncilExternally(payload) {
   }
 }
 
+function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
+  const rawCategory = String(payload.category || fallbackCategory || "").trim().toLowerCase();
+  const category = rawCategory.replace(/[^a-z0-9_]/g, "_");
+  const label = String(payload.label || "").trim();
+  const targets = payload.targets && typeof payload.targets === "object" ? payload.targets : {};
+  const visits = Number(targets.visits);
+  const consultations = Number(targets.consultations);
+  const vaccinesTarget = Number(targets.vaccines);
+  const vaccines = Array.isArray(payload.vaccines) ? payload.vaccines : String(payload.vaccines || "").split(",");
+  const authority = String(payload.authority || "Ministerio da Saude").trim();
+  const reference = String(payload.reference || "").trim();
+  const version = String(payload.version || "").trim();
+
+  const cleanVaccines = [...new Set(vaccines
+    .map((v) => String(v || "").trim())
+    .filter(Boolean))];
+
+  if (!category || category.length < 2) {
+    return { ok: false, error: "category invalida (use letras, numeros e _)" };
+  }
+
+  if (!label) {
+    return { ok: false, error: "label e obrigatorio" };
+  }
+
+  const numbers = [
+    ["visits", visits],
+    ["consultations", consultations],
+    ["vaccines", vaccinesTarget]
+  ];
+
+  for (const [key, value] of numbers) {
+    if (!Number.isFinite(value) || value < 0 || value > 99) {
+      return { ok: false, error: `targets.${key} deve ser numero entre 0 e 99` };
+    }
+  }
+
+  return {
+    ok: true,
+    template: {
+      category,
+      label,
+      targets: {
+        visits: Math.floor(visits),
+        consultations: Math.floor(consultations),
+        vaccines: Math.floor(vaccinesTarget)
+      },
+      vaccines: cleanVaccines
+      ,
+      authority,
+      reference,
+      version: version || "1.0"
+    }
+  };
+}
+
 function canAccessPatient(user, patient) {
   if (!patient) return false;
   if (patient.teamId !== user.teamId) return false;
@@ -453,8 +552,9 @@ function buildPatientHistory(db, patientId) {
   return [...appointmentEvents, ...clinicalEvents].sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function buildProtocolSummary(patient, history) {
-  const template = CARE_PROTOCOLS[normalizeCategory(patient.careCategory)] || CARE_PROTOCOLS.general;
+function buildProtocolSummary(patient, history, templateMap) {
+  const normalizedCategory = normalizeCategory(patient.careCategory, templateMap);
+  const template = templateMap[normalizedCategory] || templateMap.general;
 
   const completed = {
     visits: history.filter((h) => h.type === "visit").length,
@@ -493,8 +593,10 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
-app.get("/protocol/templates", (_req, res) => {
-  res.json(Object.values(CARE_PROTOCOLS));
+app.get("/protocol/templates", requireAuth, async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  res.json(db.protocolTemplates.filter((t) => !t.teamId || t.teamId === req.user.teamId));
 });
 
 app.get("/teams/public", async (_req, res) => {
@@ -656,6 +758,238 @@ app.post("/auth/login", async (req, res) => {
 
 app.use(requireAuth);
 
+app.get("/me", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const user = db.users.find((u) => u.id === req.user.id);
+  if (!user) return res.status(404).json({ error: "Usuario nao encontrado" });
+  return res.json(sanitizeUser(user, db));
+});
+
+app.patch("/me", async (req, res) => {
+  const payload = req.body || {};
+
+  const result = await withDb(async (db) => {
+    ensureDbShape(db);
+    const index = db.users.findIndex((u) => u.id === req.user.id);
+    if (index < 0) return { error: { status: 404, message: "Usuario nao encontrado" } };
+
+    const current = db.users[index];
+    const next = { ...current };
+
+    if (payload.name !== undefined) {
+      const name = String(payload.name || "").trim();
+      if (!name) return { error: { status: 400, message: "Nome nao pode ficar vazio" } };
+      next.name = name;
+    }
+
+    if (payload.email !== undefined) {
+      const email = String(payload.email || "").trim().toLowerCase();
+      if (!email) return { error: { status: 400, message: "Email nao pode ficar vazio" } };
+      const exists = db.users.some((u) => u.id !== current.id && String(u.email).toLowerCase() === email);
+      if (exists) return { error: { status: 409, message: "Email ja em uso por outro usuario" } };
+      next.email = email;
+    }
+
+    if (payload.password !== undefined) {
+      const password = String(payload.password || "");
+      if (password.length < 6) {
+        return { error: { status: 400, message: "Senha deve ter ao menos 6 caracteres" } };
+      }
+      next.password = password;
+    }
+
+    const role = canonicalRole(current.role);
+    if (roleNeedsCouncil(role) && (payload.councilNumber !== undefined || payload.councilUf !== undefined)) {
+      const candidateNumber = payload.councilNumber !== undefined ? payload.councilNumber : current.councilNumber;
+      const candidateUf = payload.councilUf !== undefined ? payload.councilUf : current.councilUf;
+
+      const localCheck = validateCouncilData(role, candidateNumber, candidateUf);
+      if (!localCheck.ok) return { error: { status: 400, message: localCheck.message } };
+
+      const councilType = councilTypeForRole(role);
+      const duplicated = db.users.some((u) => {
+        if (u.id === current.id) return false;
+        return String(u.councilType || "").toUpperCase() === councilType
+          && String(u.councilNumber || "") === localCheck.councilNumber
+          && String(u.councilUf || "").toUpperCase() === localCheck.councilUf;
+      });
+
+      if (duplicated) {
+        return { error: { status: 409, message: `${councilType} ja cadastrado para outro usuario` } };
+      }
+
+      const external = await verifyCouncilExternally({
+        role,
+        councilType,
+        councilNumber: localCheck.councilNumber,
+        councilUf: localCheck.councilUf,
+        name: next.name,
+        email: next.email
+      });
+
+      if (!external.valid) {
+        return { error: { status: 400, message: external.error || "Conselho nao validado no provedor externo" } };
+      }
+
+      next.councilType = councilType;
+      next.councilNumber = localCheck.councilNumber;
+      next.councilUf = localCheck.councilUf;
+      next.councilVerification = {
+        checked: external.checked,
+        provider: external.provider,
+        status: external.status,
+        verifiedAt: new Date().toISOString()
+      };
+    }
+
+    next.updatedAt = new Date().toISOString();
+    db.users[index] = next;
+
+    addAuditLog(db, next, "user.profile_updated", "user", next.id, {
+      changedFields: Object.keys(payload || {})
+    });
+
+    const safeUser = sanitizeUser(next, db);
+    const token = createToken(next, db);
+    return { user: safeUser, token };
+  });
+
+  if (result.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.json(result);
+});
+
+app.get("/protocol/templates/:category/usage", requireManager, async (req, res) => {
+  const category = String(req.params.category || "").trim();
+  const db = await readDb();
+  ensureDbShape(db);
+  const template = db.protocolTemplates.find((t) => t.category === category && (!t.teamId || t.teamId === req.user.teamId));
+  if (!template) return res.status(404).json({ error: "Categoria de protocolo nao encontrada" });
+
+  const patientCount = db.patients.filter(
+    (p) => p.teamId === req.user.teamId && p.careCategory === category
+  ).length;
+
+  const recordsCount = db.clinicalRecords.filter((r) => {
+    if (String(r.protocolTag || "") !== category) return false;
+    const patient = db.patients.find((p) => p.id === r.patientId);
+    return patient?.teamId === req.user.teamId;
+  }).length;
+
+  return res.json({
+    category,
+    patientCount,
+    recordsCount,
+    canDelete: Boolean(template.teamId) && category !== "general" && patientCount === 0 && recordsCount === 0
+  });
+});
+
+app.post("/protocol/templates", requireManager, async (req, res) => {
+  const payloadCheck = sanitizeProtocolTemplatePayload(req.body || {});
+  if (!payloadCheck.ok) return res.status(400).json({ error: payloadCheck.error });
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const exists = db.protocolTemplates.some((t) => t.category === payloadCheck.template.category && t.teamId === req.user.teamId);
+    if (exists) return { error: "Categoria ja existe" };
+    const created = {
+      ...payloadCheck.template,
+      teamId: req.user.teamId
+    };
+    db.protocolTemplates.push(created);
+    addAuditLog(db, req.user, "protocol_template.created", "protocol_template", created.category, {
+      label: created.label
+    });
+    return created;
+  });
+
+  if (result.error) return res.status(409).json({ error: result.error });
+  return res.status(201).json(result);
+});
+
+app.put("/protocol/templates/:category", requireManager, async (req, res) => {
+  const category = String(req.params.category || "").trim();
+  const payloadCheck = sanitizeProtocolTemplatePayload(req.body || {}, category);
+  if (!payloadCheck.ok) return res.status(400).json({ error: payloadCheck.error });
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const index = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId);
+    if (index >= 0) {
+      const current = db.protocolTemplates[index];
+      const next = {
+        ...current,
+        ...payloadCheck.template,
+        category,
+        teamId: req.user.teamId
+      };
+      db.protocolTemplates[index] = next;
+      addAuditLog(db, req.user, "protocol_template.updated", "protocol_template", category, {
+        changedFields: Object.keys(req.body || {})
+      });
+      return next;
+    }
+
+    const globalTemplate = db.protocolTemplates.find((t) => t.category === category && !t.teamId);
+    if (!globalTemplate) return null;
+
+    const createdOverride = {
+      ...globalTemplate,
+      ...payloadCheck.template,
+      category,
+      teamId: req.user.teamId
+    };
+    db.protocolTemplates.push(createdOverride);
+    addAuditLog(db, req.user, "protocol_template.override_created", "protocol_template", category, {
+      changedFields: Object.keys(req.body || {})
+    });
+    return createdOverride;
+  });
+
+  if (!result) return res.status(404).json({ error: "Categoria de protocolo nao encontrada" });
+  return res.json(result);
+});
+
+app.delete("/protocol/templates/:category", requireManager, async (req, res) => {
+  const category = String(req.params.category || "").trim();
+  if (category === "general") {
+    return res.status(400).json({ error: "Categoria general nao pode ser excluida" });
+  }
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const index = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId);
+    if (index < 0) return { error: { status: 404, message: "Categoria de protocolo nao encontrada" } };
+
+    const patientCount = db.patients.filter(
+      (p) => p.teamId === req.user.teamId && p.careCategory === category
+    ).length;
+
+    const recordsCount = db.clinicalRecords.filter((r) => {
+      if (String(r.protocolTag || "") !== category) return false;
+      const patient = db.patients.find((p) => p.id === r.patientId);
+      return patient?.teamId === req.user.teamId;
+    }).length;
+
+    if (patientCount > 0 || recordsCount > 0) {
+      return {
+        error: {
+          status: 409,
+          message: "Categoria em uso. Realoque pacientes/registros antes de excluir.",
+          details: { patientCount, recordsCount }
+        }
+      };
+    }
+
+    db.protocolTemplates.splice(index, 1);
+    addAuditLog(db, req.user, "protocol_template.deleted", "protocol_template", category, {});
+    return { ok: true };
+  });
+
+  if (result.error) return res.status(result.error.status).json({ error: result.error.message, details: result.error.details || {} });
+  return res.json({ ok: true });
+});
+
 app.get("/users", async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
@@ -676,6 +1010,9 @@ app.get("/patients", async (req, res) => {
 
 app.post("/patients", requireManager, async (req, res) => {
   const payload = req.body;
+  const db = await readDb();
+  ensureDbShape(db);
+  const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
 
   if (!payload.name || !payload.phone) {
     return res.status(400).json({ error: "Nome e telefone sao obrigatorios" });
@@ -690,7 +1027,7 @@ app.post("/patients", requireManager, async (req, res) => {
     phone: String(payload.phone).trim(),
     microArea: payload.microArea ? String(payload.microArea).trim() : "",
     assignedAcsId: payload.assignedAcsId ? String(payload.assignedAcsId).trim() : "",
-    careCategory: normalizeCategory(payload.careCategory),
+    careCategory: normalizeCategory(payload.careCategory, protocolMap),
     comorbidities: payload.comorbidities ? String(payload.comorbidities).trim() : "",
     medications: payload.medications ? String(payload.medications).trim() : "",
     allergies: payload.allergies ? String(payload.allergies).trim() : "",
@@ -713,9 +1050,13 @@ app.post("/patients", requireManager, async (req, res) => {
   return res.status(201).json(patient);
 });
 
-app.put("/patients/:id", requireManager, async (req, res) => {
+app.put("/patients/:id", async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
+
+  if (!(isManager(req.user) || isDoctor(req.user))) {
+    return res.status(403).json({ error: "Sem permissao para editar paciente" });
+  }
 
   const updated = await withDb((db) => {
     ensureDbShape(db);
@@ -723,11 +1064,16 @@ app.put("/patients/:id", requireManager, async (req, res) => {
     if (index < 0) return null;
 
     const current = db.patients[index];
+    const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
+    const doctorAllowed = new Set(["phone", "address", "comorbidities", "medications", "allergies"]);
+    const safePayload = isDoctor(req.user)
+      ? Object.fromEntries(Object.entries(payload || {}).filter(([k]) => doctorAllowed.has(k)))
+      : payload;
     const next = {
       ...current,
-      ...payload,
+      ...safePayload,
       teamId: current.teamId,
-      careCategory: payload.careCategory ? normalizeCategory(payload.careCategory) : current.careCategory,
+      careCategory: safePayload?.careCategory ? normalizeCategory(safePayload.careCategory, protocolMap) : current.careCategory,
       id,
       updatedAt: new Date().toISOString(),
       updatedBy: req.user.id
@@ -735,7 +1081,7 @@ app.put("/patients/:id", requireManager, async (req, res) => {
 
     db.patients[index] = next;
     addAuditLog(db, req.user, "patient.updated", "patient", id, {
-      changedFields: Object.keys(payload)
+      changedFields: Object.keys(safePayload || {})
     });
 
     return next;
@@ -837,7 +1183,9 @@ app.post("/patients/:id/records", async (req, res) => {
     title: String(payload.title),
     details: payload.details ? String(payload.details) : "",
     date: String(payload.date),
-    protocolTag: payload.protocolTag ? String(payload.protocolTag) : normalizeCategory(lookup.patient.careCategory),
+    protocolTag: payload.protocolTag
+      ? normalizeCategory(String(payload.protocolTag), getProtocolTemplateMap(db, req.user.teamId))
+      : normalizeCategory(lookup.patient.careCategory, getProtocolTemplateMap(db, req.user.teamId)),
     metadata: payload.metadata && typeof payload.metadata === "object" ? payload.metadata : {},
     createdBy: req.user.id,
     createdAt: new Date().toISOString()
@@ -876,7 +1224,7 @@ app.get("/patients/:id/protocol-summary", async (req, res) => {
   if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
 
   const history = buildPatientHistory(db, id);
-  return res.json(buildProtocolSummary(lookup.patient, history));
+  return res.json(buildProtocolSummary(lookup.patient, history, getProtocolTemplateMap(db, req.user.teamId)));
 });
 
 app.get("/tasks", async (req, res) => {

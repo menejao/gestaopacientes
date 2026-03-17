@@ -719,6 +719,73 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   padding: .14rem .48rem;
 }
 
+.inline-actions {
+  display: flex;
+  gap: .35rem;
+}
+
+.form-divider {
+  height: 1px;
+  background: var(--border);
+  margin: .8rem 0;
+}
+
+.table-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: .6rem;
+  margin-bottom: .8rem;
+}
+
+.table-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: .6rem;
+  margin-bottom: .8rem;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.saas-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.saas-table th,
+.saas-table td {
+  text-align: left;
+  padding: .65rem .75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .82rem;
+}
+
+.saas-table thead th {
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.saas-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.table-footer {
+  margin-top: .7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  flex-wrap: wrap;
+}
+
 /* -- Patient header -- */
 .patient-hd {
   background: var(--surface);
@@ -731,6 +798,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   flex-shrink: 0;
 }
 .patient-hd-left { display: flex; align-items: center; gap: .9rem; }
+.patient-hd-right { display: flex; gap: .45rem; flex-wrap: wrap; justify-content: flex-end; }
 
 .patient-avatar {
   width: 42px;
@@ -981,6 +1049,28 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   align-items: start;
 }
 
+.protocol-critical-box {
+  background: var(--amber-50);
+  color: var(--amber-600);
+  border: 1px solid var(--amber-100);
+  border-radius: var(--r-md);
+  padding: .55rem .75rem;
+  margin-bottom: .75rem;
+  font-size: .8rem;
+  font-weight: 500;
+}
+
+.protocol-ok-box {
+  background: var(--green-50);
+  color: var(--green-600);
+  border: 1px solid var(--green-100);
+  border-radius: var(--r-md);
+  padding: .55rem .75rem;
+  margin-bottom: .75rem;
+  font-size: .8rem;
+  font-weight: 500;
+}
+
 /* ---------------------------------------------------------------
    PROTOCOL SUMMARY
 --------------------------------------------------------------- */
@@ -1131,6 +1221,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .status.pending  { background: var(--amber-50);  color: var(--amber-600);  border: 1px solid var(--amber-100); }
 .status.progress { background: var(--blue-50);   color: var(--blue-600);   border: 1px solid var(--blue-100); }
 .status.done     { background: var(--green-50);  color: var(--green-600);  border: 1px solid var(--green-100); }
+.status.alert    { background: var(--red-50);    color: var(--red-600);    border: 1px solid var(--red-100); }
 
 .status-row { display: flex; align-items: center; gap: .5rem; margin-top: .5rem; }
 .status-row label { font-size: .72rem; color: var(--text-muted); }
@@ -1280,6 +1371,41 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .toast.error  { background: var(--red-600); }
 
 /* ---------------------------------------------------------------
+   MODAL
+--------------------------------------------------------------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  background: rgba(8, 20, 32, .48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 1rem;
+}
+
+.modal-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .75rem;
+}
+
+.modal-hd h3 {
+  font-size: 1rem;
+}
+
+/* ---------------------------------------------------------------
    MISC
 --------------------------------------------------------------- */
 .hidden { display: none !important; }
@@ -1298,6 +1424,8 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   .home-kpi-grid { grid-template-columns: 1fr 1fr; }
   .home-columns { grid-template-columns: 1fr; }
   .home-hero { flex-direction: column; }
+  .table-toolbar { grid-template-columns: 1fr; }
+  .table-filters { grid-template-columns: 1fr 1fr; }
   .field-row { grid-template-columns: 1fr; }
 }
 
@@ -1310,6 +1438,8 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   .home-actions { width: 100%; }
   .home-actions .btn-primary,
   .home-actions .btn-secondary { width: 100%; justify-content: center; }
+  .patient-hd-right { width: 100%; justify-content: flex-start; }
+  .table-filters { grid-template-columns: 1fr; }
   .panel { padding: .85rem; }
 }
 
