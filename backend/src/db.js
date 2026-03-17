@@ -70,6 +70,7 @@ function buildDefaultState() {
     appointments: [],
     tasks: [],
     messages: [],
+    privacyRequests: [],
     auditLogs: [],
     clinicalRecords: []
   };

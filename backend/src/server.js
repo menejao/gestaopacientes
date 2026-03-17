@@ -116,6 +116,8 @@ function buildDefaultProtocolTemplates() {
 }
 
 const ALLOWED_SELF_REGISTER_ROLES = ["acs", "doctor", "nurse_manager"];
+const PRIVACY_REQUEST_TYPES = new Set(["access", "correction", "deletion"]);
+const PRIVACY_REQUEST_STATUS = new Set(["pending", "in_review", "approved", "rejected", "completed"]);
 const VALID_UF = new Set([
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
@@ -271,6 +273,7 @@ function ensureDbShape(db) {
   ensureArray(db, "auditLogs");
   ensureArray(db, "clinicalRecords");
   ensureArray(db, "protocolTemplates");
+  ensureArray(db, "privacyRequests");
 
   if (!db.teams.length) {
     const defaultTeamId = "team-default";
@@ -464,6 +467,208 @@ function addAuditLog(db, user, action, entity, entityId, details = {}) {
     details,
     createdAt: new Date().toISOString()
   });
+}
+
+function isAnonymizedPatient(patient) {
+  return Boolean(patient?.privacy?.anonymizedAt);
+}
+
+function getPatientActivityDate(db, patientId) {
+  const patient = db.patients.find((p) => p.id === patientId);
+  const dates = [
+    patient?.updatedAt,
+    patient?.createdAt,
+    ...db.appointments.filter((a) => a.patientId === patientId).map((a) => a.date || a.createdAt),
+    ...db.clinicalRecords.filter((r) => r.patientId === patientId).map((r) => r.date || r.createdAt),
+    ...db.messages.filter((m) => m.patientId === patientId).map((m) => m.createdAt),
+    ...db.tasks.filter((t) => t.patientId === patientId).map((t) => t.updatedAt || t.createdAt)
+  ].filter(Boolean);
+
+  if (!dates.length) return null;
+  dates.sort((a, b) => String(b).localeCompare(String(a)));
+  return dates[0];
+}
+
+function buildPatientAccessReport(db, patient) {
+  const patientId = patient.id;
+  const appointments = db.appointments.filter((a) => a.patientId === patientId);
+  const records = db.clinicalRecords.filter((r) => r.patientId === patientId);
+  const messages = db.messages.filter((m) => m.patientId === patientId);
+  const tasks = db.tasks.filter((t) => t.patientId === patientId);
+  const lastActivityAt = getPatientActivityDate(db, patientId);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    patient: {
+      id: patient.id,
+      name: patient.name,
+      cnsCpf: patient.cnsCpf || "",
+      phone: patient.phone || "",
+      address: patient.address || "",
+      careCategory: patient.careCategory || "general",
+      assignedAcsId: patient.assignedAcsId || "",
+      comorbidities: patient.comorbidities || "",
+      medications: patient.medications || "",
+      allergies: patient.allergies || ""
+    },
+    summary: {
+      appointments: appointments.length,
+      clinicalRecords: records.length,
+      messages: messages.length,
+      tasks: tasks.length,
+      lastActivityAt
+    },
+    appointments: appointments.map((a) => ({
+      id: a.id,
+      date: a.date,
+      summary: a.summary,
+      conduct: a.conduct || "",
+      nextStep: a.nextStep || "",
+      createdAt: a.createdAt
+    })),
+    clinicalRecords: records.map((r) => ({
+      id: r.id,
+      type: r.type,
+      date: r.date,
+      title: r.title,
+      details: r.details || "",
+      protocolTag: r.protocolTag || "",
+      createdAt: r.createdAt
+    })),
+    messages: messages.map((m) => ({
+      id: m.id,
+      text: m.text,
+      authorName: m.authorName,
+      createdAt: m.createdAt
+    })),
+    tasks: tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      notes: t.notes || "",
+      status: t.status,
+      dueDate: t.dueDate || "",
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt || t.createdAt
+    }))
+  };
+}
+
+function applyPatientCorrection(db, user, patient, corrections = {}) {
+  const allowed = new Set([
+    "name",
+    "phone",
+    "cnsCpf",
+    "address",
+    "microArea",
+    "assignedAcsId",
+    "careCategory",
+    "comorbidities",
+    "medications",
+    "allergies"
+  ]);
+  const next = { ...patient };
+  const changedFields = [];
+
+  for (const [key, value] of Object.entries(corrections || {})) {
+    if (!allowed.has(key)) continue;
+    if (key === "careCategory") {
+      const normalized = normalizeCategory(String(value || "").trim(), getProtocolTemplateMap(db, user.teamId));
+      if (next[key] !== normalized) {
+        next[key] = normalized;
+        changedFields.push(key);
+      }
+      continue;
+    }
+
+    const normalized = String(value || "").trim();
+    if (String(next[key] || "") !== normalized) {
+      next[key] = normalized;
+      changedFields.push(key);
+    }
+  }
+
+  next.updatedAt = new Date().toISOString();
+  next.updatedBy = user.id;
+  return { next, changedFields };
+}
+
+function anonymizePatientBundle(db, user, patient, reason = "", requestId = "") {
+  const now = new Date().toISOString();
+  const prefix = String(patient.id || "").slice(0, 8);
+  const anonymizedName = `Paciente Anonimizado ${prefix}`;
+  const idxPatient = db.patients.findIndex((p) => p.id === patient.id);
+  if (idxPatient < 0) return { changed: false, stats: {} };
+
+  db.patients[idxPatient] = {
+    ...db.patients[idxPatient],
+    name: anonymizedName,
+    cnsCpf: "",
+    phone: "",
+    address: "",
+    microArea: "",
+    assignedAcsId: "",
+    comorbidities: "",
+    medications: "",
+    allergies: "",
+    updatedAt: now,
+    updatedBy: user.id,
+    privacy: {
+      anonymizedAt: now,
+      anonymizedBy: user.id,
+      reason: String(reason || "").slice(0, 300),
+      requestId: requestId || ""
+    }
+  };
+
+  let appointments = 0;
+  for (const item of db.appointments) {
+    if (item.patientId !== patient.id) continue;
+    item.summary = "[ANONIMIZADO]";
+    item.conduct = "";
+    item.nextStep = "";
+    item.updatedAt = now;
+    appointments += 1;
+  }
+
+  let clinicalRecords = 0;
+  for (const item of db.clinicalRecords) {
+    if (item.patientId !== patient.id) continue;
+    item.title = "[ANONIMIZADO]";
+    item.details = "";
+    item.updatedAt = now;
+    clinicalRecords += 1;
+  }
+
+  let messages = 0;
+  for (const item of db.messages) {
+    if (item.patientId !== patient.id) continue;
+    item.text = "[ANONIMIZADO]";
+    item.updatedAt = now;
+    messages += 1;
+  }
+
+  let tasks = 0;
+  for (const item of db.tasks) {
+    if (item.patientId !== patient.id) continue;
+    item.title = "[ANONIMIZADO]";
+    item.notes = "";
+    item.updatedAt = now;
+    tasks += 1;
+  }
+
+  addAuditLog(db, user, "privacy.patient_anonymized", "patient", patient.id, {
+    reason: String(reason || "").slice(0, 300),
+    requestId: requestId || "",
+    appointments,
+    clinicalRecords,
+    messages,
+    tasks
+  });
+
+  return {
+    changed: true,
+    stats: { appointments, clinicalRecords, messages, tasks }
+  };
 }
 
 function getProtocolTemplateMap(db, teamId = "") {
@@ -1787,6 +1992,299 @@ app.get("/audit-logs", requireManager, async (req, res) => {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return res.json(logs.slice(0, 200));
+});
+
+app.get("/privacy/requests", requireManager, async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const status = String(req.query.status || "").trim();
+  const type = String(req.query.type || "").trim();
+  const patientId = String(req.query.patientId || "").trim();
+
+  const items = db.privacyRequests
+    .filter((item) => item.teamId === req.user.teamId)
+    .filter((item) => !status || item.status === status)
+    .filter((item) => !type || item.type === type)
+    .filter((item) => !patientId || item.patientId === patientId)
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+
+  return res.json(items.slice(0, 300));
+});
+
+app.post("/privacy/requests", requireManager, async (req, res) => {
+  const payload = req.body || {};
+  const patientId = String(payload.patientId || "").trim();
+  const type = String(payload.type || "").trim().toLowerCase();
+  const notes = String(payload.notes || "").trim();
+  const correctionData = payload.correctionData && typeof payload.correctionData === "object"
+    ? payload.correctionData
+    : {};
+
+  if (!patientId || !PRIVACY_REQUEST_TYPES.has(type)) {
+    return res.status(400).json({ error: "patientId e type (access|correction|deletion) sao obrigatorios" });
+  }
+
+  if (type === "correction" && !Object.keys(correctionData).length) {
+    return res.status(400).json({ error: "correctionData e obrigatorio para solicitacao de correcao" });
+  }
+
+  const db = await readDb();
+  ensureDbShape(db);
+  const lookup = getPatientOrError(db, req.user, patientId);
+  if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
+
+  const created = await withDb((mutableDb) => {
+    ensureDbShape(mutableDb);
+    const requestItem = {
+      id: uuidv4(),
+      teamId: req.user.teamId,
+      patientId,
+      type,
+      status: "pending",
+      notes,
+      correctionData: type === "correction" ? correctionData : {},
+      createdBy: req.user.id,
+      createdByName: req.user.name,
+      createdAt: new Date().toISOString(),
+      decidedAt: "",
+      decidedBy: "",
+      completedAt: "",
+      result: {}
+    };
+    mutableDb.privacyRequests.push(requestItem);
+    addAuditLog(mutableDb, req.user, "privacy.request_created", "privacy_request", requestItem.id, {
+      patientId,
+      type
+    });
+    return requestItem;
+  });
+
+  return res.status(201).json(created);
+});
+
+app.patch("/privacy/requests/:id", requireManager, async (req, res) => {
+  const id = String(req.params.id || "").trim();
+  const payload = req.body || {};
+  const nextStatus = payload.status !== undefined ? String(payload.status || "").trim().toLowerCase() : "";
+  const notes = payload.notes !== undefined ? String(payload.notes || "").trim() : undefined;
+  const correctionData = payload.correctionData && typeof payload.correctionData === "object"
+    ? payload.correctionData
+    : undefined;
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const index = db.privacyRequests.findIndex((item) => item.id === id && item.teamId === req.user.teamId);
+    if (index < 0) return null;
+    const current = db.privacyRequests[index];
+    const next = { ...current };
+
+    if (nextStatus) {
+      if (!PRIVACY_REQUEST_STATUS.has(nextStatus)) {
+        return "invalid_status";
+      }
+      if (nextStatus === "completed") {
+        return "manual_completed_not_allowed";
+      }
+      next.status = nextStatus;
+      next.decidedAt = new Date().toISOString();
+      next.decidedBy = req.user.id;
+    }
+
+    if (notes !== undefined) next.notes = notes;
+    if (correctionData !== undefined && next.type === "correction") next.correctionData = correctionData;
+
+    next.updatedAt = new Date().toISOString();
+    next.updatedBy = req.user.id;
+    db.privacyRequests[index] = next;
+
+    addAuditLog(db, req.user, "privacy.request_updated", "privacy_request", id, {
+      changedFields: Object.keys(payload || {})
+    });
+
+    return next;
+  });
+
+  if (result === "invalid_status") return res.status(400).json({ error: "status invalido" });
+  if (result === "manual_completed_not_allowed") return res.status(400).json({ error: "Use /privacy/requests/:id/execute para concluir a solicitacao" });
+  if (!result) return res.status(404).json({ error: "Solicitacao nao encontrada" });
+  return res.json(result);
+});
+
+app.post("/privacy/requests/:id/execute", requireManager, async (req, res) => {
+  const id = String(req.params.id || "").trim();
+  const payload = req.body || {};
+
+  const outcome = await withDb((db) => {
+    ensureDbShape(db);
+    const reqIndex = db.privacyRequests.findIndex((item) => item.id === id && item.teamId === req.user.teamId);
+    if (reqIndex < 0) return { error: { status: 404, message: "Solicitacao nao encontrada" } };
+
+    const requestItem = db.privacyRequests[reqIndex];
+    if (requestItem.status === "completed") {
+      return { error: { status: 409, message: "Solicitacao ja concluida" } };
+    }
+    if (requestItem.status === "rejected") {
+      return { error: { status: 409, message: "Solicitacao rejeitada. Nao pode ser executada." } };
+    }
+
+    const patient = db.patients.find((p) => p.id === requestItem.patientId && p.teamId === req.user.teamId);
+    if (!patient) return { error: { status: 404, message: "Paciente da solicitacao nao encontrado" } };
+
+    let result = {};
+    if (requestItem.type === "access") {
+      const report = buildPatientAccessReport(db, patient);
+      result = {
+        reportSummary: report.summary,
+        generatedAt: report.generatedAt
+      };
+      requestItem.result = result;
+      requestItem.status = "completed";
+      requestItem.completedAt = new Date().toISOString();
+      requestItem.decidedAt = new Date().toISOString();
+      requestItem.decidedBy = req.user.id;
+      requestItem.executedBy = req.user.id;
+
+      addAuditLog(db, req.user, "privacy.request_executed_access", "privacy_request", requestItem.id, {
+        patientId: patient.id
+      });
+      db.privacyRequests[reqIndex] = requestItem;
+      return { request: requestItem, report };
+    }
+
+    if (requestItem.type === "correction") {
+      const data = payload.correctionData && typeof payload.correctionData === "object"
+        ? payload.correctionData
+        : requestItem.correctionData || {};
+      const correction = applyPatientCorrection(db, req.user, patient, data);
+      const patientIndex = db.patients.findIndex((p) => p.id === patient.id);
+      if (patientIndex >= 0) db.patients[patientIndex] = correction.next;
+
+      result = { changedFields: correction.changedFields };
+      requestItem.result = result;
+      requestItem.status = "completed";
+      requestItem.completedAt = new Date().toISOString();
+      requestItem.decidedAt = new Date().toISOString();
+      requestItem.decidedBy = req.user.id;
+      requestItem.executedBy = req.user.id;
+      db.privacyRequests[reqIndex] = requestItem;
+
+      addAuditLog(db, req.user, "privacy.request_executed_correction", "privacy_request", requestItem.id, {
+        patientId: patient.id,
+        changedFields: correction.changedFields
+      });
+      return { request: requestItem, patient: correction.next };
+    }
+
+    if (requestItem.type === "deletion") {
+      if (isAnonymizedPatient(patient)) {
+        return { error: { status: 409, message: "Paciente ja anonimizado anteriormente" } };
+      }
+      const reason = String(payload.reason || requestItem.notes || "").trim();
+      const anonymize = anonymizePatientBundle(db, req.user, patient, reason, requestItem.id);
+
+      result = { anonymized: anonymize.changed, stats: anonymize.stats };
+      requestItem.result = result;
+      requestItem.status = "completed";
+      requestItem.completedAt = new Date().toISOString();
+      requestItem.decidedAt = new Date().toISOString();
+      requestItem.decidedBy = req.user.id;
+      requestItem.executedBy = req.user.id;
+      db.privacyRequests[reqIndex] = requestItem;
+
+      addAuditLog(db, req.user, "privacy.request_executed_deletion", "privacy_request", requestItem.id, {
+        patientId: patient.id,
+        stats: anonymize.stats
+      });
+      return { request: requestItem };
+    }
+
+    return { error: { status: 400, message: "Tipo de solicitacao nao suportado" } };
+  });
+
+  if (outcome.error) return res.status(outcome.error.status).json({ error: outcome.error.message });
+  return res.json(outcome);
+});
+
+app.post("/privacy/retention/anonymize", requireManager, async (req, res) => {
+  const payload = req.body || {};
+  const olderThanDays = Number(payload.olderThanDays || 365 * 5);
+  const dryRun = Boolean(payload.dryRun);
+
+  if (!Number.isFinite(olderThanDays) || olderThanDays < 30) {
+    return res.status(400).json({ error: "olderThanDays deve ser numero >= 30" });
+  }
+
+  const cutoff = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
+  const cutoffIso = new Date(cutoff).toISOString();
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const candidates = db.patients.filter((patient) => {
+      if (patient.teamId !== req.user.teamId) return false;
+      if (isAnonymizedPatient(patient)) return false;
+      const activity = getPatientActivityDate(db, patient.id) || patient.updatedAt || patient.createdAt;
+      if (!activity) return false;
+      return String(activity) < cutoffIso;
+    });
+
+    const sample = candidates.slice(0, 20).map((p) => ({
+      id: p.id,
+      name: p.name,
+      lastActivityAt: getPatientActivityDate(db, p.id) || p.updatedAt || p.createdAt
+    }));
+
+    if (dryRun) {
+      return {
+        dryRun: true,
+        cutoffIso,
+        candidateCount: candidates.length,
+        sample
+      };
+    }
+
+    let anonymizedCount = 0;
+    const stats = {
+      appointments: 0,
+      clinicalRecords: 0,
+      messages: 0,
+      tasks: 0
+    };
+
+    for (const patient of candidates) {
+      const output = anonymizePatientBundle(
+        db,
+        req.user,
+        patient,
+        `Retencao automatica: sem atividade desde antes de ${cutoffIso}`,
+        ""
+      );
+      if (!output.changed) continue;
+      anonymizedCount += 1;
+      stats.appointments += output.stats.appointments || 0;
+      stats.clinicalRecords += output.stats.clinicalRecords || 0;
+      stats.messages += output.stats.messages || 0;
+      stats.tasks += output.stats.tasks || 0;
+    }
+
+    addAuditLog(db, req.user, "privacy.retention_anonymize_run", "privacy_retention", req.user.teamId, {
+      cutoffIso,
+      olderThanDays,
+      candidates: candidates.length,
+      anonymizedCount,
+      stats
+    });
+
+    return {
+      dryRun: false,
+      cutoffIso,
+      candidateCount: candidates.length,
+      anonymizedCount,
+      stats,
+      sample
+    };
+  });
+
+  return res.json(result);
 });
 
 

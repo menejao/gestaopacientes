@@ -165,6 +165,11 @@ Arquivos de apoio ja prontos:
 - `GET/POST/PATCH /tasks`
 - `GET/POST /patients/:id/messages`
 - `GET /audit-logs` (somente enfermeira)
+- `GET /privacy/requests` (somente enfermeira)
+- `POST /privacy/requests` (somente enfermeira)
+- `PATCH /privacy/requests/:id` (somente enfermeira)
+- `POST /privacy/requests/:id/execute` (somente enfermeira)
+- `POST /privacy/retention/anonymize` (somente enfermeira)
 - `GET /ai/status`
 - `POST /ai/patients/:id/summary`
 - `POST /ai/patients/:id/protocol-highlights`
