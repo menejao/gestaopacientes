@@ -15,6 +15,49 @@ const pool = DATABASE_URL
 
 let initialized = false;
 
+function buildDefaultState() {
+  const now = new Date().toISOString();
+  return {
+    teams: [
+      {
+        id: "team-ana",
+        name: "Equipe Enfermeira Ana",
+        managerUserId: "u1",
+        createdAt: now
+      }
+    ],
+    users: [
+      {
+        id: "u1",
+        name: "Enfermeira Ana",
+        role: "nurse_manager",
+        email: "ana@clinica.local",
+        password: "123456",
+        teamId: "team-ana",
+        councilType: "COREN",
+        councilNumber: "123456",
+        councilUf: "SP",
+        createdAt: now
+      },
+      {
+        id: "u2",
+        name: "ACS Carlos",
+        role: "acs",
+        email: "carlos@clinica.local",
+        password: "123456",
+        teamId: "team-ana",
+        createdAt: now
+      }
+    ],
+    patients: [],
+    appointments: [],
+    tasks: [],
+    messages: [],
+    auditLogs: [],
+    clinicalRecords: []
+  };
+}
+
 async function readDbFromFile() {
   const raw = await fs.readFile(DB_PATH, "utf-8");
   return JSON.parse(raw);
@@ -39,7 +82,7 @@ async function ensurePostgresState(client) {
       VALUES (1, $1::jsonb)
       ON CONFLICT (id) DO NOTHING
     `,
-    [JSON.stringify({})]
+    [JSON.stringify(buildDefaultState())]
   );
 }
 
@@ -61,7 +104,19 @@ async function initialize() {
 async function readDbFromPostgres() {
   await initialize();
   const result = await pool.query("SELECT data FROM app_state WHERE id = 1");
-  return result.rows[0]?.data || {};
+  const data = result.rows[0]?.data || {};
+
+  // Self-heal previously empty state created by earlier deployments.
+  if (!Array.isArray(data.users) || data.users.length === 0) {
+    const seeded = buildDefaultState();
+    await pool.query(
+      "UPDATE app_state SET data = $1::jsonb, updated_at = NOW() WHERE id = 1",
+      [JSON.stringify(seeded)]
+    );
+    return seeded;
+  }
+
+  return data;
 }
 
 async function readDb() {
