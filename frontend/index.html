@@ -3,370 +3,369 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Saúde+ | Gestão de Pacientes</title>
+    <title>SaúdeUBS — Gestão de Pacientes</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
 
-    <!-- HEADER -->
-    <header id="appHeader">
-      <div class="header-brand">
-        <div class="brand-icon">＋</div>
-        <div>
-          <span class="brand-name">Saúde<strong>+</strong></span>
-          <span class="brand-sub">Gestão de Pacientes · ACS</span>
+    <!-- ═══════════════════════════════ LOGIN ═══════════════════════════════ -->
+    <div id="authScreen" class="auth-screen">
+      <div class="auth-left">
+        <div class="auth-brand">
+          <div class="brand-mark">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect width="28" height="28" rx="6" fill="white" fill-opacity="0.15"/>
+              <path d="M14 6v16M6 14h16" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="brand-name">SaúdeUBS</span>
+        </div>
+        <div class="auth-hero">
+          <h1>Gestão clínica<br>para atenção básica</h1>
+          <p>Prontuários, protocolos e comunicação<br>entre enfermagem e ACS.</p>
+        </div>
+        <div class="auth-stats">
+          <div class="auth-stat"><span>Protocolo</span><strong>Integrado</strong></div>
+          <div class="auth-stat-div"></div>
+          <div class="auth-stat"><span>Histórico</span><strong>Completo</strong></div>
+          <div class="auth-stat-div"></div>
+          <div class="auth-stat"><span>Equipe</span><strong>Conectada</strong></div>
         </div>
       </div>
-      <div id="sessionInfo" class="session-info">
-        <span class="session-dot"></span>
-        <span id="sessionText">Não autenticado</span>
-        <button id="logoutBtn" class="btn-logout hidden">Sair</button>
-      </div>
-    </header>
 
-    <main id="mainContent">
-
-      <!-- ===================== LOGIN SCREEN ===================== -->
-      <div id="authScreen" class="auth-screen">
+      <div class="auth-right">
         <div class="auth-card">
-          <div class="auth-header">
-            <div class="auth-icon">＋</div>
-            <h1>Saúde<strong>+</strong></h1>
-            <p>Plataforma de Gestão em Atenção Básica</p>
-          </div>
-
-          <!-- Tabs -->
           <div class="auth-tabs">
             <button class="auth-tab active" data-tab="login">Entrar</button>
             <button class="auth-tab" data-tab="register">Novo cadastro</button>
           </div>
 
-          <!-- Login Tab -->
+          <!-- LOGIN -->
           <div id="loginTab" class="auth-form">
-            <div class="form-group">
-              <label for="loginEmail">E-mail</label>
-              <input id="loginEmail" type="email" placeholder="ana@clinica.local" autocomplete="email" />
+            <div class="field-group">
+              <label class="field-label">E-mail institucional</label>
+              <input id="loginEmail" type="email" class="field-input" placeholder="usuario@unidade.local" autocomplete="email"/>
             </div>
-            <div class="form-group">
-              <label for="loginPassword">Senha</label>
-              <div class="input-with-toggle">
-                <input id="loginPassword" type="password" placeholder="••••••" autocomplete="current-password" />
-                <button type="button" class="toggle-pass" tabindex="-1">👁</button>
+            <div class="field-group">
+              <label class="field-label">Senha</label>
+              <div class="field-input-wrap">
+                <input id="loginPassword" type="password" class="field-input" placeholder="••••••••" autocomplete="current-password"/>
+                <button type="button" class="field-eye" id="togglePass">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/></svg>
+                </button>
               </div>
             </div>
-            <button id="loginBtn" class="btn-primary btn-full">
-              <span class="btn-label">Entrar</span>
-              <span class="btn-spinner hidden"></span>
+            <button id="loginBtn" class="btn-primary btn-block">
+              <span class="btn-text">Acessar sistema</span>
+              <span class="btn-spin hidden"></span>
             </button>
-            <p class="auth-hint">Demo: <code>ana@clinica.local</code> / <code>123456</code></p>
+            <p class="auth-demo">Demo: <code>ana@clinica.local</code> / <code>123456</code></p>
           </div>
 
-          <!-- Register Tab -->
+          <!-- REGISTER -->
           <div id="registerTab" class="auth-form hidden">
-            <div class="form-group">
-              <label for="registerName">Nome completo</label>
-              <input id="registerName" placeholder="Ex: Maria da Silva" />
+            <div class="field-group">
+              <label class="field-label">Nome completo</label>
+              <input id="registerName" class="field-input" placeholder="Ex: Maria da Silva"/>
             </div>
-            <div class="form-group">
-              <label for="registerEmail">E-mail</label>
-              <input id="registerEmail" type="email" placeholder="voce@unidade.local" />
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label">E-mail</label>
+                <input id="registerEmail" type="email" class="field-input" placeholder="voce@unidade.local"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Senha</label>
+                <input id="registerPassword" type="password" class="field-input" placeholder="Mín. 6 caracteres"/>
+              </div>
             </div>
-            <div class="form-group">
-              <label for="registerPassword">Senha</label>
-              <input id="registerPassword" type="password" placeholder="Mínimo 6 caracteres" />
-            </div>
-            <div class="form-group">
-              <label for="registerRole">Perfil</label>
-              <select id="registerRole">
-                <option value="acs">ACS</option>
+            <div class="field-group">
+              <label class="field-label">Perfil</label>
+              <select id="registerRole" class="field-select">
+                <option value="acs">Agente Comunitário de Saúde</option>
                 <option value="doctor">Médico(a)</option>
                 <option value="nurse_manager">Enfermeiro(a) Gestor(a)</option>
               </select>
             </div>
-            <div id="registerTeamWrap" class="form-group">
-              <label for="registerTeam">Equipe</label>
-              <select id="registerTeam"></select>
+            <div id="registerTeamWrap" class="field-group">
+              <label class="field-label">Equipe</label>
+              <select id="registerTeam" class="field-select"></select>
             </div>
-            <div id="registerTeamNameWrap" class="form-group hidden">
-              <label for="registerTeamName">Nome da equipe</label>
-              <input id="registerTeamName" placeholder="Ex: Equipe Enfermeira Maria" />
+            <div id="registerTeamNameWrap" class="field-group hidden">
+              <label class="field-label">Nome da equipe</label>
+              <input id="registerTeamName" class="field-input" placeholder="Ex: Equipe Norte"/>
             </div>
-            <div id="registerCouncilNumberWrap" class="form-group hidden">
-              <label for="registerCouncilNumber">Número do conselho</label>
-              <input id="registerCouncilNumber" placeholder="Somente números" inputmode="numeric" />
+            <div id="registerCouncilNumberWrap" class="field-group hidden">
+              <label class="field-label" id="councilNumLabel">Número do conselho</label>
+              <input id="registerCouncilNumber" class="field-input" placeholder="Somente números" inputmode="numeric"/>
             </div>
-            <div id="registerCouncilUfWrap" class="form-group hidden">
-              <label for="registerCouncilUf">UF do conselho</label>
-              <input id="registerCouncilUf" placeholder="Ex: SP" maxlength="2" />
+            <div id="registerCouncilUfWrap" class="field-group hidden">
+              <label class="field-label">UF do conselho</label>
+              <input id="registerCouncilUf" class="field-input" placeholder="Ex: SP" maxlength="2"/>
             </div>
-            <button id="registerBtn" class="btn-primary btn-full">
-              <span class="btn-label">Criar cadastro</span>
-              <span class="btn-spinner hidden"></span>
+            <button id="registerBtn" class="btn-primary btn-block">
+              <span class="btn-text">Criar cadastro</span>
+              <span class="btn-spin hidden"></span>
             </button>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- ===================== APP SCREEN ===================== -->
-      <div id="appScreen" class="app-layout hidden">
+    <!-- ═══════════════════════════════ APP ════════════════════════════════ -->
+    <div id="appScreen" class="app hidden">
 
-        <!-- LEFT SIDEBAR -->
-        <aside class="sidebar" id="sidebar">
-
-          <!-- New Patient -->
-          <div id="newPatientPanel" class="hidden">
-            <div class="sidebar-section-header">
-              <h3>Novo Paciente</h3>
-              <button id="cancelNewPatientBtn" class="btn-icon" title="Cancelar">✕</button>
+      <!-- TOP BAR -->
+      <header class="topbar">
+        <div class="topbar-brand">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect width="20" height="20" rx="4" fill="currentColor" fill-opacity="0.2"/>
+            <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>SaúdeUBS</span>
+        </div>
+        <div class="topbar-center" id="topbarPatient"></div>
+        <div class="topbar-right">
+          <div class="topbar-user" id="topbarUser">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <div class="user-info">
+              <span id="userName">—</span>
+              <span id="userRole" class="user-role">—</span>
             </div>
-            <div class="form-group">
-              <label>Nome</label>
-              <input id="pName" placeholder="Nome completo" />
-            </div>
-            <div class="form-group">
-              <label>Telefone</label>
-              <input id="pPhone" placeholder="(00) 00000-0000" />
-            </div>
-            <div class="form-group">
-              <label>CNS / CPF</label>
-              <input id="pDoc" placeholder="Documento" />
-            </div>
-            <div class="form-group">
-              <label>Endereço</label>
-              <input id="pAddress" placeholder="Rua, número, bairro" />
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Microárea</label>
-                <input id="pMicroArea" placeholder="MA-01" />
-              </div>
-              <div class="form-group">
-                <label>ACS responsável</label>
-                <select id="pAcs"></select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Categoria de cuidado</label>
-              <select id="pCareCategory"></select>
-            </div>
-            <div class="form-group">
-              <label>Comorbidades</label>
-              <textarea id="pComorb" rows="2" placeholder="HAS, DM2..."></textarea>
-            </div>
-            <div class="form-group">
-              <label>Medicações</label>
-              <textarea id="pMeds" rows="2" placeholder="Metformina 500mg..."></textarea>
-            </div>
-            <div class="form-group">
-              <label>Alergias</label>
-              <textarea id="pAllergies" rows="2" placeholder="Dipirona..."></textarea>
-            </div>
-            <button id="createPatientBtn" class="btn-primary btn-full">Salvar Paciente</button>
           </div>
+          <button id="logoutBtn" class="btn-ghost hidden">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l4-4-4-4M15 8H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Sair
+          </button>
+        </div>
+      </header>
 
-          <!-- Patient List Panel -->
-          <div id="patientPanel" class="hidden">
-            <div class="sidebar-top">
-              <div class="sidebar-search">
-                <span class="search-icon">🔍</span>
-                <input id="searchInput" placeholder="Buscar paciente..." />
+      <div class="app-body">
+
+        <!-- ═══ SIDEBAR ═══ -->
+        <aside class="sidebar">
+          <div class="sidebar-inner">
+
+            <!-- New Patient Form -->
+            <div id="newPatientPanel" class="hidden">
+              <div class="sidebar-section-hd">
+                <span class="sidebar-hd-title">Novo paciente</span>
+                <button id="cancelNewPatientBtn" class="icon-btn" title="Cancelar">
+                  <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
               </div>
-              <button id="showNewPatientBtn" class="btn-icon-accent hidden" title="Novo paciente">＋</button>
+              <div class="np-fields">
+                <div class="field-group"><label class="field-label">Nome</label><input id="pName" class="field-input" placeholder="Nome completo"/></div>
+                <div class="field-row">
+                  <div class="field-group"><label class="field-label">Telefone</label><input id="pPhone" class="field-input" placeholder="(00) 00000-0000"/></div>
+                  <div class="field-group"><label class="field-label">CNS / CPF</label><input id="pDoc" class="field-input" placeholder="Documento"/></div>
+                </div>
+                <div class="field-group"><label class="field-label">Endereço</label><input id="pAddress" class="field-input" placeholder="Rua, número, bairro"/></div>
+                <div class="field-row">
+                  <div class="field-group"><label class="field-label">Microárea</label><input id="pMicroArea" class="field-input" placeholder="MA-01"/></div>
+                  <div class="field-group"><label class="field-label">ACS</label><select id="pAcs" class="field-select"></select></div>
+                </div>
+                <div class="field-group"><label class="field-label">Categoria</label><select id="pCareCategory" class="field-select"></select></div>
+                <div class="field-group"><label class="field-label">Comorbidades</label><textarea id="pComorb" class="field-textarea" rows="2" placeholder="HAS, DM2..."></textarea></div>
+                <div class="field-group"><label class="field-label">Medicações</label><textarea id="pMeds" class="field-textarea" rows="2" placeholder="Metformina 500mg..."></textarea></div>
+                <div class="field-group"><label class="field-label">Alergias</label><textarea id="pAllergies" class="field-textarea" rows="2" placeholder="Dipirona..."></textarea></div>
+                <button id="createPatientBtn" class="btn-primary btn-block">Salvar paciente</button>
+              </div>
             </div>
 
-            <details class="filter-details" id="filterDetails">
-              <summary>Filtros</summary>
-              <div class="filter-body">
-                <div class="form-group">
-                  <label>Microárea</label>
-                  <input id="filterMicroArea" placeholder="Ex: MA-03" />
+            <!-- Patient List -->
+            <div id="patientPanel" class="hidden">
+              <div class="sidebar-top-bar">
+                <div class="search-wrap">
+                  <svg class="search-ico" width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  <input id="searchInput" class="search-input" placeholder="Buscar paciente..."/>
                 </div>
-                <div class="form-group">
-                  <label>ACS</label>
-                  <select id="filterAcs"></select>
-                </div>
-                <div class="form-group">
-                  <label>Categoria</label>
-                  <select id="filterCategory"></select>
-                </div>
-                <button id="applyFilterBtn" class="btn-secondary btn-full">Aplicar filtros</button>
+                <button id="showNewPatientBtn" class="add-btn hidden" title="Novo paciente">
+                  <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </button>
               </div>
-            </details>
 
-            <div class="patient-list-header">
-              <span id="patientCount" class="count-badge">0 pacientes</span>
+              <details class="filter-panel" id="filterDetails">
+                <summary class="filter-summary">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5 8h6M8 12h0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  Filtros
+                </summary>
+                <div class="filter-body">
+                  <div class="field-group"><label class="field-label">Microárea</label><input id="filterMicroArea" class="field-input" placeholder="MA-03"/></div>
+                  <div class="field-group"><label class="field-label">ACS</label><select id="filterAcs" class="field-select"></select></div>
+                  <div class="field-group"><label class="field-label">Categoria</label><select id="filterCategory" class="field-select"></select></div>
+                  <button id="applyFilterBtn" class="btn-secondary btn-block">Aplicar</button>
+                </div>
+              </details>
+
+              <div class="plist-header">
+                <span id="patientCount" class="plist-count">0 pacientes</span>
+              </div>
+              <div id="patientList" class="patient-list"></div>
             </div>
-            <div id="patientList" class="patient-list"></div>
+
           </div>
         </aside>
 
-        <!-- MAIN CONTENT AREA -->
-        <section class="content-area" id="contentPanel">
+        <!-- ═══ MAIN ═══ -->
+        <main class="main-area">
 
           <!-- Empty state -->
           <div id="emptyState" class="empty-state">
-            <div class="empty-icon">👤</div>
-            <h3>Selecione um paciente</h3>
-            <p>Escolha um paciente na lista para ver o prontuário completo.</p>
+            <div class="empty-icon">
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="14" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 36c0-8.284 6.716-15 15-15s15 6.716 15 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+            <p class="empty-title">Nenhum paciente selecionado</p>
+            <p class="empty-sub">Selecione um paciente na lista para visualizar o prontuário.</p>
           </div>
 
-          <!-- Patient detail -->
-          <div id="patientContent" class="hidden">
+          <!-- Patient view -->
+          <div id="patientContent" class="patient-view hidden">
 
-            <!-- Patient Header -->
-            <div class="patient-header-bar">
-              <div class="patient-header-info">
-                <div class="patient-avatar" id="patientAvatar">M</div>
-                <div>
+            <!-- Patient header -->
+            <div class="patient-hd">
+              <div class="patient-hd-left">
+                <div class="patient-avatar" id="patientAvatar">—</div>
+                <div class="patient-hd-info">
                   <h2 id="selectedPatientTitle">—</h2>
-                  <div id="selectedPatientMeta" class="patient-meta-chips"></div>
+                  <div id="selectedPatientMeta" class="patient-chips"></div>
                 </div>
               </div>
-              <div id="patientHeaderBadge"></div>
+              <div id="patientHeaderBadge" class="patient-hd-right"></div>
             </div>
 
             <!-- Tabs -->
-            <nav class="patient-tabs" id="patientTabs">
-              <button class="ptab active" data-panel="panelProtocol">📋 Protocolo</button>
-              <button class="ptab" data-panel="panelRecord">📝 Registro</button>
-              <button class="ptab" data-panel="panelAppointments">🩺 Atendimentos</button>
-              <button class="ptab" data-panel="panelTasks">✅ Tarefas</button>
-              <button class="ptab" data-panel="panelHistory">📁 Histórico</button>
-              <button class="ptab" data-panel="panelMessages">💬 Comunicação</button>
-              <button class="ptab audit-tab hidden" data-panel="panelAudit">🔍 Auditoria</button>
+            <nav class="ptabs">
+              <button class="ptab active" data-panel="panelProtocol">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 6h6M5 9h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                Protocolo
+              </button>
+              <button class="ptab" data-panel="panelRecord">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" stroke-width="1.3"/><path d="M10 2v3h3M6 7h4M6 10h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                Registro
+              </button>
+              <button class="ptab" data-panel="panelAppointments">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 1v2M11 1v2M2 7h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                Atendimentos
+              </button>
+              <button class="ptab" data-panel="panelTasks">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Tarefas
+              </button>
+              <button class="ptab" data-panel="panelHistory">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                Histórico
+              </button>
+              <button class="ptab" data-panel="panelMessages">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v9H9l-3 2v-2H2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                Comunicação
+              </button>
+              <button class="ptab audit-tab hidden" data-panel="panelAudit">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3M8 11v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                Auditoria
+              </button>
             </nav>
 
-            <!-- Panel: Protocol Summary -->
-            <div id="panelProtocol" class="patient-panel active">
-              <div id="protocolSummary" class="protocol-content"></div>
+            <!-- ── PROTOCOL ── -->
+            <div id="panelProtocol" class="panel active">
+              <div id="protocolSummary" class="protocol-area"></div>
             </div>
 
-            <!-- Panel: New Clinical Record -->
-            <div id="panelRecord" class="patient-panel hidden">
-              <div class="panel-form-card">
-                <h3>Novo Registro Clínico</h3>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label>Tipo</label>
-                    <select id="rType">
-                      <option value="visit">Visita</option>
+            <!-- ── RECORD ── -->
+            <div id="panelRecord" class="panel hidden">
+              <div class="panel-card">
+                <div class="panel-card-hd">Novo Registro Clínico</div>
+                <div class="field-row">
+                  <div class="field-group">
+                    <label class="field-label">Tipo</label>
+                    <select id="rType" class="field-select">
+                      <option value="visit">Visita domiciliar</option>
                       <option value="consultation">Consulta</option>
                       <option value="vaccine">Vacina</option>
                       <option value="procedure">Procedimento</option>
                       <option value="note">Observação</option>
                     </select>
                   </div>
-                  <div class="form-group">
-                    <label>Data / Hora</label>
-                    <input id="rDate" type="datetime-local" />
+                  <div class="field-group">
+                    <label class="field-label">Data / Hora</label>
+                    <input id="rDate" type="datetime-local" class="field-input"/>
                   </div>
                 </div>
-                <div class="form-group">
-                  <label>Título</label>
-                  <input id="rTitle" placeholder="Ex: Visita domiciliar 1" />
-                </div>
-                <div class="form-group">
-                  <label>Detalhes</label>
-                  <textarea id="rDetails" rows="4" placeholder="Descreva os detalhes do registro..."></textarea>
-                </div>
-                <div id="vaccineNameWrap" class="form-group hidden">
-                  <label>Nome da vacina</label>
-                  <input id="rVaccineName" placeholder="Ex: Influenza" />
-                </div>
-                <button id="addRecordBtn" class="btn-primary">Salvar Registro</button>
+                <div class="field-group"><label class="field-label">Título</label><input id="rTitle" class="field-input" placeholder="Ex: Visita domiciliar 1"/></div>
+                <div class="field-group"><label class="field-label">Detalhes</label><textarea id="rDetails" class="field-textarea" rows="4" placeholder="Descreva o registro..."></textarea></div>
+                <div id="vaccineNameWrap" class="field-group hidden"><label class="field-label">Nome da vacina</label><input id="rVaccineName" class="field-input" placeholder="Ex: Influenza"/></div>
+                <button id="addRecordBtn" class="btn-primary">Salvar registro</button>
               </div>
             </div>
 
-            <!-- Panel: Appointments (legacy) -->
-            <div id="panelAppointments" class="patient-panel hidden">
-              <div class="panel-two-col">
-                <div class="panel-form-card" id="appointmentFormCard">
-                  <h3>Novo Atendimento</h3>
-                  <div class="form-group">
-                    <label>Data / Hora</label>
-                    <input id="aDate" type="datetime-local" />
-                  </div>
-                  <div class="form-group">
-                    <label>Resumo</label>
-                    <textarea id="aSummary" rows="3" placeholder="Resumo do atendimento..."></textarea>
-                  </div>
-                  <div class="form-group">
-                    <label>Conduta</label>
-                    <textarea id="aConduct" rows="2" placeholder="Conduta adotada..."></textarea>
-                  </div>
-                  <div class="form-group">
-                    <label>Próximo passo</label>
-                    <textarea id="aNext" rows="2" placeholder="Encaminhamentos..."></textarea>
-                  </div>
-                  <button id="addAppointmentBtn" class="btn-primary">Adicionar Atendimento</button>
+            <!-- ── APPOINTMENTS ── -->
+            <div id="panelAppointments" class="panel hidden">
+              <div class="split-panel">
+                <div class="panel-card" id="appointmentFormCard">
+                  <div class="panel-card-hd">Novo Atendimento</div>
+                  <div class="field-group"><label class="field-label">Data / Hora</label><input id="aDate" type="datetime-local" class="field-input"/></div>
+                  <div class="field-group"><label class="field-label">Resumo</label><textarea id="aSummary" class="field-textarea" rows="3" placeholder="Resumo do atendimento..."></textarea></div>
+                  <div class="field-group"><label class="field-label">Conduta</label><textarea id="aConduct" class="field-textarea" rows="2" placeholder="Conduta adotada..."></textarea></div>
+                  <div class="field-group"><label class="field-label">Próximo passo</label><textarea id="aNext" class="field-textarea" rows="2" placeholder="Encaminhamentos..."></textarea></div>
+                  <button id="addAppointmentBtn" class="btn-primary">Registrar atendimento</button>
                 </div>
-                <div class="panel-list-card">
-                  <h3>Atendimentos anteriores</h3>
+                <div class="panel-card">
+                  <div class="panel-card-hd">Histórico de atendimentos</div>
                   <div id="appointmentList"></div>
                 </div>
               </div>
             </div>
 
-            <!-- Panel: Tasks -->
-            <div id="panelTasks" class="patient-panel hidden">
-              <div class="panel-two-col">
-                <div class="panel-form-card" id="taskFormCard">
-                  <h3>Nova Tarefa para ACS</h3>
-                  <div class="form-group">
-                    <label>Título</label>
-                    <input id="tTitle" placeholder="Ex: Verificar pressão arterial" />
+            <!-- ── TASKS ── -->
+            <div id="panelTasks" class="panel hidden">
+              <div class="split-panel">
+                <div class="panel-card" id="taskFormCard">
+                  <div class="panel-card-hd">Nova Tarefa para ACS</div>
+                  <div class="field-group"><label class="field-label">Título</label><input id="tTitle" class="field-input" placeholder="Ex: Verificar pressão arterial"/></div>
+                  <div class="field-group"><label class="field-label">Observações</label><textarea id="tNotes" class="field-textarea" rows="3" placeholder="Instruções adicionais..."></textarea></div>
+                  <div class="field-row">
+                    <div class="field-group"><label class="field-label">Prazo</label><input id="tDue" type="date" class="field-input"/></div>
+                    <div class="field-group"><label class="field-label">ACS responsável</label><select id="tAssignee" class="field-select"></select></div>
                   </div>
-                  <div class="form-group">
-                    <label>Observações</label>
-                    <textarea id="tNotes" rows="3" placeholder="Instruções adicionais..."></textarea>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>Prazo</label>
-                      <input id="tDue" type="date" />
-                    </div>
-                    <div class="form-group">
-                      <label>ACS responsável</label>
-                      <select id="tAssignee"></select>
-                    </div>
-                  </div>
-                  <button id="addTaskBtn" class="btn-primary">Criar Tarefa</button>
+                  <button id="addTaskBtn" class="btn-primary">Criar tarefa</button>
                 </div>
-                <div class="panel-list-card">
-                  <h3>Tarefas pendentes</h3>
+                <div class="panel-card">
+                  <div class="panel-card-hd">Tarefas em aberto</div>
                   <div id="taskList"></div>
                 </div>
               </div>
             </div>
 
-            <!-- Panel: History -->
-            <div id="panelHistory" class="patient-panel hidden">
-              <div id="historyList" class="timeline-list"></div>
+            <!-- ── HISTORY ── -->
+            <div id="panelHistory" class="panel hidden">
+              <div id="historyList" class="timeline"></div>
             </div>
 
-            <!-- Panel: Messages -->
-            <div id="panelMessages" class="patient-panel hidden">
-              <div class="messages-layout">
-                <div id="messageList" class="message-thread"></div>
-                <div class="message-compose">
-                  <textarea id="mText" rows="3" placeholder="Escreva uma mensagem para a equipe..."></textarea>
+            <!-- ── MESSAGES ── -->
+            <div id="panelMessages" class="panel hidden">
+              <div class="msg-layout">
+                <div id="messageList" class="msg-thread"></div>
+                <div class="msg-compose">
+                  <textarea id="mText" class="field-textarea" rows="3" placeholder="Mensagem para a equipe..."></textarea>
                   <button id="sendMsgBtn" class="btn-primary">Enviar</button>
                 </div>
               </div>
             </div>
 
-            <!-- Panel: Audit -->
-            <div id="panelAudit" class="patient-panel hidden">
-              <div id="auditList" class="audit-list"></div>
+            <!-- ── AUDIT ── -->
+            <div id="panelAudit" class="panel hidden">
+              <div class="panel-card">
+                <div class="panel-card-hd">Log de auditoria</div>
+                <div id="auditList"></div>
+              </div>
             </div>
 
-          </div>
-        </section>
+          </div><!-- /patient-view -->
+        </main>
       </div>
-    </main>
+    </div>
 
     <!-- TOAST -->
     <div id="toast" class="toast hidden"></div>
