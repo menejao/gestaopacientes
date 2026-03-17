@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SaúdeUBS — Gestão de Pacientes</title>
+    <title>SaudeUBS - Gestao de Pacientes</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -11,7 +11,7 @@
   </head>
   <body>
 
-    <!-- ═══════════════════════════════ LOGIN ═══════════════════════════════ -->
+    <!-- ------------------------------- LOGIN ------------------------------- -->
     <div id="authScreen" class="auth-screen">
       <div class="auth-left">
         <div class="auth-brand">
@@ -21,16 +21,16 @@
               <path d="M14 6v16M6 14h16" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
             </svg>
           </div>
-          <span class="brand-name">SaúdeUBS</span>
+          <span class="brand-name">SaudeUBS</span>
         </div>
         <div class="auth-hero">
-          <h1>Gestão clínica<br>para atenção básica</h1>
-          <p>Prontuários, protocolos e comunicação<br>entre enfermagem e ACS.</p>
+          <h1>Gestao clinica<br>para atencao basica</h1>
+          <p>Prontuarios, protocolos e comunicacao<br>entre enfermagem e ACS.</p>
         </div>
         <div class="auth-stats">
           <div class="auth-stat"><span>Protocolo</span><strong>Integrado</strong></div>
           <div class="auth-stat-div"></div>
-          <div class="auth-stat"><span>Histórico</span><strong>Completo</strong></div>
+          <div class="auth-stat"><span>Historico</span><strong>Completo</strong></div>
           <div class="auth-stat-div"></div>
           <div class="auth-stat"><span>Equipe</span><strong>Conectada</strong></div>
         </div>
@@ -52,7 +52,7 @@
             <div class="field-group">
               <label class="field-label">Senha</label>
               <div class="field-input-wrap">
-                <input id="loginPassword" type="password" class="field-input" placeholder="••••••••" autocomplete="current-password"/>
+                <input id="loginPassword" type="password" class="field-input" placeholder="********" autocomplete="current-password"/>
                 <button type="button" class="field-eye" id="togglePass">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/></svg>
                 </button>
@@ -78,14 +78,14 @@
               </div>
               <div class="field-group">
                 <label class="field-label">Senha</label>
-                <input id="registerPassword" type="password" class="field-input" placeholder="Mín. 6 caracteres"/>
+                <input id="registerPassword" type="password" class="field-input" placeholder="Min. 6 caracteres"/>
               </div>
             </div>
             <div class="field-group">
               <label class="field-label">Perfil</label>
               <select id="registerRole" class="field-select">
-                <option value="acs">Agente Comunitário de Saúde</option>
-                <option value="doctor">Médico(a)</option>
+                <option value="acs">Agente Comunitario de Saude</option>
+                <option value="doctor">Medico(a)</option>
                 <option value="nurse_manager">Enfermeiro(a) Gestor(a)</option>
               </select>
             </div>
@@ -98,8 +98,8 @@
               <input id="registerTeamName" class="field-input" placeholder="Ex: Equipe Norte"/>
             </div>
             <div id="registerCouncilNumberWrap" class="field-group hidden">
-              <label class="field-label" id="councilNumLabel">Número do conselho</label>
-              <input id="registerCouncilNumber" class="field-input" placeholder="Somente números" inputmode="numeric"/>
+              <label class="field-label" id="councilNumLabel">Numero do conselho</label>
+              <input id="registerCouncilNumber" class="field-input" placeholder="Somente numeros" inputmode="numeric"/>
             </div>
             <div id="registerCouncilUfWrap" class="field-group hidden">
               <label class="field-label">UF do conselho</label>
@@ -114,7 +114,7 @@
       </div>
     </div>
 
-    <!-- ═══════════════════════════════ APP ════════════════════════════════ -->
+    <!-- ------------------------------- APP -------------------------------- -->
     <div id="appScreen" class="app hidden">
 
       <!-- TOP BAR -->
@@ -124,15 +124,15 @@
             <rect width="20" height="20" rx="4" fill="currentColor" fill-opacity="0.2"/>
             <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          <span>SaúdeUBS</span>
+          <span>SaudeUBS</span>
         </div>
         <div class="topbar-center" id="topbarPatient"></div>
         <div class="topbar-right">
           <div class="topbar-user" id="topbarUser">
             <div class="user-avatar" id="userAvatar">?</div>
             <div class="user-info">
-              <span id="userName">—</span>
-              <span id="userRole" class="user-role">—</span>
+              <span id="userName">-</span>
+              <span id="userRole" class="user-role">-</span>
             </div>
           </div>
           <button id="logoutBtn" class="btn-ghost hidden">
@@ -144,7 +144,7 @@
 
       <div class="app-body">
 
-        <!-- ═══ SIDEBAR ═══ -->
+        <!-- --- SIDEBAR --- -->
         <aside class="sidebar">
           <div class="sidebar-inner">
 
@@ -162,14 +162,14 @@
                   <div class="field-group"><label class="field-label">Telefone</label><input id="pPhone" class="field-input" placeholder="(00) 00000-0000"/></div>
                   <div class="field-group"><label class="field-label">CNS / CPF</label><input id="pDoc" class="field-input" placeholder="Documento"/></div>
                 </div>
-                <div class="field-group"><label class="field-label">Endereço</label><input id="pAddress" class="field-input" placeholder="Rua, número, bairro"/></div>
+                <div class="field-group"><label class="field-label">Endereco</label><input id="pAddress" class="field-input" placeholder="Rua, numero, bairro"/></div>
                 <div class="field-row">
-                  <div class="field-group"><label class="field-label">Microárea</label><input id="pMicroArea" class="field-input" placeholder="MA-01"/></div>
+                  <div class="field-group"><label class="field-label">Microarea</label><input id="pMicroArea" class="field-input" placeholder="MA-01"/></div>
                   <div class="field-group"><label class="field-label">ACS</label><select id="pAcs" class="field-select"></select></div>
                 </div>
                 <div class="field-group"><label class="field-label">Categoria</label><select id="pCareCategory" class="field-select"></select></div>
                 <div class="field-group"><label class="field-label">Comorbidades</label><textarea id="pComorb" class="field-textarea" rows="2" placeholder="HAS, DM2..."></textarea></div>
-                <div class="field-group"><label class="field-label">Medicações</label><textarea id="pMeds" class="field-textarea" rows="2" placeholder="Metformina 500mg..."></textarea></div>
+                <div class="field-group"><label class="field-label">Medicacoes</label><textarea id="pMeds" class="field-textarea" rows="2" placeholder="Metformina 500mg..."></textarea></div>
                 <div class="field-group"><label class="field-label">Alergias</label><textarea id="pAllergies" class="field-textarea" rows="2" placeholder="Dipirona..."></textarea></div>
                 <button id="createPatientBtn" class="btn-primary btn-block">Salvar paciente</button>
               </div>
@@ -193,7 +193,7 @@
                   Filtros
                 </summary>
                 <div class="filter-body">
-                  <div class="field-group"><label class="field-label">Microárea</label><input id="filterMicroArea" class="field-input" placeholder="MA-03"/></div>
+                  <div class="field-group"><label class="field-label">Microarea</label><input id="filterMicroArea" class="field-input" placeholder="MA-03"/></div>
                   <div class="field-group"><label class="field-label">ACS</label><select id="filterAcs" class="field-select"></select></div>
                   <div class="field-group"><label class="field-label">Categoria</label><select id="filterCategory" class="field-select"></select></div>
                   <button id="applyFilterBtn" class="btn-secondary btn-block">Aplicar</button>
@@ -209,7 +209,7 @@
           </div>
         </aside>
 
-        <!-- ═══ MAIN ═══ -->
+        <!-- --- MAIN --- -->
         <main class="main-area">
 
           <!-- Empty state -->
@@ -218,7 +218,7 @@
               <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="14" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 36c0-8.284 6.716-15 15-15s15 6.716 15 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
             </div>
             <p class="empty-title">Nenhum paciente selecionado</p>
-            <p class="empty-sub">Selecione um paciente na lista para visualizar o prontuário.</p>
+            <p class="empty-sub">Selecione um paciente na lista para visualizar o prontuario.</p>
           </div>
 
           <!-- Patient view -->
@@ -227,9 +227,9 @@
             <!-- Patient header -->
             <div class="patient-hd">
               <div class="patient-hd-left">
-                <div class="patient-avatar" id="patientAvatar">—</div>
+                <div class="patient-avatar" id="patientAvatar">-</div>
                 <div class="patient-hd-info">
-                  <h2 id="selectedPatientTitle">—</h2>
+                  <h2 id="selectedPatientTitle">-</h2>
                   <div id="selectedPatientMeta" class="patient-chips"></div>
                 </div>
               </div>
@@ -256,11 +256,11 @@
               </button>
               <button class="ptab" data-panel="panelHistory">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-                Histórico
+                Historico
               </button>
               <button class="ptab" data-panel="panelMessages">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v9H9l-3 2v-2H2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-                Comunicação
+                Comunicacao
               </button>
               <button class="ptab audit-tab hidden" data-panel="panelAudit">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3M8 11v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -268,15 +268,15 @@
               </button>
             </nav>
 
-            <!-- ── PROTOCOL ── -->
+            <!-- -- PROTOCOL -- -->
             <div id="panelProtocol" class="panel active">
               <div id="protocolSummary" class="protocol-area"></div>
             </div>
 
-            <!-- ── RECORD ── -->
+            <!-- -- RECORD -- -->
             <div id="panelRecord" class="panel hidden">
               <div class="panel-card">
-                <div class="panel-card-hd">Novo Registro Clínico</div>
+                <div class="panel-card-hd">Novo Registro Clinico</div>
                 <div class="field-row">
                   <div class="field-group">
                     <label class="field-label">Tipo</label>
@@ -285,7 +285,7 @@
                       <option value="consultation">Consulta</option>
                       <option value="vaccine">Vacina</option>
                       <option value="procedure">Procedimento</option>
-                      <option value="note">Observação</option>
+                      <option value="note">Observacao</option>
                     </select>
                   </div>
                   <div class="field-group">
@@ -293,14 +293,14 @@
                     <input id="rDate" type="datetime-local" class="field-input"/>
                   </div>
                 </div>
-                <div class="field-group"><label class="field-label">Título</label><input id="rTitle" class="field-input" placeholder="Ex: Visita domiciliar 1"/></div>
+                <div class="field-group"><label class="field-label">Titulo</label><input id="rTitle" class="field-input" placeholder="Ex: Visita domiciliar 1"/></div>
                 <div class="field-group"><label class="field-label">Detalhes</label><textarea id="rDetails" class="field-textarea" rows="4" placeholder="Descreva o registro..."></textarea></div>
                 <div id="vaccineNameWrap" class="field-group hidden"><label class="field-label">Nome da vacina</label><input id="rVaccineName" class="field-input" placeholder="Ex: Influenza"/></div>
                 <button id="addRecordBtn" class="btn-primary">Salvar registro</button>
               </div>
             </div>
 
-            <!-- ── APPOINTMENTS ── -->
+            <!-- -- APPOINTMENTS -- -->
             <div id="panelAppointments" class="panel hidden">
               <div class="split-panel">
                 <div class="panel-card" id="appointmentFormCard">
@@ -308,26 +308,26 @@
                   <div class="field-group"><label class="field-label">Data / Hora</label><input id="aDate" type="datetime-local" class="field-input"/></div>
                   <div class="field-group"><label class="field-label">Resumo</label><textarea id="aSummary" class="field-textarea" rows="3" placeholder="Resumo do atendimento..."></textarea></div>
                   <div class="field-group"><label class="field-label">Conduta</label><textarea id="aConduct" class="field-textarea" rows="2" placeholder="Conduta adotada..."></textarea></div>
-                  <div class="field-group"><label class="field-label">Próximo passo</label><textarea id="aNext" class="field-textarea" rows="2" placeholder="Encaminhamentos..."></textarea></div>
+                  <div class="field-group"><label class="field-label">Proximo passo</label><textarea id="aNext" class="field-textarea" rows="2" placeholder="Encaminhamentos..."></textarea></div>
                   <button id="addAppointmentBtn" class="btn-primary">Registrar atendimento</button>
                 </div>
                 <div class="panel-card">
-                  <div class="panel-card-hd">Histórico de atendimentos</div>
+                  <div class="panel-card-hd">Historico de atendimentos</div>
                   <div id="appointmentList"></div>
                 </div>
               </div>
             </div>
 
-            <!-- ── TASKS ── -->
+            <!-- -- TASKS -- -->
             <div id="panelTasks" class="panel hidden">
               <div class="split-panel">
                 <div class="panel-card" id="taskFormCard">
                   <div class="panel-card-hd">Nova Tarefa para ACS</div>
-                  <div class="field-group"><label class="field-label">Título</label><input id="tTitle" class="field-input" placeholder="Ex: Verificar pressão arterial"/></div>
-                  <div class="field-group"><label class="field-label">Observações</label><textarea id="tNotes" class="field-textarea" rows="3" placeholder="Instruções adicionais..."></textarea></div>
+                  <div class="field-group"><label class="field-label">Titulo</label><input id="tTitle" class="field-input" placeholder="Ex: Verificar pressao arterial"/></div>
+                  <div class="field-group"><label class="field-label">Observacoes</label><textarea id="tNotes" class="field-textarea" rows="3" placeholder="Instrucoes adicionais..."></textarea></div>
                   <div class="field-row">
                     <div class="field-group"><label class="field-label">Prazo</label><input id="tDue" type="date" class="field-input"/></div>
-                    <div class="field-group"><label class="field-label">ACS responsável</label><select id="tAssignee" class="field-select"></select></div>
+                    <div class="field-group"><label class="field-label">ACS responsavel</label><select id="tAssignee" class="field-select"></select></div>
                   </div>
                   <button id="addTaskBtn" class="btn-primary">Criar tarefa</button>
                 </div>
@@ -338,12 +338,12 @@
               </div>
             </div>
 
-            <!-- ── HISTORY ── -->
+            <!-- -- HISTORY -- -->
             <div id="panelHistory" class="panel hidden">
               <div id="historyList" class="timeline"></div>
             </div>
 
-            <!-- ── MESSAGES ── -->
+            <!-- -- MESSAGES -- -->
             <div id="panelMessages" class="panel hidden">
               <div class="msg-layout">
                 <div id="messageList" class="msg-thread"></div>
@@ -354,7 +354,7 @@
               </div>
             </div>
 
-            <!-- ── AUDIT ── -->
+            <!-- -- AUDIT -- -->
             <div id="panelAudit" class="panel hidden">
               <div class="panel-card">
                 <div class="panel-card-hd">Log de auditoria</div>
@@ -374,3 +374,4 @@
     <script src="./app.js"></script>
   </body>
 </html>
+

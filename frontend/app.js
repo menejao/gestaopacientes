@@ -1,4 +1,4 @@
-const API_URL = window.__APP_CONFIG?.apiUrl || "http://localhost:3001";
+﻿const API_URL = window.__APP_CONFIG?.apiUrl || "http://localhost:3001";
 
 const state = {
   token: null, user: null, users: [], patients: [],
@@ -8,7 +8,7 @@ const state = {
   filters: { microArea: "", acsId: "", careCategory: "" }
 };
 
-// ── Element refs ────────────────────────────────────────────────────────────
+// -- Element refs ------------------------------------------------------------
 const el = {
   authScreen:               document.getElementById("authScreen"),
   appScreen:                document.getElementById("appScreen"),
@@ -94,7 +94,7 @@ const el = {
   togglePass:               document.getElementById("togglePass"),
 };
 
-// ── Toast ────────────────────────────────────────────────────────────────────
+// -- Toast --------------------------------------------------------------------
 let _toastTimer = null;
 function showToast(msg, type = "default", ms = 3000) {
   el.toast.textContent = msg;
@@ -103,27 +103,27 @@ function showToast(msg, type = "default", ms = 3000) {
   _toastTimer = setTimeout(() => el.toast.classList.add("hidden"), ms);
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 const isManager = () => state.user?.role === "nurse_manager";
 const isDoctor  = () => state.user?.role === "doctor";
 const isAcs     = () => state.user?.role === "acs";
 const canAcsUpdateTask = t => isAcs() && t.assigneeId === state.user.id;
-const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Não atribuído";
+const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Nao atribuido";
 const catLabel     = cat => state.protocolTemplates.find(t => t.category === cat)?.label || "Geral";
 
-// ── API ──────────────────────────────────────────────────────────────────────
+// -- API ----------------------------------------------------------------------
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || "Erro na requisição");
+    throw new Error(body.error || "Erro na requisicao");
   }
   return res.json();
 }
 
-// ── Auth tabs ─────────────────────────────────────────────────────────────────
+// -- Auth tabs -----------------------------------------------------------------
 document.querySelectorAll(".auth-tab").forEach(tab => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".auth-tab").forEach(t => t.classList.remove("active"));
@@ -134,15 +134,15 @@ document.querySelectorAll(".auth-tab").forEach(tab => {
   });
 });
 
-// ── Password toggle ───────────────────────────────────────────────────────────
+// -- Password toggle -----------------------------------------------------------
 el.togglePass?.addEventListener("click", () => {
   el.loginPassword.type = el.loginPassword.type === "password" ? "text" : "password";
 });
 
-// ── Session view ──────────────────────────────────────────────────────────────
+// -- Session view --------------------------------------------------------------
 function updateSessionView() {
   if (!state.user) { el.logoutBtn.classList.add("hidden"); return; }
-  const roleMap = { nurse_manager: "Enf. Gestora", doctor: "Médico(a)", acs: "ACS" };
+  const roleMap = { nurse_manager: "Enf. Gestora", doctor: "Medico(a)", acs: "ACS" };
   el.userName.textContent  = state.user.name;
   el.userRole.textContent  = roleMap[state.user.role] || state.user.role;
   el.userAvatar.textContent = state.user.name.charAt(0).toUpperCase();
@@ -159,7 +159,7 @@ el.logoutBtn?.addEventListener("click", () => {
   updateSessionView();
 });
 
-// ── Register visibility ───────────────────────────────────────────────────────
+// -- Register visibility -------------------------------------------------------
 function updateRegisterFormVisibility() {
   const role = el.registerRole.value;
   const needsCouncil = ["doctor","nurse_manager"].includes(role);
@@ -170,13 +170,13 @@ function updateRegisterFormVisibility() {
   el.registerTeamNameWrap.classList.toggle("hidden", !isNM);
   el.registerTeamWrap.classList.toggle("hidden", isNM);
   if (needsCouncil) {
-    el.councilNumLabel.textContent = `Número do conselho (${cType})`;
-    el.registerCouncilNumber.placeholder = cType === "CRM" ? "4 a 8 dígitos" : "4 a 10 dígitos";
+    el.councilNumLabel.textContent = `Numero do conselho (${cType})`;
+    el.registerCouncilNumber.placeholder = cType === "CRM" ? "4 a 8 digitos" : "4 a 10 digitos";
     el.registerCouncilNumber.maxLength = cType === "CRM" ? 8 : 10;
   }
 }
 
-// ── Council validation ────────────────────────────────────────────────────────
+// -- Council validation --------------------------------------------------------
 const isSeqDigits = s => { let a=true,d=true; for(let i=1;i<s.length;i++){if(+s[i]!==+s[i-1]+1)a=false;if(+s[i]!==+s[i-1]-1)d=false;} return a||d; };
 const isRepDigits = s => /^(\d)\1+$/.test(s);
 function validateCouncil(role, num, uf) {
@@ -185,14 +185,14 @@ function validateCouncil(role, num, uf) {
   const u = String(uf||"").trim().toUpperCase();
   const maxLen = role === "doctor" ? 8 : 10;
   const validUf = /^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/;
-  if (d.length < 4 || d.length > maxLen) return { ok:false, message:`Conselho deve ter entre 4 e ${maxLen} dígitos` };
-  if (isRepDigits(d)) return { ok:false, message:"Conselho inválido: dígitos repetidos" };
-  if (isSeqDigits(d)) return { ok:false, message:"Conselho inválido: sequência numérica" };
-  if (!validUf.test(u)) return { ok:false, message:"UF do conselho inválida" };
+  if (d.length < 4 || d.length > maxLen) return { ok:false, message:`Conselho deve ter entre 4 e ${maxLen} digitos` };
+  if (isRepDigits(d)) return { ok:false, message:"Conselho invalido: digitos repetidos" };
+  if (isSeqDigits(d)) return { ok:false, message:"Conselho invalido: sequencia numerica" };
+  if (!validUf.test(u)) return { ok:false, message:"UF do conselho invalida" };
   return { ok:true, number:d, uf:u };
 }
 
-// ── Select helpers ────────────────────────────────────────────────────────────
+// -- Select helpers ------------------------------------------------------------
 function fillCategorySelect(sel, withAll=false) {
   sel.innerHTML = "";
   if (withAll) sel.appendChild(Object.assign(document.createElement("option"), { value:"", textContent:"Todas" }));
@@ -208,7 +208,7 @@ function fillTeamSelect() {
   state.publicTeams.forEach(t => el.registerTeam.appendChild(Object.assign(document.createElement("option"), { value:t.id, textContent:t.name })));
 }
 
-// ── Role permissions ──────────────────────────────────────────────────────────
+// -- Role permissions ----------------------------------------------------------
 function applyRolePermissions() {
   const mgrFields = ["pName","pPhone","pDoc","pAddress","pComorb","pMeds","pAllergies","pMicroArea","pAcs","pCareCategory","tTitle","tNotes","tDue","tAssignee"];
   const clinFields = ["aDate","aSummary","aConduct","aNext"];
@@ -251,20 +251,20 @@ function applyRolePermissions() {
   el.rType.value = "visit";
 }
 
-// ── Topbar patient breadcrumb ──────────────────────────────────────────────────
+// -- Topbar patient breadcrumb --------------------------------------------------
 function updateTopbarPatient() {
   if (!state.selectedPatient) { el.topbarPatient.innerHTML = ""; return; }
   const p = state.selectedPatient;
   el.topbarPatient.innerHTML = `
     <div class="topbar-patient-info">
-      <span class="topbar-sep">·</span>
+      <span class="topbar-sep">|</span>
       <span class="topbar-patient-name">${p.name}</span>
-      <span class="topbar-sep">·</span>
+      <span class="topbar-sep">|</span>
       <span>${catLabel(p.careCategory)}</span>
     </div>`;
 }
 
-// ── Render: patients ──────────────────────────────────────────────────────────
+// -- Render: patients ----------------------------------------------------------
 function renderPatients() {
   el.patientList.innerHTML = "";
   const q = (el.searchInput?.value || "").toLowerCase();
@@ -281,7 +281,7 @@ function renderPatients() {
       <div class="pi-name">${p.name}</div>
       <div class="pi-meta">
         <span class="pi-cat">${catLabel(p.careCategory)}</span>
-        ${p.microArea ? `<span>📍 ${p.microArea}</span>` : ""}
+        ${p.microArea ? `<span>MA ${p.microArea}</span>` : ""}
         ${p.phone ? `<span>${p.phone}</span>` : ""}
       </div>`;
     div.addEventListener("click", () => selectPatient(p));
@@ -289,7 +289,7 @@ function renderPatients() {
   });
 }
 
-// ── Render: patient header ─────────────────────────────────────────────────────
+// -- Render: patient header -----------------------------------------------------
 function renderPatientHeader() {
   if (!state.selectedPatient) {
     el.emptyState.classList.remove("hidden");
@@ -304,7 +304,7 @@ function renderPatientHeader() {
   el.patientAvatar.textContent = p.name.charAt(0).toUpperCase();
   const chips = [
     `<span class="chip blue">${catLabel(p.careCategory)}</span>`,
-    p.microArea && `<span class="chip">📍 ${p.microArea}</span>`,
+    p.microArea && `<span class="chip">MA ${p.microArea}</span>`,
     p.phone     && `<span class="chip">${p.phone}</span>`,
     p.cnsCpf    && `<span class="chip">${p.cnsCpf}</span>`,
     `<span class="chip teal">ACS: ${acsNameById(p.assignedAcsId)}</span>`,
@@ -313,7 +313,7 @@ function renderPatientHeader() {
   updateTopbarPatient();
 }
 
-// ── Tab switching ─────────────────────────────────────────────────────────────
+// -- Tab switching -------------------------------------------------------------
 document.querySelectorAll(".ptab").forEach(tab => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".ptab").forEach(t => t.classList.remove("active"));
@@ -335,7 +335,7 @@ function switchToTab(panelId) {
   });
 }
 
-// ── Render: protocol summary ───────────────────────────────────────────────────
+// -- Render: protocol summary ---------------------------------------------------
 function renderProtocolSummary() {
   el.protocolSummary.innerHTML = "";
   if (!state.protocolSummary) {
@@ -355,12 +355,12 @@ function renderProtocolSummary() {
       <div class="proto-stat-sub">${b.pending>0?`${b.pending} pendente${b.pending!==1?"s":""}`:"Em dia"}</div>
     </div>`).join("")}</div>`;
 
-  const alerts = stats.filter(b=>b.pending>0).map(b=>`<span class="proto-alert warn">⚠ ${b.pending} ${b.label.toLowerCase()}</span>`).join("");
-  const allOk  = !alerts ? `<span class="proto-alert ok">✓ Protocolo em dia</span>` : "";
+  const alerts = stats.filter(b=>b.pending>0).map(b=>`<span class="proto-alert warn">? ${b.pending} ${b.label.toLowerCase()}</span>`).join("");
+  const allOk  = !alerts ? `<span class="proto-alert ok">? Protocolo em dia</span>` : "";
 
   const vaccines = (s.vaccines?.recommended||[]).map(v=>`
     <li class="vaccine-item">
-      <span class="vaccine-badge ${v.done?"done":"pending"}">${v.done?"✓":"·"}</span>
+      <span class="vaccine-badge ${v.done?"done":"pending"}">${v.done?"OK":"!"}</span>
       ${v.name}
     </li>`).join("") || "<li class='vaccine-item'>Sem vacinas recomendadas.</li>";
 
@@ -372,7 +372,7 @@ function renderProtocolSummary() {
     <ul class="vaccine-list">${vaccines}</ul>`;
 }
 
-// ── Render: appointments ───────────────────────────────────────────────────────
+// -- Render: appointments -------------------------------------------------------
 function renderAppointments() {
   el.appointmentList.innerHTML = "";
   if (!state.appointments.length) { el.appointmentList.innerHTML='<div class="empty-msg">Nenhum atendimento.</div>'; return; }
@@ -386,14 +386,14 @@ function renderAppointments() {
       </div>
       <div class="record-body">
         ${a.conduct  ? `<p><strong>Conduta:</strong> ${a.conduct}</p>` : ""}
-        ${a.nextStep ? `<p><strong>Próximo:</strong> ${a.nextStep}</p>` : ""}
+        ${a.nextStep ? `<p><strong>Proximo:</strong> ${a.nextStep}</p>` : ""}
       </div>`;
     el.appointmentList.appendChild(d);
   });
 }
 
-// ── Render: tasks ──────────────────────────────────────────────────────────────
-const statusLabel = { done:"Concluída", in_progress:"Em andamento", pending:"Pendente" };
+// -- Render: tasks --------------------------------------------------------------
+const statusLabel = { done:"Concluida", in_progress:"Em andamento", pending:"Pendente" };
 const statusClass = { done:"done", in_progress:"progress", pending:"pending" };
 
 function renderTasks() {
@@ -408,7 +408,7 @@ function renderTasks() {
         <span class="status ${statusClass[t.status]||"pending"}">${statusLabel[t.status]||"Pendente"}</span>
       </div>
       <div class="record-body">
-        <p>Responsável: ${acsNameById(t.assigneeId)} · Prazo: ${t.dueDate||"—"}</p>
+        <p>Responsavel: ${acsNameById(t.assigneeId)} | Prazo: ${t.dueDate||"-"}</p>
         ${t.notes ? `<p>${t.notes}</p>` : ""}
       </div>`;
     if (isManager() || canAcsUpdateTask(t)) {
@@ -417,7 +417,7 @@ function renderTasks() {
       row.innerHTML = `<label>Status:</label>`;
       const sel = document.createElement("select");
       sel.className = "field-select";
-      [["pending","Pendente"],["in_progress","Em andamento"],["done","Concluída"]].forEach(([v,l])=>{
+      [["pending","Pendente"],["in_progress","Em andamento"],["done","Concluida"]].forEach(([v,l])=>{
         sel.appendChild(Object.assign(document.createElement("option"), { value:v, textContent:l, selected:v===t.status }));
       });
       sel.addEventListener("change", async () => {
@@ -431,7 +431,7 @@ function renderTasks() {
   });
 }
 
-// ── Render: messages ───────────────────────────────────────────────────────────
+// -- Render: messages -----------------------------------------------------------
 function renderMessages() {
   el.messageList.innerHTML = "";
   if (!state.messages.length) { el.messageList.innerHTML='<div class="empty-msg">Sem mensagens.</div>'; return; }
@@ -449,12 +449,12 @@ function renderMessages() {
   el.messageList.scrollTop = el.messageList.scrollHeight;
 }
 
-// ── Render: history timeline ───────────────────────────────────────────────────
-const typeLabel = { visit:"Visita", consultation:"Consulta", vaccine:"Vacina", procedure:"Procedimento", note:"Observação" };
+// -- Render: history timeline ---------------------------------------------------
+const typeLabel = { visit:"Visita", consultation:"Consulta", vaccine:"Vacina", procedure:"Procedimento", note:"Observacao" };
 
 function renderHistory() {
   el.historyList.innerHTML = "";
-  if (!state.history.length) { el.historyList.innerHTML='<div class="empty-msg">Sem histórico.</div>'; return; }
+  if (!state.history.length) { el.historyList.innerHTML='<div class="empty-msg">Sem historico.</div>'; return; }
   state.history.forEach(r => {
     const d = document.createElement("div");
     d.className = "tl-item";
@@ -464,15 +464,15 @@ function renderHistory() {
       <div class="tl-spine"><div class="tl-dot"></div><div class="tl-line"></div></div>
       <div class="tl-body">
         <div class="tl-type">${typeLabel[r.type]||r.type}</div>
-        <div class="tl-title">${r.title||"—"}</div>
+        <div class="tl-title">${r.title||"-"}</div>
         ${r.details ? `<div class="tl-detail">${r.details}</div>` : ""}
-        <div class="tl-source">Origem: ${r.source||"—"}</div>
+        <div class="tl-source">Origem: ${r.source||"-"}</div>
       </div>`;
     el.historyList.appendChild(d);
   });
 }
 
-// ── Render: audit ──────────────────────────────────────────────────────────────
+// -- Render: audit --------------------------------------------------------------
 function renderAuditLogs() {
   if (!isManager()) return;
   el.auditList.innerHTML = "";
@@ -481,13 +481,13 @@ function renderAuditLogs() {
     const d = document.createElement("div");
     d.className = "audit-row";
     d.innerHTML = `
-      <div><div class="audit-action">${log.action}</div><div class="audit-who">${log.userName} · ${log.userRole}</div></div>
+      <div><div class="audit-action">${log.action}</div><div class="audit-who">${log.userName} | ${log.userRole}</div></div>
       <div class="audit-when">${new Date(log.createdAt).toLocaleString("pt-BR")}</div>`;
     el.auditList.appendChild(d);
   });
 }
 
-// ── Sidebar new patient toggle ─────────────────────────────────────────────────
+// -- Sidebar new patient toggle -------------------------------------------------
 el.showNewPatientBtn?.addEventListener("click", () => {
   el.patientPanel.classList.add("hidden");
   el.newPatientPanel.classList.remove("hidden");
@@ -497,22 +497,22 @@ el.cancelNewPatientBtn?.addEventListener("click", () => {
   el.patientPanel.classList.remove("hidden");
 });
 
-// ── Search ────────────────────────────────────────────────────────────────────
+// -- Search --------------------------------------------------------------------
 el.searchInput?.addEventListener("input", renderPatients);
 
-// ── Vaccine field ─────────────────────────────────────────────────────────────
+// -- Vaccine field -------------------------------------------------------------
 el.rType?.addEventListener("change", () => {
   el.vaccineNameWrap.classList.toggle("hidden", el.rType.value !== "vaccine");
 });
 
-// ── Filter ────────────────────────────────────────────────────────────────────
+// -- Filter --------------------------------------------------------------------
 function applyPatientFilterValues() {
   state.filters.microArea    = el.filterMicroArea.value.trim();
   state.filters.acsId        = el.filterAcs.value;
   state.filters.careCategory = el.filterCategory.value;
 }
 
-// ── Load data ─────────────────────────────────────────────────────────────────
+// -- Load data -----------------------------------------------------------------
 async function loadPatients() {
   const p = new URLSearchParams();
   if (state.filters.microArea)    p.set("microArea",    state.filters.microArea);
@@ -546,7 +546,7 @@ async function selectPatient(patient) {
   await refreshSelectedPatientData();
 }
 
-// ── Bootstrap ─────────────────────────────────────────────────────────────────
+// -- Bootstrap -----------------------------------------------------------------
 async function bootstrapAfterLogin() {
   const [users, templates] = await Promise.all([api("/users"), api("/protocol/templates")]);
   state.users = users; state.protocolTemplates = templates;
@@ -565,7 +565,7 @@ async function bootstrapBeforeLogin() {
   catch (e) { console.warn("Could not load teams:", e.message); }
 }
 
-// ── Event listeners ───────────────────────────────────────────────────────────
+// -- Event listeners -----------------------------------------------------------
 function withSpinner(btn, fn) {
   return async () => {
     const text = btn.querySelector(".btn-text");
@@ -675,5 +675,6 @@ el.sendMsgBtn.addEventListener("click", async () => {
   } catch(e) { showToast(e.message,"error"); }
 });
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// -- Init ----------------------------------------------------------------------
 bootstrapBeforeLogin();
+

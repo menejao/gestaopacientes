@@ -1,13 +1,13 @@
-/* ═══════════════════════════════════════════════════════════════
-   SaúdeUBS — Design System · Clínico/Institucional
+﻿/* ---------------------------------------------------------------
+   SaudeUBS - Design System - Clinico/Institucional
    Tipografia: IBM Plex Sans + IBM Plex Mono
-   Paleta: Navy deep · Azul médio · Verde clínico · Cinzas frios
-═══════════════════════════════════════════════════════════════ */
+   Paleta: Navy deep - Azul medio - Verde clinico - Cinzas frios
+--------------------------------------------------------------- */
 
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
-  /* ── Core palette ── */
+  /* -- Core palette -- */
   --navy-900:   #0d1b2a;
   --navy-800:   #1a2e44;
   --navy-700:   #1e3a52;
@@ -50,7 +50,7 @@
   --gray-100:   #f3f4f6;
   --gray-50:    #f9fafb;
 
-  /* ── Semantic ── */
+  /* -- Semantic -- */
   --bg:              #f0f4f8;
   --surface:         #ffffff;
   --surface-2:       #f7fafc;
@@ -73,14 +73,14 @@
   --topbar-bg:       var(--navy-900);
   --topbar-text:     #e8f0f8;
 
-  /* ── Radius ── */
+  /* -- Radius -- */
   --r-xs: 3px;
   --r-sm: 5px;
   --r-md: 8px;
   --r-lg: 10px;
   --r-xl: 14px;
 
-  /* ── Shadow ── */
+  /* -- Shadow -- */
   --shadow-xs: 0 1px 2px rgba(0,0,0,.05);
   --shadow-sm: 0 1px 4px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
   --shadow-md: 0 4px 12px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.05);
@@ -96,9 +96,9 @@
 
 body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    AUTH SCREEN
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .auth-screen {
   min-height: 100vh;
   display: grid;
@@ -265,12 +265,12 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 }
 .field-eye:hover { color: var(--blue-500); }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    APP SHELL
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-/* ── Topbar ── */
+/* -- Topbar -- */
 .topbar {
   height: 52px;
   background: var(--topbar-bg);
@@ -367,7 +367,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 }
 .btn-ghost:hover { background: rgba(255,255,255,.13); }
 
-/* ── App body ── */
+/* -- App body -- */
 .app-body {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -375,9 +375,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   overflow: hidden;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    SIDEBAR
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .sidebar {
   background: var(--sidebar-bg);
   border-right: 1px solid var(--sidebar-border);
@@ -545,9 +545,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   font-weight: 500;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    MAIN AREA
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .main-area {
   background: var(--bg);
   overflow-y: auto;
@@ -557,7 +557,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .main-area::-webkit-scrollbar { width: 5px; }
 .main-area::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
 
-/* ── Empty state ── */
+/* -- Empty state -- */
 .empty-state {
   flex: 1;
   display: flex;
@@ -572,7 +572,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .empty-title { font-size: .95rem; font-weight: 500; color: var(--text-secondary); margin-bottom: .35rem; }
 .empty-sub { font-size: .82rem; color: var(--text-muted); max-width: 280px; line-height: 1.5; }
 
-/* ── Patient header ── */
+/* -- Patient header -- */
 .patient-hd {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -626,7 +626,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .chip.blue { background: var(--blue-50); border-color: var(--blue-100); color: var(--blue-600); }
 .chip.teal { background: var(--teal-50); border-color: var(--teal-100); color: var(--teal-600); }
 
-/* ── Patient tabs ── */
+/* -- Patient tabs -- */
 .ptabs {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -660,15 +660,15 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .ptab:hover { color: var(--blue-600); }
 .ptab.active { color: var(--blue-600); border-bottom-color: var(--blue-600); font-weight: 500; }
 
-/* ── Panels ── */
+/* -- Panels -- */
 .panel { padding: 1.25rem 1.5rem; }
 .panel.active { display: block; }
 .panel.hidden { display: none !important; }
 .patient-view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    FORMS
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .field-group { display: flex; flex-direction: column; gap: .25rem; margin-bottom: .75rem; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 
@@ -734,9 +734,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 
 .field-input-wrap { position: relative; }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    BUTTONS
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -805,9 +805,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    PANEL CARDS
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .panel-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -834,9 +834,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   align-items: start;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    PROTOCOL SUMMARY
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .protocol-area {}
 
 .proto-stats {
@@ -944,9 +944,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .vaccine-badge.done    { background: var(--teal-50);  color: var(--teal-600);  border: 1.5px solid var(--teal-400); }
 .vaccine-badge.pending { background: var(--amber-50); color: var(--amber-600); border: 1.5px solid var(--amber-600); }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    RECORDS / TASKS / APPOINTMENTS
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .record-card {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
@@ -989,9 +989,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .status-row label { font-size: .72rem; color: var(--text-muted); }
 .status-row .field-select { max-width: 160px; padding: .28rem 1.8rem .28rem .55rem; font-size: .78rem; }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    TIMELINE
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .timeline { display: flex; flex-direction: column; gap: 0; }
 
 .tl-item {
@@ -1051,9 +1051,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .tl-detail { font-size: .79rem; color: var(--text-secondary); line-height: 1.5; }
 .tl-source { font-size: .7rem; color: var(--text-muted); margin-top: .25rem; }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    MESSAGES
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .msg-layout { display: flex; flex-direction: column; gap: 1rem; }
 
 .msg-thread {
@@ -1092,9 +1092,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   gap: .6rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    AUDIT
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .audit-row {
   display: flex;
   align-items: center;
@@ -1108,9 +1108,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .audit-who    { font-size: .75rem; color: var(--text-muted); }
 .audit-when   { font-size: .72rem; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; white-space: nowrap; flex-shrink: 0; }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    TOAST
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .toast {
   position: fixed;
   bottom: 1.5rem;
@@ -1132,15 +1132,15 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 .toast.ok     { background: var(--teal-600); }
 .toast.error  { background: var(--red-600); }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    MISC
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 .hidden { display: none !important; }
 .empty-msg { text-align: center; padding: 2rem 1rem; font-size: .82rem; color: var(--text-muted); }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ---------------------------------------------------------------
    RESPONSIVE
-═══════════════════════════════════════════════════════════════ */
+--------------------------------------------------------------- */
 @media (max-width: 960px) {
   .auth-screen { grid-template-columns: 1fr; }
   .auth-left { display: none; }
@@ -1157,3 +1157,6 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   .topbar-user .user-info { display: none; }
   .panel { padding: .85rem; }
 }
+
+
+
