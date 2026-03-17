@@ -47,6 +47,8 @@ const el = {
   userName:                 document.getElementById("userName"),
   userRole:                 document.getElementById("userRole"),
   userAvatar:               document.getElementById("userAvatar"),
+  topbarSearchInput:        document.getElementById("topbarSearchInput"),
+  topbarFilterBtn:          document.getElementById("topbarFilterBtn"),
   topbarPatient:            document.getElementById("topbarPatient"),
   patientPanel:             document.getElementById("patientPanel"),
   newPatientPanel:          document.getElementById("newPatientPanel"),
@@ -157,6 +159,13 @@ const el = {
   profileCouncilNumber:     document.getElementById("profileCouncilNumber"),
   profileCouncilUf:         document.getElementById("profileCouncilUf"),
   saveProfileBtn:           document.getElementById("saveProfileBtn"),
+  filterModal:              document.getElementById("filterModal"),
+  closeFilterModalBtn:      document.getElementById("closeFilterModalBtn"),
+  topFilterMicroArea:       document.getElementById("topFilterMicroArea"),
+  topFilterAcs:             document.getElementById("topFilterAcs"),
+  topFilterCategory:        document.getElementById("topFilterCategory"),
+  applyTopFiltersBtn:       document.getElementById("applyTopFiltersBtn"),
+  clearTopFiltersBtn:       document.getElementById("clearTopFiltersBtn"),
 };
 
 // -- Toast --------------------------------------------------------------------
@@ -268,11 +277,13 @@ function validateCouncil(role, num, uf) {
 
 // -- Select helpers ------------------------------------------------------------
 function fillCategorySelect(sel, withAll=false) {
+  if (!sel) return;
   sel.innerHTML = "";
   if (withAll) sel.appendChild(Object.assign(document.createElement("option"), { value:"", textContent:"Todas" }));
   state.protocolTemplates.forEach(t => sel.appendChild(Object.assign(document.createElement("option"), { value:t.category, textContent:t.label })));
 }
 function fillAcsSelect(sel, withAll=false) {
+  if (!sel) return;
   sel.innerHTML = "";
   if (withAll) sel.appendChild(Object.assign(document.createElement("option"), { value:"", textContent:"Todos" }));
   state.users.filter(u => u.role === "acs").forEach(u => sel.appendChild(Object.assign(document.createElement("option"), { value:u.id, textContent:u.name })));
@@ -286,6 +297,7 @@ async function reloadTemplateData() {
   state.protocolTemplates = await api("/protocol/templates");
   fillCategorySelect(el.pCareCategory);
   fillCategorySelect(el.filterCategory, true);
+  fillCategorySelect(el.topFilterCategory, true);
   renderWorkspaceHome();
   renderPatients();
   renderProtocolAdminList();
@@ -1076,7 +1088,7 @@ async function selectPatient(patient) {
 async function bootstrapAfterLogin() {
   const [users] = await Promise.all([api("/users")]);
   state.users = users;
-  fillAcsSelect(el.tAssignee); fillAcsSelect(el.pAcs); fillAcsSelect(el.filterAcs, true);
+  fillAcsSelect(el.tAssignee); fillAcsSelect(el.pAcs); fillAcsSelect(el.filterAcs, true); fillAcsSelect(el.topFilterAcs, true);
   await reloadTemplateData();
   el.authScreen.classList.add("hidden");
   el.appScreen.classList.remove("hidden");
@@ -1093,10 +1105,14 @@ async function bootstrapAfterLogin() {
   state.dashboardProtocolStatus = "all";
   state.workspaceTab = "dashboard";
   if (el.homePatientSearchInput) el.homePatientSearchInput.value = "";
+  if (el.topbarSearchInput) el.topbarSearchInput.value = "";
   if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
   if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
   if (el.homePatientAcsFilter) el.homePatientAcsFilter.value = "";
   if (el.homePatientProtocolStatusFilter) el.homePatientProtocolStatusFilter.value = "all";
+  if (el.topFilterMicroArea) el.topFilterMicroArea.value = "";
+  if (el.topFilterAcs) el.topFilterAcs.value = "";
+  if (el.topFilterCategory) el.topFilterCategory.value = "";
   switchWorkspaceTab("dashboard");
   await loadPatients();
   await loadGlobalTasks();
@@ -1199,6 +1215,14 @@ el.protocolModal?.addEventListener("click", (e) => {
 
 el.homePatientSearchInput?.addEventListener("input", () => {
   state.dashboardQuery = el.homePatientSearchInput.value || "";
+  if (el.topbarSearchInput) el.topbarSearchInput.value = state.dashboardQuery;
+  state.dashboardPage = 1;
+  renderHomePatientTable();
+});
+
+el.topbarSearchInput?.addEventListener("input", () => {
+  state.dashboardQuery = el.topbarSearchInput.value || "";
+  if (el.homePatientSearchInput) el.homePatientSearchInput.value = state.dashboardQuery;
   state.dashboardPage = 1;
   renderHomePatientTable();
 });
@@ -1228,6 +1252,43 @@ el.homePatientProtocolStatusFilter?.addEventListener("change", () => {
 });
 
 el.homePatientExportBtn?.addEventListener("click", exportDashboardPatientsCsv);
+
+el.topbarFilterBtn?.addEventListener("click", () => {
+  el.topFilterMicroArea.value = state.filters.microArea || "";
+  el.topFilterAcs.value = state.filters.acsId || "";
+  el.topFilterCategory.value = state.filters.careCategory || "";
+  el.filterModal.classList.remove("hidden");
+});
+
+el.closeFilterModalBtn?.addEventListener("click", () => el.filterModal.classList.add("hidden"));
+el.filterModal?.addEventListener("click", (e) => {
+  if (e.target === el.filterModal) el.filterModal.classList.add("hidden");
+});
+
+el.applyTopFiltersBtn?.addEventListener("click", async () => {
+  state.filters.microArea = el.topFilterMicroArea.value.trim();
+  state.filters.acsId = el.topFilterAcs.value;
+  state.filters.careCategory = el.topFilterCategory.value;
+  if (el.filterMicroArea) el.filterMicroArea.value = state.filters.microArea;
+  if (el.filterAcs) el.filterAcs.value = state.filters.acsId;
+  if (el.filterCategory) el.filterCategory.value = state.filters.careCategory;
+  el.filterModal.classList.add("hidden");
+  await loadPatients();
+});
+
+el.clearTopFiltersBtn?.addEventListener("click", async () => {
+  state.filters.microArea = "";
+  state.filters.acsId = "";
+  state.filters.careCategory = "";
+  el.topFilterMicroArea.value = "";
+  el.topFilterAcs.value = "";
+  el.topFilterCategory.value = "";
+  if (el.filterMicroArea) el.filterMicroArea.value = "";
+  if (el.filterAcs) el.filterAcs.value = "";
+  if (el.filterCategory) el.filterCategory.value = "";
+  el.filterModal.classList.add("hidden");
+  await loadPatients();
+});
 
 el.homePatientPrevBtn?.addEventListener("click", () => {
   state.dashboardPage = Math.max(1, state.dashboardPage - 1);

@@ -126,7 +126,16 @@
           </svg>
           <span>SaudeUBS</span>
         </div>
-        <div class="topbar-center" id="topbarPatient"></div>
+        <div class="topbar-center">
+          <div class="topbar-search-wrap">
+            <svg class="topbar-search-ico" width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <input id="topbarSearchInput" class="topbar-search-input" placeholder="Buscar paciente no painel..."/>
+            <button id="topbarFilterBtn" class="topbar-filter-btn" title="Filtros">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5 8h6M7 12h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <div id="topbarPatient" class="topbar-patient-inline"></div>
+        </div>
         <div class="topbar-right">
           <button id="homeBtn" class="btn-ghost hidden">Painel</button>
           <div class="topbar-user" id="topbarUser">
@@ -223,8 +232,6 @@
                 <p class="home-sub">Acompanhe pacientes, protocolos e pendencias da equipe em tempo real.</p>
               </div>
               <div class="home-actions">
-                <button id="quickNewPatientBtn" class="btn-primary">Novo paciente</button>
-                <button id="quickOpenFiltersBtn" class="btn-secondary">Abrir filtros</button>
                 <button id="quickSelectFirstPatientBtn" class="btn-secondary">Abrir primeiro paciente</button>
               </div>
             </section>
@@ -499,6 +506,32 @@
           </div>
         </div>
         <button id="saveProfileBtn" class="btn-primary btn-block">Salvar perfil</button>
+      </div>
+    </div>
+
+    <!-- FILTER MODAL -->
+    <div id="filterModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-hd">
+          <h3>Filtros de pacientes</h3>
+          <button id="closeFilterModalBtn" class="icon-btn">X</button>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Microarea</label>
+          <input id="topFilterMicroArea" class="field-input" placeholder="Ex: MA-03"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">ACS</label>
+          <select id="topFilterAcs" class="field-select"></select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Categoria</label>
+          <select id="topFilterCategory" class="field-select"></select>
+        </div>
+        <div class="inline-actions" style="justify-content:flex-end;">
+          <button id="clearTopFiltersBtn" class="btn-secondary">Limpar</button>
+          <button id="applyTopFiltersBtn" class="btn-primary">Aplicar</button>
+        </div>
       </div>
     </div>
 
