@@ -10,6 +10,7 @@ MVP inicial para:
 - Categorizacao clinica (gestante, puerpera, preventivo/Papanicolau etc.)
 - Historico clinico completo com visitas, consultas, vacinas e procedimentos
 - Resumo de protocolo com metas x realizado
+- IA assistida para equipe e paciente (resumo, alertas, priorizacao, chat, relatorios)
 
 ## Tecnologias
 - Backend: Node.js + Express
@@ -143,6 +144,17 @@ Arquivos de apoio ja prontos:
 - `GET/POST/PATCH /tasks`
 - `GET/POST /patients/:id/messages`
 - `GET /audit-logs` (somente enfermeira)
+- `GET /ai/status`
+- `POST /ai/patients/:id/summary`
+- `POST /ai/patients/:id/protocol-highlights`
+- `POST /ai/patients/:id/evolution-draft`
+- `POST /ai/patients/:id/acs-message`
+- `POST /ai/patients/:id/suggest-category`
+- `POST /ai/patients/:id/transcribe`
+- `POST /ai/team/priorities`
+- `POST /ai/team/data-quality`
+- `POST /ai/team/report` (somente enfermeira)
+- `POST /ai/chat`
 
 ## Proximos passos sugeridos
 - Banco de dados real (PostgreSQL)

@@ -836,6 +836,25 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   gap: .35rem;
 }
 
+#aiTeamQuestionInput {
+  min-width: 260px;
+  flex: 1;
+}
+
+.code-block {
+  margin-top: .55rem;
+  background: #0b2238;
+  color: #d3e6f8;
+  border: 1px solid #1a3c5d;
+  border-radius: var(--r-md);
+  padding: .8rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  min-height: 120px;
+}
+
 .form-divider {
   height: 1px;
   background: var(--border);

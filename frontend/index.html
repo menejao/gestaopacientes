@@ -164,6 +164,7 @@
               <button id="navProtocolsBtn" class="nav-link">Protocolos</button>
               <button id="navAcsBtn" class="nav-link">ACS</button>
               <button id="navDoctorsBtn" class="nav-link">Medicos</button>
+              <button id="navAiBtn" class="nav-link">IA Assistida</button>
             </div>
             <div class="form-divider"></div>
             <div class="nav-actions">
@@ -297,6 +298,24 @@
               </div>
               <div id="protocolAdminList"></div>
             </section>
+
+            <section id="aiHubSection" class="panel-card workspace-pane hidden">
+              <div class="panel-card-hd">IA Assistida da Equipe</div>
+              <p class="home-task-meta">Use IA para prioridade do dia, qualidade de dados, relatorio e perguntas operacionais.</p>
+              <div class="inline-actions" style="margin:.6rem 0;">
+                <button id="aiLoadPrioritiesBtn" class="btn-secondary">Prioridades do dia</button>
+                <button id="aiLoadQualityBtn" class="btn-secondary">Qualidade de dados</button>
+                <button id="aiLoadReportBtn" class="btn-secondary">Relatorio executivo</button>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Pergunte ao assistente da equipe</label>
+                <div class="inline-actions">
+                  <input id="aiTeamQuestionInput" class="field-input" placeholder="Ex: Quais pacientes estao com protocolo atrasado?" />
+                  <button id="aiAskTeamBtn" class="btn-primary">Perguntar</button>
+                </div>
+              </div>
+              <pre id="aiHubOutput" class="code-block"></pre>
+            </section>
           </div>
 
           <!-- Patient view -->
@@ -342,6 +361,10 @@
               <button class="ptab" data-panel="panelMessages">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v9H9l-3 2v-2H2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
                 Comunicacao
+              </button>
+              <button class="ptab" data-panel="panelAi">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                IA Assistida
               </button>
               <button class="ptab audit-tab hidden" data-panel="panelAudit">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3M8 11v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -432,6 +455,29 @@
                   <textarea id="mText" class="field-textarea" rows="3" placeholder="Mensagem para a equipe..."></textarea>
                   <button id="sendMsgBtn" class="btn-primary">Enviar</button>
                 </div>
+              </div>
+            </div>
+
+            <div id="panelAi" class="panel hidden">
+              <div class="panel-card">
+                <div class="panel-card-hd">IA do paciente</div>
+                <div class="inline-actions" style="margin-bottom:.6rem;">
+                  <button id="aiPatientSummaryBtn" class="btn-secondary">Resumo clinico</button>
+                  <button id="aiPatientProtocolBtn" class="btn-secondary">Destaques do protocolo</button>
+                  <button id="aiPatientAcsMsgBtn" class="btn-secondary">Mensagem para ACS</button>
+                  <button id="aiPatientSuggestBtn" class="btn-secondary">Sugerir categoria</button>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Evolucao assistida (texto livre opcional)</label>
+                  <textarea id="aiEvolutionInput" class="field-textarea" rows="3" placeholder="Ex: Paciente refere tontura ha 2 dias..."></textarea>
+                  <button id="aiEvolutionBtn" class="btn-primary" style="margin-top:.45rem;">Gerar evolucao (SOAP)</button>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Transcricao/estrutura de audio (cole texto)</label>
+                  <textarea id="aiTranscriptionInput" class="field-textarea" rows="2" placeholder="Cole aqui o texto capturado do audio"></textarea>
+                  <button id="aiTranscriptionBtn" class="btn-secondary" style="margin-top:.45rem;">Estruturar texto</button>
+                </div>
+                <pre id="aiPatientOutput" class="code-block"></pre>
               </div>
             </div>
 
