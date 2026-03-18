@@ -1021,12 +1021,18 @@ function getFilteredDashboardPatients() {
 
 function renderHomePatientTable() {
   if (!el.homePatientTableBody) return;
-  const list = getFilteredDashboardPatients();
+  const list = state.workspaceTab === "patients"
+    ? sortedPatientsForDashboard(state.patients)
+    : getFilteredDashboardPatients();
   const total = list.length;
-  const totalPages = Math.max(Math.ceil(total / state.dashboardPageSize), 1);
+  const totalPages = state.workspaceTab === "patients"
+    ? 1
+    : Math.max(Math.ceil(total / state.dashboardPageSize), 1);
   if (state.dashboardPage > totalPages) state.dashboardPage = totalPages;
-  const start = (state.dashboardPage - 1) * state.dashboardPageSize;
-  const pageItems = list.slice(start, start + state.dashboardPageSize);
+  const start = state.workspaceTab === "patients" ? 0 : (state.dashboardPage - 1) * state.dashboardPageSize;
+  const pageItems = state.workspaceTab === "patients"
+    ? list
+    : list.slice(start, start + state.dashboardPageSize);
 
   if (!pageItems.length) {
     el.homePatientTableBody.innerHTML = '<tr><td colspan="7"><div class="empty-msg">Nenhum paciente encontrado para esse filtro.</div></td></tr>';
@@ -1051,9 +1057,11 @@ function renderHomePatientTable() {
     }).join("");
   }
 
-  el.homePatientPageInfo.textContent = `P?gina ${state.dashboardPage} de ${totalPages} | ${total} paciente(s)`;
-  el.homePatientPrevBtn.disabled = state.dashboardPage <= 1;
-  el.homePatientNextBtn.disabled = state.dashboardPage >= totalPages;
+  el.homePatientPageInfo.textContent = state.workspaceTab === "patients"
+    ? `${total} paciente(s) cadastrado(s)`
+    : `P?gina ${state.dashboardPage} de ${totalPages} | ${total} paciente(s)`;
+  el.homePatientPrevBtn.disabled = state.workspaceTab === "patients" || state.dashboardPage <= 1;
+  el.homePatientNextBtn.disabled = state.workspaceTab === "patients" || state.dashboardPage >= totalPages;
 
   document.querySelectorAll(".home-open-patient-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -1295,8 +1303,14 @@ function switchNavSection(section) {
   el.doctorsAdminSection.classList.toggle("hidden", state.navSection !== "doctors");
   el.aiHubSection.classList.toggle("hidden", state.navSection !== "ai");
 
-  if (state.navSection === "patients") switchWorkspaceTab("dashboard");
-  if (state.navSection === "patients_list") switchWorkspaceTab("patients");
+  if (state.navSection === "patients") {
+    switchWorkspaceTab("dashboard");
+  }
+  if (state.navSection === "patients_list") {
+    switchWorkspaceTab("patients");
+    state.dashboardQuery = "";
+    if (el.topbarSearchInput) el.topbarSearchInput.value = "";
+  }
   if (showPatientsWorkspace && !["dashboard", "patients", "protocols"].includes(state.workspaceTab)) {
     switchWorkspaceTab("dashboard");
   }
