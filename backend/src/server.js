@@ -2,6 +2,7 @@
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
+import nodemailer from "nodemailer";
 import { v4 as uuidv4 } from "uuid";
 import { readDb, withDb } from "./db.js";
 import {
@@ -28,6 +29,7 @@ const FRONTEND_ORIGINS = String(process.env.FRONTEND_ORIGINS || "")
 const AUTH_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
 const AUTH_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 20);
 const authRateMap = new Map();
+let _mailerTransport = null;
 
 if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
   throw new Error("JWT_SECRET obrigatório em produção");
@@ -256,6 +258,106 @@ function authRateLimit(req, res, next) {
   return next();
 }
 
+function maskEmail(email = "") {
+  const value = String(email || "").trim().toLowerCase();
+  const [name, domain] = value.split("@");
+  if (!name || !domain) return "";
+  if (name.length <= 2) return `${name[0] || "*"}***@${domain}`;
+  return `${name[0]}***${name[name.length - 1]}@${domain}`;
+}
+
+function randomSixDigitCode() {
+  const n = crypto.randomInt(0, 1000000);
+  return String(n).padStart(6, "0");
+}
+
+function oneTimeCodeHash(code = "") {
+  return crypto.createHash("sha256").update(`${String(code)}:${JWT_SECRET}`).digest("hex");
+}
+
+function cleanupAuthChallenges(db) {
+  ensureDbShape(db);
+  const nowTs = Date.now();
+  db.registerVerifications = db.registerVerifications.filter((item) => new Date(item.expiresAt || 0).getTime() > nowTs);
+  db.loginChallenges = db.loginChallenges.filter((item) => new Date(item.expiresAt || 0).getTime() > nowTs);
+}
+
+function getEmailOtpConfig() {
+  const required = !["0", "false", "no", "off"].includes(String(process.env.AUTH_OTP_EMAIL_REQUIRED || "true").trim().toLowerCase());
+  const host = String(process.env.SMTP_HOST || "").trim();
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure = !["0", "false", "no", "off"].includes(String(process.env.SMTP_SECURE || "false").trim().toLowerCase());
+  const user = String(process.env.SMTP_USER || "").trim();
+  const pass = String(process.env.SMTP_PASS || "").trim();
+  const from = String(process.env.SMTP_FROM || user || "").trim();
+  return {
+    required,
+    configured: Boolean(host && port && from && user && pass),
+    host,
+    port: Number.isFinite(port) && port > 0 ? port : 587,
+    secure,
+    user,
+    pass,
+    from
+  };
+}
+
+function getMailerTransport() {
+  const config = getEmailOtpConfig();
+  if (!config.configured) return null;
+  if (_mailerTransport) return _mailerTransport;
+  _mailerTransport = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass
+    }
+  });
+  return _mailerTransport;
+}
+
+async function sendOtpEmail(toEmail, code, purpose = "auth") {
+  const config = getEmailOtpConfig();
+  if (!config.configured) {
+    if (config.required) {
+      throw new Error("Envio de e-mail para confirmação não está configurado no servidor");
+    }
+    console.warn(`[auth-otp:${purpose}] ${toEmail} => ${code}`);
+    return;
+  }
+
+  const transporter = getMailerTransport();
+  if (!transporter) {
+    throw new Error("Falha ao iniciar transporte de e-mail");
+  }
+
+  const appName = "SaudeUBS";
+  const subject = purpose === "register"
+    ? `${appName} - Código de confirmação de cadastro`
+    : `${appName} - Código de verificação do login`;
+  const bodyTitle = purpose === "register"
+    ? "Confirmação de cadastro"
+    : "Verificação em dois fatores";
+
+  await transporter.sendMail({
+    from: config.from,
+    to: toEmail,
+    subject,
+    text: `${bodyTitle}\n\nSeu código é: ${code}\n\nEste código expira em 10 minutos.\n\nSe você não solicitou, ignore este e-mail.`,
+    html: `
+      <div style="font-family:Arial,sans-serif;color:#0f172a;">
+        <h2 style="margin:0 0 12px;">${bodyTitle}</h2>
+        <p>Seu código é:</p>
+        <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:8px 0 16px;">${code}</p>
+        <p>Este código expira em <strong>10 minutos</strong>.</p>
+        <p>Se você não solicitou, ignore este e-mail.</p>
+      </div>
+    `
+  });
+}
+
 function isSequentialDigits(input) {
   const chars = [...input].map((c) => Number(c));
   let asc = true;
@@ -302,6 +404,8 @@ function ensureDbShape(db) {
   ensureArray(db, "clinicalRecords");
   ensureArray(db, "protocolTemplates");
   ensureArray(db, "privacyRequests");
+  ensureArray(db, "registerVerifications");
+  ensureArray(db, "loginChallenges");
 
   if (!db.teams.length) {
     const defaultTeamId = "team-default";
@@ -2561,32 +2665,31 @@ app.get("/integrations/council/status", (_req, res) => {
   });
 });
 
-app.post("/auth/register", authRateLimit, async (req, res) => {
-  const payload = req.body;
+app.post("/auth/register", authRateLimit, async (_req, res) => {
+  return res.status(410).json({
+    error: "Fluxo atualizado. Use /auth/register/request-code e /auth/register/confirm."
+  });
+});
+
+app.post("/auth/register/request-code", authRateLimit, async (req, res) => {
+  const payload = req.body || {};
   const name = String(payload.name || "").trim();
   const email = String(payload.email || "").trim().toLowerCase();
   const password = String(payload.password || "");
-  const role = canonicalRole(payload.role);
+  const role = canonicalRole(payload.role || "nurse_manager");
   const councilType = councilTypeForRole(role);
 
   if (!name || !email || !password || !role) {
     return res.status(400).json({ error: "name, email, password e role são obrigatórios" });
   }
-
   if (!isValidEmail(email)) {
     return res.status(400).json({ error: "E-mail inválido" });
   }
-
-  if (!isValidEmail(email)) {
-    return res.status(400).json({ error: "E-mail inválido" });
-  }
-
   if (!isStrongPassword(password)) {
     return res.status(400).json({ error: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial" });
   }
-
   if (!ALLOWED_SELF_REGISTER_ROLES.includes(role) || role !== "nurse_manager") {
-    return res.status(400).json({ error: "Cadastro p?blico permitido apenas para enfermeira" });
+    return res.status(400).json({ error: "Cadastro público permitido apenas para enfermeira" });
   }
 
   const councilValidation = validateCouncilData(role, payload.councilNumber, payload.councilUf);
@@ -2602,104 +2705,166 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
     name,
     email
   });
-
   if (!externalCheck.valid) {
     return res.status(400).json({
       error: externalCheck.error || "Conselho não validado no provedor externo"
     });
   }
 
+  const requestId = uuidv4();
+  const code = randomSixDigitCode();
+  const expiresAt = new Date(Date.now() + (10 * 60 * 1000)).toISOString();
+
+  try {
+    await sendOtpEmail(email, code, "register");
+  } catch (error) {
+    return res.status(503).json({
+      error: `Falha ao enviar código de confirmação: ${error.message || "serviço indisponível"}`
+    });
+  }
+
+  const saveResult = await withDb((db) => {
+    ensureDbShape(db);
+    cleanupAuthChallenges(db);
+    if (db.users.some((u) => String(u.email || "").toLowerCase() === email)) {
+      return { error: "E-mail já cadastrado", status: 409 };
+    }
+
+    db.registerVerifications = db.registerVerifications.filter((item) => String(item.email || "").toLowerCase() !== email);
+    db.registerVerifications.push({
+      id: requestId,
+      email,
+      codeHash: oneTimeCodeHash(code),
+      expiresAt,
+      attempts: 0,
+      maxAttempts: 5,
+      payload: {
+        name,
+        email,
+        role,
+        teamName: String(payload.teamName || "").trim(),
+        passwordHash: hashPassword(password),
+        councilType,
+        councilNumber: councilValidation.councilNumber || "",
+        councilUf: councilValidation.councilUf || "",
+        councilVerification: {
+          checked: externalCheck.checked,
+          provider: externalCheck.provider,
+          status: externalCheck.status,
+          verifiedAt: new Date().toISOString()
+        }
+      },
+      createdAt: new Date().toISOString()
+    });
+    return { ok: true };
+  });
+
+  if (saveResult?.error) {
+    return res.status(saveResult.status || 400).json({ error: saveResult.error });
+  }
+
+  return res.json({
+    requestId,
+    emailMask: maskEmail(email),
+    expiresInSeconds: 600
+  });
+});
+
+app.post("/auth/register/confirm", authRateLimit, async (req, res) => {
+  const requestId = String(req.body?.requestId || "").trim();
+  const code = String(req.body?.code || "").trim();
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!requestId || !email || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: "requestId, email e code (6 dígitos) são obrigatórios" });
+  }
+
   const result = await withDb((db) => {
     ensureDbShape(db);
+    cleanupAuthChallenges(db);
+    const index = db.registerVerifications.findIndex((item) =>
+      item.id === requestId && String(item.email || "").toLowerCase() === email
+    );
+    if (index < 0) return { error: { status: 404, message: "Solicitação de confirmação não encontrada ou expirada" } };
 
-    if (db.users.some((u) => String(u.email).toLowerCase() === email)) {
-      return { error: "E-mail já cadastrado" };
+    const request = db.registerVerifications[index];
+    if (Number(request.attempts || 0) >= Number(request.maxAttempts || 5)) {
+      db.registerVerifications.splice(index, 1);
+      return { error: { status: 429, message: "Código bloqueado por excesso de tentativas" } };
     }
 
-    let teamId = String(payload.teamId || "").trim();
-
-    if (role === "nurse_manager") {
-      const teamNameInput = String(payload.teamName || "").trim();
-      const teamName = teamNameInput || `Equipe ${name}`;
-      const team = {
-        id: uuidv4(),
-        name: teamName,
-        managerUserId: "",
-        createdAt: new Date().toISOString()
-      };
-      db.teams.push(team);
-      teamId = team.id;
-    } else {
-      if (!teamId) {
-        return { error: "teamId ? obrigatório para ACS e Médica" };
-      }
-
-      const teamExists = db.teams.some((t) => t.id === teamId);
-      if (!teamExists) {
-        return { error: "Equipe informada não existe" };
-      }
+    const providedHash = oneTimeCodeHash(code);
+    if (providedHash !== String(request.codeHash || "")) {
+      request.attempts = Number(request.attempts || 0) + 1;
+      db.registerVerifications[index] = request;
+      return { error: { status: 401, message: "Código inválido" } };
     }
 
-    const duplicatedCouncil = roleNeedsCouncil(role) && db.users.some((u) => {
+    const payload = request.payload || {};
+    if (db.users.some((u) => String(u.email || "").toLowerCase() === email)) {
+      db.registerVerifications.splice(index, 1);
+      return { error: { status: 409, message: "E-mail já cadastrado" } };
+    }
+
+    const duplicatedCouncil = roleNeedsCouncil(payload.role) && db.users.some((u) => {
       const uRole = canonicalRole(u.role);
       return roleNeedsCouncil(uRole)
-        && String(u.councilType || "").toUpperCase() === councilType
-        && String(u.councilNumber || "") === councilValidation.councilNumber
-        && String(u.councilUf || "").toUpperCase() === councilValidation.councilUf;
+        && String(u.councilType || "").toUpperCase() === String(payload.councilType || "").toUpperCase()
+        && String(u.councilNumber || "") === String(payload.councilNumber || "")
+        && String(u.councilUf || "").toUpperCase() === String(payload.councilUf || "").toUpperCase();
     });
-
     if (duplicatedCouncil) {
-      return { error: `${councilType} j? cadastrado para outro usuário` };
+      db.registerVerifications.splice(index, 1);
+      return { error: { status: 409, message: `${payload.councilType || "Conselho"} já cadastrado para outro usuário` } };
     }
 
+    const teamName = String(payload.teamName || "").trim() || `Equipe ${payload.name || "Nova"}`;
+    const teamId = `team-${uuidv4()}`;
+    const userId = uuidv4();
+    db.teams.push({
+      id: teamId,
+      name: teamName,
+      managerUserId: userId,
+      createdAt: new Date().toISOString()
+    });
+
     const user = {
-      id: uuidv4(),
-      name,
-      role,
+      id: userId,
+      name: String(payload.name || "").trim(),
+      role: canonicalRole(payload.role),
       email,
-      password: hashPassword(password),
+      password: String(payload.passwordHash || ""),
       teamId,
-      councilType,
-      councilNumber: councilValidation.councilNumber || "",
-      councilUf: councilValidation.councilUf || "",
-      councilVerification: {
-        checked: externalCheck.checked,
-        provider: externalCheck.provider,
-        status: externalCheck.status,
+      councilType: String(payload.councilType || ""),
+      councilNumber: String(payload.councilNumber || ""),
+      councilUf: String(payload.councilUf || "").toUpperCase(),
+      councilVerification: payload.councilVerification || {
+        checked: false,
+        provider: "unknown",
+        status: "unknown",
         verifiedAt: new Date().toISOString()
       },
       createdAt: new Date().toISOString()
     };
-
     db.users.push(user);
+    db.registerVerifications.splice(index, 1);
 
-    if (role === "nurse_manager") {
-      const team = db.teams.find((t) => t.id === teamId);
-      if (team) {
-        team.managerUserId = user.id;
-      }
-    }
-
-    return { user, db };
+    const safeUser = sanitizeUser(user, db);
+    const token = createToken(user, db);
+    return { user: safeUser, token };
   });
 
-  if (result.error) {
-    return res.status(409).json({ error: result.error });
-  }
-
-  const safeUser = sanitizeUser(result.user, result.db);
-  const token = createToken(result.user, result.db);
-  return res.status(201).json({ user: safeUser, token });
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.status(201).json(result);
 });
 
 app.post("/auth/login", authRateLimit, async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
   let db = await readDb();
   ensureDbShape(db);
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const inputPassword = String(password || "");
   let user = db.users.find(
-    (u) => String(u.email).toLowerCase() === normalizedEmail && verifyPassword(inputPassword, u.password)
+    (u) => String(u.email || "").toLowerCase() === normalizedEmail && verifyPassword(inputPassword, u.password)
   );
 
   if (!user) {
@@ -2709,7 +2874,6 @@ app.post("/auth/login", authRateLimit, async (req, res) => {
       db = recovered.db;
     }
   }
-
   if (!user) {
     return res.status(401).json({ error: "Credenciais inválidas" });
   }
@@ -2728,9 +2892,81 @@ app.post("/auth/login", authRateLimit, async (req, res) => {
     user = db.users.find((u) => u.id === user.id) || user;
   }
 
-  const safeUser = sanitizeUser(user, db);
-  const token = createToken(user, db);
-  return res.json({ user: safeUser, token });
+  const challengeId = uuidv4();
+  const code = randomSixDigitCode();
+  const expiresAt = new Date(Date.now() + (10 * 60 * 1000)).toISOString();
+
+  try {
+    await sendOtpEmail(normalizedEmail, code, "login");
+  } catch (error) {
+    return res.status(503).json({
+      error: `Falha ao enviar código de login: ${error.message || "serviço indisponível"}`
+    });
+  }
+
+  await withDb((mutableDb) => {
+    ensureDbShape(mutableDb);
+    cleanupAuthChallenges(mutableDb);
+    mutableDb.loginChallenges = mutableDb.loginChallenges.filter((item) => item.userId !== user.id);
+    mutableDb.loginChallenges.push({
+      id: challengeId,
+      userId: user.id,
+      email: normalizedEmail,
+      codeHash: oneTimeCodeHash(code),
+      attempts: 0,
+      maxAttempts: 5,
+      expiresAt,
+      createdAt: new Date().toISOString()
+    });
+  });
+
+  return res.json({
+    requiresTwoFactor: true,
+    challengeId,
+    emailMask: maskEmail(normalizedEmail),
+    expiresInSeconds: 600
+  });
+});
+
+app.post("/auth/login/verify", authRateLimit, async (req, res) => {
+  const challengeId = String(req.body?.challengeId || "").trim();
+  const code = String(req.body?.code || "").trim();
+  if (!challengeId || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: "challengeId e code (6 dígitos) são obrigatórios" });
+  }
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    cleanupAuthChallenges(db);
+    const index = db.loginChallenges.findIndex((item) => item.id === challengeId);
+    if (index < 0) return { error: { status: 404, message: "Desafio de login não encontrado ou expirado" } };
+
+    const challenge = db.loginChallenges[index];
+    if (Number(challenge.attempts || 0) >= Number(challenge.maxAttempts || 5)) {
+      db.loginChallenges.splice(index, 1);
+      return { error: { status: 429, message: "Código bloqueado por excesso de tentativas" } };
+    }
+
+    if (oneTimeCodeHash(code) !== String(challenge.codeHash || "")) {
+      challenge.attempts = Number(challenge.attempts || 0) + 1;
+      db.loginChallenges[index] = challenge;
+      return { error: { status: 401, message: "Código inválido" } };
+    }
+
+    const user = db.users.find((u) => u.id === challenge.userId);
+    if (!user) {
+      db.loginChallenges.splice(index, 1);
+      return { error: { status: 404, message: "Usuário não encontrado" } };
+    }
+
+    db.loginChallenges.splice(index, 1);
+    const safeUser = sanitizeUser(user, db);
+    const token = createToken(user, db);
+    return { user: safeUser, token };
+  });
+
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.json(result);
 });
 
 app.use(requireAuth);

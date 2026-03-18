@@ -30,7 +30,10 @@ const state = {
   dashboardAcsId: "",
   dashboardProtocolStatus: "all",
   selectedPatientIds: new Set(),
-  filters: { microArea: "", acsId: "", careCategory: "" }
+  filters: { microArea: "", acsId: "", careCategory: "" },
+  authLoginChallengeId: "",
+  authRegisterRequestId: "",
+  authRegisterEmail: ""
 };
 
 // -- Element refs ------------------------------------------------------------
@@ -39,6 +42,10 @@ const el = {
   appScreen:                document.getElementById("appScreen"),
   loginEmail:               document.getElementById("loginEmail"),
   loginPassword:            document.getElementById("loginPassword"),
+  login2faWrap:             document.getElementById("login2faWrap"),
+  login2faCode:             document.getElementById("login2faCode"),
+  loginVerifyBtn:           document.getElementById("loginVerifyBtn"),
+  loginBackBtn:             document.getElementById("loginBackBtn"),
   loginBtn:                 document.getElementById("loginBtn"),
   registerName:             document.getElementById("registerName"),
   registerEmail:            document.getElementById("registerEmail"),
@@ -49,6 +56,10 @@ const el = {
   registerTeamName:         document.getElementById("registerTeamName"),
   registerCouncilNumber:    document.getElementById("registerCouncilNumber"),
   registerCouncilUf:        document.getElementById("registerCouncilUf"),
+  registerCodeWrap:         document.getElementById("registerCodeWrap"),
+  registerCodeInput:        document.getElementById("registerCodeInput"),
+  registerConfirmBtn:       document.getElementById("registerConfirmBtn"),
+  registerCodeCancelBtn:    document.getElementById("registerCodeCancelBtn"),
   registerTeamWrap:         document.getElementById("registerTeamWrap"),
   registerTeamNameWrap:     document.getElementById("registerTeamNameWrap"),
   registerCouncilNumberWrap:document.getElementById("registerCouncilNumberWrap"),
@@ -318,6 +329,8 @@ function logoutUser(showReason = false) {
   el.patientModal?.classList.add("hidden");
   el.createUserModal?.classList.add("hidden");
   el.editTeamUserModal?.classList.add("hidden");
+  setLoginTwoFactorMode(false);
+  setRegisterCodeMode(false);
   clearSessionStore();
   updateSessionView();
   if (showReason) showToast("Sessão encerrada por inatividade.", "error", 3500);
@@ -508,6 +521,8 @@ document.querySelectorAll(".auth-tab").forEach(tab => {
     const t = tab.dataset.tab;
     document.getElementById("loginTab").classList.toggle("hidden", t !== "login");
     document.getElementById("registerTab").classList.toggle("hidden", t !== "register");
+    if (t === "login") setRegisterCodeMode(false);
+    if (t === "register") setLoginTwoFactorMode(false);
   });
 });
 
@@ -582,6 +597,34 @@ function updateRegisterFormVisibility() {
   el.registerCouncilNumber.placeholder = "Ex: 12345 67890";
   el.registerCouncilNumber.maxLength = maxLen + 1;
   el.registerCouncilNumber.value = formatCouncilNumber(el.registerCouncilNumber.value, maxLen);
+}
+
+function setLoginTwoFactorMode(enabled) {
+  const on = Boolean(enabled);
+  el.login2faWrap?.classList.toggle("hidden", !on);
+  el.loginPassword.disabled = on;
+  el.loginBtn.classList.toggle("hidden", on);
+  if (!on) {
+    state.authLoginChallengeId = "";
+    if (el.login2faCode) el.login2faCode.value = "";
+  }
+}
+
+function setRegisterCodeMode(enabled) {
+  const on = Boolean(enabled);
+  el.registerCodeWrap?.classList.toggle("hidden", !on);
+  el.registerBtn.classList.toggle("hidden", on);
+  el.registerName.disabled = on;
+  el.registerEmail.disabled = on;
+  el.registerPassword.disabled = on;
+  el.registerTeamName.disabled = on;
+  el.registerCouncilNumber.disabled = on;
+  el.registerCouncilUf.disabled = on;
+  if (!on) {
+    state.authRegisterRequestId = "";
+    state.authRegisterEmail = "";
+    if (el.registerCodeInput) el.registerCodeInput.value = "";
+  }
 }
 
 function readViewState() {
@@ -2124,6 +2167,8 @@ async function bootstrapAfterLogin() {
 }
 
 async function bootstrapBeforeLogin() {
+  setLoginTwoFactorMode(false);
+  setRegisterCodeMode(false);
   try { state.publicTeams = await api("/teams/public"); fillTeamSelect(); fillCouncilUfSelects(); updateRegisterFormVisibility(); }
   catch (e) { console.warn("Could not load teams:", e.message); }
 }
@@ -2141,9 +2186,12 @@ function withSpinner(btn, fn) {
 
 el.loginBtn.addEventListener("click", withSpinner(el.loginBtn, async () => {
   const payload = await api("/auth/login", { method:"POST", body:JSON.stringify({ email:el.loginEmail.value.trim(), password:el.loginPassword.value }) });
-  state.user = payload.user; state.token = payload.token;
-  persistSession();
-  updateSessionView(); await bootstrapAfterLogin();
+  if (!payload?.requiresTwoFactor || !payload?.challengeId) {
+    throw new Error("Resposta inválida do servidor para login em 2 fatores.");
+  }
+  state.authLoginChallengeId = payload.challengeId;
+  setLoginTwoFactorMode(true);
+  showToast(`Código enviado para ${payload.emailMask || "seu e-mail"}.`, "ok", 4000);
 }));
 
 el.registerBtn.addEventListener("click", withSpinner(el.registerBtn, async () => {
@@ -2153,16 +2201,20 @@ el.registerBtn.addEventListener("click", withSpinner(el.registerBtn, async () =>
   }
   const check = validateCouncil(role, el.registerCouncilNumber.value, el.registerCouncilUf.value);
   if (!check.ok) { showToast(check.message, "error"); throw new Error(check.message); }
-  const payload = await api("/auth/register", { method:"POST", body:JSON.stringify({
+  const payload = await api("/auth/register/request-code", { method:"POST", body:JSON.stringify({
     name: el.registerName.value.trim(), email: el.registerEmail.value.trim(),
     password: el.registerPassword.value, role,
     teamId: "",
     teamName: el.registerTeamName.value.trim(),
     councilNumber: check.number||"", councilUf: check.uf||""
   })});
-  state.user = payload.user; state.token = payload.token;
-  persistSession();
-  updateSessionView(); await bootstrapAfterLogin();
+  state.authRegisterRequestId = String(payload.requestId || "");
+  state.authRegisterEmail = el.registerEmail.value.trim().toLowerCase();
+  if (!state.authRegisterRequestId) {
+    throw new Error("Falha ao iniciar confirmação de cadastro.");
+  }
+  setRegisterCodeMode(true);
+  showToast(`Código de cadastro enviado para ${payload.emailMask || "seu e-mail"}.`, "ok", 4500);
 }));
 
 function loginWithEnter(e) {
@@ -2172,6 +2224,11 @@ function loginWithEnter(e) {
 }
 el.loginEmail?.addEventListener("keydown", loginWithEnter);
 el.loginPassword?.addEventListener("keydown", loginWithEnter);
+el.login2faCode?.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  el.loginVerifyBtn?.click();
+});
 
 el.registerRole?.addEventListener("change", updateRegisterFormVisibility);
 el.registerCouncilNumber.addEventListener("input", () => {
@@ -2181,6 +2238,71 @@ el.registerCouncilNumber.addEventListener("input", () => {
 el.profileCouncilNumber?.addEventListener("input", () => {
   const maxLen = state.user?.role === "doctor" ? 8 : 10;
   el.profileCouncilNumber.value = formatCouncilNumber(el.profileCouncilNumber.value, maxLen);
+});
+el.registerCodeInput?.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  el.registerConfirmBtn?.click();
+});
+
+el.loginBackBtn?.addEventListener("click", () => {
+  setLoginTwoFactorMode(false);
+  showToast("Digite a senha novamente para solicitar um novo código.", "default", 2500);
+});
+
+el.loginVerifyBtn?.addEventListener("click", async () => {
+  try {
+    const code = String(el.login2faCode?.value || "").replace(/\D/g, "").slice(0, 6);
+    if (!/^\d{6}$/.test(code)) {
+      showToast("Digite o código de 6 dígitos.", "error");
+      return;
+    }
+    const payload = await api("/auth/login/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        challengeId: state.authLoginChallengeId,
+        code
+      })
+    });
+    state.user = payload.user;
+    state.token = payload.token;
+    persistSession();
+    updateSessionView();
+    setLoginTwoFactorMode(false);
+    await bootstrapAfterLogin();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+});
+
+el.registerCodeCancelBtn?.addEventListener("click", () => {
+  setRegisterCodeMode(false);
+});
+
+el.registerConfirmBtn?.addEventListener("click", async () => {
+  try {
+    const code = String(el.registerCodeInput?.value || "").replace(/\D/g, "").slice(0, 6);
+    if (!/^\d{6}$/.test(code)) {
+      showToast("Digite o código de 6 dígitos.", "error");
+      return;
+    }
+    const payload = await api("/auth/register/confirm", {
+      method: "POST",
+      body: JSON.stringify({
+        requestId: state.authRegisterRequestId,
+        email: state.authRegisterEmail,
+        code
+      })
+    });
+    state.user = payload.user;
+    state.token = payload.token;
+    persistSession();
+    updateSessionView();
+    setRegisterCodeMode(false);
+    await bootstrapAfterLogin();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
 });
 
 function openPatientCreateModal() {
@@ -2414,6 +2536,8 @@ el.pGestationalAgeUsgWeeks?.addEventListener("input", () => {
 el.pState?.addEventListener("input", () => { el.pState.value = String(el.pState.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2); });
 el.managerCreateCouncilNumber?.addEventListener("input", () => { el.managerCreateCouncilNumber.value = formatCouncilNumber(el.managerCreateCouncilNumber.value, 8); });
 el.editTeamUserCouncilNumber?.addEventListener("input", () => { el.editTeamUserCouncilNumber.value = formatCouncilNumber(el.editTeamUserCouncilNumber.value, 8); });
+el.login2faCode?.addEventListener("input", () => { el.login2faCode.value = onlyDigits(el.login2faCode.value).slice(0, 6); });
+el.registerCodeInput?.addEventListener("input", () => { el.registerCodeInput.value = onlyDigits(el.registerCodeInput.value).slice(0, 6); });
 
 el.pCep?.addEventListener("blur", async () => {
   const cep = onlyDigits(el.pCep.value);
@@ -2870,6 +2994,8 @@ async function initApp() {
   fillRecordVaccines();
   updateRecordTitleControls();
   fillCouncilUfSelects();
+  setLoginTwoFactorMode(false);
+  setRegisterCodeMode(false);
   const raw = localStorage.getItem(SESSION_KEY);
   if (!raw) {
     await bootstrapBeforeLogin();
