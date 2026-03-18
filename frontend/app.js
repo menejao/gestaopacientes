@@ -1331,6 +1331,9 @@ function switchNavSection(section) {
       state.selectedPatient = null;
       renderPatientHeader();
     }
+    el.homeDashboardPane?.classList.add("hidden");
+    el.homePatientsPane?.classList.remove("hidden");
+    renderHomePatientTable();
     loadPatients().catch(() => {
       showToast("Não foi possível recarregar a lista completa de pacientes.", "error");
     });
@@ -2037,7 +2040,11 @@ el.quickSelectFirstPatientBtn?.addEventListener("click", () => {
 });
 
 el.navPatientsBtn?.addEventListener("click", () => switchNavSection("patients"));
-el.navPatientsListBtn?.addEventListener("click", () => switchNavSection("patients_list"));
+el.navPatientsListBtn?.addEventListener("click", () => {
+  state.selectedPatient = null;
+  renderPatientHeader();
+  switchNavSection("patients_list");
+});
 el.navProtocolsBtn?.addEventListener("click", () => switchNavSection("protocols"));
 el.navAcsBtn?.addEventListener("click", () => switchNavSection("acs"));
 el.navDoctorsBtn?.addEventListener("click", () => switchNavSection("doctors"));
