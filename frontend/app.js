@@ -26,6 +26,7 @@ const state = {
   dashboardPage: 1,
   dashboardPageSize: 8,
   dashboardCategory: "",
+  dashboardTeamId: "",
   dashboardAcsId: "",
   dashboardProtocolStatus: "all",
   selectedPatientIds: new Set(),
@@ -180,6 +181,7 @@ const el = {
   priorityTaskList:         document.getElementById("priorityTaskList"),
   protocolDeadlineAlertsList: document.getElementById("protocolDeadlineAlertsList"),
   homePatientSortSelect:    document.getElementById("homePatientSortSelect"),
+  homePatientTeamFilter:    document.getElementById("homePatientTeamFilter"),
   homePatientBulkDeleteBtn: document.getElementById("homePatientBulkDeleteBtn"),
   homePatientSelectAll:     document.getElementById("homePatientSelectAll"),
   homePatientCategoryFilter: document.getElementById("homePatientCategoryFilter"),
@@ -1010,6 +1012,7 @@ function getFilteredDashboardPatients() {
     return hay.includes(query);
   });
 
+  if (state.dashboardTeamId) list = list.filter((p) => String(p.teamId || "") === state.dashboardTeamId);
   if (state.dashboardCategory) list = list.filter((p) => p.careCategory === state.dashboardCategory);
   if (state.dashboardAcsId) list = list.filter((p) => p.assignedAcsId === state.dashboardAcsId);
   if (state.dashboardProtocolStatus !== "all") {
@@ -1021,9 +1024,13 @@ function getFilteredDashboardPatients() {
 
 function renderHomePatientTable() {
   if (!el.homePatientTableBody) return;
-  const list = state.workspaceTab === "patients"
+  let list = state.workspaceTab === "patients"
     ? sortedPatientsForDashboard(state.patients)
     : getFilteredDashboardPatients();
+  if (state.workspaceTab === "patients") {
+    if (state.dashboardTeamId) list = list.filter((p) => String(p.teamId || "") === state.dashboardTeamId);
+    if (state.dashboardAcsId) list = list.filter((p) => p.assignedAcsId === state.dashboardAcsId);
+  }
   const total = list.length;
   const totalPages = state.workspaceTab === "patients"
     ? 1
@@ -1305,6 +1312,10 @@ function switchNavSection(section) {
 
   if (state.navSection === "patients") {
     switchWorkspaceTab("dashboard");
+    if (state.selectedPatient) {
+      state.selectedPatient = null;
+      renderPatientHeader();
+    }
   }
   if (state.navSection === "patients_list") {
     switchWorkspaceTab("patients");
@@ -1316,6 +1327,10 @@ function switchNavSection(section) {
     if (el.topFilterMicroArea) el.topFilterMicroArea.value = "";
     if (el.topFilterAcs) el.topFilterAcs.value = state.filters.acsId || "";
     if (el.topFilterCategory) el.topFilterCategory.value = "";
+    if (state.selectedPatient) {
+      state.selectedPatient = null;
+      renderPatientHeader();
+    }
     loadPatients().catch(() => {
       showToast("Não foi possível recarregar a lista completa de pacientes.", "error");
     });
@@ -1455,9 +1470,10 @@ function renderProtocolAdminList() {
 }
 
 function renderDashboardFilterOptions() {
-  if (!el.homePatientCategoryFilter || !el.homePatientAcsFilter) return;
+  if (!el.homePatientCategoryFilter || !el.homePatientAcsFilter || !el.homePatientTeamFilter) return;
 
   const selectedCategory = state.dashboardCategory;
+  const selectedTeam = state.dashboardTeamId;
   const selectedAcs = state.dashboardAcsId;
 
   el.homePatientCategoryFilter.innerHTML = '<option value="">Todas categorias</option>'
@@ -1468,6 +1484,20 @@ function renderDashboardFilterOptions() {
   el.homePatientAcsFilter.innerHTML = '<option value="">Todos ACS</option>'
     + acsUsers.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
   el.homePatientAcsFilter.value = selectedAcs;
+
+  const teamsMap = new Map();
+  state.patients.forEach((p) => {
+    const id = String(p.teamId || "");
+    if (!id) return;
+    if (!teamsMap.has(id)) {
+      const teamName = state.users.find((u) => u.teamId === id)?.teamName || id;
+      teamsMap.set(id, teamName);
+    }
+  });
+  const teamOptions = [...teamsMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  el.homePatientTeamFilter.innerHTML = '<option value="">Todas equipes</option>'
+    + teamOptions.map(([id, name]) => `<option value="${id}">${name}</option>`).join("");
+  el.homePatientTeamFilter.value = selectedTeam;
 
   if (el.homePatientProtocolStatusFilter) {
     el.homePatientProtocolStatusFilter.value = state.dashboardProtocolStatus;
@@ -1890,11 +1920,13 @@ async function bootstrapAfterLogin() {
   state.dashboardSort = "name_asc";
   state.dashboardPage = 1;
   state.dashboardCategory = "";
+  state.dashboardTeamId = "";
   state.dashboardAcsId = "";
   state.dashboardProtocolStatus = "all";
   state.workspaceTab = savedView?.workspaceTab || "dashboard";
   if (el.topbarSearchInput) el.topbarSearchInput.value = "";
   if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
+  if (el.homePatientTeamFilter) el.homePatientTeamFilter.value = "";
   if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
   if (el.homePatientAcsFilter) el.homePatientAcsFilter.value = "";
   if (el.homePatientProtocolStatusFilter) el.homePatientProtocolStatusFilter.value = "all";
@@ -2158,6 +2190,12 @@ el.homePatientSortSelect?.addEventListener("change", () => {
 
 el.homePatientCategoryFilter?.addEventListener("change", () => {
   state.dashboardCategory = el.homePatientCategoryFilter.value || "";
+  state.dashboardPage = 1;
+  renderHomePatientTable();
+});
+
+el.homePatientTeamFilter?.addEventListener("change", () => {
+  state.dashboardTeamId = el.homePatientTeamFilter.value || "";
   state.dashboardPage = 1;
   renderHomePatientTable();
 });
