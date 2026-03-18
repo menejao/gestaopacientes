@@ -1222,6 +1222,20 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
+function isDentalText(textValue = "") {
+  const text = normalizeText(textValue);
+  return /dent|odont|bucal|cirurgiao dentista/.test(text);
+}
+
+function isDentalRecord(entry) {
+  const text = `${entry?.title || ""} ${entry?.details || ""}`;
+  return isDentalText(text);
+}
+
+function isClinicalConsultation(entry) {
+  return entry?.type === "consultation" && !isDentalRecord(entry);
+}
+
 function eventDate(entry) {
   return toDateOnlySafe(entry?.date || entry?.createdAt || "");
 }
@@ -1303,7 +1317,8 @@ function evaluatePregnantProtocol(patient, history) {
 
   const pregnancyHistory = filterHistoryByPeriod(history, timeline.start, timeline.due);
   const visits = pregnancyHistory.filter((h) => h.type === "visit");
-  const consultations = pregnancyHistory.filter((h) => h.type === "consultation");
+  const allConsultations = pregnancyHistory.filter((h) => h.type === "consultation");
+  const consultations = allConsultations.filter((h) => isClinicalConsultation(h));
   const procedures = pregnancyHistory.filter((h) => h.type === "procedure");
   const vaccines = pregnancyHistory.filter((h) => h.type === "vaccine");
 
@@ -1388,9 +1403,9 @@ function evaluatePregnantProtocol(patient, history) {
     }));
   }
 
-  const oralEvents = [...consultations, ...procedures].filter((h) => {
-    const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
-    return /dent|odont|bucal|cirurgiao dentista/.test(text);
+  const oralEvents = [...allConsultations, ...procedures].filter((h) => {
+    const text = `${h.title || ""} ${h.details || ""}`;
+    return isDentalText(text);
   });
   if (!oralEvents.length) {
     alerts.push(makeClinicalAlert({
@@ -1494,7 +1509,7 @@ function evaluatePuerperalProtocol(patient, history) {
   const periodEnd = addDays(timeline.start, 42);
   const puerperalHistory = filterHistoryByPeriod(history, timeline.start, periodEnd);
   const visits = puerperalHistory.filter((h) => h.type === "visit");
-  const consultations = puerperalHistory.filter((h) => h.type === "consultation");
+  const consultations = puerperalHistory.filter((h) => isClinicalConsultation(h));
   const overdue = timeline.daysLeft !== null && timeline.daysLeft < 0 ? Math.abs(timeline.daysLeft) : 0;
   const severityByDeadline = overdue > 0 ? "high" : ((timeline.daysLeft || 0) <= 7 ? "high" : ((timeline.daysLeft || 0) <= 14 ? "medium" : "low"));
 
@@ -1610,7 +1625,7 @@ function evaluatePapOnlyProtocol(patient, history) {
   }
 
   if (ageYears !== null && ageYears >= 14 && ageYears <= 69) {
-    const consultDone = history12.some((h) => h.type === "consultation");
+    const consultDone = history12.some((h) => isClinicalConsultation(h));
     if (!consultDone) {
       alerts.push(makeClinicalAlert({
         id: "pap-consult-12m",
@@ -1699,7 +1714,7 @@ function evaluateChildProtocol(patient, history) {
   const firstMonthEnd = addDays(birthDate, 30);
   const first6MonthsEnd = addDays(birthDate, 183);
 
-  const consultations = history0to24m.filter((h) => h.type === "consultation");
+  const consultations = history0to24m.filter((h) => isClinicalConsultation(h));
   const visits = history0to24m.filter((h) => h.type === "visit");
   const consultationsFirstMonth = consultations.filter((h) => {
     const d = eventDate(h);
@@ -1862,7 +1877,7 @@ function evaluateElderlyProtocol(_patient, history) {
   const periodStart = addDays(now, -365);
   const periodHistory = filterHistoryByPeriod(history, periodStart, now);
 
-  const consultations = periodHistory.filter((h) => h.type === "consultation");
+  const consultations = periodHistory.filter((h) => isClinicalConsultation(h));
   const visits = periodHistory
     .filter((h) => h.type === "visit")
     .map((h) => eventDate(h))
@@ -1954,7 +1969,7 @@ function evaluateChronicProtocol(patient, history) {
   const period12Start = addDays(now, -365);
   const history6 = filterHistoryByPeriod(history, period6Start, now);
   const history12 = filterHistoryByPeriod(history, period12Start, now);
-  const consultations6 = history6.filter((h) => h.type === "consultation");
+  const consultations6 = history6.filter((h) => isClinicalConsultation(h));
   const visits12 = history12
     .filter((h) => h.type === "visit")
     .map((h) => eventDate(h))
@@ -2047,7 +2062,7 @@ function buildProtocolSummary(patient, history, templateMap) {
 
   const completed = {
     visits: history.filter((h) => h.type === "visit").length,
-    consultations: history.filter((h) => h.type === "consultation").length,
+    consultations: history.filter((h) => isClinicalConsultation(h)).length,
     vaccines: history.filter((h) => h.type === "vaccine").length
   };
 
@@ -2059,7 +2074,7 @@ function buildProtocolSummary(patient, history, templateMap) {
 
   const lastDates = {
     visits: history.find((h) => h.type === "visit")?.date || "",
-    consultations: history.find((h) => h.type === "consultation")?.date || "",
+    consultations: history.find((h) => isClinicalConsultation(h))?.date || "",
     vaccines: history.find((h) => h.type === "vaccine")?.date || ""
   };
 
