@@ -44,9 +44,9 @@ const DEFAULT_CARE_PROTOCOLS = {
   pregnant: {
     category: "pregnant",
     label: "Gestante",
-    targets: { visits: 3, consultations: 7, vaccines: 1 },
+    targets: { visits: 3, consultations: 7, vaccines: 4 },
     deadlines: { visits: 0, consultations: 0, vaccines: 0 },
-    vaccines: ["dTpa"]
+    vaccines: ["dTpa", "Influenza", "COVID-19", "Hepatite B"]
   },
   puerperal: {
     category: "puerperal",
@@ -818,10 +818,17 @@ function anonymizePatientBundle(db, user, patient, reason = "", requestId = "") 
 function getProtocolTemplateMap(db, teamId = "") {
   ensureDbShape(db);
   const map = {};
+  const disabledByTeam = new Set(
+    db.protocolTemplates
+      .filter((t) => t.teamId === teamId && t.deleted)
+      .map((t) => String(t.category || ""))
+  );
   db.protocolTemplates
+    .filter((t) => !t.deleted)
     .filter((t) => !teamId || !t.teamId || t.teamId === teamId)
+    .filter((t) => !(!t.teamId && disabledByTeam.has(String(t.category || ""))))
     .forEach((t) => {
-    map[String(t.category)] = t;
+      map[String(t.category)] = t;
     });
   if (!map.general) {
     const fallback = buildDefaultProtocolTemplates().find((t) => t.category === "general");
@@ -1598,13 +1605,13 @@ function evaluatePregnantProtocol(patient, history) {
   }
 
   if (weeks >= 28 && (!hivThird || !sifThird)) {
-    const overdueThirdTrimesterDays = weeks > 35 ? (weeks - 35) * 7 : 0;
+    const overdueThirdTrimesterDays = Math.max((weeks - 28) * 7, 0);
     alerts.push(makeClinicalAlert({
       id: "pregnancy-tests-third-trimester",
       activity: "testes rápidos 3º trimestre",
       title: "Teste rápido pendente no 3º trimestre",
       detail: `Pendência: ${!hivThird ? "HIV" : ""}${!hivThird && !sifThird ? " e " : ""}${!sifThird ? "sífilis" : ""}.`,
-      severity: weeks >= 35 ? "high" : "medium",
+      severity: "high",
       overdueDays: overdueThirdTrimesterDays,
       categoryLabel
     }));
@@ -2378,7 +2385,16 @@ app.get("/health", (_req, res) => {
 app.get("/protocol/templates", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
-  res.json(db.protocolTemplates.filter((t) => !t.teamId || t.teamId === req.user.teamId));
+  const disabledByTeam = new Set(
+    db.protocolTemplates
+      .filter((t) => t.teamId === req.user.teamId && t.deleted)
+      .map((t) => String(t.category || ""))
+  );
+  const items = db.protocolTemplates
+    .filter((t) => !t.deleted)
+    .filter((t) => !t.teamId || t.teamId === req.user.teamId)
+    .filter((t) => !(!t.teamId && disabledByTeam.has(String(t.category || ""))));
+  res.json(items);
 });
 
 app.get("/teams/public", async (_req, res) => {
@@ -2685,7 +2701,8 @@ app.get("/protocol/templates/:category/usage", requireManager, async (req, res) 
   const category = String(req.params.category || "").trim();
   const db = await readDb();
   ensureDbShape(db);
-  const template = db.protocolTemplates.find((t) => t.category === category && (!t.teamId || t.teamId === req.user.teamId));
+  const teamDeleted = db.protocolTemplates.some((t) => t.category === category && t.teamId === req.user.teamId && t.deleted);
+  const template = db.protocolTemplates.find((t) => t.category === category && !t.deleted && (!t.teamId || t.teamId === req.user.teamId));
   if (!template) return res.status(404).json({ error: "Categoria de protocolo não encontrada" });
 
   const patientCount = db.patients.filter(
@@ -2702,7 +2719,7 @@ app.get("/protocol/templates/:category/usage", requireManager, async (req, res) 
     category,
     patientCount,
     recordsCount,
-    canDelete: Boolean(template.teamId) && category !== "general" && patientCount === 0 && recordsCount === 0
+    canDelete: !teamDeleted && category !== "general" && patientCount === 0 && recordsCount === 0
   });
 });
 
@@ -2712,8 +2729,10 @@ app.post("/protocol/templates", requireManager, async (req, res) => {
 
   const result = await withDb((db) => {
     ensureDbShape(db);
-    const exists = db.protocolTemplates.some((t) => t.category === payloadCheck.template.category && t.teamId === req.user.teamId);
+    const exists = db.protocolTemplates.some((t) => t.category === payloadCheck.template.category && t.teamId === req.user.teamId && !t.deleted);
     if (exists) return { error: "Categoria ja existe" };
+    const deletedIndex = db.protocolTemplates.findIndex((t) => t.category === payloadCheck.template.category && t.teamId === req.user.teamId && t.deleted);
+    if (deletedIndex >= 0) db.protocolTemplates.splice(deletedIndex, 1);
     const created = {
       ...payloadCheck.template,
       teamId: req.user.teamId
@@ -2736,7 +2755,9 @@ app.put("/protocol/templates/:category", requireManager, async (req, res) => {
 
   const result = await withDb((db) => {
     ensureDbShape(db);
-    const index = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId);
+    const deletedIndex = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId && t.deleted);
+    if (deletedIndex >= 0) db.protocolTemplates.splice(deletedIndex, 1);
+    const index = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId && !t.deleted);
     if (index >= 0) {
       const current = db.protocolTemplates[index];
       const next = {
@@ -2752,7 +2773,7 @@ app.put("/protocol/templates/:category", requireManager, async (req, res) => {
       return next;
     }
 
-    const globalTemplate = db.protocolTemplates.find((t) => t.category === category && !t.teamId);
+    const globalTemplate = db.protocolTemplates.find((t) => t.category === category && !t.teamId && !t.deleted);
     if (!globalTemplate) return null;
 
     const createdOverride = {
@@ -2780,8 +2801,9 @@ app.delete("/protocol/templates/:category", requireManager, async (req, res) => 
 
   const result = await withDb((db) => {
     ensureDbShape(db);
-    const index = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId);
-    if (index < 0) return { error: { status: 404, message: "Categoria de protocolo não encontrada" } };
+    const teamIndex = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId && !t.deleted);
+    const globalTemplate = db.protocolTemplates.find((t) => t.category === category && !t.teamId && !t.deleted);
+    if (teamIndex < 0 && !globalTemplate) return { error: { status: 404, message: "Categoria de protocolo não encontrada" } };
 
     const patientCount = db.patients.filter(
       (p) => p.teamId === req.user.teamId && p.careCategory === category
@@ -2803,8 +2825,27 @@ app.delete("/protocol/templates/:category", requireManager, async (req, res) => 
       };
     }
 
-    db.protocolTemplates.splice(index, 1);
-    addAuditLog(db, req.user, "protocol_template.deleted", "protocol_template", category, {});
+    if (teamIndex >= 0) {
+      db.protocolTemplates.splice(teamIndex, 1);
+      addAuditLog(db, req.user, "protocol_template.deleted", "protocol_template", category, {
+        mode: "team_override_removed"
+      });
+    } else {
+      const existingTombstone = db.protocolTemplates.find((t) => t.category === category && t.teamId === req.user.teamId && t.deleted);
+      if (!existingTombstone) {
+        db.protocolTemplates.push({
+          category,
+          label: String(globalTemplate?.label || category),
+          teamId: req.user.teamId,
+          deleted: true,
+          deletedAt: new Date().toISOString(),
+          deletedBy: req.user.id
+        });
+      }
+      addAuditLog(db, req.user, "protocol_template.deleted", "protocol_template", category, {
+        mode: "team_tombstone_on_global"
+      });
+    }
     return { ok: true };
   });
 
@@ -2910,6 +2951,157 @@ app.post("/users", requireManager, async (req, res) => {
 
   if (result.error) return res.status(409).json({ error: result.error });
   return res.status(201).json(sanitizeUser(result.user, result.db));
+});
+
+function getTeamUserUsage(db, userId, teamId) {
+  const teamPatientIds = new Set(db.patients.filter((p) => p.teamId === teamId).map((p) => p.id));
+  const assignedPatients = db.patients.filter((p) => p.teamId === teamId && p.assignedAcsId === userId).length;
+  const openTasksAssigned = db.tasks.filter((t) => teamPatientIds.has(t.patientId) && t.assigneeId === userId && t.status !== "done").length;
+  const appointmentsAuthored = db.appointments.filter((a) => teamPatientIds.has(a.patientId) && a.createdBy === userId).length;
+  const messagesAuthored = db.messages.filter((m) => teamPatientIds.has(m.patientId) && m.authorId === userId).length;
+  const clinicalRecordsAuthored = db.clinicalRecords.filter((r) => teamPatientIds.has(r.patientId) && r.createdBy === userId).length;
+  const linkedTotal = assignedPatients + openTasksAssigned + appointmentsAuthored + messagesAuthored + clinicalRecordsAuthored;
+  return {
+    assignedPatients,
+    openTasksAssigned,
+    appointmentsAuthored,
+    messagesAuthored,
+    clinicalRecordsAuthored,
+    linkedTotal
+  };
+}
+
+app.get("/users/:id/usage", requireManager, async (req, res) => {
+  const id = String(req.params.id || "").trim();
+  const db = await readDb();
+  ensureDbShape(db);
+  const target = db.users.find((u) => u.id === id && u.teamId === req.user.teamId);
+  if (!target) return res.status(404).json({ error: "Usuário não encontrado" });
+  if (!["acs", "doctor"].includes(canonicalRole(target.role))) {
+    return res.status(400).json({ error: "Somente ACS/Médico podem ser gerenciados nesta tela" });
+  }
+  const usage = getTeamUserUsage(db, target.id, req.user.teamId);
+  return res.json({
+    userId: target.id,
+    role: canonicalRole(target.role),
+    ...usage,
+    canDelete: usage.linkedTotal === 0
+  });
+});
+
+app.put("/users/:id", requireManager, async (req, res) => {
+  const id = String(req.params.id || "").trim();
+  const payload = req.body || {};
+  const result = await withDb(async (db) => {
+    ensureDbShape(db);
+    const index = db.users.findIndex((u) => u.id === id && u.teamId === req.user.teamId);
+    if (index < 0) return { error: { status: 404, message: "Usuário não encontrado" } };
+    const current = db.users[index];
+    const role = canonicalRole(current.role);
+    if (!["acs", "doctor"].includes(role)) {
+      return { error: { status: 400, message: "Somente ACS/Médico podem ser editados nesta tela" } };
+    }
+
+    const next = { ...current };
+    if (payload.name !== undefined) {
+      const name = String(payload.name || "").trim();
+      if (!name) return { error: { status: 400, message: "Nome não pode ficar vazio" } };
+      next.name = name;
+    }
+    if (payload.email !== undefined) {
+      const email = String(payload.email || "").trim().toLowerCase();
+      if (!email || !isValidEmail(email)) return { error: { status: 400, message: "E-mail inválido" } };
+      const duplicated = db.users.some((u) => u.id !== current.id && String(u.email || "").toLowerCase() === email);
+      if (duplicated) return { error: { status: 409, message: "Email ja em uso por outro usuario" } };
+      next.email = email;
+    }
+
+    if (roleNeedsCouncil(role) && (payload.councilNumber !== undefined || payload.councilUf !== undefined)) {
+      const candidateNumber = payload.councilNumber !== undefined ? payload.councilNumber : current.councilNumber;
+      const candidateUf = payload.councilUf !== undefined ? payload.councilUf : current.councilUf;
+      const localCheck = validateCouncilData(role, candidateNumber, candidateUf);
+      if (!localCheck.ok) return { error: { status: 400, message: localCheck.message } };
+      const councilType = councilTypeForRole(role);
+      const duplicatedCouncil = db.users.some((u) => {
+        if (u.id === current.id) return false;
+        return String(u.councilType || "").toUpperCase() === councilType
+          && String(u.councilNumber || "") === localCheck.councilNumber
+          && String(u.councilUf || "").toUpperCase() === localCheck.councilUf;
+      });
+      if (duplicatedCouncil) return { error: { status: 409, message: `${councilType} ja cadastrado para outro usuario` } };
+
+      const unchangedCouncil = String(current.councilType || "").toUpperCase() === String(councilType || "").toUpperCase()
+        && String(current.councilNumber || "") === String(localCheck.councilNumber || "")
+        && String(current.councilUf || "").toUpperCase() === String(localCheck.councilUf || "").toUpperCase();
+      if (!unchangedCouncil) {
+        const external = await verifyCouncilExternally({
+          role,
+          councilType,
+          councilNumber: localCheck.councilNumber,
+          councilUf: localCheck.councilUf,
+          name: next.name,
+          email: next.email
+        });
+        if (!external.valid) {
+          return { error: { status: 400, message: external.error || "Conselho não validado no provedor externo" } };
+        }
+        next.councilVerification = {
+          checked: external.checked,
+          provider: external.provider,
+          status: external.status,
+          verifiedAt: new Date().toISOString()
+        };
+      }
+      next.councilType = councilType;
+      next.councilNumber = localCheck.councilNumber;
+      next.councilUf = localCheck.councilUf;
+    }
+
+    next.updatedAt = new Date().toISOString();
+    db.users[index] = next;
+    addAuditLog(db, req.user, "user.updated_by_manager", "user", next.id, {
+      changedFields: Object.keys(payload || {})
+    });
+    return { user: sanitizeUser(next, db) };
+  });
+  if (result.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.json(result.user);
+});
+
+app.delete("/users/:id", requireManager, async (req, res) => {
+  const id = String(req.params.id || "").trim();
+  if (id === req.user.id) {
+    return res.status(400).json({ error: "Não é permitido excluir o próprio usuário" });
+  }
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const index = db.users.findIndex((u) => u.id === id && u.teamId === req.user.teamId);
+    if (index < 0) return { error: { status: 404, message: "Usuário não encontrado" } };
+    const current = db.users[index];
+    const role = canonicalRole(current.role);
+    if (!["acs", "doctor"].includes(role)) {
+      return { error: { status: 400, message: "Somente ACS/Médico podem ser excluídos nesta tela" } };
+    }
+
+    const usage = getTeamUserUsage(db, current.id, req.user.teamId);
+    if (usage.linkedTotal > 0) {
+      return {
+        error: {
+          status: 409,
+          message: "Ação bloqueada: usuário possui vínculos ativos. Realoque/remova vínculos antes de excluir.",
+          details: usage
+        }
+      };
+    }
+
+    db.users.splice(index, 1);
+    addAuditLog(db, req.user, "user.deleted_by_manager", "user", current.id, { role });
+    return { ok: true };
+  });
+
+  if (result.error) return res.status(result.error.status).json({ error: result.error.message, details: result.error.details || {} });
+  return res.json({ ok: true });
 });
 
 app.get("/patients", async (req, res) => {

@@ -202,9 +202,6 @@
                 <h1 class="home-title">Gestão de pacientes - UBS Francisca Lima de Lira</h1>
                 <p class="home-sub">Acompanhe pacientes, protocolos e pendências da equipe em tempo real.</p>
               </div>
-              <div class="home-actions">
-                <button id="quickSelectFirstPatientBtn" class="btn-secondary">Novo paciente</button>
-              </div>
             </section>
 
             <nav class="workspace-tabs">
@@ -260,7 +257,10 @@
             </div>
 
             <section id="homePatientsPane" class="panel-card workspace-pane hidden">
-              <div class="panel-card-hd">Pacientes da equipe</div>
+              <div class="panel-card-hd panel-card-hd-actions">
+                <span>Pacientes da equipe</span>
+                <button id="quickSelectFirstPatientBtn" class="btn-secondary">Novo paciente</button>
+              </div>
               <div class="table-toolbar">
                 <select id="homePatientSortSelect" class="field-select">
                   <option value="name_asc">Nome (A-Z)</option>

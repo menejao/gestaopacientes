@@ -817,6 +817,24 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   display: none !important;
 }
 
+#homeDashboardPane {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+#homePatientsPane {
+  order: 1;
+}
+
+.home-kpi-grid {
+  order: 2;
+}
+
+.home-columns {
+  order: 3;
+}
+
 .home-kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -958,9 +976,11 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 
 .table-wrap {
   width: 100%;
-  overflow-x: auto;
+  max-height: min(58vh, 540px);
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .saas-table {
@@ -983,6 +1003,9 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   font-size: .72rem;
   text-transform: uppercase;
   letter-spacing: .05em;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .saas-table tbody tr:hover {
@@ -1262,6 +1285,13 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   margin-bottom: 1rem;
   padding-bottom: .6rem;
   border-bottom: 1px solid var(--border);
+}
+
+.panel-card-hd-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
 }
 
 .split-panel {
@@ -1770,6 +1800,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   }
   .table-toolbar { grid-template-columns: 1fr; }
   .table-filters { grid-template-columns: 1fr 1fr; }
+  .table-wrap { max-height: none; }
   .field-row { grid-template-columns: 1fr; }
   .modal {
     align-items: flex-start;

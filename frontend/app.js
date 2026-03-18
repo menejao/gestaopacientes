@@ -1256,7 +1256,11 @@ function renderTeamUsersLists() {
           <span class="home-list-main">${u.name}</span>
           <p class="home-task-meta">${teamLine(u)}</p>
         </div>
-        <span class="home-task-meta">${u.email}</span>
+        <div class="inline-actions">
+          <span class="home-task-meta">${u.email}</span>
+          <button class="btn-secondary team-user-edit-btn" data-user-id="${u.id}">Editar</button>
+          <button class="btn-secondary team-user-delete-btn" data-user-id="${u.id}">Excluir</button>
+        </div>
       </div>`).join("")
     : '<div class="empty-msg">Nenhum ACS cadastrado.</div>';
 
@@ -1267,9 +1271,78 @@ function renderTeamUsersLists() {
           <span class="home-list-main">${u.name}</span>
           <p class="home-task-meta">${teamLine(u)}</p>
         </div>
-        <span class="home-task-meta">${u.email}</span>
+        <div class="inline-actions">
+          <span class="home-task-meta">${u.email}</span>
+          <button class="btn-secondary team-user-edit-btn" data-user-id="${u.id}">Editar</button>
+          <button class="btn-secondary team-user-delete-btn" data-user-id="${u.id}">Excluir</button>
+        </div>
       </div>`).join("")
     : '<div class="empty-msg">Nenhum médico cadastrado.</div>';
+
+  document.querySelectorAll(".team-user-edit-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const target = state.users.find((u) => u.id === btn.dataset.userId);
+      if (!target) return;
+      const roleLabel = target.role === "doctor" ? "Médico(a)" : "ACS";
+      const name = prompt(`Editar ${roleLabel} - Nome`, target.name || "");
+      if (name === null) return;
+      const email = prompt(`Editar ${roleLabel} - E-mail`, target.email || "");
+      if (email === null) return;
+      const payload = { name: name.trim(), email: email.trim() };
+      if (target.role === "doctor") {
+        const currentCouncil = formatCouncilNumber(target.councilNumber || "", 8);
+        const council = prompt("Número do conselho (CRM, somente números)", currentCouncil);
+        if (council === null) return;
+        const uf = prompt("UF do conselho (CRM)", String(target.councilUf || "").toUpperCase());
+        if (uf === null) return;
+        payload.councilNumber = council;
+        payload.councilUf = uf;
+      }
+      try {
+        await api(`/users/${target.id}`, { method: "PUT", body: JSON.stringify(payload) });
+        showToast("Cadastro atualizado.", "ok");
+        state.users = await api("/users");
+        fillAcsSelect(el.tAssignee);
+        fillAcsSelect(el.pAcs);
+        fillAcsSelect(el.topFilterAcs, true);
+        renderTeamUsersLists();
+        renderWorkspaceHome();
+      } catch (e) {
+        showToast(e.message, "error");
+      }
+    });
+  });
+
+  document.querySelectorAll(".team-user-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const target = state.users.find((u) => u.id === btn.dataset.userId);
+      if (!target) return;
+      try {
+        const usage = await api(`/users/${target.id}/usage`);
+        if (!usage.canDelete) {
+          showToast(
+            `Ação bloqueada: vínculos ativos (pacientes=${usage.assignedPatients}, tarefas abertas=${usage.openTasksAssigned}, atendimentos=${usage.appointmentsAuthored}, mensagens=${usage.messagesAuthored}, registros=${usage.clinicalRecordsAuthored}).`,
+            "error",
+            7000
+          );
+          return;
+        }
+        const roleLabel = target.role === "doctor" ? "médico(a)" : "ACS";
+        const ok = confirm(`Excluir ${roleLabel} '${target.name}'? Esta ação é crítica e não poderá ser desfeita.`);
+        if (!ok) return;
+        await api(`/users/${target.id}`, { method: "DELETE" });
+        showToast("Cadastro excluído.", "ok");
+        state.users = await api("/users");
+        fillAcsSelect(el.tAssignee);
+        fillAcsSelect(el.pAcs);
+        fillAcsSelect(el.topFilterAcs, true);
+        renderTeamUsersLists();
+        renderWorkspaceHome();
+      } catch (e) {
+        showToast(e.message, "error");
+      }
+    });
+  });
 }
 
 function switchNavSection(section) {
@@ -1373,28 +1446,39 @@ function renderProtocolAdminList() {
 
   el.protocolAdminList.innerHTML = state.protocolTemplates
     .map((t) => {
-      const isTeamOwned = Boolean(t.teamId);
       return `
       <div class="home-task-row">
         <div>
-          <p class="home-task-title">${t.label} <span class="home-task-meta">(${t.category})${isTeamOwned ? "" : " [base]"}</span></p>
+          <p class="home-task-title">${t.label} <span class="home-task-meta">(${t.category})${t.teamId ? "" : " [base]"}</span></p>
           <p class="home-task-meta">Metas: ${t.targets.visits} visitas | ${t.targets.consultations} consultas | ${t.targets.vaccines} vacinas</p>
           <p class="home-task-meta">Prazos (dias): visita ${Number(t.deadlines?.visits || 0)} | consulta ${Number(t.deadlines?.consultations || 0)} | vacina ${Number(t.deadlines?.vaccines || 0)}</p>
           <p class="home-task-meta">Norma: ${t.authority || "Ministerio da Saude"} | Ref: ${t.reference ? `<a href="${t.reference}" target="_blank" rel="noopener noreferrer">link oficial</a>` : "-"} | Versao: ${t.version || "1.0"}</p>
         </div>
         <div class="inline-actions">
           <button class="btn-secondary protocol-edit-btn" data-category="${t.category}">Editar</button>
-          ${isTeamOwned ? `<button class="btn-secondary protocol-delete-btn" data-category="${t.category}">Excluir</button>` : ""}
+          ${t.category !== "general" ? `<button class="btn-secondary protocol-delete-btn" data-category="${t.category}">Excluir</button>` : ""}
         </div>
       </div>`;
     })
     .join("");
 
   document.querySelectorAll(".protocol-edit-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const category = btn.dataset.category;
       const template = state.protocolTemplates.find((t) => t.category === category);
       if (!template) return;
+      try {
+        const usage = await api(`/protocol/templates/${category}/usage`);
+        const linkedTotal = Number(usage.patientCount || 0) + Number(usage.recordsCount || 0);
+        if (linkedTotal > 0) {
+          const ok = confirm(
+            `Atenção: editar este protocolo pode impactar ${usage.patientCount} paciente(s) e ${usage.recordsCount} registro(s). Deseja continuar?`
+          );
+          if (!ok) return;
+        }
+      } catch (_e) {
+        // Se não houver endpoint/uso para a categoria, segue com edição.
+      }
       state.editingProtocolCategory = category;
       el.protocolCategoryInput.value = template.category;
       el.protocolCategoryInput.disabled = true;
