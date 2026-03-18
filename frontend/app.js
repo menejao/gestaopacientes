@@ -1962,7 +1962,8 @@ function renderAuditLogs() {
 el.rType?.addEventListener("change", updateRecordTitleControls);
 
 // -- Load data -----------------------------------------------------------------
-async function loadPatients() {
+async function loadPatients(options = {}) {
+  const { skipProtocolStatuses = false } = options;
   const p = new URLSearchParams();
   if (state.filters.microArea)    p.set("microArea",    state.filters.microArea);
   if (state.filters.acsId)        p.set("acsId",        state.filters.acsId);
@@ -1983,9 +1984,11 @@ async function loadPatients() {
   }
   renderPatients();
   renderWorkspaceHome();
-  loadProtocolStatusesForDashboard().catch(() => {
-    showToast("Não foi possível atualizar status de protocolo agora.", "error", 2500);
-  });
+  if (!skipProtocolStatuses) {
+    loadProtocolStatusesForDashboard().catch(() => {
+      showToast("Não foi possível atualizar status de protocolo agora.", "error", 2500);
+    });
+  }
 }
 async function loadGlobalTasks() {
   try {
@@ -2036,14 +2039,14 @@ async function bootstrapAfterLogin() {
   const savedView = readViewState();
   touchSession(true);
   setupInactivityWatcher();
+  const hasSavedPatient = Boolean(savedView?.selectedPatientId);
+  el.appScreen.classList.add("hidden");
   const [users] = await Promise.all([api("/users")]);
   state.users = users;
   fillAcsSelect(el.tAssignee);
   fillAcsSelect(el.pAcs);
   fillAcsSelect(el.topFilterAcs, true);
   await reloadTemplateData();
-  el.authScreen.classList.add("hidden");
-  el.appScreen.classList.remove("hidden");
   if (isAcs()) { state.filters.acsId = state.user.id; }
   applyRolePermissions();
   resetProtocolForm();
@@ -2067,9 +2070,11 @@ async function bootstrapAfterLogin() {
   if (el.topFilterCategory) el.topFilterCategory.value = "";
   switchWorkspaceTab(state.workspaceTab);
   switchNavSection(savedView?.navSection || "dashboard");
-  await loadPatients();
-  await loadGlobalTasks();
-  await loadMonthlyDemandMetric();
+  await Promise.all([
+    loadPatients({ skipProtocolStatuses: hasSavedPatient }),
+    loadGlobalTasks(),
+    loadMonthlyDemandMetric()
+  ]);
   if (savedView?.selectedPatientId) {
     const restored = state.patients.find((p) => p.id === savedView.selectedPatientId);
     if (restored) {
@@ -2077,8 +2082,15 @@ async function bootstrapAfterLogin() {
       if (savedView.activePatientPanel) switchToTab(savedView.activePatientPanel);
     }
   }
+  if (!state.selectedPatient && (state.navSection === "dashboard" || state.navSection === "patients")) {
+    loadProtocolStatusesForDashboard().catch(() => {
+      showToast("Não foi possível atualizar status de protocolo agora.", "error", 2500);
+    });
+  }
   persistViewState();
   renderWorkspaceHome();
+  el.authScreen.classList.add("hidden");
+  el.appScreen.classList.remove("hidden");
 }
 
 async function bootstrapBeforeLogin() {
