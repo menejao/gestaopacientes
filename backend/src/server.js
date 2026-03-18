@@ -1392,6 +1392,12 @@ function evaluatePregnantProtocol(patient, history) {
   const consultations = allConsultations.filter((h) => isClinicalConsultation(h));
   const procedures = pregnancyHistory.filter((h) => h.type === "procedure");
   const vaccines = pregnancyHistory.filter((h) => h.type === "vaccine");
+  const consultationDatesAsc = consultations
+    .map((entry) => eventDate(entry))
+    .filter(Boolean)
+    .sort((a, b) => a.getTime() - b.getTime());
+  const firstConsultDate = consultationDatesAsc.length ? consultationDatesAsc[0] : null;
+  const lastConsultDate = consultationDatesAsc.length ? consultationDatesAsc[consultationDatesAsc.length - 1] : null;
 
   const weeks = Number(timeline.gestationalWeeks || 0);
   const visitPending = Math.max(3 - visits.length, 0);
@@ -1409,7 +1415,7 @@ function evaluatePregnantProtocol(patient, history) {
     }));
   }
 
-  const prenatalStart = timeline.prenatalStart;
+  const prenatalStart = timeline.prenatalStart || firstConsultDate;
   if (!prenatalStart) {
     if (weeks >= 12) {
       alerts.push(makeClinicalAlert({
@@ -1425,11 +1431,14 @@ function evaluatePregnantProtocol(patient, history) {
     const prenatalWeek = Math.floor((daysDiff(timeline.start, prenatalStart) || 0) / 7);
     if (prenatalWeek > 12) {
       alerts.push(makeClinicalAlert({
-        id: "prenatal-start-late",
+        id: timeline.prenatalStart ? "prenatal-start-late" : "prenatal-start-late-by-first-consult",
         activity: "início do pré-natal",
         title: `Pré-natal iniciado com ${prenatalWeek} semanas`,
-        detail: "Início recomendado até 12 semanas de gestação.",
+        detail: timeline.prenatalStart
+          ? "Início recomendado até 12 semanas de gestação."
+          : "Primeira consulta clínica ocorreu após 12 semanas de gestação.",
         severity: "high",
+        overdueDays: Math.max((prenatalWeek - 12) * 7, 0),
         categoryLabel
       }));
     }
@@ -1448,7 +1457,6 @@ function evaluatePregnantProtocol(patient, history) {
     }));
   }
 
-  const lastConsultDate = consultations.length ? eventDate(consultations[0]) : null;
   if (lastConsultDate && weeks >= 12) {
     const daysSinceConsult = daysDiff(lastConsultDate, new Date());
     const expectedInterval = weeks >= 35 ? 7 : (weeks >= 28 ? 14 : 30);
@@ -1479,12 +1487,14 @@ function evaluatePregnantProtocol(patient, history) {
     return isDentalText(text);
   });
   if (!oralEvents.length) {
+    const overdueDentalDays = weeks > 35 ? (weeks - 35) * 7 : 0;
     alerts.push(makeClinicalAlert({
       id: "pregnancy-dental",
       activity: "consulta odontológica",
       title: "Falta consulta odontológica",
       detail: "Gestante deve ter pelo menos 1 consulta com cirurgião-dentista durante a gestação.",
       severity: weeks >= 35 ? "high" : (weeks >= 24 ? "medium" : "low"),
+      overdueDays: overdueDentalDays,
       categoryLabel
     }));
   }
@@ -1498,12 +1508,14 @@ function evaluatePregnantProtocol(patient, history) {
   });
   if (!dtpaInWindow && weeks >= 20) {
     const severity = weeks > 26 ? "high" : "medium";
+    const overdueDtpaDays = weeks > 26 ? (weeks - 26) * 7 : 0;
     alerts.push(makeClinicalAlert({
       id: "pregnancy-dtpa",
       activity: "vacina dTpa",
       title: weeks > 26 ? "Janela da dTpa vencida" : "Aplicar dTpa entre 20ª e 26ª semana",
       detail: "Não há registro de dTpa na janela recomendada da gestação.",
       severity,
+      overdueDays: overdueDtpaDays,
       categoryLabel
     }));
   }
@@ -1523,23 +1535,27 @@ function evaluatePregnantProtocol(patient, history) {
   const sifThird = testInWindow(/sifil|sifilis|syphilis/, 28, 45);
 
   if (weeks > 13 && (!hivFirst || !sifFirst)) {
+    const overdueFirstTrimesterDays = Math.max((weeks - 13) * 7, 0);
     alerts.push(makeClinicalAlert({
       id: "pregnancy-tests-first-trimester",
       activity: "testes rápidos 1º trimestre",
       title: "Teste rápido pendente no 1º trimestre",
       detail: `Pendência: ${!hivFirst ? "HIV" : ""}${!hivFirst && !sifFirst ? " e " : ""}${!sifFirst ? "sífilis" : ""}.`,
       severity: "high",
+      overdueDays: overdueFirstTrimesterDays,
       categoryLabel
     }));
   }
 
   if (weeks >= 28 && (!hivThird || !sifThird)) {
+    const overdueThirdTrimesterDays = weeks > 35 ? (weeks - 35) * 7 : 0;
     alerts.push(makeClinicalAlert({
       id: "pregnancy-tests-third-trimester",
       activity: "testes rápidos 3º trimestre",
       title: "Teste rápido pendente no 3º trimestre",
       detail: `Pendência: ${!hivThird ? "HIV" : ""}${!hivThird && !sifThird ? " e " : ""}${!sifThird ? "sífilis" : ""}.`,
       severity: weeks >= 35 ? "high" : "medium",
+      overdueDays: overdueThirdTrimesterDays,
       categoryLabel
     }));
   }
