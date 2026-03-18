@@ -116,6 +116,7 @@ Arquivos de apoio ja prontos:
 - `AUTH_RATE_LIMIT_MAX_ATTEMPTS`: maximo de tentativas por IP na janela.
 - `DATA_ENCRYPTION_KEY`: chave para criptografia em repouso de dados sensiveis (CPF/CNS e segredo 2FA).
 - `TWOFA_ISSUER`: nome exibido no app autenticador (padrao: `SaudeUBS`).
+- `BACKUP_EXPORT_KEY`: chave dedicada para exportacao automatica de backup via endpoint seguro.
 
 ## Seguranca e LGPD (baseline tecnico)
 - Senhas são armazenadas com hash (`scrypt`) e migradas automaticamente se legadas em texto puro.
@@ -170,6 +171,7 @@ Arquivos de apoio ja prontos:
 - `POST /auth/register`
 - `GET /teams/public`
 - `GET /integrations/council/status`
+- `GET /admin/backup/export` (protegido por `x-backup-key`)
 - `GET /bootstrap`
 - `GET /protocol/templates`
 - `GET/POST /patients`
@@ -209,6 +211,16 @@ Arquivos de apoio ja prontos:
 - Backend:
   - `cd backend`
   - `npm test`
+
+## Backup automatico 0800 (GitHub Actions)
+- Workflow pronto em:
+  - `.github/workflows/nightly-backup.yml`
+- Frequencia:
+  - diario (UTC), com execucao manual opcional.
+- Segredos a configurar no GitHub (Settings > Secrets and variables > Actions):
+  - `BACKUP_EXPORT_URL` = URL publica do backend (ex: `https://seu-backend.onrender.com`)
+  - `BACKUP_EXPORT_KEY` = mesmo valor de `BACKUP_EXPORT_KEY` no Render
+- O backup diario fica como artifact no proprio GitHub Actions por 30 dias.
 
 ## Indicador mensal de demanda
 - Nos atendimentos (`POST /patients/:id/appointments`), use `demandType`:

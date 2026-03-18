@@ -171,6 +171,11 @@ async function readDbFromFile() {
   return deserializeStateFromStorage(JSON.parse(raw));
 }
 
+async function readDbSnapshotFromFileStorage() {
+  const raw = await fs.readFile(DB_PATH, "utf-8");
+  return JSON.parse(raw);
+}
+
 async function writeDbToFile(data) {
   const safeData = serializeStateForStorage(data);
   await fs.writeFile(DB_PATH, JSON.stringify(safeData, null, 2), "utf-8");
@@ -235,6 +240,15 @@ async function readDb() {
   return readDbFromFile();
 }
 
+async function readDbForBackup() {
+  if (DB_DRIVER === "postgres") {
+    await initialize();
+    const result = await pool.query("SELECT data FROM app_state WHERE id = 1");
+    return result.rows[0]?.data || {};
+  }
+  return readDbSnapshotFromFileStorage();
+}
+
 async function withDb(mutator) {
   if (DB_DRIVER === "postgres") {
     await initialize();
@@ -268,6 +282,6 @@ async function withDb(mutator) {
   return result;
 }
 
-export { readDb, withDb };
+export { readDb, readDbForBackup, withDb };
 
 

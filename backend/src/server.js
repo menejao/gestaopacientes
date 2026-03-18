@@ -3,7 +3,7 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import { v4 as uuidv4 } from "uuid";
-import { readDb, withDb } from "./db.js";
+import { readDb, readDbForBackup, withDb } from "./db.js";
 import {
   patientSummary,
   protocolHighlights,
@@ -32,6 +32,7 @@ const REQUEST_LOG_ENABLED = String(process.env.REQUEST_LOG_ENABLED || "true").tr
 const TWOFA_ISSUER = String(process.env.TWOFA_ISSUER || "SaudeUBS").trim() || "SaudeUBS";
 const TWOFA_CHALLENGE_TTL_MS = Number(process.env.TWOFA_CHALLENGE_TTL_MS || 5 * 60 * 1000);
 const TWOFA_MAX_ATTEMPTS = Number(process.env.TWOFA_MAX_ATTEMPTS || 5);
+const BACKUP_EXPORT_KEY = String(process.env.BACKUP_EXPORT_KEY || "").trim();
 const authRateMap = new Map();
 
 if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
@@ -2810,6 +2811,25 @@ function validateClinicalRecordPayload({ user, patient, type, title, date, detai
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+app.get("/admin/backup/export", async (req, res) => {
+  const providedKey = String(req.headers["x-backup-key"] || req.query.key || "").trim();
+  if (!BACKUP_EXPORT_KEY || providedKey !== BACKUP_EXPORT_KEY) {
+    return res.status(403).json({ error: "Acesso negado para exportação de backup" });
+  }
+
+  const snapshot = await readDbForBackup();
+  const generatedAt = new Date().toISOString();
+  const fileName = `backup-saudeubs-${generatedAt.slice(0, 10)}.json`;
+
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+  return res.json({
+    generatedAt,
+    driver: process.env.DATABASE_URL ? "postgres" : "file",
+    encryptedSnapshot: snapshot
+  });
 });
 
 app.get("/bootstrap", requireAuth, async (req, res) => {
