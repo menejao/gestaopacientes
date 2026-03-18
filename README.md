@@ -114,6 +114,8 @@ Arquivos de apoio ja prontos:
 - `FRONTEND_ORIGINS`: lista CSV de origens permitidas (CORS), ex: `https://app.exemplo.com`.
 - `AUTH_RATE_LIMIT_WINDOW_MS`: janela de limitação de tentativas de autenticacao (ms).
 - `AUTH_RATE_LIMIT_MAX_ATTEMPTS`: maximo de tentativas por IP na janela.
+- `DATA_ENCRYPTION_KEY`: chave para criptografia em repouso de dados sensiveis (CPF/CNS e segredo 2FA).
+- `TWOFA_ISSUER`: nome exibido no app autenticador (padrao: `SaudeUBS`).
 
 ## Seguranca e LGPD (baseline tecnico)
 - Senhas são armazenadas com hash (`scrypt`) e migradas automaticamente se legadas em texto puro.
@@ -152,6 +154,7 @@ Arquivos de apoio ja prontos:
 
 ## Endpoints principais
 - `POST /auth/login`
+- `POST /auth/login/verify` (2FA)
 - `POST /auth/register`
 - `GET /teams/public`
 - `GET /integrations/council/status`
@@ -169,6 +172,10 @@ Arquivos de apoio ja prontos:
 - `GET/POST /patients/:id/messages`
 - `GET /audit-logs` (enfermeira e médica)
 - `GET /audit-logs/export?format=json|csv` (enfermeira e médica)
+- `GET /me/2fa/status`
+- `POST /me/2fa/setup`
+- `POST /me/2fa/enable`
+- `POST /me/2fa/disable`
 - `GET /privacy/requests` (somente enfermeira)
 - `POST /privacy/requests` (somente enfermeira)
 - `PATCH /privacy/requests/:id` (somente enfermeira)

@@ -29,6 +29,9 @@ const AUTH_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 10 * 60 *
 const AUTH_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 20);
 const USER_ONLINE_THRESHOLD_MS = Number(process.env.USER_ONLINE_THRESHOLD_MS || 2 * 60 * 1000);
 const REQUEST_LOG_ENABLED = String(process.env.REQUEST_LOG_ENABLED || "true").trim().toLowerCase() !== "false";
+const TWOFA_ISSUER = String(process.env.TWOFA_ISSUER || "SaudeUBS").trim() || "SaudeUBS";
+const TWOFA_CHALLENGE_TTL_MS = Number(process.env.TWOFA_CHALLENGE_TTL_MS || 5 * 60 * 1000);
+const TWOFA_MAX_ATTEMPTS = Number(process.env.TWOFA_MAX_ATTEMPTS || 5);
 const authRateMap = new Map();
 
 if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
@@ -255,6 +258,86 @@ function verifyPassword(password, stored) {
   return crypto.timingSafeEqual(left, right);
 }
 
+const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+function base32Encode(buffer) {
+  let bits = 0;
+  let value = 0;
+  let output = "";
+
+  for (const byte of buffer) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+
+  if (bits > 0) {
+    output += BASE32_ALPHABET[(value << (5 - bits)) & 31];
+  }
+
+  return output;
+}
+
+function base32Decode(value) {
+  const clean = String(value || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
+  let bits = 0;
+  let current = 0;
+  const out = [];
+  for (const char of clean) {
+    const idx = BASE32_ALPHABET.indexOf(char);
+    if (idx < 0) continue;
+    current = (current << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      out.push((current >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(out);
+}
+
+function normalizeTotpSecret(secret) {
+  return String(secret || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
+}
+
+function generateTotpSecret() {
+  return base32Encode(crypto.randomBytes(20));
+}
+
+function generateTotpCode(secret, nowMs = Date.now()) {
+  const key = base32Decode(secret);
+  const counter = Math.floor(nowMs / 1000 / 30);
+  const counterBuf = Buffer.alloc(8);
+  counterBuf.writeBigUInt64BE(BigInt(counter));
+  const digest = crypto.createHmac("sha1", key).update(counterBuf).digest();
+  const offset = digest[digest.length - 1] & 0x0f;
+  const binCode = ((digest[offset] & 0x7f) << 24)
+    | (digest[offset + 1] << 16)
+    | (digest[offset + 2] << 8)
+    | digest[offset + 3];
+  const code = String(binCode % 1_000_000).padStart(6, "0");
+  return code;
+}
+
+function verifyTotpCode(secret, code) {
+  const normalizedSecret = normalizeTotpSecret(secret);
+  const normalizedCode = String(code || "").replace(/\D+/g, "");
+  if (normalizedSecret.length < 16 || normalizedCode.length !== 6) return false;
+  const now = Date.now();
+  const windows = [-1, 0, 1];
+  return windows.some((step) => generateTotpCode(normalizedSecret, now + step * 30_000) === normalizedCode);
+}
+
+function buildOtpAuthUrl(user, secret) {
+  const label = encodeURIComponent(`${TWOFA_ISSUER}:${String(user.email || user.name || "usuario")}`);
+  const issuer = encodeURIComponent(TWOFA_ISSUER);
+  const sec = encodeURIComponent(normalizeTotpSecret(secret));
+  return `otpauth://totp/${label}?secret=${sec}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
+}
+
 function getClientIp(req) {
   const headerIp = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
   return headerIp || String(req.ip || req.socket?.remoteAddress || "unknown");
@@ -425,6 +508,28 @@ function ensureDbShape(db) {
     ...a,
     demandType: normalizeDemandType(a.demandType)
   }));
+
+  db.users = db.users.map((u) => ({
+    ...u,
+    twoFactorEnabled: Boolean(u.twoFactorEnabled),
+    twoFactorSecret: String(u.twoFactorSecret || ""),
+    twoFactorPendingSecret: String(u.twoFactorPendingSecret || ""),
+    twoFactorPendingCreatedAt: String(u.twoFactorPendingCreatedAt || "")
+  }));
+
+  const now = Date.now();
+  db.loginChallenges = db.loginChallenges
+    .filter((item) => String(item.userId || "").trim())
+    .filter((item) => {
+      const exp = Date.parse(String(item.expiresAt || ""));
+      if (!Number.isFinite(exp)) return false;
+      return exp > now - 60 * 60 * 1000;
+    })
+    .map((item) => ({
+      ...item,
+      consumed: Boolean(item.consumed),
+      attempts: Number.isFinite(Number(item.attempts)) ? Number(item.attempts) : 0
+    }));
 }
 
 function getTeamById(db, id) {
@@ -436,11 +541,17 @@ function getTeamNameById(db, id) {
 }
 
 function sanitizeUser(user, db) {
-  const { password: _password, ...safe } = user;
+  const {
+    password: _password,
+    twoFactorSecret: _twoFactorSecret,
+    twoFactorPendingSecret: _twoFactorPendingSecret,
+    ...safe
+  } = user;
   const role = canonicalRole(safe.role);
   return {
     ...safe,
     role,
+    twoFactorEnabled: Boolean(user?.twoFactorEnabled),
     councilType: safe.councilType || councilTypeForRole(role) || "",
     councilNumber: safe.councilNumber || "",
     councilUf: safe.councilUf || "",
@@ -2851,6 +2962,10 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
         status: externalCheck.status,
         verifiedAt: new Date().toISOString()
       },
+      twoFactorEnabled: false,
+      twoFactorSecret: "",
+      twoFactorPendingSecret: "",
+      twoFactorPendingCreatedAt: "",
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
       lastSeenAt: new Date().toISOString(),
@@ -2913,14 +3028,51 @@ app.post("/auth/login", authRateLimit, async (req, res) => {
     user = db.users.find((u) => u.id === user.id) || user;
   }
 
+  const nowIso = new Date().toISOString();
+
+  if (user.twoFactorEnabled && user.twoFactorSecret) {
+    const challenge = await withDb((mutableDb) => {
+      ensureDbShape(mutableDb);
+      const idx = mutableDb.users.findIndex((u) => u.id === user.id);
+      if (idx < 0) return null;
+      const expiresAt = new Date(Date.now() + TWOFA_CHALLENGE_TTL_MS).toISOString();
+      const challengeItem = {
+        id: uuidv4(),
+        userId: user.id,
+        createdAt: nowIso,
+        expiresAt,
+        attempts: 0,
+        consumed: false
+      };
+      mutableDb.loginChallenges = (mutableDb.loginChallenges || [])
+        .filter((item) => !item.consumed)
+        .filter((item) => String(item.userId || "") !== String(user.id))
+        .slice(-50);
+      mutableDb.loginChallenges.push(challengeItem);
+      mutableDb.users[idx].lastSeenAt = nowIso;
+      mutableDb.users[idx].lastSeenIp = getClientIp(req);
+      mutableDb.users[idx].updatedAt = nowIso;
+      addAuditLog(mutableDb, user, "auth.login_challenge_created", "auth", challengeItem.id, {
+        userId: user.id
+      });
+      return challengeItem;
+    });
+
+    return res.json({
+      twoFactorRequired: true,
+      challengeId: challenge?.id || "",
+      challengeExpiresAt: challenge?.expiresAt || ""
+    });
+  }
+
   await withDb((mutableDb) => {
     ensureDbShape(mutableDb);
     const idx = mutableDb.users.findIndex((u) => u.id === user.id);
     if (idx >= 0) {
-      mutableDb.users[idx].lastLoginAt = new Date().toISOString();
-      mutableDb.users[idx].lastSeenAt = new Date().toISOString();
+      mutableDb.users[idx].lastLoginAt = nowIso;
+      mutableDb.users[idx].lastSeenAt = nowIso;
       mutableDb.users[idx].lastSeenIp = getClientIp(req);
-      mutableDb.users[idx].updatedAt = new Date().toISOString();
+      mutableDb.users[idx].updatedAt = nowIso;
     }
   });
   {
@@ -2935,8 +3087,54 @@ app.post("/auth/login", authRateLimit, async (req, res) => {
   return res.json({ user: safeUser, token });
 });
 
-app.post("/auth/login/verify", authRateLimit, async (_req, res) => {
-  return res.status(410).json({ error: "Fluxo 2FA desativado. Use /auth/login." });
+app.post("/auth/login/verify", authRateLimit, async (req, res) => {
+  const challengeId = String(req.body?.challengeId || "").trim();
+  const code = String(req.body?.code || "").replace(/\D+/g, "");
+  if (!challengeId || code.length !== 6) {
+    return res.status(400).json({ error: "challengeId e code (6 dígitos) são obrigatórios" });
+  }
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const challengeIndex = db.loginChallenges.findIndex((item) => String(item.id || "") === challengeId);
+    if (challengeIndex < 0) return { error: { status: 404, message: "Desafio de login não encontrado" } };
+    const challenge = db.loginChallenges[challengeIndex];
+    if (challenge.consumed) return { error: { status: 400, message: "Desafio de login já utilizado" } };
+    if (Date.parse(String(challenge.expiresAt || "")) < Date.now()) {
+      challenge.consumed = true;
+      return { error: { status: 401, message: "Desafio de login expirado" } };
+    }
+
+    const userIndex = db.users.findIndex((u) => u.id === challenge.userId);
+    if (userIndex < 0) return { error: { status: 404, message: "Usuário do desafio não encontrado" } };
+    const user = db.users[userIndex];
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      return { error: { status: 400, message: "2FA não está habilitado para este usuário" } };
+    }
+
+    const ok = verifyTotpCode(user.twoFactorSecret, code);
+    if (!ok) {
+      challenge.attempts = Number(challenge.attempts || 0) + 1;
+      if (challenge.attempts >= TWOFA_MAX_ATTEMPTS) {
+        challenge.consumed = true;
+      }
+      return { error: { status: 401, message: "Código 2FA inválido" } };
+    }
+
+    challenge.consumed = true;
+    const nowIso = new Date().toISOString();
+    db.users[userIndex].lastLoginAt = nowIso;
+    db.users[userIndex].lastSeenAt = nowIso;
+    db.users[userIndex].lastSeenIp = getClientIp(req);
+    db.users[userIndex].updatedAt = nowIso;
+    addAuditLog(db, user, "auth.login_2fa_verified", "auth", challengeId, { userId: user.id });
+    return { user: db.users[userIndex], db };
+  });
+
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  const safeUser = sanitizeUser(result.user, result.db);
+  const token = createToken(result.user, result.db);
+  return res.json({ user: safeUser, token });
 });
 
 app.use(requireAuth);
@@ -2947,6 +3145,96 @@ app.get("/me", async (req, res) => {
   const user = db.users.find((u) => u.id === req.user.id);
   if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
   return res.json(sanitizeUser(user, db));
+});
+
+app.get("/me/2fa/status", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const user = db.users.find((u) => u.id === req.user.id);
+  if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+  return res.json({
+    enabled: Boolean(user.twoFactorEnabled && user.twoFactorSecret),
+    pendingSetup: Boolean(user.twoFactorPendingSecret)
+  });
+});
+
+app.post("/me/2fa/setup", async (req, res) => {
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const index = db.users.findIndex((u) => u.id === req.user.id);
+    if (index < 0) return { error: { status: 404, message: "Usuário não encontrado" } };
+    const user = db.users[index];
+    const secret = generateTotpSecret();
+    db.users[index].twoFactorPendingSecret = secret;
+    db.users[index].twoFactorPendingCreatedAt = new Date().toISOString();
+    db.users[index].updatedAt = new Date().toISOString();
+    addAuditLog(db, user, "auth.2fa_setup_started", "user", user.id, {});
+    return {
+      secret,
+      otpauthUrl: buildOtpAuthUrl(user, secret)
+    };
+  });
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.json(result);
+});
+
+app.post("/me/2fa/enable", async (req, res) => {
+  const code = String(req.body?.code || "").replace(/\D+/g, "");
+  if (code.length !== 6) return res.status(400).json({ error: "Código 2FA inválido" });
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const index = db.users.findIndex((u) => u.id === req.user.id);
+    if (index < 0) return { error: { status: 404, message: "Usuário não encontrado" } };
+    const user = db.users[index];
+    const pendingSecret = normalizeTotpSecret(user.twoFactorPendingSecret || "");
+    if (!pendingSecret) {
+      return { error: { status: 400, message: "Inicie a configuração 2FA antes de confirmar" } };
+    }
+    if (!verifyTotpCode(pendingSecret, code)) {
+      return { error: { status: 401, message: "Código 2FA inválido para ativação" } };
+    }
+    db.users[index].twoFactorSecret = pendingSecret;
+    db.users[index].twoFactorEnabled = true;
+    db.users[index].twoFactorPendingSecret = "";
+    db.users[index].twoFactorPendingCreatedAt = "";
+    db.users[index].updatedAt = new Date().toISOString();
+    addAuditLog(db, user, "auth.2fa_enabled", "user", user.id, {});
+    return { user: db.users[index], db };
+  });
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  const token = createToken(result.user, result.db);
+  return res.json({ user: sanitizeUser(result.user, result.db), token });
+});
+
+app.post("/me/2fa/disable", async (req, res) => {
+  const code = String(req.body?.code || "").replace(/\D+/g, "");
+  if (code.length !== 6) return res.status(400).json({ error: "Código 2FA inválido" });
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const index = db.users.findIndex((u) => u.id === req.user.id);
+    if (index < 0) return { error: { status: 404, message: "Usuário não encontrado" } };
+    const user = db.users[index];
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      return { error: { status: 400, message: "2FA já está desativado" } };
+    }
+    if (!verifyTotpCode(user.twoFactorSecret, code)) {
+      return { error: { status: 401, message: "Código 2FA inválido" } };
+    }
+
+    db.users[index].twoFactorEnabled = false;
+    db.users[index].twoFactorSecret = "";
+    db.users[index].twoFactorPendingSecret = "";
+    db.users[index].twoFactorPendingCreatedAt = "";
+    db.users[index].updatedAt = new Date().toISOString();
+    addAuditLog(db, user, "auth.2fa_disabled", "user", user.id, {});
+    return { user: db.users[index], db };
+  });
+
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  const token = createToken(result.user, result.db);
+  return res.json({ user: sanitizeUser(result.user, result.db), token });
 });
 
 app.post("/me/presence", async (req, res) => {
@@ -3359,6 +3647,10 @@ app.post("/users", requireManager, async (req, res) => {
         status: externalCheck.status,
         verifiedAt: new Date().toISOString()
       },
+      twoFactorEnabled: false,
+      twoFactorSecret: "",
+      twoFactorPendingSecret: "",
+      twoFactorPendingCreatedAt: "",
       createdAt: new Date().toISOString()
     };
 

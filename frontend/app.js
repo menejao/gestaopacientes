@@ -245,6 +245,9 @@ const el = {
   profileCouncilWrap:       document.getElementById("profileCouncilWrap"),
   profileCouncilNumber:     document.getElementById("profileCouncilNumber"),
   profileCouncilUf:         document.getElementById("profileCouncilUf"),
+  profile2faStatus:         document.getElementById("profile2faStatus"),
+  profile2faSetupBtn:       document.getElementById("profile2faSetupBtn"),
+  profile2faDisableBtn:     document.getElementById("profile2faDisableBtn"),
   saveProfileBtn:           document.getElementById("saveProfileBtn"),
   createUserModal:          document.getElementById("createUserModal"),
   closeCreateUserModalBtn:  document.getElementById("closeCreateUserModalBtn"),
@@ -1396,11 +1399,61 @@ function openProfileModal() {
     el.profileCouncilNumber.value = formatCouncilNumber(state.user.councilNumber || "", maxLen);
     el.profileCouncilUf.value = state.user.councilUf || "";
   }
+  if (el.profile2faStatus) {
+    const enabled = Boolean(state.user.twoFactorEnabled);
+    el.profile2faStatus.textContent = enabled
+      ? "2FA ativo. O login exige código do app autenticador."
+      : "2FA inativo. Recomendado ativar para maior segurança.";
+  }
+  el.profile2faDisableBtn?.classList.toggle("hidden", !Boolean(state.user.twoFactorEnabled));
   el.profileModal.classList.remove("hidden");
 }
 
 function closeProfileModal() {
   el.profileModal.classList.add("hidden");
+}
+
+async function startTwoFactorSetup() {
+  try {
+    const setup = await api("/me/2fa/setup", { method: "POST", body: "{}" });
+    const manualKey = String(setup.secret || "").replace(/(.{4})/g, "$1 ").trim();
+    alert(
+      `2FA iniciado.\n\n1) Abra Google Authenticator/Authy.\n2) Cadastre a chave manual:\n${manualKey}\n\nOu use URL OTP:\n${setup.otpauthUrl}`
+    );
+    const code = prompt("Digite o código de 6 dígitos do app para confirmar a ativação do 2FA:");
+    if (!code) return;
+    const result = await api("/me/2fa/enable", {
+      method: "POST",
+      body: JSON.stringify({ code })
+    });
+    state.user = result.user;
+    state.token = result.token;
+    persistSession();
+    updateSessionView();
+    openProfileModal();
+    showToast("2FA ativado com sucesso.", "ok");
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
+async function disableTwoFactor() {
+  try {
+    const code = prompt("Digite o código atual de 6 dígitos para desativar o 2FA:");
+    if (!code) return;
+    const result = await api("/me/2fa/disable", {
+      method: "POST",
+      body: JSON.stringify({ code })
+    });
+    state.user = result.user;
+    state.token = result.token;
+    persistSession();
+    updateSessionView();
+    openProfileModal();
+    showToast("2FA desativado.", "ok");
+  } catch (e) {
+    showToast(e.message, "error");
+  }
 }
 
 function requireSelectedPatientForAi() {
@@ -2573,7 +2626,19 @@ function withSpinner(btn, fn) {
 }
 
 el.loginBtn.addEventListener("click", withSpinner(el.loginBtn, async () => {
-  const payload = await api("/auth/login", { method:"POST", body:JSON.stringify({ email:el.loginEmail.value.trim(), password:el.loginPassword.value }) });
+  const loginAttempt = await api("/auth/login", { method:"POST", body:JSON.stringify({ email:el.loginEmail.value.trim(), password:el.loginPassword.value }) });
+  let payload = loginAttempt;
+  if (loginAttempt?.twoFactorRequired) {
+    const code = prompt("Digite o código de 6 dígitos do seu app autenticador (2FA):");
+    if (!code) throw new Error("Login cancelado: código 2FA não informado.");
+    payload = await api("/auth/login/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        challengeId: loginAttempt.challengeId,
+        code
+      })
+    });
+  }
   state.user = payload.user; state.token = payload.token;
   persistSession();
   updateSessionView(); await bootstrapAfterLogin();
@@ -3034,6 +3099,8 @@ el.deletePatientBtn?.addEventListener("click", deleteSelectedPatient);
 el.profileBtn?.addEventListener("click", openProfileModal);
 el.topbarUser?.addEventListener("click", openProfileModal);
 el.closeProfileBtn?.addEventListener("click", closeProfileModal);
+el.profile2faSetupBtn?.addEventListener("click", startTwoFactorSetup);
+el.profile2faDisableBtn?.addEventListener("click", disableTwoFactor);
 el.profileModal?.addEventListener("click", (e) => {
   if (e.target === el.profileModal) closeProfileModal();
 });
