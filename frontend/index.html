@@ -739,13 +739,28 @@
             <label><input id="pChronicDiabetes" type="checkbox"/> Diabético</label>
           </div>
         </div>
-        <div class="field-row">
-          <div class="field-group"><label class="field-label">DUM (início da gestação)</label><input id="pPregnancyStartDate" type="date" class="field-input"/></div>
-          <div class="field-group"><label class="field-label">DPP (data provável do parto)</label><input id="pExpectedDeliveryDate" type="date" class="field-input"/></div>
+        <div id="pPregnancyFieldsWrap" class="hidden">
+          <div class="field-row">
+            <div class="field-group"><label class="field-label">DUM</label><input id="pPregnancyStartDate" type="date" class="field-input"/></div>
+            <div class="field-group"><label class="field-label">DPP (data provável do parto)</label><input id="pExpectedDeliveryDate" type="date" class="field-input"/></div>
+          </div>
+          <div class="field-row">
+            <div class="field-group"><label class="field-label">Idade gestacional DUM (semanas)</label><input id="pGestationalAgeDumWeeks" type="number" class="field-input" min="0" max="45" placeholder="Ex: 24"/></div>
+            <div class="field-group"><label class="field-label">Idade gestacional USG (semanas)</label><input id="pGestationalAgeUsgWeeks" type="number" class="field-input" min="0" max="45" placeholder="Ex: 23"/></div>
+          </div>
+          <div class="field-row">
+            <div class="field-group"><label class="field-label">Data da USG 1</label><input id="pUsgDate1" type="date" class="field-input"/></div>
+            <div class="field-group"><label class="field-label">Data da USG 2</label><input id="pUsgDate2" type="date" class="field-input"/></div>
+          </div>
+          <div class="field-row">
+            <div class="field-group"><label class="field-label">Data da USG 3</label><input id="pUsgDate3" type="date" class="field-input"/></div>
+            <div class="field-group"><label class="field-label">Início do pré-natal</label><input id="pPrenatalStartDate" type="date" class="field-input"/></div>
+          </div>
         </div>
-        <div class="field-row">
-          <div class="field-group"><label class="field-label">Início do pré-natal</label><input id="pPrenatalStartDate" type="date" class="field-input"/></div>
-          <div class="field-group"><label class="field-label">Data do parto (puerpério)</label><input id="pPostpartumStartDate" type="date" class="field-input"/></div>
+        <div id="pPuerperalFieldsWrap" class="hidden">
+          <div class="field-row">
+            <div class="field-group"><label class="field-label">Data do parto (puerpério)</label><input id="pPostpartumStartDate" type="date" class="field-input"/></div>
+          </div>
         </div>
         <div class="field-group"><label class="field-label">Comorbidades</label><textarea id="pComorb" class="field-textarea" rows="2"></textarea></div>
         <div class="field-group"><label class="field-label">Medicações</label><textarea id="pMeds" class="field-textarea" rows="2"></textarea></div>

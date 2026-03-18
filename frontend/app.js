@@ -94,6 +94,8 @@ const el = {
   pState:                   document.getElementById("pState"),
   pAcs:                     document.getElementById("pAcs"),
   pCareCategory:            document.getElementById("pCareCategory"),
+  pPregnancyFieldsWrap:     document.getElementById("pPregnancyFieldsWrap"),
+  pPuerperalFieldsWrap:     document.getElementById("pPuerperalFieldsWrap"),
   pChronicConditionsWrap:   document.getElementById("pChronicConditionsWrap"),
   pChronicHypertension:     document.getElementById("pChronicHypertension"),
   pChronicDiabetes:         document.getElementById("pChronicDiabetes"),
@@ -103,6 +105,11 @@ const el = {
   pGenderIdentity:          document.getElementById("pGenderIdentity"),
   pPregnancyStartDate:      document.getElementById("pPregnancyStartDate"),
   pExpectedDeliveryDate:    document.getElementById("pExpectedDeliveryDate"),
+  pGestationalAgeDumWeeks:  document.getElementById("pGestationalAgeDumWeeks"),
+  pGestationalAgeUsgWeeks:  document.getElementById("pGestationalAgeUsgWeeks"),
+  pUsgDate1:                document.getElementById("pUsgDate1"),
+  pUsgDate2:                document.getElementById("pUsgDate2"),
+  pUsgDate3:                document.getElementById("pUsgDate3"),
   pPrenatalStartDate:       document.getElementById("pPrenatalStartDate"),
   pPostpartumStartDate:     document.getElementById("pPostpartumStartDate"),
   pComorb:                  document.getElementById("pComorb"),
@@ -350,6 +357,14 @@ function formatCns(value) {
   return `${d.slice(0, 3)} ${d.slice(3, 7)} ${d.slice(7, 11)} ${d.slice(11)}`;
 }
 
+function parseWeeksInput(value) {
+  const raw = onlyDigits(value).slice(0, 2);
+  if (!raw) return "";
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return "";
+  return Math.max(0, Math.min(parsed, 45));
+}
+
 function splitAddress(address) {
   const raw = String(address || "").trim();
   if (!raw) return { street: "", number: "", neighborhood: "", city: "", state: "", cep: "" };
@@ -430,10 +445,15 @@ function setSelectedChronicConditions(items = []) {
 }
 
 function updateChronicConditionsVisibility() {
+  const category = el.pCareCategory?.value || "";
   const isChronic = el.pCareCategory?.value === "chronic";
   el.pChronicConditionsWrap?.classList.toggle("hidden", !isChronic);
-  const isChild = el.pCareCategory?.value === "child_followup";
+  const isChild = category === "child_followup";
+  const isPregnant = category === "pregnant";
+  const isPuerperal = category === "puerperal";
   el.pMotherNameWrap?.classList.toggle("hidden", !isChild);
+  el.pPregnancyFieldsWrap?.classList.toggle("hidden", !isPregnant);
+  el.pPuerperalFieldsWrap?.classList.toggle("hidden", !isPuerperal);
 }
 
 // -- API ----------------------------------------------------------------------
@@ -616,9 +636,9 @@ async function reloadTemplateData() {
 
 // -- Role permissions ----------------------------------------------------------
 function applyRolePermissions() {
-  const patientFields = ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pMaritalStatus","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pPrenatalStartDate","pPostpartumStartDate"];
+  const patientFields = ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pMaritalStatus","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeUsgWeeks","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate"];
   const taskFields = ["tTitle","tNotes","tDue","tAssignee"];
-  const mgrFields = ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pMaritalStatus","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pPrenatalStartDate","pPostpartumStartDate","tTitle","tNotes","tDue","tAssignee"];
+  const mgrFields = ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pMaritalStatus","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeUsgWeeks","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate","tTitle","tNotes","tDue","tAssignee"];
   const clinFields = ["aDate","aDemandType","aSummary","aConduct","aNext"];
 
   if (isManager()) {
@@ -1363,6 +1383,15 @@ function openPatientEdit() {
   el.pGenderIdentity.value = p.genderIdentity || "";
   el.pPregnancyStartDate.value = p.pregnancyStartDate || "";
   el.pExpectedDeliveryDate.value = p.expectedDeliveryDate || "";
+  el.pGestationalAgeDumWeeks.value = Number.isFinite(Number(p.gestationalAgeDumWeeks))
+    ? String(p.gestationalAgeDumWeeks)
+    : "";
+  el.pGestationalAgeUsgWeeks.value = Number.isFinite(Number(p.gestationalAgeUsgWeeks))
+    ? String(p.gestationalAgeUsgWeeks)
+    : "";
+  el.pUsgDate1.value = p.usgDate1 || "";
+  el.pUsgDate2.value = p.usgDate2 || "";
+  el.pUsgDate3.value = p.usgDate3 || "";
   el.pPrenatalStartDate.value = p.prenatalStartDate || "";
   el.pPostpartumStartDate.value = p.postpartumStartDate || "";
   el.pComorb.value = p.comorbidities || "";
@@ -1762,7 +1791,7 @@ function openPatientCreateModal() {
   state.editingPatientId = null;
   el.patientModalTitle.textContent = "Novo cadastro de paciente";
   el.createPatientBtn.textContent = "Salvar";
-  ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pPrenatalStartDate","pPostpartumStartDate"].forEach((id) => {
+  ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeUsgWeeks","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate"].forEach((id) => {
     const ref = document.getElementById(id);
     if (ref) ref.value = "";
   });
@@ -1881,6 +1910,14 @@ el.pCpf?.addEventListener("input", () => { el.pCpf.value = formatCpf(el.pCpf.val
 el.pCns?.addEventListener("input", () => { el.pCns.value = formatCns(el.pCns.value); });
 el.pCep?.addEventListener("input", () => { el.pCep.value = formatCep(el.pCep.value); });
 el.pNumber?.addEventListener("input", () => { el.pNumber.value = onlyDigits(el.pNumber.value).slice(0, 10); });
+el.pGestationalAgeDumWeeks?.addEventListener("input", () => {
+  const parsed = parseWeeksInput(el.pGestationalAgeDumWeeks.value);
+  el.pGestationalAgeDumWeeks.value = parsed === "" ? "" : String(parsed);
+});
+el.pGestationalAgeUsgWeeks?.addEventListener("input", () => {
+  const parsed = parseWeeksInput(el.pGestationalAgeUsgWeeks.value);
+  el.pGestationalAgeUsgWeeks.value = parsed === "" ? "" : String(parsed);
+});
 el.pState?.addEventListener("input", () => { el.pState.value = String(el.pState.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2); });
 el.managerCreateCouncilNumber?.addEventListener("input", () => { el.managerCreateCouncilNumber.value = formatCouncilNumber(el.managerCreateCouncilNumber.value, 8); });
 
@@ -2151,6 +2188,11 @@ el.createPatientBtn.addEventListener("click", async () => {
       genderIdentity: el.pGenderIdentity.value || "",
       pregnancyStartDate: el.pPregnancyStartDate.value || "",
       expectedDeliveryDate: el.pExpectedDeliveryDate.value || "",
+      gestationalAgeDumWeeks: parseWeeksInput(el.pGestationalAgeDumWeeks.value),
+      gestationalAgeUsgWeeks: parseWeeksInput(el.pGestationalAgeUsgWeeks.value),
+      usgDate1: el.pUsgDate1.value || "",
+      usgDate2: el.pUsgDate2.value || "",
+      usgDate3: el.pUsgDate3.value || "",
       prenatalStartDate: el.pPrenatalStartDate.value || "",
       postpartumStartDate: el.pPostpartumStartDate.value || "",
       comorbidities:el.pComorb.value, medications:el.pMeds.value, allergies:el.pAllergies.value
@@ -2168,7 +2210,7 @@ el.createPatientBtn.addEventListener("click", async () => {
       showToast("Paciente cadastrado com sucesso!","ok");
     }
 
-    ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pPrenatalStartDate","pPostpartumStartDate"].forEach(id=>{document.getElementById(id).value="";});
+    ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeUsgWeeks","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate"].forEach(id=>{document.getElementById(id).value="";});
     if (el.pSexAtBirth) el.pSexAtBirth.value = "";
     if (el.pMaritalStatus) el.pMaritalStatus.value = "";
     if (el.pGenderIdentity) el.pGenderIdentity.value = "";

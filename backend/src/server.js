@@ -365,6 +365,11 @@ function ensureDbShape(db) {
     birthDate: p.birthDate ? String(p.birthDate) : "",
     pregnancyStartDate: p.pregnancyStartDate ? String(p.pregnancyStartDate) : "",
     expectedDeliveryDate: p.expectedDeliveryDate ? String(p.expectedDeliveryDate) : "",
+    gestationalAgeDumWeeks: Number.isFinite(Number(p.gestationalAgeDumWeeks)) ? Number(p.gestationalAgeDumWeeks) : "",
+    gestationalAgeUsgWeeks: Number.isFinite(Number(p.gestationalAgeUsgWeeks)) ? Number(p.gestationalAgeUsgWeeks) : "",
+    usgDate1: p.usgDate1 ? String(p.usgDate1) : "",
+    usgDate2: p.usgDate2 ? String(p.usgDate2) : "",
+    usgDate3: p.usgDate3 ? String(p.usgDate3) : "",
     prenatalStartDate: p.prenatalStartDate ? String(p.prenatalStartDate) : "",
     postpartumStartDate: p.postpartumStartDate ? String(p.postpartumStartDate) : ""
   }));
@@ -592,6 +597,11 @@ function buildPatientAccessReport(db, patient) {
       birthDate: patient.birthDate || "",
       pregnancyStartDate: patient.pregnancyStartDate || "",
       expectedDeliveryDate: patient.expectedDeliveryDate || "",
+      gestationalAgeDumWeeks: Number.isFinite(Number(patient.gestationalAgeDumWeeks)) ? Number(patient.gestationalAgeDumWeeks) : "",
+      gestationalAgeUsgWeeks: Number.isFinite(Number(patient.gestationalAgeUsgWeeks)) ? Number(patient.gestationalAgeUsgWeeks) : "",
+      usgDate1: patient.usgDate1 || "",
+      usgDate2: patient.usgDate2 || "",
+      usgDate3: patient.usgDate3 || "",
       prenatalStartDate: patient.prenatalStartDate || "",
       postpartumStartDate: patient.postpartumStartDate || "",
       assignedAcsId: patient.assignedAcsId || "",
@@ -662,6 +672,11 @@ function applyPatientCorrection(db, user, patient, corrections = {}) {
     "birthDate",
     "pregnancyStartDate",
     "expectedDeliveryDate",
+    "gestationalAgeDumWeeks",
+    "gestationalAgeUsgWeeks",
+    "usgDate1",
+    "usgDate2",
+    "usgDate3",
     "prenatalStartDate",
     "postpartumStartDate",
     "comorbidities",
@@ -729,6 +744,11 @@ function anonymizePatientBundle(db, user, patient, reason = "", requestId = "") 
     birthDate: "",
     pregnancyStartDate: "",
     expectedDeliveryDate: "",
+    gestationalAgeDumWeeks: "",
+    gestationalAgeUsgWeeks: "",
+    usgDate1: "",
+    usgDate2: "",
+    usgDate3: "",
     prenatalStartDate: "",
     postpartumStartDate: "",
     comorbidities: "",
@@ -1276,16 +1296,46 @@ function filterHistoryByPeriod(history, start, end) {
 function detectGestationTimeline(patient) {
   const rawStart = toDateOnlySafe(patient?.pregnancyStartDate);
   const rawDue = toDateOnlySafe(patient?.expectedDeliveryDate);
-  const start = rawStart || (rawDue ? addDays(rawDue, -280) : null);
-  const due = rawDue || (rawStart ? addDays(rawStart, 280) : null);
-  const prenatalStart = toDateOnlySafe(patient?.prenatalStartDate);
+  const usgDates = [patient?.usgDate1, patient?.usgDate2, patient?.usgDate3]
+    .map((d) => toDateOnlySafe(d))
+    .filter(Boolean)
+    .sort((a, b) => b.getTime() - a.getTime());
+  const latestUsgDate = usgDates[0] || null;
+  const dumWeeks = Number.isFinite(Number(patient?.gestationalAgeDumWeeks))
+    ? Number(patient.gestationalAgeDumWeeks)
+    : null;
+  const usgWeeks = Number.isFinite(Number(patient?.gestationalAgeUsgWeeks))
+    ? Number(patient.gestationalAgeUsgWeeks)
+    : null;
   const now = toDateOnlySafe(new Date());
+
+  const inferredStartFromUsg = latestUsgDate && usgWeeks !== null
+    ? addDays(latestUsgDate, -Math.max(0, Math.floor(usgWeeks * 7)))
+    : null;
+  const inferredStartFromDumAge = now && dumWeeks !== null
+    ? addDays(now, -Math.max(0, Math.floor(dumWeeks * 7)))
+    : null;
+
+  const start = rawStart
+    || inferredStartFromUsg
+    || inferredStartFromDumAge
+    || (rawDue ? addDays(rawDue, -280) : null);
+  const due = rawDue || (start ? addDays(start, 280) : null);
+  const prenatalStart = toDateOnlySafe(patient?.prenatalStartDate);
 
   const gestationalDays = start ? Math.max(daysDiff(start, now) || 0, 0) : null;
   const gestationalWeeks = gestationalDays !== null ? Math.floor(gestationalDays / 7) : null;
   const daysUntilDue = due ? daysDiff(now, due) : null;
 
-  return { start, due, prenatalStart, gestationalDays, gestationalWeeks, daysUntilDue };
+  return {
+    start,
+    due,
+    prenatalStart,
+    gestationalDays,
+    gestationalWeeks,
+    daysUntilDue,
+    inferredBy: rawStart ? "dum" : (inferredStartFromUsg ? "usg" : (inferredStartFromDumAge ? "ig_dum" : (rawDue ? "dpp" : "")))
+  };
 }
 
 function detectPuerperalTimeline(patient) {
@@ -2836,6 +2886,15 @@ app.post("/patients", requireManager, async (req, res) => {
     birthDate: payload.birthDate ? String(payload.birthDate).trim() : "",
     pregnancyStartDate: payload.pregnancyStartDate ? String(payload.pregnancyStartDate).trim() : "",
     expectedDeliveryDate: payload.expectedDeliveryDate ? String(payload.expectedDeliveryDate).trim() : "",
+    gestationalAgeDumWeeks: Number.isFinite(Number(payload.gestationalAgeDumWeeks))
+      ? Math.max(0, Math.min(45, Number(payload.gestationalAgeDumWeeks)))
+      : "",
+    gestationalAgeUsgWeeks: Number.isFinite(Number(payload.gestationalAgeUsgWeeks))
+      ? Math.max(0, Math.min(45, Number(payload.gestationalAgeUsgWeeks)))
+      : "",
+    usgDate1: payload.usgDate1 ? String(payload.usgDate1).trim() : "",
+    usgDate2: payload.usgDate2 ? String(payload.usgDate2).trim() : "",
+    usgDate3: payload.usgDate3 ? String(payload.usgDate3).trim() : "",
     prenatalStartDate: payload.prenatalStartDate ? String(payload.prenatalStartDate).trim() : "",
     postpartumStartDate: payload.postpartumStartDate ? String(payload.postpartumStartDate).trim() : "",
     comorbidities: payload.comorbidities ? String(payload.comorbidities).trim() : "",
@@ -2885,6 +2944,11 @@ app.put("/patients/:id", async (req, res) => {
       "birthDate",
       "pregnancyStartDate",
       "expectedDeliveryDate",
+      "gestationalAgeDumWeeks",
+      "gestationalAgeUsgWeeks",
+      "usgDate1",
+      "usgDate2",
+      "usgDate3",
       "prenatalStartDate",
       "postpartumStartDate"
     ]);
@@ -2925,6 +2989,25 @@ app.put("/patients/:id", async (req, res) => {
       genderIdentity: safePayload?.genderIdentity !== undefined
         ? String(safePayload.genderIdentity || "").trim().toLowerCase()
         : String(current.genderIdentity || ""),
+      gestationalAgeDumWeeks: safePayload?.gestationalAgeDumWeeks !== undefined
+        ? (Number.isFinite(Number(safePayload.gestationalAgeDumWeeks))
+          ? Math.max(0, Math.min(45, Number(safePayload.gestationalAgeDumWeeks)))
+          : "")
+        : (Number.isFinite(Number(current.gestationalAgeDumWeeks)) ? Number(current.gestationalAgeDumWeeks) : ""),
+      gestationalAgeUsgWeeks: safePayload?.gestationalAgeUsgWeeks !== undefined
+        ? (Number.isFinite(Number(safePayload.gestationalAgeUsgWeeks))
+          ? Math.max(0, Math.min(45, Number(safePayload.gestationalAgeUsgWeeks)))
+          : "")
+        : (Number.isFinite(Number(current.gestationalAgeUsgWeeks)) ? Number(current.gestationalAgeUsgWeeks) : ""),
+      usgDate1: safePayload?.usgDate1 !== undefined
+        ? String(safePayload.usgDate1 || "").trim()
+        : String(current.usgDate1 || ""),
+      usgDate2: safePayload?.usgDate2 !== undefined
+        ? String(safePayload.usgDate2 || "").trim()
+        : String(current.usgDate2 || ""),
+      usgDate3: safePayload?.usgDate3 !== undefined
+        ? String(safePayload.usgDate3 || "").trim()
+        : String(current.usgDate3 || ""),
       id,
       updatedAt: new Date().toISOString(),
       updatedBy: req.user.id
