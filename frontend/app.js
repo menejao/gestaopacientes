@@ -19,6 +19,7 @@ const state = {
   demandMonthly: null,
   editingPatientId: null,
   editingProtocolCategory: null,
+  editingTeamUserId: null,
   navSection: "dashboard",
   workspaceTab: "dashboard",
   dashboardQuery: "",
@@ -246,6 +247,17 @@ const el = {
   managerCreateCouncilNumber: document.getElementById("managerCreateCouncilNumber"),
   managerCreateCouncilUf:   document.getElementById("managerCreateCouncilUf"),
   saveCreateUserBtn:        document.getElementById("saveCreateUserBtn"),
+  editTeamUserModal:        document.getElementById("editTeamUserModal"),
+  closeEditTeamUserModalBtn: document.getElementById("closeEditTeamUserModalBtn"),
+  cancelEditTeamUserModalBtn: document.getElementById("cancelEditTeamUserModalBtn"),
+  editTeamUserRole:         document.getElementById("editTeamUserRole"),
+  editTeamUserName:         document.getElementById("editTeamUserName"),
+  editTeamUserEmail:        document.getElementById("editTeamUserEmail"),
+  editTeamUserPassword:     document.getElementById("editTeamUserPassword"),
+  editTeamUserCouncilWrap:  document.getElementById("editTeamUserCouncilWrap"),
+  editTeamUserCouncilNumber: document.getElementById("editTeamUserCouncilNumber"),
+  editTeamUserCouncilUf:    document.getElementById("editTeamUserCouncilUf"),
+  saveEditTeamUserBtn:      document.getElementById("saveEditTeamUserBtn"),
   filterModal:              document.getElementById("filterModal"),
   closeFilterModalBtn:      document.getElementById("closeFilterModalBtn"),
   topFilterMicroArea:       document.getElementById("topFilterMicroArea"),
@@ -305,6 +317,7 @@ function logoutUser(showReason = false) {
   el.profileModal.classList.add("hidden");
   el.patientModal?.classList.add("hidden");
   el.createUserModal?.classList.add("hidden");
+  el.editTeamUserModal?.classList.add("hidden");
   clearSessionStore();
   updateSessionView();
   if (showReason) showToast("Sessão encerrada por inatividade.", "error", 3500);
@@ -647,6 +660,7 @@ function fillCouncilUfSelects() {
   fillUfSelect(el.registerCouncilUf);
   fillUfSelect(el.managerCreateCouncilUf);
   fillUfSelect(el.profileCouncilUf);
+  fillUfSelect(el.editTeamUserCouncilUf);
 }
 
 function councilDigits(value, maxLen) {
@@ -1297,48 +1311,7 @@ function renderTeamUsersLists() {
     btn.addEventListener("click", async () => {
       const target = state.users.find((u) => u.id === btn.dataset.userId);
       if (!target) return;
-      const roleLabel = target.role === "doctor" ? "Médico(a)" : "ACS";
-      const name = prompt(`Editar ${roleLabel} - Nome`, target.name || "");
-      if (name === null) return;
-      const email = prompt(`Editar ${roleLabel} - E-mail`, target.email || "");
-      if (email === null) return;
-      const payload = { name: name.trim(), email: email.trim() };
-      const password = prompt(`Editar ${roleLabel} - Nova senha (deixe em branco para manter a atual)`, "");
-      if (password === null) return;
-      if (String(password || "").trim()) {
-        if (!passwordStrong(password)) {
-          showToast("Senha fraca: mínimo de 8 caracteres, 1 maiúscula, 1 número e 1 especial.", "error");
-          return;
-        }
-        payload.password = String(password);
-      }
-      if (target.role === "doctor") {
-        const currentCouncil = formatCouncilNumber(target.councilNumber || "", 8);
-        const council = prompt("Número do conselho (CRM, somente números). Deixe igual para não alterar.", currentCouncil);
-        if (council === null) return;
-        const uf = prompt("UF do conselho (CRM). Deixe igual para não alterar.", String(target.councilUf || "").toUpperCase());
-        if (uf === null) return;
-        const nextCouncil = councilDigits(council, 8);
-        const currentCouncilDigits = councilDigits(currentCouncil, 8);
-        const nextUf = String(uf || "").trim().toUpperCase();
-        const currentUf = String(target.councilUf || "").trim().toUpperCase();
-        if (nextCouncil && (nextCouncil !== currentCouncilDigits || nextUf !== currentUf)) {
-          payload.councilNumber = nextCouncil;
-          payload.councilUf = nextUf;
-        }
-      }
-      try {
-        await api(`/users/${target.id}`, { method: "PUT", body: JSON.stringify(payload) });
-        showToast("Cadastro atualizado.", "ok");
-        state.users = await api("/users");
-        fillAcsSelect(el.tAssignee);
-        fillAcsSelect(el.pAcs);
-        fillAcsSelect(el.topFilterAcs, true);
-        renderTeamUsersLists();
-        renderWorkspaceHome();
-      } catch (e) {
-        showToast(e.message, "error");
-      }
+      openEditTeamUserModal(target);
     });
   });
 
@@ -2260,6 +2233,45 @@ function updateCreateUserRoleVisibility() {
   }
 }
 
+function closeEditTeamUserModal() {
+  state.editingTeamUserId = null;
+  if (el.editTeamUserRole) el.editTeamUserRole.value = "";
+  if (el.editTeamUserName) el.editTeamUserName.value = "";
+  if (el.editTeamUserEmail) el.editTeamUserEmail.value = "";
+  if (el.editTeamUserPassword) el.editTeamUserPassword.value = "";
+  if (el.editTeamUserCouncilNumber) el.editTeamUserCouncilNumber.value = "";
+  if (el.editTeamUserCouncilUf) el.editTeamUserCouncilUf.value = "";
+  el.editTeamUserCouncilWrap?.classList.add("hidden");
+  el.editTeamUserModal?.classList.add("hidden");
+}
+
+function openEditTeamUserModal(user) {
+  if (!user) return;
+  state.editingTeamUserId = user.id;
+  const role = user.role === "doctor" ? "doctor" : "acs";
+  if (el.editTeamUserRole) {
+    el.editTeamUserRole.value = role === "doctor" ? "Médico(a)" : "ACS";
+  }
+  if (el.editTeamUserName) el.editTeamUserName.value = String(user.name || "");
+  if (el.editTeamUserEmail) el.editTeamUserEmail.value = String(user.email || "");
+  if (el.editTeamUserPassword) el.editTeamUserPassword.value = "";
+  const isDoctorRole = role === "doctor";
+  el.editTeamUserCouncilWrap?.classList.toggle("hidden", !isDoctorRole);
+  if (isDoctorRole) {
+    const councilCurrent = formatCouncilNumber(user.councilNumber || "", 8);
+    if (el.editTeamUserCouncilNumber) {
+      el.editTeamUserCouncilNumber.maxLength = 9;
+      el.editTeamUserCouncilNumber.placeholder = "Ex: 1234 5678";
+      el.editTeamUserCouncilNumber.value = councilCurrent;
+    }
+    if (el.editTeamUserCouncilUf) el.editTeamUserCouncilUf.value = String(user.councilUf || "").toUpperCase();
+  } else {
+    if (el.editTeamUserCouncilNumber) el.editTeamUserCouncilNumber.value = "";
+    if (el.editTeamUserCouncilUf) el.editTeamUserCouncilUf.value = "";
+  }
+  el.editTeamUserModal?.classList.remove("hidden");
+}
+
 el.openCreateUserModalBtn?.addEventListener("click", () => {
   el.createUserModal.classList.remove("hidden");
   updateCreateUserRoleVisibility();
@@ -2313,6 +2325,63 @@ el.saveCreateUserBtn?.addEventListener("click", async () => {
   }
 });
 
+el.closeEditTeamUserModalBtn?.addEventListener("click", closeEditTeamUserModal);
+el.cancelEditTeamUserModalBtn?.addEventListener("click", closeEditTeamUserModal);
+el.editTeamUserModal?.addEventListener("click", (e) => {
+  if (e.target === el.editTeamUserModal) closeEditTeamUserModal();
+});
+
+el.saveEditTeamUserBtn?.addEventListener("click", async () => {
+  const userId = String(state.editingTeamUserId || "").trim();
+  if (!userId) {
+    showToast("Usuário inválido para edição.", "error");
+    return;
+  }
+  const target = state.users.find((u) => u.id === userId);
+  if (!target) {
+    showToast("Usuário não encontrado.", "error");
+    return;
+  }
+
+  try {
+    const payload = {
+      name: String(el.editTeamUserName?.value || "").trim(),
+      email: String(el.editTeamUserEmail?.value || "").trim()
+    };
+    const password = String(el.editTeamUserPassword?.value || "").trim();
+    if (password) {
+      if (!passwordStrong(password)) {
+        showToast("Senha fraca: mínimo de 8 caracteres, 1 maiúscula, 1 número e 1 especial.", "error");
+        return;
+      }
+      payload.password = password;
+    }
+
+    if (target.role === "doctor") {
+      const currentCouncil = councilDigits(target.councilNumber || "", 8);
+      const nextCouncil = councilDigits(el.editTeamUserCouncilNumber?.value || "", 8);
+      const nextUf = String(el.editTeamUserCouncilUf?.value || "").trim().toUpperCase();
+      const currentUf = String(target.councilUf || "").trim().toUpperCase();
+      if (nextCouncil && (nextCouncil !== currentCouncil || nextUf !== currentUf)) {
+        payload.councilNumber = nextCouncil;
+        payload.councilUf = nextUf;
+      }
+    }
+
+    await api(`/users/${target.id}`, { method: "PUT", body: JSON.stringify(payload) });
+    showToast("Cadastro atualizado.", "ok");
+    closeEditTeamUserModal();
+    state.users = await api("/users");
+    fillAcsSelect(el.tAssignee);
+    fillAcsSelect(el.pAcs);
+    fillAcsSelect(el.topFilterAcs, true);
+    renderTeamUsersLists();
+    renderWorkspaceHome();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+});
+
 el.pPhone?.addEventListener("input", () => { el.pPhone.value = formatPhone(el.pPhone.value); });
 el.pPhoneAlt?.addEventListener("input", () => { el.pPhoneAlt.value = formatPhone(el.pPhoneAlt.value); });
 el.pCpf?.addEventListener("input", () => { el.pCpf.value = formatCpf(el.pCpf.value); });
@@ -2329,6 +2398,7 @@ el.pGestationalAgeUsgWeeks?.addEventListener("input", () => {
 });
 el.pState?.addEventListener("input", () => { el.pState.value = String(el.pState.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2); });
 el.managerCreateCouncilNumber?.addEventListener("input", () => { el.managerCreateCouncilNumber.value = formatCouncilNumber(el.managerCreateCouncilNumber.value, 8); });
+el.editTeamUserCouncilNumber?.addEventListener("input", () => { el.editTeamUserCouncilNumber.value = formatCouncilNumber(el.editTeamUserCouncilNumber.value, 8); });
 
 el.pCep?.addEventListener("blur", async () => {
   const cep = onlyDigits(el.pCep.value);

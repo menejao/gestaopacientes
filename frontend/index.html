@@ -827,6 +827,47 @@
       </div>
     </div>
 
+    <!-- EDIT TEAM USER MODAL -->
+    <div id="editTeamUserModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-hd">
+          <h3>Editar cadastro</h3>
+          <button id="closeEditTeamUserModalBtn" class="icon-btn">X</button>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Perfil</label>
+          <input id="editTeamUserRole" class="field-input" disabled />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Nome</label>
+          <input id="editTeamUserName" class="field-input" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Email</label>
+          <input id="editTeamUserEmail" type="email" class="field-input" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Nova senha</label>
+          <input id="editTeamUserPassword" type="password" class="field-input" placeholder="Deixe em branco para manter a atual" />
+          <p class="field-help">Use mínimo de 8 caracteres com maiúscula, número e símbolo.</p>
+        </div>
+        <div id="editTeamUserCouncilWrap" class="field-row hidden">
+          <div class="field-group">
+            <label class="field-label">Número conselho</label>
+            <input id="editTeamUserCouncilNumber" class="field-input" inputmode="numeric" maxlength="12" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">UF conselho</label>
+            <select id="editTeamUserCouncilUf" class="field-select"></select>
+          </div>
+        </div>
+        <div class="inline-actions" style="justify-content:flex-end;">
+          <button id="cancelEditTeamUserModalBtn" class="btn-secondary">Cancelar</button>
+          <button id="saveEditTeamUserBtn" class="btn-primary">Salvar alterações</button>
+        </div>
+      </div>
+    </div>
+
     <script src="./config.js"></script>
     <script src="./app.js"></script>
   </body>
