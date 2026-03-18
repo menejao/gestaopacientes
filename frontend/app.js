@@ -285,11 +285,23 @@ let _toastTimer = null;
 let _lastSessionTouchAt = 0;
 let _inactivityTimer = null;
 let _protocolStatusesRequestSeq = 0;
+let _recordDraftMetadata = null;
 function showToast(msg, type = "default", ms = 3000) {
   el.toast.textContent = msg;
   el.toast.className = `toast ${type}`;
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.toast.classList.add("hidden"), ms);
+}
+
+function toDateInputValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+  }
+  const iso = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return iso ? iso[1] : "";
 }
 
 function persistSession() {
@@ -1700,6 +1712,7 @@ document.querySelectorAll(".ptab").forEach(tab => {
     document.querySelectorAll(".ptab").forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
     const target = tab.dataset.panel;
+    if (target !== "panelRecord") _recordDraftMetadata = null;
     document.querySelectorAll(".panel").forEach(p => {
       p.classList.toggle("active", p.id === target);
       p.classList.toggle("hidden", p.id !== target);
@@ -1708,6 +1721,7 @@ document.querySelectorAll(".ptab").forEach(tab => {
 });
 
 function switchToTab(panelId) {
+  if (panelId !== "panelRecord") _recordDraftMetadata = null;
   document.querySelectorAll(".ptab").forEach(t => t.classList.remove("active"));
   document.querySelector(`.ptab[data-panel="${panelId}"]`)?.classList.add("active");
   document.querySelectorAll(".panel").forEach(p => {
@@ -1827,8 +1841,15 @@ function renderProtocolSummary() {
 function renderAppointments() {
   el.appointmentList.innerHTML = "";
   if (!state.appointments.length) { el.appointmentList.innerHTML='<div class="empty-msg">Nenhum atendimento.</div>'; return; }
+  const linkedAppointmentIds = new Set(
+    (state.history || [])
+      .filter((h) => h?.source === "clinicalRecord")
+      .map((h) => String(h?.metadata?.sourceAppointmentId || "").trim())
+      .filter(Boolean)
+  );
   state.appointments.forEach(a => {
     const demandLabel = a.demandType === "spontaneous" ? "Espontânea" : "Programada";
+    const linked = linkedAppointmentIds.has(String(a.id || ""));
     const d = document.createElement("div");
     d.className = "record-card";
     d.innerHTML = `
@@ -1840,8 +1861,56 @@ function renderAppointments() {
         <p><strong>Demanda:</strong> ${demandLabel}</p>
         ${a.conduct  ? `<p><strong>Conduta:</strong> ${a.conduct}</p>` : ""}
         ${a.nextStep ? `<p><strong>Próximo:</strong> ${a.nextStep}</p>` : ""}
+        ${(isManager() || isDoctor()) ? `
+          <div class="inline-actions" style="margin-top:.5rem;">
+            <button class="btn-secondary appt-to-record-btn" data-appointment-id="${a.id}" ${linked ? "disabled" : ""}>
+              ${linked ? "Registro já gerado" : "Gerar registro clínico"}
+            </button>
+          </div>` : ""}
       </div>`;
     el.appointmentList.appendChild(d);
+  });
+
+  document.querySelectorAll(".appt-to-record-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const appointment = state.appointments.find((item) => item.id === btn.dataset.appointmentId);
+      if (!appointment) return;
+
+      const appointmentId = String(appointment.id || "").trim();
+      const alreadyLinked = (state.history || []).some((h) =>
+        h?.source === "clinicalRecord" && String(h?.metadata?.sourceAppointmentId || "").trim() === appointmentId
+      );
+      if (alreadyLinked) {
+        showToast("Este atendimento já possui registro clínico vinculado.", "error");
+        return;
+      }
+
+      restoreRecordTypeOptions();
+      el.rType.value = "consultation";
+      updateRecordTitleControls();
+      if (el.rTitleSelect?.options?.length) {
+        const summary = String(appointment.summary || "").toLowerCase();
+        let suggested = "Consulta médica";
+        if (/enferm/.test(summary)) suggested = "Consulta de enfermagem";
+        if (/odont|dent/.test(summary)) suggested = "Consulta odontológica";
+        if ([...el.rTitleSelect.options].some((opt) => opt.value === suggested)) {
+          el.rTitleSelect.value = suggested;
+        }
+      }
+      el.rDate.value = toDateInputValue(appointment.date);
+      el.rDetails.value = [
+        `Origem do atendimento: ${appointment.summary || "Sem resumo"}`,
+        appointment.conduct ? `Conduta: ${appointment.conduct}` : "",
+        appointment.nextStep ? `Próximo passo: ${appointment.nextStep}` : ""
+      ].filter(Boolean).join("\n");
+      _recordDraftMetadata = {
+        sourceAppointmentId: appointmentId,
+        sourceDemandType: appointment.demandType || "",
+        sourceAppointmentDate: appointment.date || ""
+      };
+      switchToTab("panelRecord");
+      showToast("Atendimento carregado no formulário de registro.", "ok");
+    });
   });
 }
 
@@ -2837,7 +2906,7 @@ el.addRecordBtn.addEventListener("click", async () => {
             title: vaccineName,
             details,
             protocolTag: state.selectedPatient.careCategory,
-            metadata: { vaccineName }
+            metadata: { vaccineName, ...(_recordDraftMetadata || {}) }
           })
         });
       }
@@ -2862,15 +2931,19 @@ el.addRecordBtn.addEventListener("click", async () => {
           title,
           details,
           protocolTag: state.selectedPatient.careCategory,
-          metadata: (type === "procedure" && el.rRapidTestTrimester?.value)
-            ? { rapidTestTrimester: el.rRapidTestTrimester.value }
-            : {}
+          metadata: {
+            ...((type === "procedure" && el.rRapidTestTrimester?.value)
+              ? { rapidTestTrimester: el.rRapidTestTrimester.value }
+              : {}),
+            ...(_recordDraftMetadata || {})
+          }
         })
       });
       showToast("Registro salvo.", "ok");
     }
 
     ["rDate","rDetails","rTitleInput","rRapidTestTrimester"].forEach(id=>{const node = document.getElementById(id); if (node) node.value="";});
+    _recordDraftMetadata = null;
     updateRecordTitleControls();
     await refreshSelectedPatientData();
   } catch(e) { showToast(e.message,"error"); }
