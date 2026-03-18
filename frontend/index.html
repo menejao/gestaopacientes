@@ -244,6 +244,11 @@
                 <div class="panel-card-hd">Pendencias prioritarias</div>
                 <div id="priorityTaskList"></div>
               </article>
+              <article class="panel-card">
+                <div class="panel-card-hd">Alertas de prazo do protocolo</div>
+                <p class="home-task-meta">Baseado nos prazos definidos no protocolo oficial da categoria.</p>
+                <div id="protocolDeadlineAlertsList"></div>
+              </article>
             </section>
 
             <section class="panel-card">
@@ -602,6 +607,26 @@
           <div class="field-group">
             <label class="field-label">Lista de vacinas (virgula)</label>
             <input id="protocolVaccinesListInput" class="field-input" placeholder="Influenza, COVID-19"/>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label">Prazo entre visitas (dias)</label>
+            <input id="protocolVisitDeadlineInput" type="number" min="0" max="3650" class="field-input" value="0"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Prazo entre consultas (dias)</label>
+            <input id="protocolConsultationDeadlineInput" type="number" min="0" max="3650" class="field-input" value="0"/>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label">Prazo entre vacinas (dias)</label>
+            <input id="protocolVaccineDeadlineInput" type="number" min="0" max="3650" class="field-input" value="0"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Observacao</label>
+            <input class="field-input" value="Defina conforme protocolo oficial do Ministerio da Saude" disabled/>
           </div>
         </div>
         <div class="field-row">

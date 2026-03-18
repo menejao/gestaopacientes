@@ -38,36 +38,42 @@ const DEFAULT_CARE_PROTOCOLS = {
     category: "general",
     label: "Geral",
     targets: { visits: 2, consultations: 2, vaccines: 1 },
+    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: ["Influenza"]
   },
   pregnant: {
     category: "pregnant",
     label: "Gestante",
     targets: { visits: 6, consultations: 7, vaccines: 3 },
+    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: ["dTpa", "Hepatite B", "Influenza"]
   },
   puerperal: {
     category: "puerperal",
     label: "Puerpera",
     targets: { visits: 2, consultations: 2, vaccines: 1 },
+    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: ["dTpa"]
   },
   pap_only: {
     category: "pap_only",
     label: "Somente Papanicolau",
     targets: { visits: 1, consultations: 1, vaccines: 0 },
+    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: []
   },
   child_followup: {
     category: "child_followup",
     label: "Puericultura",
     targets: { visits: 4, consultations: 6, vaccines: 6 },
+    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: ["BCG", "Pentavalente", "Polio", "Rotavirus", "Pneumococica", "Meningococica"]
   },
   chronic: {
     category: "chronic",
     label: "Condicao Cronica",
     targets: { visits: 3, consultations: 3, vaccines: 2 },
+    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: ["Influenza", "COVID-19"]
   }
 };
@@ -107,6 +113,11 @@ function buildDefaultProtocolTemplates() {
       visits: Number(template.targets?.visits || 0),
       consultations: Number(template.targets?.consultations || 0),
       vaccines: Number(template.targets?.vaccines || 0)
+    },
+    deadlines: {
+      visits: Number(template.deadlines?.visits || 0),
+      consultations: Number(template.deadlines?.consultations || 0),
+      vaccines: Number(template.deadlines?.vaccines || 0)
     },
     vaccines: Array.isArray(template.vaccines) ? template.vaccines : [],
     authority: "Ministerio da Saude",
@@ -293,6 +304,11 @@ function ensureDbShape(db) {
     const defaultsByCategory = Object.fromEntries(buildDefaultProtocolTemplates().map((t) => [t.category, t]));
     db.protocolTemplates = db.protocolTemplates.map((t) => ({
       ...t,
+      deadlines: {
+        visits: Number(t.deadlines?.visits ?? defaultsByCategory[t.category]?.deadlines?.visits ?? 0),
+        consultations: Number(t.deadlines?.consultations ?? defaultsByCategory[t.category]?.deadlines?.consultations ?? 0),
+        vaccines: Number(t.deadlines?.vaccines ?? defaultsByCategory[t.category]?.deadlines?.vaccines ?? 0)
+      },
       authority: String(t.authority || "Ministerio da Saude"),
       reference: String(t.reference || defaultsByCategory[t.category]?.reference || ""),
       version: String(t.version || defaultsByCategory[t.category]?.version || "1.0")
@@ -957,9 +973,13 @@ function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
   const category = rawCategory.replace(/[^a-z0-9_]/g, "_");
   const label = String(payload.label || "").trim();
   const targets = payload.targets && typeof payload.targets === "object" ? payload.targets : {};
+  const deadlines = payload.deadlines && typeof payload.deadlines === "object" ? payload.deadlines : {};
   const visits = Number(targets.visits);
   const consultations = Number(targets.consultations);
   const vaccinesTarget = Number(targets.vaccines);
+  const deadlineVisits = Number(deadlines.visits);
+  const deadlineConsultations = Number(deadlines.consultations);
+  const deadlineVaccines = Number(deadlines.vaccines);
   const vaccines = Array.isArray(payload.vaccines) ? payload.vaccines : String(payload.vaccines || "").split(",");
   const authority = String(payload.authority || "Ministerio da Saude").trim();
   const reference = String(payload.reference || "").trim();
@@ -989,6 +1009,28 @@ function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
     }
   }
 
+  const deadlineNumbers = [
+    ["visits", deadlineVisits],
+    ["consultations", deadlineConsultations],
+    ["vaccines", deadlineVaccines]
+  ];
+
+  for (const [key, value] of deadlineNumbers) {
+    if (!Number.isFinite(value) || value < 0 || value > 3650) {
+      return { ok: false, error: `deadlines.${key} deve ser numero entre 0 e 3650 dias` };
+    }
+  }
+
+  if (Math.floor(visits) > 0 && Math.floor(deadlineVisits) <= 0) {
+    return { ok: false, error: "deadlines.visits deve ser maior que zero quando houver meta de visitas" };
+  }
+  if (Math.floor(consultations) > 0 && Math.floor(deadlineConsultations) <= 0) {
+    return { ok: false, error: "deadlines.consultations deve ser maior que zero quando houver meta de consultas" };
+  }
+  if (Math.floor(vaccinesTarget) > 0 && Math.floor(deadlineVaccines) <= 0) {
+    return { ok: false, error: "deadlines.vaccines deve ser maior que zero quando houver meta de vacinas" };
+  }
+
   return {
     ok: true,
     template: {
@@ -998,6 +1040,11 @@ function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
         visits: Math.floor(visits),
         consultations: Math.floor(consultations),
         vaccines: Math.floor(vaccinesTarget)
+      },
+      deadlines: {
+        visits: Math.floor(deadlineVisits),
+        consultations: Math.floor(deadlineConsultations),
+        vaccines: Math.floor(deadlineVaccines)
       },
       vaccines: cleanVaccines
       ,
@@ -1072,6 +1119,42 @@ function buildProtocolSummary(patient, history, templateMap) {
     vaccines: history.filter((h) => h.type === "vaccine").length
   };
 
+  const pending = {
+    visits: Math.max(template.targets.visits - completed.visits, 0),
+    consultations: Math.max(template.targets.consultations - completed.consultations, 0),
+    vaccines: Math.max(template.targets.vaccines - completed.vaccines, 0)
+  };
+
+  const lastDates = {
+    visits: history.find((h) => h.type === "visit")?.date || "",
+    consultations: history.find((h) => h.type === "consultation")?.date || "",
+    vaccines: history.find((h) => h.type === "vaccine")?.date || ""
+  };
+
+  const now = Date.now();
+  const scheduleOf = (key) => {
+    const intervalDays = Number(template.deadlines?.[key] || 0);
+    const lastDate = lastDates[key];
+    const lastTs = lastDate ? new Date(lastDate).getTime() : NaN;
+    const daysSinceLast = Number.isFinite(lastTs)
+      ? Math.max(0, Math.floor((now - lastTs) / (1000 * 60 * 60 * 24)))
+      : null;
+    const daysLeft = intervalDays > 0
+      ? (daysSinceLast === null ? intervalDays : intervalDays - daysSinceLast)
+      : null;
+    const overdueDays = intervalDays > 0 && daysSinceLast !== null
+      ? Math.max(daysSinceLast - intervalDays, 0)
+      : 0;
+    return {
+      intervalDays,
+      lastDate,
+      daysSinceLast,
+      daysLeft,
+      overdueDays,
+      pending: Number(pending[key] || 0)
+    };
+  };
+
   const appliedVaccineNames = history
     .filter((h) => h.type === "vaccine")
     .map((h) => h.metadata?.vaccineName || h.title || "")
@@ -1087,10 +1170,13 @@ function buildProtocolSummary(patient, history, templateMap) {
     categoryLabel: template.label,
     targets: template.targets,
     completed,
-    pending: {
-      visits: Math.max(template.targets.visits - completed.visits, 0),
-      consultations: Math.max(template.targets.consultations - completed.consultations, 0),
-      vaccines: Math.max(template.targets.vaccines - completed.vaccines, 0)
+    pending,
+    deadlines: template.deadlines || { visits: 0, consultations: 0, vaccines: 0 },
+    lastDates,
+    schedule: {
+      visits: scheduleOf("visits"),
+      consultations: scheduleOf("consultations"),
+      vaccines: scheduleOf("vaccines")
     },
     vaccines: {
       recommended: recommendedVaccines,

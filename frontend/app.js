@@ -144,6 +144,7 @@ const el = {
   kpiCategories:            document.getElementById("kpiCategories"),
   categorySummaryList:      document.getElementById("categorySummaryList"),
   priorityTaskList:         document.getElementById("priorityTaskList"),
+  protocolDeadlineAlertsList: document.getElementById("protocolDeadlineAlertsList"),
   homePatientSortSelect:    document.getElementById("homePatientSortSelect"),
   homePatientCategoryFilter: document.getElementById("homePatientCategoryFilter"),
   homePatientAcsFilter:     document.getElementById("homePatientAcsFilter"),
@@ -172,6 +173,9 @@ const el = {
   protocolConsultationsInput: document.getElementById("protocolConsultationsInput"),
   protocolVaccinesTargetInput: document.getElementById("protocolVaccinesTargetInput"),
   protocolVaccinesListInput: document.getElementById("protocolVaccinesListInput"),
+  protocolVisitDeadlineInput: document.getElementById("protocolVisitDeadlineInput"),
+  protocolConsultationDeadlineInput: document.getElementById("protocolConsultationDeadlineInput"),
+  protocolVaccineDeadlineInput: document.getElementById("protocolVaccineDeadlineInput"),
   protocolAuthorityInput:   document.getElementById("protocolAuthorityInput"),
   protocolReferenceInput:   document.getElementById("protocolReferenceInput"),
   protocolVersionInput:     document.getElementById("protocolVersionInput"),
@@ -689,9 +693,82 @@ function renderWorkspaceHome() {
       </div>`).join("");
   }
 
+  renderProtocolDeadlineAlerts();
   renderProtocolAdminList();
   renderDashboardFilterOptions();
   renderHomePatientTable();
+}
+
+function renderProtocolDeadlineAlerts() {
+  if (!el.protocolDeadlineAlertsList) return;
+  const labels = { visits: "visita", consultations: "consulta", vaccines: "vacina" };
+  const alerts = [];
+
+  state.patients.forEach((patient) => {
+    const summary = state.protocolByPatient[patient.id];
+    if (!summary?.schedule) return;
+    ["visits", "consultations", "vaccines"].forEach((key) => {
+      const item = summary.schedule[key];
+      if (!item) return;
+      if (Number(item.intervalDays || 0) <= 0) return;
+      if (Number(item.pending || 0) <= 0) return;
+      if (item.daysLeft === null || item.daysLeft === undefined) return;
+
+      const overdue = Number(item.overdueDays || 0);
+      const daysLeft = Number(item.daysLeft || 0);
+      let severity = "low";
+      let severityClass = "status progress";
+      let score = 0;
+
+      if (overdue > 0) {
+        severity = "high";
+        severityClass = "status alert";
+        score = 100 + overdue;
+      } else if (daysLeft <= 3) {
+        severity = "high";
+        severityClass = "status alert";
+        score = 80 - daysLeft;
+      } else if (daysLeft <= 7) {
+        severity = "medium";
+        severityClass = "status pending";
+        score = 60 - daysLeft;
+      } else {
+        score = 20 - Math.min(daysLeft, 20);
+      }
+
+      alerts.push({
+        patientName: patient.name,
+        category: summary.categoryLabel || catLabel(patient.careCategory),
+        activity: labels[key],
+        daysLeft,
+        overdue,
+        severity,
+        severityClass,
+        score
+      });
+    });
+  });
+
+  alerts.sort((a, b) => b.score - a.score);
+  const topAlerts = alerts.slice(0, 10);
+  if (!topAlerts.length) {
+    el.protocolDeadlineAlertsList.innerHTML = '<div class="empty-msg">Sem alertas de prazo no momento.</div>';
+    return;
+  }
+
+  el.protocolDeadlineAlertsList.innerHTML = topAlerts.map((alert) => {
+    const deadlineText = alert.overdue > 0
+      ? `${alert.overdue} dia(s) em atraso`
+      : `faltam ${alert.daysLeft} dia(s)`;
+    return `
+      <div class="home-task-row">
+        <div>
+          <p class="home-task-title">${alert.patientName} - ${alert.activity}</p>
+          <p class="home-task-meta">${alert.category} | ${deadlineText}</p>
+        </div>
+        <span class="${alert.severityClass}">${alert.severity === "high" ? "ALTO" : (alert.severity === "medium" ? "MEDIO" : "BAIXO")}</span>
+      </div>`;
+  }).join("");
 }
 
 function protocolStatusInfo(summary) {
@@ -1003,6 +1080,11 @@ function protocolFormPayload() {
       consultations: Number(el.protocolConsultationsInput.value || 0),
       vaccines: Number(el.protocolVaccinesTargetInput.value || 0)
     },
+    deadlines: {
+      visits: Number(el.protocolVisitDeadlineInput.value || 0),
+      consultations: Number(el.protocolConsultationDeadlineInput.value || 0),
+      vaccines: Number(el.protocolVaccineDeadlineInput.value || 0)
+    },
     vaccines: el.protocolVaccinesListInput.value
       .split(",")
       .map((v) => v.trim())
@@ -1021,6 +1103,9 @@ function resetProtocolForm() {
   el.protocolVisitsInput.value = "0";
   el.protocolConsultationsInput.value = "0";
   el.protocolVaccinesTargetInput.value = "0";
+  el.protocolVisitDeadlineInput.value = "0";
+  el.protocolConsultationDeadlineInput.value = "0";
+  el.protocolVaccineDeadlineInput.value = "0";
   el.protocolVaccinesListInput.value = "";
   el.protocolAuthorityInput.value = "Ministerio da Saude";
   el.protocolReferenceInput.value = "";
@@ -1044,6 +1129,7 @@ function renderProtocolAdminList() {
         <div>
           <p class="home-task-title">${t.label} <span class="home-task-meta">(${t.category})${isTeamOwned ? "" : " [base]"}</span></p>
           <p class="home-task-meta">Metas: ${t.targets.visits} visitas | ${t.targets.consultations} consultas | ${t.targets.vaccines} vacinas</p>
+          <p class="home-task-meta">Prazos (dias): visita ${Number(t.deadlines?.visits || 0)} | consulta ${Number(t.deadlines?.consultations || 0)} | vacina ${Number(t.deadlines?.vaccines || 0)}</p>
           <p class="home-task-meta">Norma: ${t.authority || "Ministerio da Saude"} | Ref: ${t.reference ? `<a href="${t.reference}" target="_blank" rel="noopener noreferrer">link oficial</a>` : "-"} | Versao: ${t.version || "1.0"}</p>
         </div>
         <div class="inline-actions">
@@ -1066,6 +1152,9 @@ function renderProtocolAdminList() {
       el.protocolVisitsInput.value = String(template.targets.visits || 0);
       el.protocolConsultationsInput.value = String(template.targets.consultations || 0);
       el.protocolVaccinesTargetInput.value = String(template.targets.vaccines || 0);
+      el.protocolVisitDeadlineInput.value = String(Number(template.deadlines?.visits || 0));
+      el.protocolConsultationDeadlineInput.value = String(Number(template.deadlines?.consultations || 0));
+      el.protocolVaccineDeadlineInput.value = String(Number(template.deadlines?.vaccines || 0));
       el.protocolVaccinesListInput.value = (template.vaccines || []).join(", ");
       el.protocolAuthorityInput.value = template.authority || "Ministerio da Saude";
       el.protocolReferenceInput.value = template.reference || "";
@@ -1796,6 +1885,15 @@ el.createProtocolBtn?.addEventListener("click", async () => {
     const payload = protocolFormPayload();
     if (!payload.category || !payload.label) {
       showToast("Preencha categoria e nome.", "error");
+      return;
+    }
+    const invalidDeadline = (
+      (payload.targets.visits > 0 && payload.deadlines.visits <= 0)
+      || (payload.targets.consultations > 0 && payload.deadlines.consultations <= 0)
+      || (payload.targets.vaccines > 0 && payload.deadlines.vaccines <= 0)
+    );
+    if (invalidDeadline) {
+      showToast("Defina os prazos oficiais (em dias) para cada item com meta maior que zero.", "error");
       return;
     }
 
