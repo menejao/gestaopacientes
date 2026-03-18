@@ -148,10 +148,9 @@ const VALID_UF = new Set([
 const DEFAULT_TEAM_COLORS = [
   "Rosa",
   "Azul",
-  "Verde",
-  "Amarela",
-  "Laranja",
-  "Roxa"
+  "Cinza",
+  "Marrom",
+  "Amarela"
 ];
 
 app.use(cors());
