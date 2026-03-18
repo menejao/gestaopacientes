@@ -105,6 +105,7 @@ const el = {
   pChronicDiabetes:         document.getElementById("pChronicDiabetes"),
   pBirthDate:               document.getElementById("pBirthDate"),
   pSexAtBirth:              document.getElementById("pSexAtBirth"),
+  pMaritalStatusWrap:       document.getElementById("pMaritalStatusWrap"),
   pMaritalStatus:           document.getElementById("pMaritalStatus"),
   pGenderIdentity:          document.getElementById("pGenderIdentity"),
   pPregnancyStartDate:      document.getElementById("pPregnancyStartDate"),
@@ -480,6 +481,8 @@ function updateChronicConditionsVisibility() {
   const isPregnant = category === "pregnant";
   const isPuerperal = category === "puerperal";
   el.pMotherNameWrap?.classList.toggle("hidden", !isChild);
+  el.pMaritalStatusWrap?.classList.toggle("hidden", isChild);
+  if (isChild && el.pMaritalStatus) el.pMaritalStatus.value = "";
   el.pPregnancyFieldsWrap?.classList.toggle("hidden", !isPregnant);
   el.pPuerperalFieldsWrap?.classList.toggle("hidden", !isPuerperal);
 }
@@ -2682,9 +2685,11 @@ el.createPatientBtn.addEventListener("click", async () => {
       ["Estado", el.pState.value],
       ["Telefone principal", el.pPhone.value],
       ["Telefone secundario", el.pPhoneAlt.value],
-      ["Sexo", el.pSexAtBirth.value],
-      ["Estado civil", el.pMaritalStatus.value]
+      ["Sexo", el.pSexAtBirth.value]
     ];
+    if (el.pCareCategory.value !== "child_followup") {
+      required.push(["Estado civil", el.pMaritalStatus.value]);
+    }
     const missing = required.filter(([, value]) => !String(value || "").trim()).map(([label]) => label);
     if (missing.length) {
       showToast(`Preencha os campos obrigatórios: ${missing.join(", ")}`, "error", 4500);
@@ -2709,7 +2714,7 @@ el.createPatientBtn.addEventListener("click", async () => {
       chronicConditions: getSelectedChronicConditions(),
       birthDate: el.pBirthDate.value || "",
       sexAtBirth: el.pSexAtBirth.value || "",
-      maritalStatus: el.pMaritalStatus.value || "",
+      maritalStatus: el.pCareCategory.value === "child_followup" ? "" : (el.pMaritalStatus.value || ""),
       genderIdentity: el.pGenderIdentity.value || "",
       pregnancyStartDate: el.pPregnancyStartDate.value || "",
       expectedDeliveryDate: el.pExpectedDeliveryDate.value || "",
