@@ -276,6 +276,9 @@ const el = {
   aiTranscriptionBtn:       document.getElementById("aiTranscriptionBtn"),
   aiPatientOutput:          document.getElementById("aiPatientOutput"),
 };
+const RECORD_TYPE_DEFAULT_OPTIONS = el.rType
+  ? [...el.rType.options].map((opt) => ({ value: opt.value, label: opt.textContent || opt.value }))
+  : [];
 
 // -- Toast --------------------------------------------------------------------
 let _toastTimer = null;
@@ -694,6 +697,7 @@ function applyRolePermissions() {
   const clinFields = ["aDate","aDemandType","aSummary","aConduct","aNext"];
 
   if (isManager()) {
+    restoreRecordTypeOptions();
     el.addAppointmentBtn.classList.remove("hidden");
     el.addTaskBtn.classList.remove("hidden");
     el.editPatientBtn.classList.remove("hidden");
@@ -717,6 +721,7 @@ function applyRolePermissions() {
   mgrFields.forEach(id => { document.getElementById(id).disabled = true; });
 
   if (isDoctor()) {
+    restoreRecordTypeOptions();
     el.addAppointmentBtn.classList.remove("hidden");
     el.addTaskBtn.classList.remove("hidden");
     el.editPatientBtn.classList.remove("hidden");
@@ -736,6 +741,7 @@ function applyRolePermissions() {
     return;
   }
   // ACS
+  setAcsRecordTypeOnly();
   el.editPatientBtn.classList.add("hidden");
   el.deletePatientBtn.classList.add("hidden");
   el.addAppointmentBtn.classList.add("hidden");
@@ -743,8 +749,6 @@ function applyRolePermissions() {
   el.appointmentFormCard.classList.add("hidden");
   el.taskFormCard.classList.add("hidden");
   clinFields.forEach(id => { document.getElementById(id).disabled = true; });
-  [...el.rType.options].forEach(o => { o.disabled = o.value !== "visit"; });
-  el.rType.value = "visit";
   el.quickSelectFirstPatientBtn?.classList.add("hidden");
   el.openPatientModalBtn?.classList.add("hidden");
   el.sendMsgBtn?.classList.add("hidden");
@@ -1917,6 +1921,25 @@ function fillRecordVaccines() {
     .join("");
 }
 
+function restoreRecordTypeOptions() {
+  if (!el.rType) return;
+  const selected = String(el.rType.value || "");
+  el.rType.innerHTML = RECORD_TYPE_DEFAULT_OPTIONS
+    .map((opt) => `<option value="${opt.value}">${opt.label}</option>`)
+    .join("");
+  if (selected && [...el.rType.options].some((opt) => opt.value === selected)) {
+    el.rType.value = selected;
+  }
+  el.rType.disabled = false;
+}
+
+function setAcsRecordTypeOnly() {
+  if (!el.rType) return;
+  el.rType.innerHTML = '<option value="visit">Visita domiciliar</option>';
+  el.rType.value = "visit";
+  el.rType.disabled = true;
+}
+
 function selectedVaccineNames() {
   if (!el.rVaccineMulti) return [];
   return [...el.rVaccineMulti.options]
@@ -2766,11 +2789,15 @@ el.createPatientBtn.addEventListener("click", async () => {
 el.addRecordBtn.addEventListener("click", async () => {
   if (!state.selectedPatient) return;
   try {
-    const type = el.rType.value;
+    const type = isAcs() ? "visit" : el.rType.value;
     const date = String(el.rDate.value || "").trim();
     const details = el.rDetails.value;
     if (!date) {
       showToast("Preencha a data do registro.", "error");
+      return;
+    }
+    if (isAcs() && type !== "visit") {
+      showToast("ACS pode registrar apenas visita domiciliar.", "error");
       return;
     }
 
@@ -2799,6 +2826,7 @@ el.addRecordBtn.addEventListener("click", async () => {
       let title = type === "procedure" || type === "note"
         ? String(el.rTitleInput.value || "").trim()
         : String(el.rTitleSelect.value || "").trim();
+      if (isAcs()) title = "Visita ACS";
       if (!title && type === "note") title = "Observação livre";
       if (!title && type === "procedure") title = "Procedimento";
       if (!title) {

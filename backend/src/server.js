@@ -3610,6 +3610,12 @@ app.post("/patients/:id/records", async (req, res) => {
   if (isAcs(req.user) && type !== "visit") {
     return res.status(403).json({ error: "ACS pode registrar apenas visita domiciliar" });
   }
+  if (isAcs(req.user)) {
+    const normalizedTitle = String(payload.title || "").trim().toLowerCase();
+    if (normalizedTitle !== "visita acs") {
+      return res.status(400).json({ error: "ACS deve registrar o título padrão 'Visita ACS'" });
+    }
+  }
 
   if (isDoctor(req.user) && ["visit"].includes(type)) {
     return res.status(403).json({ error: "Médica não registra visita domiciliar" });
