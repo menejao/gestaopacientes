@@ -1058,6 +1058,7 @@ function renderHomePatientTable() {
           <td><span class="${statusInfo.className}">${statusInfo.label}</span></td>
           <td class="inline-actions">
             <button class="btn-secondary home-open-patient-btn" data-patient-id="${p.id}">Abrir</button>
+            ${(isManager() || isDoctor()) ? `<button class="btn-secondary home-edit-patient-btn" data-patient-id="${p.id}">Editar</button>` : ""}
             ${isManager() ? `<button class="btn-secondary home-delete-patient-btn" data-patient-id="${p.id}">Excluir</button>` : ""}
           </td>
         </tr>`;
@@ -1080,6 +1081,15 @@ function renderHomePatientTable() {
   document.querySelectorAll(".home-delete-patient-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       await deletePatientsByIds([btn.dataset.patientId]);
+    });
+  });
+
+  document.querySelectorAll(".home-edit-patient-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const patient = state.patients.find((item) => item.id === btn.dataset.patientId);
+      if (!patient) return;
+      state.selectedPatient = patient;
+      openPatientEdit();
     });
   });
 
@@ -1331,6 +1341,8 @@ function switchNavSection(section) {
       state.selectedPatient = null;
       renderPatientHeader();
     }
+    el.emptyState?.classList.remove("hidden");
+    el.patientContent?.classList.add("hidden");
     el.homeDashboardPane?.classList.add("hidden");
     el.homePatientsPane?.classList.remove("hidden");
     renderHomePatientTable();
