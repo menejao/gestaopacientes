@@ -962,7 +962,7 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 
 .table-toolbar {
   display: grid;
-  grid-template-columns: 1fr 240px;
+  grid-template-columns: minmax(220px, 1fr) 220px auto;
   gap: .6rem;
   margin-bottom: .8rem;
 }

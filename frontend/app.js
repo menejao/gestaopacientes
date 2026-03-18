@@ -184,6 +184,7 @@ const el = {
   priorityTaskList:         document.getElementById("priorityTaskList"),
   protocolDeadlineAlertsList: document.getElementById("protocolDeadlineAlertsList"),
   homePatientSortSelect:    document.getElementById("homePatientSortSelect"),
+  homePatientNameInput:     document.getElementById("homePatientNameInput"),
   homePatientBulkDeleteBtn: document.getElementById("homePatientBulkDeleteBtn"),
   homePatientSelectAll:     document.getElementById("homePatientSelectAll"),
   homePatientCategoryFilter: document.getElementById("homePatientCategoryFilter"),
@@ -1026,6 +1027,9 @@ function getFilteredDashboardPatients() {
 
 function renderHomePatientTable() {
   if (!el.homePatientTableBody) return;
+  if (el.homePatientNameInput && el.homePatientNameInput.value !== state.dashboardQuery) {
+    el.homePatientNameInput.value = state.dashboardQuery;
+  }
   const list = getFilteredDashboardPatients();
   const total = list.length;
   const totalPages = Math.max(Math.ceil(total / state.dashboardPageSize), 1);
@@ -2071,6 +2075,7 @@ async function bootstrapAfterLogin() {
   state.dashboardProtocolStatus = "all";
   state.workspaceTab = "dashboard";
   if (el.topbarSearchInput) el.topbarSearchInput.value = "";
+  if (el.homePatientNameInput) el.homePatientNameInput.value = "";
   if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
   if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
   if (el.homePatientAcsFilter) el.homePatientAcsFilter.value = "";
@@ -2334,6 +2339,18 @@ el.protocolModal?.addEventListener("click", (e) => {
 
 el.topbarSearchInput?.addEventListener("input", () => {
   state.dashboardQuery = el.topbarSearchInput.value || "";
+  if (el.homePatientNameInput && el.homePatientNameInput.value !== state.dashboardQuery) {
+    el.homePatientNameInput.value = state.dashboardQuery;
+  }
+  state.dashboardPage = 1;
+  renderHomePatientTable();
+});
+
+el.homePatientNameInput?.addEventListener("input", () => {
+  state.dashboardQuery = el.homePatientNameInput.value || "";
+  if (el.topbarSearchInput && el.topbarSearchInput.value !== state.dashboardQuery) {
+    el.topbarSearchInput.value = state.dashboardQuery;
+  }
   state.dashboardPage = 1;
   renderHomePatientTable();
 });
