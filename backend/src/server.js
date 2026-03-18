@@ -1577,13 +1577,58 @@ function evaluatePregnantProtocol(patient, history) {
     }));
   }
 
+  const hasPregnancyVaccine = (regex) => vaccines.some((h) => {
+    const text = normalizeText(`${h.metadata?.vaccineName || ""} ${h.title || ""} ${h.details || ""}`);
+    return regex.test(text);
+  });
+  const influenzaDone = hasPregnancyVaccine(/influenza|gripe/);
+  const covidDone = hasPregnancyVaccine(/covid/);
+  const hepBDone = hasPregnancyVaccine(/hepatite b|hbv/);
+
+  if (weeks >= 12 && !influenzaDone) {
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-influenza",
+      activity: "vacina influenza",
+      title: "Vacina influenza pendente na gestação",
+      detail: "Registrar pelo menos 1 dose de influenza durante a gestação.",
+      severity: weeks >= 28 ? "high" : "medium",
+      overdueDays: Math.max((weeks - 12) * 7, 0),
+      categoryLabel
+    }));
+  }
+
+  if (weeks >= 12 && !covidDone) {
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-covid",
+      activity: "vacina COVID-19",
+      title: "Vacina COVID-19 pendente na gestação",
+      detail: "Registrar pelo menos 1 dose de COVID-19 durante a gestação.",
+      severity: weeks >= 28 ? "high" : "medium",
+      overdueDays: Math.max((weeks - 12) * 7, 0),
+      categoryLabel
+    }));
+  }
+
+  if (weeks >= 12 && !hepBDone) {
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-hepb",
+      activity: "vacina hepatite B",
+      title: "Vacina hepatite B pendente na gestação",
+      detail: "Registrar dose de hepatite B durante a gestação quando não houver comprovação prévia no prontuário.",
+      severity: weeks >= 28 ? "high" : "medium",
+      overdueDays: Math.max((weeks - 12) * 7, 0),
+      categoryLabel
+    }));
+  }
+
   const testEntries = [...consultations, ...procedures, ...pregnancyHistory];
+  const hasTestContext = (text) => /teste|teste rapido|sorolog|solicit|colet|avali|resultado|exame/.test(text);
   const testInWindow = (regex, fromWeek, toWeek) => testEntries.some((h) => {
     const d = eventDate(h);
     if (!d) return false;
     const week = Math.floor((daysDiff(timeline.start, d) || 0) / 7);
     const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
-    return week >= fromWeek && week <= toWeek && regex.test(text);
+    return week >= fromWeek && week <= toWeek && hasTestContext(text) && regex.test(text);
   });
 
   const hivFirst = testInWindow(/hiv/, 0, 13);
@@ -1625,6 +1670,9 @@ function evaluatePregnantProtocol(patient, history) {
       consultationsDone: consultationsTracked.length,
       dentalDone: oralEvents.length > 0,
       dtpaDone: dtpaInWindow,
+      influenzaDone,
+      covidDone,
+      hepBDone,
       hivFirstTrimesterDone: hivFirst,
       sifilisFirstTrimesterDone: sifFirst,
       hivThirdTrimesterDone: hivThird,
@@ -2250,10 +2298,34 @@ function buildProtocolSummary(patient, history, templateMap) {
     .filter((h) => h.type === "vaccine")
     .map((h) => h.metadata?.vaccineName || h.title || "")
     .filter(Boolean);
+  const normalizedAppliedVaccineNames = appliedVaccineNames.map((name) => normalizeText(name));
+  const vaccineAliases = {
+    dtpa: ["dtpa"],
+    influenza: ["influenza", "gripe"],
+    "covid-19": ["covid-19", "covid 19", "covid"],
+    "hepatite b": ["hepatite b", "hbv"],
+    bcg: ["bcg"],
+    penta: ["penta", "pentavalente"],
+    vip: ["vip", "polio inativada"],
+    "pneumo 10": ["pneumo 10", "pneumo10", "pneumococ"],
+    rotavirus: ["rotavirus", "rota"],
+    meningococica: ["meningococica", "meningo"],
+    acwy: ["acwy"],
+    "triplice viral": ["triplice viral", "triviral"],
+    dtp: ["dtp"],
+    varicela: ["varicela"],
+    "hepatite a": ["hepatite a"],
+    hpv: ["hpv"]
+  };
+  const vaccineDoneByName = (name) => {
+    const normalizedName = normalizeText(name);
+    const aliases = vaccineAliases[normalizedName] || [normalizedName];
+    return normalizedAppliedVaccineNames.some((applied) => aliases.some((alias) => applied.includes(alias)));
+  };
 
   const recommendedVaccines = template.vaccines.map((name) => ({
     name,
-    done: appliedVaccineNames.includes(name)
+    done: vaccineDoneByName(name)
   }));
 
   let specialMonitoring = null;
