@@ -929,7 +929,7 @@ function renderProtocolDeadlineAlerts() {
   alerts.sort((a, b) => b.score - a.score);
   const overdueAlerts = alerts.filter((item) => Number(item.overdue || 0) > 0);
   const nonOverdueAlerts = alerts.filter((item) => Number(item.overdue || 0) <= 0);
-  const topAlerts = [...overdueAlerts, ...nonOverdueAlerts.slice(0, Math.max(0, 10 - overdueAlerts.length))];
+  const topAlerts = [...overdueAlerts, ...nonOverdueAlerts];
   if (!topAlerts.length) {
     el.protocolDeadlineAlertsList.innerHTML = '<div class="empty-msg">Sem alertas de prazo no momento.</div>';
     return;
