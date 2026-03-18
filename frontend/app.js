@@ -1682,10 +1682,11 @@ function renderProtocolSummary() {
     return;
   }
   const s = state.protocolSummary;
+  const pluralize = (count, singular, plural) => `${count} ${count === 1 ? singular : plural}`;
   const stats = [
-    { label:"Visitas",   done:s.completed.visits,       total:s.targets.visits,       pending:s.pending.visits },
-    { label:"Consultas", done:s.completed.consultations, total:s.targets.consultations, pending:s.pending.consultations },
-    { label:"Vacinas",   done:s.completed.vaccines,      total:s.targets.vaccines,      pending:s.pending.vaccines },
+    { label:"Visitas", nounSingular: "visita", nounPlural: "visitas", done:s.completed.visits,       total:s.targets.visits,       pending:s.pending.visits },
+    { label:"Consultas", nounSingular: "consulta", nounPlural: "consultas", done:s.completed.consultations, total:s.targets.consultations, pending:s.pending.consultations },
+    { label:"Vacinas", nounSingular: "vacina", nounPlural: "vacinas", done:s.completed.vaccines,      total:s.targets.vaccines,      pending:s.pending.vaccines },
   ];
   const statsHtml = `<div class="proto-stats">${stats.map(b=>`
     <div class="proto-stat${b.pending>0?" warn":" ok"}">
@@ -1694,11 +1695,14 @@ function renderProtocolSummary() {
       <div class="proto-stat-sub">${b.pending>0?`${b.pending} pendente${b.pending!==1?"s":""}`:"Em dia"}</div>
     </div>`).join("")}</div>`;
 
-  const alerts = stats.filter(b=>b.pending>0).map(b=>`<span class="proto-alert warn">• ${b.pending} ${b.label.toLowerCase()}</span>`).join("");
+  const alerts = stats
+    .filter((b) => b.pending > 0)
+    .map((b) => `<span class="proto-alert warn">• ${pluralize(b.pending, b.nounSingular, b.nounPlural)}</span>`)
+    .join("");
   const allOk  = !alerts ? `<span class="proto-alert ok">• Protocolo em dia</span>` : "";
   const critical = stats.filter((b) => b.pending > 0);
   const criticalBox = critical.length
-    ? `<div class="protocol-critical-box">Falta concluir: ${critical.map((b) => `${b.pending} ${b.label.toLowerCase()}`).join(" | ")}</div>`
+    ? `<div class="protocol-critical-box">Falta concluir: ${critical.map((b) => pluralize(b.pending, b.nounSingular, b.nounPlural)).join(" | ")}</div>`
     : `<div class="protocol-ok-box">Tudo em dia para esta categoria.</div>`;
 
   const vaccines = (s.vaccines?.recommended||[]).map(v=>`
