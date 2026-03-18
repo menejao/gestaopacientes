@@ -267,6 +267,7 @@ const el = {
 let _toastTimer = null;
 let _lastSessionTouchAt = 0;
 let _inactivityTimer = null;
+let _protocolStatusesRequestSeq = 0;
 function showToast(msg, type = "default", ms = 3000) {
   el.toast.textContent = msg;
   el.toast.className = `toast ${type}`;
@@ -1153,21 +1154,28 @@ function exportDashboardPatientsCsv() {
 }
 
 async function loadProtocolStatusesForDashboard() {
+  const requestSeq = ++_protocolStatusesRequestSeq;
   if (!state.patients.length) {
     state.protocolByPatient = {};
     renderHomePatientTable();
     return;
   }
-  const items = state.patients.slice(0, 120);
-  const entries = await Promise.all(items.map(async (p) => {
-    try {
-      const summary = await api(`/patients/${p.id}/protocol-summary`);
-      return [p.id, summary];
-    } catch {
-      return [p.id, null];
-    }
-  }));
-  state.protocolByPatient = Object.fromEntries(entries);
+  const ids = state.patients.slice(0, 200).map((p) => p.id).filter(Boolean);
+  if (!ids.length) {
+    state.protocolByPatient = {};
+    renderHomePatientTable();
+    return;
+  }
+  try {
+    const response = await api(`/patients/protocol-summaries?ids=${encodeURIComponent(ids.join(","))}`);
+    if (requestSeq !== _protocolStatusesRequestSeq) return;
+    state.protocolByPatient = response?.summaries && typeof response.summaries === "object"
+      ? response.summaries
+      : {};
+  } catch {
+    if (requestSeq !== _protocolStatusesRequestSeq) return;
+    state.protocolByPatient = {};
+  }
   renderHomePatientTable();
 }
 
@@ -2052,17 +2060,9 @@ async function bootstrapAfterLogin() {
   state.navSection = "dashboard";
   state.workspaceTab = "dashboard";
 
-  const [users] = await Promise.all([api("/users")]);
-  state.users = users;
-  fillAcsSelect(el.tAssignee);
-  fillAcsSelect(el.pAcs);
-  fillAcsSelect(el.topFilterAcs, true);
-  await reloadTemplateData();
   if (isAcs()) { state.filters.acsId = state.user.id; }
   applyRolePermissions();
   resetProtocolForm();
-  renderProtocolAdminList();
-  renderTeamUsersLists();
   state.dashboardQuery = "";
   state.dashboardSort = "name_asc";
   state.dashboardPage = 1;
@@ -2081,13 +2081,30 @@ async function bootstrapAfterLogin() {
   if (el.topFilterCategory) el.topFilterCategory.value = "";
   switchWorkspaceTab("dashboard");
   switchNavSection("dashboard");
-  await Promise.all([
-    loadPatients({ skipProtocolStatuses: false }),
-    loadGlobalTasks(),
-    loadMonthlyDemandMetric()
-  ]);
-  persistViewState();
   renderWorkspaceHome();
+  await loadPatients({ skipProtocolStatuses: true });
+  loadProtocolStatusesForDashboard().catch(() => {
+    showToast("Não foi possível atualizar status de protocolo agora.", "error", 2500);
+  });
+
+  Promise.allSettled([api("/users"), reloadTemplateData()])
+    .then((results) => {
+      const usersResult = results[0];
+      if (usersResult?.status === "fulfilled") {
+        state.users = usersResult.value;
+        fillAcsSelect(el.tAssignee);
+        fillAcsSelect(el.pAcs);
+        fillAcsSelect(el.topFilterAcs, true);
+        renderTeamUsersLists();
+      }
+      renderProtocolAdminList();
+      renderWorkspaceHome();
+    })
+    .catch(() => {});
+
+  loadGlobalTasks();
+  loadMonthlyDemandMetric();
+  persistViewState();
 }
 
 async function bootstrapBeforeLogin() {

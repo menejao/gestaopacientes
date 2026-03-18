@@ -3229,6 +3229,31 @@ app.get("/patients", async (req, res) => {
   res.json(patients);
 });
 
+app.get("/patients/protocol-summaries", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+
+  const idsParam = String(req.query.ids || "").trim();
+  const requestedIds = idsParam
+    ? idsParam.split(",").map((id) => id.trim()).filter(Boolean)
+    : [];
+  const requestedSet = new Set(requestedIds);
+  const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
+  const allowedPatients = getAllowedPatients(db, req.user, req.query)
+    .filter((patient) => !requestedSet.size || requestedSet.has(patient.id));
+
+  const summaries = {};
+  for (const patient of allowedPatients) {
+    const history = buildPatientHistory(db, patient.id);
+    summaries[patient.id] = buildProtocolSummary(patient, history, protocolMap);
+  }
+
+  return res.json({
+    count: Object.keys(summaries).length,
+    summaries
+  });
+});
+
 app.post("/patients", requireManager, async (req, res) => {
   const payload = req.body;
   const db = await readDb();
