@@ -3642,6 +3642,36 @@ app.post("/patients/:id/appointments", async (req, res) => {
   return res.status(201).json(appointment);
 });
 
+app.delete("/patients/:id/appointments/:appointmentId", async (req, res) => {
+  const patientId = String(req.params.id || "").trim();
+  const appointmentId = String(req.params.appointmentId || "").trim();
+
+  if (!(isManager(req.user) || isDoctor(req.user))) {
+    return res.status(403).json({ error: "Sem permissão para excluir atendimento" });
+  }
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const patient = db.patients.find((p) => p.id === patientId);
+    if (!patient) return { error: { status: 404, message: "Paciente não encontrado" } };
+    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissão para este paciente" } };
+
+    const index = db.appointments.findIndex((a) => a.id === appointmentId && a.patientId === patientId);
+    if (index < 0) return { error: { status: 404, message: "Atendimento não encontrado" } };
+
+    const removed = db.appointments[index];
+    db.appointments.splice(index, 1);
+    addAuditLog(db, req.user, "appointment.deleted", "appointment", appointmentId, {
+      patientId,
+      summary: removed.summary || ""
+    });
+    return { ok: true };
+  });
+
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.json({ ok: true });
+});
+
 app.post("/patients/:id/records", async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
@@ -3702,6 +3732,41 @@ app.post("/patients/:id/records", async (req, res) => {
   });
 
   return res.status(201).json(record);
+});
+
+app.delete("/patients/:id/records/:recordId", async (req, res) => {
+  const patientId = String(req.params.id || "").trim();
+  const recordId = String(req.params.recordId || "").trim();
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const patient = db.patients.find((p) => p.id === patientId);
+    if (!patient) return { error: { status: 404, message: "Paciente não encontrado" } };
+    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissão para este paciente" } };
+
+    const index = db.clinicalRecords.findIndex((r) => r.id === recordId && r.patientId === patientId);
+    if (index < 0) return { error: { status: 404, message: "Registro não encontrado" } };
+
+    const current = db.clinicalRecords[index];
+    if (isAcs(req.user)) {
+      const canDeleteOwnVisit = current.type === "visit" && current.createdBy === req.user.id;
+      if (!canDeleteOwnVisit) {
+        return { error: { status: 403, message: "ACS pode excluir apenas visita própria registrada por ele" } };
+      }
+    } else if (!(isManager(req.user) || isDoctor(req.user))) {
+      return { error: { status: 403, message: "Sem permissão para excluir registro" } };
+    }
+
+    db.clinicalRecords.splice(index, 1);
+    addAuditLog(db, req.user, "clinical_record.deleted", "clinical_record", recordId, {
+      patientId,
+      type: current.type
+    });
+    return { ok: true };
+  });
+
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.json({ ok: true });
 });
 
 app.get("/patients/:id/history", async (req, res) => {

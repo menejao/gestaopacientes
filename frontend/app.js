@@ -2122,6 +2122,18 @@ function updateRecordTitleControls() {
 }
 
 function renderHistory() {
+  const canDeleteHistoryItem = (entry) => {
+    if (!entry) return false;
+    if (entry.source === "appointment") {
+      return isManager() || isDoctor();
+    }
+    if (entry.source === "clinicalRecord") {
+      if (isManager() || isDoctor()) return true;
+      if (isAcs()) return entry.type === "visit" && entry.createdBy === state.user?.id;
+    }
+    return false;
+  };
+
   el.historyList.innerHTML = "";
   if (!state.history.length) { el.historyList.innerHTML='<div class="empty-msg">Sem histórico.</div>'; return; }
   state.history.forEach(r => {
@@ -2137,8 +2149,40 @@ function renderHistory() {
         <div class="tl-title">${r.title||"-"}</div>
         ${r.details ? `<div class="tl-detail">${r.details}</div>` : ""}
         <div class="tl-source">Origem: ${r.source||"-"}</div>
+        ${canDeleteHistoryItem(r) ? `
+          <div class="inline-actions" style="margin-top:.45rem;">
+            <button class="btn-secondary history-delete-btn" data-source="${r.source}" data-id="${r.id}" data-type="${r.type || ""}">Excluir</button>
+          </div>` : ""}
       </div>`;
     el.historyList.appendChild(d);
+  });
+
+  document.querySelectorAll(".history-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!state.selectedPatient) return;
+      const source = String(btn.dataset.source || "");
+      const id = String(btn.dataset.id || "");
+      const kind = source === "appointment" ? "atendimento" : "registro";
+      if (!id || !source) return;
+      const ok = confirm(`Excluir este ${kind}? Essa ação não pode ser desfeita.`);
+      if (!ok) return;
+      try {
+        if (source === "appointment") {
+          await api(`/patients/${state.selectedPatient.id}/appointments/${id}`, { method: "DELETE" });
+        } else if (source === "clinicalRecord") {
+          await api(`/patients/${state.selectedPatient.id}/records/${id}`, { method: "DELETE" });
+        } else {
+          showToast("Origem não suportada para exclusão.", "error");
+          return;
+        }
+        showToast(`${kind.charAt(0).toUpperCase()}${kind.slice(1)} excluído com sucesso.`, "ok");
+        await refreshSelectedPatientData();
+        await loadMonthlyDemandMetric();
+        await loadGlobalTasks();
+      } catch (e) {
+        showToast(e.message, "error");
+      }
+    });
   });
 }
 
