@@ -1623,21 +1623,11 @@ function evaluatePregnantProtocol(patient, history) {
     }));
   }
 
-  if (lastConsultDate && weeks >= 12) {
-    const daysSinceConsult = daysDiff(lastConsultDate, new Date());
-    const expectedInterval = weeks >= 35 ? 7 : (weeks >= 28 ? 14 : 30);
-    if (daysSinceConsult !== null && daysSinceConsult > expectedInterval) {
-      alerts.push(makeClinicalAlert({
-        id: "pregnancy-consult-cadence",
-        activity: "intervalo de consultas",
-        title: "Consulta pré-natal em atraso",
-        detail: `Última consulta há ${daysSinceConsult} dia(s). Intervalo recomendado atual: ${expectedInterval} dia(s).`,
-        severity: "high",
-        overdueDays: daysSinceConsult - expectedInterval,
-        categoryLabel
-      }));
-    }
-  } else if (weeks >= 20 && !consultationsTracked.length) {
+  // Regra operacional: a 1ª consulta já conta como início do pré-natal
+  // e também abate do total de consultas da gestação.
+  // Após essa primeira consulta, o acompanhamento segue apenas pelo total
+  // de consultas pendentes, sem alerta separado de "consulta pré-natal em atraso".
+  if (weeks >= 20 && !consultationsTracked.length) {
     alerts.push(makeClinicalAlert({
       id: "pregnancy-consult-first-missing",
       activity: "consultas pré-natais",
