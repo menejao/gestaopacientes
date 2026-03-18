@@ -1379,31 +1379,52 @@ function switchNavSection(section) {
     state.navSection = "dashboard";
   }
 
-  el.navDashboardBtn.classList.toggle("active", state.navSection === "dashboard");
-  el.navPatientsBtn.classList.toggle("active", state.navSection === "patients");
-  el.navProtocolsBtn.classList.toggle("active", state.navSection === "protocols");
-  el.navAcsBtn.classList.toggle("active", state.navSection === "acs");
-  el.navDoctorsBtn.classList.toggle("active", state.navSection === "doctors");
-  el.navAiBtn.classList.toggle("active", state.navSection === "ai");
+  el.navDashboardBtn?.classList.toggle("active", state.navSection === "dashboard");
+  el.navPatientsBtn?.classList.toggle("active", state.navSection === "patients");
+  el.navProtocolsBtn?.classList.toggle("active", state.navSection === "protocols");
+  el.navAcsBtn?.classList.toggle("active", state.navSection === "acs");
+  el.navDoctorsBtn?.classList.toggle("active", state.navSection === "doctors");
+  el.navAiBtn?.classList.toggle("active", state.navSection === "ai");
 
-  el.navProtocolsBtn.classList.toggle("hidden", !isMgr && !isDoc);
-  el.navAcsBtn.classList.toggle("hidden", !isMgr && !isDoc);
-  el.navDoctorsBtn.classList.toggle("hidden", !isMgr && !isDoc);
-  el.navAiBtn.classList.toggle("hidden", !isMgr && !isDoc);
+  el.navProtocolsBtn?.classList.toggle("hidden", !isMgr && !isDoc);
+  el.navAcsBtn?.classList.toggle("hidden", !isMgr && !isDoc);
+  el.navDoctorsBtn?.classList.toggle("hidden", !isMgr && !isDoc);
+  el.navAiBtn?.classList.toggle("hidden", !isMgr && !isDoc);
 
-  el.openCreateUserModalBtn.classList.toggle("hidden", !isMgr);
+  el.openCreateUserModalBtn?.classList.toggle("hidden", !isMgr);
+
+  // Sempre volta para o workspace da seção ao navegar pelo menu lateral.
+  if (state.selectedPatient) {
+    state.selectedPatient = null;
+    state.appointments = [];
+    state.tasks = [];
+    state.messages = [];
+    state.history = [];
+    state.protocolSummary = null;
+  }
+  el.emptyState?.classList.remove("hidden");
+  el.patientContent?.classList.add("hidden");
+  renderPatientHeader();
 
   const showDashboardWorkspace = state.navSection === "dashboard";
   const showPatientsWorkspace = state.navSection === "patients";
-  el.homeDashboardPane.classList.toggle("hidden", !showDashboardWorkspace || state.workspaceTab !== "dashboard");
-  el.homePatientsPane.classList.toggle("hidden", !showPatientsWorkspace);
-  el.protocolAdminSection.classList.toggle("hidden", state.navSection !== "protocols");
-  el.acsAdminSection.classList.toggle("hidden", state.navSection !== "acs");
-  el.doctorsAdminSection.classList.toggle("hidden", state.navSection !== "doctors");
-  el.aiHubSection.classList.toggle("hidden", state.navSection !== "ai");
+  el.homeDashboardPane?.classList.toggle("hidden", !showDashboardWorkspace || state.workspaceTab !== "dashboard");
+  el.homePatientsPane?.classList.toggle("hidden", !showPatientsWorkspace);
+  el.protocolAdminSection?.classList.toggle("hidden", state.navSection !== "protocols");
+  el.acsAdminSection?.classList.toggle("hidden", state.navSection !== "acs");
+  el.doctorsAdminSection?.classList.toggle("hidden", state.navSection !== "doctors");
+  el.aiHubSection?.classList.toggle("hidden", state.navSection !== "ai");
 
   if (state.navSection === "dashboard") {
     switchWorkspaceTab("dashboard");
+  }
+  renderPatients();
+  renderWorkspaceHome();
+  if (state.navSection === "acs" || state.navSection === "doctors") {
+    renderTeamUsersLists();
+  }
+  if (state.navSection === "protocols") {
+    renderProtocolAdminList();
   }
   if (isMobileLayout()) closeSidebarDrawer();
   persistViewState();
