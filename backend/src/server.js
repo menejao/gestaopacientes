@@ -534,6 +534,13 @@ function requireManager(req, res, next) {
   return next();
 }
 
+function requireManagerOrDoctor(req, res, next) {
+  if (!(isManager(req.user) || isDoctor(req.user))) {
+    return res.status(403).json({ error: "Apenas enfermeira ou médica podem executar esta ação" });
+  }
+  return next();
+}
+
 function addAuditLog(db, user, action, entity, entityId, details = {}) {
   ensureArray(db, "auditLogs");
   db.auditLogs.push({
@@ -2815,7 +2822,7 @@ app.patch("/me", async (req, res) => {
   return res.json(result);
 });
 
-app.get("/protocol/templates/:category/usage", requireManager, async (req, res) => {
+app.get("/protocol/templates/:category/usage", requireManagerOrDoctor, async (req, res) => {
   const category = String(req.params.category || "").trim();
   const db = await readDb();
   ensureDbShape(db);
@@ -2841,7 +2848,7 @@ app.get("/protocol/templates/:category/usage", requireManager, async (req, res) 
   });
 });
 
-app.post("/protocol/templates", requireManager, async (req, res) => {
+app.post("/protocol/templates", requireManagerOrDoctor, async (req, res) => {
   const payloadCheck = sanitizeProtocolTemplatePayload(req.body || {});
   if (!payloadCheck.ok) return res.status(400).json({ error: payloadCheck.error });
 
@@ -2866,7 +2873,7 @@ app.post("/protocol/templates", requireManager, async (req, res) => {
   return res.status(201).json(result);
 });
 
-app.put("/protocol/templates/:category", requireManager, async (req, res) => {
+app.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, res) => {
   const category = String(req.params.category || "").trim();
   const payloadCheck = sanitizeProtocolTemplatePayload(req.body || {}, category);
   if (!payloadCheck.ok) return res.status(400).json({ error: payloadCheck.error });
@@ -2911,7 +2918,7 @@ app.put("/protocol/templates/:category", requireManager, async (req, res) => {
   return res.json(result);
 });
 
-app.delete("/protocol/templates/:category", requireManager, async (req, res) => {
+app.delete("/protocol/templates/:category", requireManagerOrDoctor, async (req, res) => {
   const category = String(req.params.category || "").trim();
   if (category === "general") {
     return res.status(400).json({ error: "A categoria geral não pode ser excluída" });
@@ -3264,7 +3271,7 @@ app.get("/patients/protocol-summaries", async (req, res) => {
   });
 });
 
-app.post("/patients", requireManager, async (req, res) => {
+app.post("/patients", requireManagerOrDoctor, async (req, res) => {
   const payload = req.body;
   const db = await readDb();
   ensureDbShape(db);
@@ -3439,7 +3446,7 @@ app.put("/patients/:id", async (req, res) => {
   return res.json(updated);
 });
 
-app.delete("/patients/:id", requireManager, async (req, res) => {
+app.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
   const { id } = req.params;
 
   const result = await withDb((db) => {
@@ -3570,8 +3577,8 @@ app.post("/patients/:id/records", async (req, res) => {
   const lookup = getPatientOrError(db, req.user, id);
   if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
 
-  if (isAcs(req.user) && !["visit", "note"].includes(type)) {
-    return res.status(403).json({ error: "ACS pode registrar apenas visita e observação" });
+  if (isAcs(req.user) && type !== "visit") {
+    return res.status(403).json({ error: "ACS pode registrar apenas visita domiciliar" });
   }
 
   if (isDoctor(req.user) && ["visit"].includes(type)) {
@@ -3661,7 +3668,7 @@ app.get("/tasks", async (req, res) => {
   return res.json(filtered);
 });
 
-app.post("/tasks", requireManager, async (req, res) => {
+app.post("/tasks", requireManagerOrDoctor, async (req, res) => {
   const payload = req.body;
 
   if (!payload.patientId || !payload.assigneeId || !payload.title) {
@@ -3717,28 +3724,10 @@ app.patch("/tasks/:id", async (req, res) => {
     if (!patient || !canAccessPatient(req.user, patient)) return "forbidden";
 
     if (isAcs(req.user)) {
-      if (current.assigneeId !== req.user.id) return "forbidden";
-
-      const requestedKeys = Object.keys(payload);
-      const onlyStatus = requestedKeys.length === 1 && requestedKeys[0] === "status";
-      const allowedStatus = ["pending", "in_progress", "done"];
-      if (!onlyStatus || !allowedStatus.includes(String(payload.status))) return "forbidden";
-
-      const nextForAcs = {
-        ...current,
-        status: String(payload.status),
-        updatedAt: new Date().toISOString(),
-        updatedBy: req.user.id
-      };
-
-      db.tasks[index] = nextForAcs;
-      addAuditLog(db, req.user, "task.status_updated", "task", id, {
-        status: nextForAcs.status
-      });
-      return nextForAcs;
+      return "forbidden";
     }
 
-    if (isManager(req.user)) {
+    if (isManager(req.user) || isDoctor(req.user)) {
       const nextForManager = {
         ...current,
         ...payload,
@@ -3787,6 +3776,10 @@ app.post("/patients/:id/messages", async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
+  if (isAcs(req.user)) {
+    return res.status(403).json({ error: "ACS não pode enviar mensagens neste módulo" });
+  }
+
   if (!payload.text) {
     return res.status(400).json({ error: "text ? obrigatório" });
   }
@@ -3816,7 +3809,7 @@ app.post("/patients/:id/messages", async (req, res) => {
   return res.status(201).json(message);
 });
 
-app.get("/audit-logs", requireManager, async (req, res) => {
+app.get("/audit-logs", requireManagerOrDoctor, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
 

@@ -347,7 +347,7 @@ function setupInactivityWatcher() {
 const isManager = () => state.user?.role === "nurse_manager";
 const isDoctor  = () => state.user?.role === "doctor";
 const isAcs     = () => state.user?.role === "acs";
-const canAcsUpdateTask = t => isAcs() && t.assigneeId === state.user.id;
+const canManageTaskStatus = () => isManager() || isDoctor();
 const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Não atribuído";
 const catLabel     = cat => state.protocolTemplates.find(t => t.category === cat)?.label || "Geral";
 const taskOpen     = t => ["pending", "in_progress"].includes(t.status);
@@ -705,6 +705,10 @@ function applyRolePermissions() {
     clinFields.forEach(id => { document.getElementById(id).disabled = false; });
     [...el.rType.options].forEach(o => { o.disabled = false; });
     el.topFilterAcs?.closest(".field-group")?.classList.remove("hidden");
+    el.quickSelectFirstPatientBtn?.classList.remove("hidden");
+    el.openPatientModalBtn?.classList.remove("hidden");
+    el.sendMsgBtn?.classList.remove("hidden");
+    if (el.mText) el.mText.disabled = false;
     return;
   }
   el.addTaskBtn.classList.add("hidden");
@@ -714,25 +718,37 @@ function applyRolePermissions() {
 
   if (isDoctor()) {
     el.addAppointmentBtn.classList.remove("hidden");
+    el.addTaskBtn.classList.remove("hidden");
     el.editPatientBtn.classList.remove("hidden");
-    el.deletePatientBtn.classList.add("hidden");
+    el.deletePatientBtn.classList.remove("hidden");
+    el.auditTab.classList.remove("hidden");
     el.appointmentFormCard.classList.remove("hidden");
+    el.taskFormCard.classList.remove("hidden");
     clinFields.forEach(id => { document.getElementById(id).disabled = false; });
-    patientFields.forEach(id => { document.getElementById(id).disabled = false; });
-    taskFields.forEach(id => { document.getElementById(id).disabled = true; });
+    mgrFields.forEach(id => { document.getElementById(id).disabled = false; });
     [...el.rType.options].forEach(o => { o.disabled = o.value === "visit"; });
     if (el.rType.value === "visit") el.rType.value = "consultation";
-    el.topFilterAcs?.closest(".field-group")?.classList.add("hidden");
+    el.topFilterAcs?.closest(".field-group")?.classList.remove("hidden");
+    el.quickSelectFirstPatientBtn?.classList.remove("hidden");
+    el.openPatientModalBtn?.classList.remove("hidden");
+    el.sendMsgBtn?.classList.remove("hidden");
+    if (el.mText) el.mText.disabled = false;
     return;
   }
   // ACS
   el.editPatientBtn.classList.add("hidden");
   el.deletePatientBtn.classList.add("hidden");
   el.addAppointmentBtn.classList.add("hidden");
+  el.addTaskBtn.classList.add("hidden");
   el.appointmentFormCard.classList.add("hidden");
+  el.taskFormCard.classList.add("hidden");
   clinFields.forEach(id => { document.getElementById(id).disabled = true; });
-  [...el.rType.options].forEach(o => { o.disabled = !["visit","note"].includes(o.value); });
+  [...el.rType.options].forEach(o => { o.disabled = o.value !== "visit"; });
   el.rType.value = "visit";
+  el.quickSelectFirstPatientBtn?.classList.add("hidden");
+  el.openPatientModalBtn?.classList.add("hidden");
+  el.sendMsgBtn?.classList.add("hidden");
+  if (el.mText) el.mText.disabled = true;
   el.topFilterAcs?.closest(".field-group")?.classList.add("hidden");
 }
 
@@ -1069,7 +1085,7 @@ function renderHomePatientTable() {
           <td class="inline-actions">
             <button class="btn-secondary home-open-patient-btn" data-patient-id="${p.id}">Abrir</button>
             ${(isManager() || isDoctor()) ? `<button class="btn-secondary home-edit-patient-btn" data-patient-id="${p.id}">Editar</button>` : ""}
-            ${isManager() ? `<button class="btn-secondary home-delete-patient-btn" data-patient-id="${p.id}">Excluir</button>` : ""}
+            ${(isManager() || isDoctor()) ? `<button class="btn-secondary home-delete-patient-btn" data-patient-id="${p.id}">Excluir</button>` : ""}
           </td>
         </tr>`;
     }).join("");
@@ -1113,7 +1129,7 @@ function renderHomePatientTable() {
         el.homePatientSelectAll.checked = selectable.length > 0 && selectable.every((id) => state.selectedPatientIds.has(id));
       }
       if (el.homePatientBulkDeleteBtn) {
-        el.homePatientBulkDeleteBtn.classList.toggle("hidden", !isManager() || state.selectedPatientIds.size === 0);
+        el.homePatientBulkDeleteBtn.classList.toggle("hidden", !(isManager() || isDoctor()) || state.selectedPatientIds.size === 0);
       }
     });
   });
@@ -1132,7 +1148,7 @@ function renderHomePatientTable() {
     el.homePatientSelectAll.checked = selectable.length > 0 && selectable.every((id) => state.selectedPatientIds.has(id));
   }
   if (el.homePatientBulkDeleteBtn) {
-    el.homePatientBulkDeleteBtn.classList.toggle("hidden", !isManager() || state.selectedPatientIds.size === 0);
+    el.homePatientBulkDeleteBtn.classList.toggle("hidden", !(isManager() || isDoctor()) || state.selectedPatientIds.size === 0);
   }
 }
 
@@ -1276,6 +1292,7 @@ function renderTeamUsersLists() {
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 
   const teamLine = (user) => user.teamName ? `Equipe: ${user.teamName}` : "Equipe: não informada";
+  const allowManageUsers = isManager();
 
   el.acsList.innerHTML = acsUsers.length
     ? acsUsers.map((u) => `
@@ -1286,8 +1303,8 @@ function renderTeamUsersLists() {
         </div>
         <div class="inline-actions">
           <span class="home-task-meta">${u.email}</span>
-          <button class="btn-secondary team-user-edit-btn" data-user-id="${u.id}">Editar</button>
-          <button class="btn-secondary team-user-delete-btn" data-user-id="${u.id}">Excluir</button>
+          ${allowManageUsers ? `<button class="btn-secondary team-user-edit-btn" data-user-id="${u.id}">Editar</button>` : ""}
+          ${allowManageUsers ? `<button class="btn-secondary team-user-delete-btn" data-user-id="${u.id}">Excluir</button>` : ""}
         </div>
       </div>`).join("")
     : '<div class="empty-msg">Nenhum ACS cadastrado.</div>';
@@ -1301,8 +1318,8 @@ function renderTeamUsersLists() {
         </div>
         <div class="inline-actions">
           <span class="home-task-meta">${u.email}</span>
-          <button class="btn-secondary team-user-edit-btn" data-user-id="${u.id}">Editar</button>
-          <button class="btn-secondary team-user-delete-btn" data-user-id="${u.id}">Excluir</button>
+          ${allowManageUsers ? `<button class="btn-secondary team-user-edit-btn" data-user-id="${u.id}">Editar</button>` : ""}
+          ${allowManageUsers ? `<button class="btn-secondary team-user-delete-btn" data-user-id="${u.id}">Excluir</button>` : ""}
         </div>
       </div>`).join("")
     : '<div class="empty-msg">Nenhum médico cadastrado.</div>';
@@ -1349,11 +1366,12 @@ function renderTeamUsersLists() {
 
 function switchNavSection(section) {
   const isMgr = isManager();
+  const isDoc = isDoctor();
   const next = String(section || "dashboard");
   const allowed = ["dashboard", "patients", "protocols", "acs", "doctors", "ai"];
   state.navSection = allowed.includes(next) ? next : "dashboard";
 
-  if (!isMgr && ["protocols", "acs", "doctors", "ai"].includes(state.navSection)) {
+  if (!isMgr && !isDoc && ["protocols", "acs", "doctors", "ai"].includes(state.navSection)) {
     state.navSection = "dashboard";
   }
 
@@ -1364,10 +1382,10 @@ function switchNavSection(section) {
   el.navDoctorsBtn.classList.toggle("active", state.navSection === "doctors");
   el.navAiBtn.classList.toggle("active", state.navSection === "ai");
 
-  el.navProtocolsBtn.classList.toggle("hidden", !isMgr);
-  el.navAcsBtn.classList.toggle("hidden", !isMgr);
-  el.navDoctorsBtn.classList.toggle("hidden", !isMgr);
-  el.navAiBtn.classList.toggle("hidden", !isMgr);
+  el.navProtocolsBtn.classList.toggle("hidden", !isMgr && !isDoc);
+  el.navAcsBtn.classList.toggle("hidden", !isMgr && !isDoc);
+  el.navDoctorsBtn.classList.toggle("hidden", !isMgr && !isDoc);
+  el.navAiBtn.classList.toggle("hidden", !isMgr && !isDoc);
 
   el.openCreateUserModalBtn.classList.toggle("hidden", !isMgr);
 
@@ -1441,8 +1459,8 @@ function resetProtocolForm() {
 
 function renderProtocolAdminList() {
   if (!el.protocolAdminList) return;
-  if (!isManager()) {
-    el.protocolAdminList.innerHTML = '<div class="empty-msg">Somente a enfermeira administra protocolos.</div>';
+  if (!(isManager() || isDoctor())) {
+    el.protocolAdminList.innerHTML = '<div class="empty-msg">Sem permissão para administrar protocolos.</div>';
     return;
   }
 
@@ -1593,8 +1611,8 @@ function openPatientEdit() {
 
 async function deleteSelectedPatient() {
   if (!state.selectedPatient) return;
-  if (!isManager()) {
-    showToast("Somente enfermeira pode excluir paciente.", "error");
+  if (!(isManager() || isDoctor())) {
+    showToast("Sem permissão para excluir paciente.", "error");
     return;
   }
   const patientName = state.selectedPatient.name || "este paciente";
@@ -1622,8 +1640,8 @@ async function deleteSelectedPatient() {
 async function deletePatientsByIds(ids = []) {
   const uniqueIds = [...new Set((ids || []).filter(Boolean))];
   if (!uniqueIds.length) return;
-  if (!isManager()) {
-    showToast("Somente enfermeira pode excluir pacientes.", "error");
+  if (!(isManager() || isDoctor())) {
+    showToast("Sem permissão para excluir pacientes.", "error");
     return;
   }
   const ok = confirm(`Excluir ${uniqueIds.length} paciente(s)? Esta ação remove todos os dados vinculados.`);
@@ -1821,7 +1839,7 @@ function renderTasks() {
         <p>Responsavel: ${acsNameById(t.assigneeId)} | Prazo: ${t.dueDate||"-"}</p>
         ${t.notes ? `<p>${t.notes}</p>` : ""}
       </div>`;
-    if (isManager() || canAcsUpdateTask(t)) {
+    if (canManageTaskStatus()) {
       const row = document.createElement("div");
       row.className = "status-row";
       row.innerHTML = `<label>Status:</label>`;
@@ -1949,7 +1967,7 @@ function renderHistory() {
 
 // -- Render: audit --------------------------------------------------------------
 function renderAuditLogs() {
-  if (!isManager()) return;
+  if (!(isManager() || isDoctor())) return;
   el.auditList.innerHTML = "";
   if (!state.auditLogs.length) { el.auditList.innerHTML='<div class="empty-msg">Sem registros.</div>'; return; }
   state.auditLogs.slice(0,20).forEach(log => {
@@ -2021,7 +2039,7 @@ async function loadTasks()           { if (!state.selectedPatient) return; state
 async function loadMessages()        { if (!state.selectedPatient) return; state.messages       = await api(`/patients/${state.selectedPatient.id}/messages`);        renderMessages(); }
 async function loadHistory()         { if (!state.selectedPatient) return; state.history        = await api(`/patients/${state.selectedPatient.id}/history`);         renderHistory(); }
 async function loadProtocolSummary() { if (!state.selectedPatient) return; state.protocolSummary= await api(`/patients/${state.selectedPatient.id}/protocol-summary`);renderProtocolSummary(); }
-async function loadAuditLogs()       { if (!state.selectedPatient||!isManager()) return; state.auditLogs = await api(`/audit-logs?patientId=${state.selectedPatient.id}`); renderAuditLogs(); }
+async function loadAuditLogs()       { if (!state.selectedPatient||!(isManager() || isDoctor())) return; state.auditLogs = await api(`/audit-logs?patientId=${state.selectedPatient.id}`); renderAuditLogs(); }
 
 async function refreshSelectedPatientData() {
   if (!state.selectedPatient) return;
@@ -2187,8 +2205,8 @@ function openPatientCreateModal() {
 }
 
 el.quickSelectFirstPatientBtn?.addEventListener("click", () => {
-  if (!isManager()) {
-    showToast("Somente enfermeira pode cadastrar paciente.", "error");
+  if (!(isManager() || isDoctor())) {
+    showToast("Sem permissão para cadastrar paciente.", "error");
     return;
   }
   openPatientCreateModal();
@@ -2710,8 +2728,8 @@ el.createPatientBtn.addEventListener("click", async () => {
       await api(`/patients/${editingId}`, { method: "PUT", body: JSON.stringify(payload) });
       showToast("Paciente atualizado com sucesso!","ok");
     } else {
-      if (!isManager()) {
-        showToast("Somente enfermeira pode criar paciente.", "error");
+      if (!(isManager() || isDoctor())) {
+        showToast("Sem permissão para criar paciente.", "error");
         return;
       }
       await api("/patients", { method:"POST", body:JSON.stringify(payload)});
