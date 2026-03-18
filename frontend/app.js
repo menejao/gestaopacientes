@@ -1314,12 +1314,18 @@ function renderTeamUsersLists() {
       }
       if (target.role === "doctor") {
         const currentCouncil = formatCouncilNumber(target.councilNumber || "", 8);
-        const council = prompt("Número do conselho (CRM, somente números)", currentCouncil);
+        const council = prompt("Número do conselho (CRM, somente números). Deixe igual para não alterar.", currentCouncil);
         if (council === null) return;
-        const uf = prompt("UF do conselho (CRM)", String(target.councilUf || "").toUpperCase());
+        const uf = prompt("UF do conselho (CRM). Deixe igual para não alterar.", String(target.councilUf || "").toUpperCase());
         if (uf === null) return;
-        payload.councilNumber = council;
-        payload.councilUf = uf;
+        const nextCouncil = councilDigits(council, 8);
+        const currentCouncilDigits = councilDigits(currentCouncil, 8);
+        const nextUf = String(uf || "").trim().toUpperCase();
+        const currentUf = String(target.councilUf || "").trim().toUpperCase();
+        if (nextCouncil && (nextCouncil !== currentCouncilDigits || nextUf !== currentUf)) {
+          payload.councilNumber = nextCouncil;
+          payload.councilUf = nextUf;
+        }
       }
       try {
         await api(`/users/${target.id}`, { method: "PUT", body: JSON.stringify(payload) });
@@ -2061,17 +2067,16 @@ async function selectPatient(patient) {
 
 // -- Bootstrap -----------------------------------------------------------------
 async function bootstrapAfterLogin() {
-  readViewState();
+  const savedView = readViewState() || {};
   touchSession(true);
   setupInactivityWatcher();
   // Mostra a aplicação imediatamente para evitar tela branca durante o carregamento.
   el.authScreen.classList.add("hidden");
   el.appScreen.classList.remove("hidden");
-
-  // Ao abrir novamente o sistema, sempre iniciar no Painel.
+  const allowedSections = ["dashboard", "patients", "protocols", "acs", "doctors", "ai"];
+  state.navSection = allowedSections.includes(savedView.navSection) ? savedView.navSection : "dashboard";
+  state.workspaceTab = savedView.workspaceTab === "protocols" ? "protocols" : "dashboard";
   state.selectedPatient = null;
-  state.navSection = "dashboard";
-  state.workspaceTab = "dashboard";
 
   if (isAcs()) { state.filters.acsId = state.user.id; }
   applyRolePermissions();
@@ -2093,10 +2098,19 @@ async function bootstrapAfterLogin() {
   if (el.topFilterMicroArea) el.topFilterMicroArea.value = "";
   if (el.topFilterAcs) el.topFilterAcs.value = "";
   if (el.topFilterCategory) el.topFilterCategory.value = "";
-  switchWorkspaceTab("dashboard");
-  switchNavSection("dashboard");
+  switchWorkspaceTab(state.workspaceTab);
+  switchNavSection(state.navSection);
   renderWorkspaceHome();
   await loadPatients({ skipProtocolStatuses: true });
+  if (savedView.selectedPatientId) {
+    const savedPatient = state.patients.find((item) => item.id === savedView.selectedPatientId);
+    if (savedPatient) {
+      await selectPatient(savedPatient);
+      if (savedView.activePatientPanel) {
+        switchToTab(String(savedView.activePatientPanel));
+      }
+    }
+  }
   loadProtocolStatusesForDashboard().catch(() => {
     showToast("Não foi possível atualizar status de protocolo agora.", "error", 2500);
   });
