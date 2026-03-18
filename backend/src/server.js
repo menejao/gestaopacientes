@@ -71,7 +71,7 @@ const DEFAULT_CARE_PROTOCOLS = {
   },
   chronic: {
     category: "chronic",
-    label: "Condicao Cronica",
+    label: "Condição Crônica",
     targets: { visits: 3, consultations: 3, vaccines: 2 },
     deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: ["Influenza", "COVID-19"]
@@ -105,7 +105,7 @@ function buildDefaultProtocolTemplates() {
     },
     child_followup: {
       reference: "https://www.gov.br/saude/pt-br/vacinacao/calendario",
-      version: "Calendario PNI"
+      version: "Calendário PNI"
     },
     chronic: {
       reference: "https://bvsms.saude.gov.br/bvs/publicacoes/plano_acoes_estrategicas_enfrentamento_dc_nt_2021_2030.pdf",
@@ -131,7 +131,7 @@ function buildDefaultProtocolTemplates() {
       vaccines: Number(template.deadlines?.vaccines || 0)
     },
     vaccines: Array.isArray(template.vaccines) ? template.vaccines : [],
-    authority: "Ministerio da Saude",
+    authority: "Ministério da Saúde",
     reference: ministryRefs[template.category]?.reference || "",
     version: ministryRefs[template.category]?.version || "1.0"
   }));
@@ -333,7 +333,7 @@ function ensureDbShape(db) {
         vaccines: Array.isArray(defaultsByCategory[t.category]?.vaccines)
           ? defaultsByCategory[t.category].vaccines
           : (Array.isArray(t.vaccines) ? t.vaccines : []),
-        authority: String(t.authority || "Ministerio da Saude"),
+        authority: String(t.authority || "Ministério da Saúde"),
         reference: String(t.reference || defaultsByCategory[t.category]?.reference || ""),
         version: String(t.version || defaultsByCategory[t.category]?.version || "1.0")
       }));
@@ -880,7 +880,7 @@ function validateCouncilData(role, councilNumber, councilUf) {
   }
 
   if (!VALID_UF.has(uf)) {
-    return { ok: false, message: "UF do conselho invalida" };
+    return { ok: false, message: "UF do conselho inválida" };
   }
 
   return { ok: true, councilNumber: numberDigits, councilUf: uf };
@@ -1124,7 +1124,7 @@ function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
   const deadlineConsultations = Number(deadlines.consultations);
   const deadlineVaccines = Number(deadlines.vaccines);
   const vaccines = Array.isArray(payload.vaccines) ? payload.vaccines : String(payload.vaccines || "").split(",");
-  const authority = String(payload.authority || "Ministerio da Saude").trim();
+  const authority = String(payload.authority || "Ministério da Saúde").trim();
   const reference = String(payload.reference || "").trim();
   const version = String(payload.version || "").trim();
 
@@ -2584,7 +2584,7 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
     ensureDbShape(db);
 
     if (db.users.some((u) => String(u.email).toLowerCase() === email)) {
-      return { error: "Email ja cadastrado" };
+      return { error: "E-mail já cadastrado" };
     }
 
     let teamId = String(payload.teamId || "").trim();
@@ -2682,7 +2682,7 @@ app.post("/auth/login", authRateLimit, async (req, res) => {
   }
 
   if (!user) {
-    return res.status(401).json({ error: "Credenciais invalidas" });
+    return res.status(401).json({ error: "Credenciais inválidas" });
   }
 
   if (!isHashedPassword(user.password)) {
@@ -2736,7 +2736,7 @@ app.patch("/me", async (req, res) => {
       if (!email) return { error: { status: 400, message: "Email não pode ficar vazio" } };
       if (!isValidEmail(email)) return { error: { status: 400, message: "E-mail inválido" } };
       const exists = db.users.some((u) => u.id !== current.id && String(u.email).toLowerCase() === email);
-      if (exists) return { error: { status: 409, message: "Email ja em uso por outro usuario" } };
+      if (exists) return { error: { status: 409, message: "E-mail já em uso por outro usuário" } };
       next.email = email;
     }
 
@@ -2848,7 +2848,7 @@ app.post("/protocol/templates", requireManager, async (req, res) => {
   const result = await withDb((db) => {
     ensureDbShape(db);
     const exists = db.protocolTemplates.some((t) => t.category === payloadCheck.template.category && t.teamId === req.user.teamId && !t.deleted);
-    if (exists) return { error: "Categoria ja existe" };
+    if (exists) return { error: "Categoria já existe" };
     const deletedIndex = db.protocolTemplates.findIndex((t) => t.category === payloadCheck.template.category && t.teamId === req.user.teamId && t.deleted);
     if (deletedIndex >= 0) db.protocolTemplates.splice(deletedIndex, 1);
     const created = {
@@ -2914,7 +2914,7 @@ app.put("/protocol/templates/:category", requireManager, async (req, res) => {
 app.delete("/protocol/templates/:category", requireManager, async (req, res) => {
   const category = String(req.params.category || "").trim();
   if (category === "general") {
-    return res.status(400).json({ error: "Categoria general não pode ser exclu?da" });
+    return res.status(400).json({ error: "A categoria geral não pode ser excluída" });
   }
 
   const result = await withDb((db) => {
@@ -3025,7 +3025,7 @@ app.post("/users", requireManager, async (req, res) => {
   const result = await withDb((db) => {
     ensureDbShape(db);
     if (db.users.some((u) => String(u.email).toLowerCase() === email)) {
-      return { error: "Email ja cadastrado" };
+      return { error: "E-mail já cadastrado" };
     }
 
     const duplicatedCouncil = roleNeedsCouncil(role) && db.users.some((u) => {
@@ -3130,7 +3130,7 @@ app.put("/users/:id", requireManager, async (req, res) => {
       const email = String(payload.email || "").trim().toLowerCase();
       if (!email || !isValidEmail(email)) return { error: { status: 400, message: "E-mail inválido" } };
       const duplicated = db.users.some((u) => u.id !== current.id && String(u.email || "").toLowerCase() === email);
-      if (duplicated) return { error: { status: 409, message: "Email ja em uso por outro usuario" } };
+      if (duplicated) return { error: { status: 409, message: "E-mail já em uso por outro usuário" } };
       next.email = email;
     }
 
@@ -3146,7 +3146,7 @@ app.put("/users/:id", requireManager, async (req, res) => {
           && String(u.councilNumber || "") === localCheck.councilNumber
           && String(u.councilUf || "").toUpperCase() === localCheck.councilUf;
       });
-      if (duplicatedCouncil) return { error: { status: 409, message: `${councilType} ja cadastrado para outro usuario` } };
+      if (duplicatedCouncil) return { error: { status: 409, message: `${councilType} já cadastrado para outro usuário` } };
 
       const unchangedCouncil = String(current.councilType || "").toUpperCase() === String(councilType || "").toUpperCase()
         && String(current.councilNumber || "") === String(localCheck.councilNumber || "")
@@ -3480,7 +3480,7 @@ app.post("/patients/:id/appointments", async (req, res) => {
   const payload = req.body;
 
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Sem permissao para criar atendimento" });
+    return res.status(403).json({ error: "Sem permissão para criar atendimento" });
   }
 
   if (!payload.date || !payload.summary) {
@@ -3982,7 +3982,7 @@ app.post("/privacy/requests/:id/execute", requireManager, async (req, res) => {
 
     if (requestItem.type === "deletion") {
       if (isAnonymizedPatient(patient)) {
-        return { error: { status: 409, message: "Paciente ja anonimizado anteriormente" } };
+        return { error: { status: 409, message: "Paciente já anonimizado anteriormente" } };
       }
       const reason = String(payload.reason || requestItem.notes || "").trim();
       const anonymize = anonymizePatientBundle(db, req.user, patient, reason, requestItem.id);
@@ -4060,7 +4060,7 @@ app.post("/privacy/retention/anonymize", requireManager, async (req, res) => {
         db,
         req.user,
         patient,
-        `Retencao automatica: sem atividade desde antes de ${cutoffIso}`,
+        `Retenção automática: sem atividade desde antes de ${cutoffIso}`,
         ""
       );
       if (!output.changed) continue;

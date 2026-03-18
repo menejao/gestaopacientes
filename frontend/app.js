@@ -608,7 +608,7 @@ function validateCouncil(role, num, uf) {
   if (d.length < 4 || d.length > maxLen) return { ok:false, message:`Conselho deve ter entre 4 e ${maxLen} digitos` };
   if (isRepDigits(d)) return { ok:false, message:"Conselho inválido: dígitos repetidos" };
   if (isSeqDigits(d)) return { ok:false, message:"Conselho inválido: sequência numérica" };
-  if (!validUf.test(u)) return { ok:false, message:"UF do conselho invalida" };
+  if (!validUf.test(u)) return { ok:false, message:"UF do conselho inválida" };
   return { ok:true, number:d, uf:u };
 }
 
@@ -1414,7 +1414,7 @@ function protocolFormPayload() {
       .split(",")
       .map((v) => v.trim())
       .filter(Boolean),
-    authority: el.protocolAuthorityInput.value.trim() || "Ministerio da Saude",
+    authority: el.protocolAuthorityInput.value.trim() || "Ministério da Saúde",
     reference: el.protocolReferenceInput.value.trim(),
     version: el.protocolVersionInput.value.trim() || "1.0"
   };
@@ -1432,7 +1432,7 @@ function resetProtocolForm() {
   el.protocolConsultationDeadlineInput.value = "0";
   el.protocolVaccineDeadlineInput.value = "0";
   el.protocolVaccinesListInput.value = "";
-  el.protocolAuthorityInput.value = "Ministerio da Saude";
+  el.protocolAuthorityInput.value = "Ministério da Saúde";
   el.protocolReferenceInput.value = "";
   el.protocolVersionInput.value = "1.0";
   el.createProtocolBtn.textContent = "Confirmar";
@@ -1454,7 +1454,7 @@ function renderProtocolAdminList() {
           <p class="home-task-title">${t.label} <span class="home-task-meta">(${t.category})${t.teamId ? "" : " [base]"}</span></p>
           <p class="home-task-meta">Metas: ${t.targets.visits} visitas | ${t.targets.consultations} consultas | ${t.targets.vaccines} vacinas</p>
           <p class="home-task-meta">Prazos (dias): visita ${Number(t.deadlines?.visits || 0)} | consulta ${Number(t.deadlines?.consultations || 0)} | vacina ${Number(t.deadlines?.vaccines || 0)}</p>
-          <p class="home-task-meta">Norma: ${t.authority || "Ministerio da Saude"} | Ref: ${t.reference ? `<a href="${t.reference}" target="_blank" rel="noopener noreferrer">link oficial</a>` : "-"} | Versao: ${t.version || "1.0"}</p>
+          <p class="home-task-meta">Norma: ${t.authority || "Ministério da Saúde"} | Ref: ${t.reference ? `<a href="${t.reference}" target="_blank" rel="noopener noreferrer">link oficial</a>` : "-"} | Versão: ${t.version || "1.0"}</p>
         </div>
         <div class="inline-actions">
           <button class="btn-secondary protocol-edit-btn" data-category="${t.category}">Editar</button>
@@ -1492,7 +1492,7 @@ function renderProtocolAdminList() {
       el.protocolConsultationDeadlineInput.value = String(Number(template.deadlines?.consultations || 0));
       el.protocolVaccineDeadlineInput.value = String(Number(template.deadlines?.vaccines || 0));
       el.protocolVaccinesListInput.value = (template.vaccines || []).join(", ");
-      el.protocolAuthorityInput.value = template.authority || "Ministerio da Saude";
+      el.protocolAuthorityInput.value = template.authority || "Ministério da Saúde";
       el.protocolReferenceInput.value = template.reference || "";
       el.protocolVersionInput.value = template.version || "1.0";
       el.createProtocolBtn.textContent = "Confirmar alterações";
@@ -1515,7 +1515,7 @@ function renderProtocolAdminList() {
 
         if (!confirm(`Excluir categoria '${category}'? Esta ação é crítica e não pode ser desfeita.`)) return;
         await api(`/protocol/templates/${category}`, { method: "DELETE" });
-        showToast("Categoria excluida.", "ok");
+        showToast("Categoria excluída.", "ok");
         resetProtocolForm();
         await reloadTemplateData();
       } catch (e) {
@@ -1864,7 +1864,7 @@ function renderMessages() {
 const typeLabel = { visit:"Visita", consultation:"Consulta", vaccine:"Vacina", procedure:"Procedimento", note:"Observação" };
 const RECORD_TITLES = {
   visit: ["Visita ACS"],
-  consultation: ["Consulta médica", "Consulta enfermagem", "Consulta odontológica"]
+  consultation: ["Consulta médica", "Consulta de enfermagem", "Consulta odontológica"]
 };
 const MINISTRY_VACCINES = [
   "BCG",
@@ -2534,7 +2534,7 @@ el.createPatientBtn.addEventListener("click", async () => {
     ];
     const missing = required.filter(([, value]) => !String(value || "").trim()).map(([label]) => label);
     if (missing.length) {
-      showToast(`Preencha os campos obrigatorios: ${missing.join(", ")}`, "error", 4500);
+      showToast(`Preencha os campos obrigatórios: ${missing.join(", ")}`, "error", 4500);
       return;
     }
 
@@ -2725,7 +2725,7 @@ async function initApp() {
     return;
   }
 
-  // Evita flicker da tela de login quando a sessao ainda e valida.
+  // Evita flicker da tela de login quando a sessão ainda é válida.
   el.authScreen.classList.add("hidden");
   el.appScreen.classList.remove("hidden");
 
