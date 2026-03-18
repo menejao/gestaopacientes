@@ -948,7 +948,8 @@ function renderTeamActivityLog() {
       <div class="home-task-row">
         <div>
           <p class="home-task-title">${u.name} <span class="home-task-meta">(${userRoleLabel(u.role)})</span></p>
-          <p class="home-task-meta">${u.email || "-"} | Última atividade: ${seenText}</p>
+          <p class="home-task-meta">${u.teamName || "Sem equipe"} | ${u.email || "-"}</p>
+          <p class="home-task-meta">Última atividade: ${seenText}</p>
         </div>
         <span class="${statusClass}" title="${onlineLabel}">${statusText}</span>
       </div>`;

@@ -3048,23 +3048,29 @@ app.get("/users/activity-log", requireManager, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const now = Date.now();
+  const teamNameById = Object.fromEntries((db.teams || []).map((t) => [String(t.id || ""), String(t.name || "Sem equipe")]));
   const items = db.users
-    .filter((u) => u.teamId === req.user.teamId)
     .map((u) => {
       const lastSeenAt = String(u.lastSeenAt || u.lastLoginAt || "");
-      const lastSeenTs = parseFlexibleDate(lastSeenAt)?.getTime() || NaN;
+      const lastSeenTs = Date.parse(lastSeenAt);
       const online = Number.isFinite(lastSeenTs) ? (now - lastSeenTs <= USER_ONLINE_THRESHOLD_MS) : false;
       return {
         id: u.id,
         name: u.name,
         role: canonicalRole(u.role),
         email: u.email,
+        teamId: u.teamId || "",
+        teamName: teamNameById[String(u.teamId || "")] || "Sem equipe",
         lastLoginAt: u.lastLoginAt || "",
         lastSeenAt,
         online
       };
     })
-    .sort((a, b) => Number(b.online) - Number(a.online) || String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
+    .sort((a, b) =>
+      String(a.teamName || "").localeCompare(String(b.teamName || ""), "pt-BR")
+      || Number(b.online) - Number(a.online)
+      || String(a.name || "").localeCompare(String(b.name || ""), "pt-BR")
+    );
 
   return res.json({
     generatedAt: new Date().toISOString(),
