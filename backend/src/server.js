@@ -1351,6 +1351,7 @@ function detectRapidTestCoverage(entries, gestationStartDate) {
 
   for (const entry of entries) {
     const text = normalizeText(`${entry?.title || ""} ${entry?.details || ""}`);
+    const metadataTrimester = normalizeText(entry?.metadata?.rapidTestTrimester || "");
     const hasExamContext = /(teste|exame|sorolog|colet|resultado|solicit|avali|procedimento|vdrl|treponem|fta)/.test(text);
     const hasTarget = /(hiv|sifil|vdrl|treponem|fta)/.test(text);
     if (!hasExamContext || !hasTarget) continue;
@@ -1360,13 +1361,17 @@ function detectRapidTestCoverage(entries, gestationStartDate) {
     if (!hasHiv && !hasSif) continue;
 
     const { explicitFirst, explicitThird } = parseRapidTestTrimester(text);
+    const explicitFirstByMeta = /(first_trimester|primeiro|1o|1º|t1)/.test(metadataTrimester);
+    const explicitThirdByMeta = /(third_trimester|terceiro|3o|3º|t3)/.test(metadataTrimester);
+    const finalExplicitFirst = explicitFirst || explicitFirstByMeta;
+    const finalExplicitThird = explicitThird || explicitThirdByMeta;
     const d = eventDate(entry);
     const week = d ? Math.floor((daysDiff(gestationStartDate, d) || 0) / 7) : null;
     const weekInFirst = week !== null && week >= 0 && week <= 13;
     const weekInThird = week !== null && week >= 28 && week <= 45;
 
-    const markFirst = explicitFirst || (!explicitThird && weekInFirst);
-    const markThird = explicitThird || (!explicitFirst && weekInThird);
+    const markFirst = finalExplicitFirst || (!finalExplicitThird && weekInFirst);
+    const markThird = finalExplicitThird || (!finalExplicitFirst && weekInThird);
 
     if (markFirst) {
       if (hasHiv) coverage.hivFirst = true;

@@ -145,6 +145,8 @@ const el = {
   rTitleInputWrap:          document.getElementById("rTitleInputWrap"),
   rTitleInput:              document.getElementById("rTitleInput"),
   rDetails:                 document.getElementById("rDetails"),
+  rRapidTestTrimesterWrap:  document.getElementById("rRapidTestTrimesterWrap"),
+  rRapidTestTrimester:      document.getElementById("rRapidTestTrimester"),
   rVaccineMultiWrap:        document.getElementById("rVaccineMultiWrap"),
   rVaccineMulti:            document.getElementById("rVaccineMulti"),
   addRecordBtn:             document.getElementById("addRecordBtn"),
@@ -1906,10 +1908,12 @@ function updateRecordTitleControls() {
   const titleOptions = RECORD_TITLES[type] || [];
   const useFreeTitle = ["procedure", "note"].includes(type);
   const useVaccineMulti = type === "vaccine";
+  const useRapidTestTrimester = type === "procedure";
 
   el.rTitleSelectWrap?.classList.toggle("hidden", useFreeTitle || useVaccineMulti);
   el.rTitleInputWrap?.classList.toggle("hidden", !useFreeTitle);
   el.rVaccineMultiWrap?.classList.toggle("hidden", !useVaccineMulti);
+  el.rRapidTestTrimesterWrap?.classList.toggle("hidden", !useRapidTestTrimester);
 
   if (el.rTitleSelect && titleOptions.length) {
     el.rTitleSelect.innerHTML = titleOptions.map((title) => `<option value="${title}">${title}</option>`).join("");
@@ -2651,13 +2655,15 @@ el.addRecordBtn.addEventListener("click", async () => {
           title,
           details,
           protocolTag: state.selectedPatient.careCategory,
-          metadata: {}
+          metadata: (type === "procedure" && el.rRapidTestTrimester?.value)
+            ? { rapidTestTrimester: el.rRapidTestTrimester.value }
+            : {}
         })
       });
       showToast("Registro salvo.", "ok");
     }
 
-    ["rDate","rDetails","rTitleInput"].forEach(id=>{const node = document.getElementById(id); if (node) node.value="";});
+    ["rDate","rDetails","rTitleInput","rRapidTestTrimester"].forEach(id=>{const node = document.getElementById(id); if (node) node.value="";});
     updateRecordTitleControls();
     await refreshSelectedPatientData();
   } catch(e) { showToast(e.message,"error"); }

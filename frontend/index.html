@@ -439,6 +439,14 @@
                   <input id="rTitleInput" class="field-input" placeholder="Descreva o título do registro"/>
                 </div>
                 <div class="field-group"><label class="field-label">Detalhes</label><textarea id="rDetails" class="field-textarea" rows="4" placeholder="Descreva o registro..."></textarea></div>
+                <div id="rRapidTestTrimesterWrap" class="field-group hidden">
+                  <label class="field-label">Período do teste rápido (opcional)</label>
+                  <select id="rRapidTestTrimester" class="field-select">
+                    <option value="">Não informar</option>
+                    <option value="first_trimester">1º trimestre</option>
+                    <option value="third_trimester">3º trimestre</option>
+                  </select>
+                </div>
                 <div id="rVaccineMultiWrap" class="field-group hidden">
                   <label class="field-label">Vacinas (pode selecionar mais de uma)</label>
                   <select id="rVaccineMulti" class="field-select" multiple size="8"></select>
