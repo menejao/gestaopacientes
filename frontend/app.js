@@ -158,6 +158,7 @@ const el = {
   aConduct:                 document.getElementById("aConduct"),
   aNext:                    document.getElementById("aNext"),
   addAppointmentBtn:        document.getElementById("addAppointmentBtn"),
+  addAppointmentAndRecordBtn: document.getElementById("addAppointmentAndRecordBtn"),
   appointmentFormCard:      document.getElementById("appointmentFormCard"),
   tTitle:                   document.getElementById("tTitle"),
   tNotes:                   document.getElementById("tNotes"),
@@ -711,6 +712,7 @@ function applyRolePermissions() {
   if (isManager()) {
     restoreRecordTypeOptions();
     el.addAppointmentBtn.classList.remove("hidden");
+    el.addAppointmentAndRecordBtn?.classList.remove("hidden");
     el.addTaskBtn.classList.remove("hidden");
     el.editPatientBtn.classList.remove("hidden");
     el.deletePatientBtn.classList.remove("hidden");
@@ -735,6 +737,7 @@ function applyRolePermissions() {
   if (isDoctor()) {
     restoreRecordTypeOptions();
     el.addAppointmentBtn.classList.remove("hidden");
+    el.addAppointmentAndRecordBtn?.classList.remove("hidden");
     el.addTaskBtn.classList.remove("hidden");
     el.editPatientBtn.classList.remove("hidden");
     el.deletePatientBtn.classList.remove("hidden");
@@ -757,6 +760,7 @@ function applyRolePermissions() {
   el.editPatientBtn.classList.add("hidden");
   el.deletePatientBtn.classList.add("hidden");
   el.addAppointmentBtn.classList.add("hidden");
+  el.addAppointmentAndRecordBtn?.classList.add("hidden");
   el.addTaskBtn.classList.add("hidden");
   el.appointmentFormCard.classList.add("hidden");
   el.taskFormCard.classList.add("hidden");
@@ -1838,6 +1842,32 @@ function renderProtocolSummary() {
 }
 
 // -- Render: appointments -------------------------------------------------------
+function prefillRecordFromAppointment(appointment) {
+  if (!appointment) return;
+  restoreRecordTypeOptions();
+  el.rType.value = "consultation";
+  updateRecordTitleControls();
+  if (el.rTitleSelect?.options?.length) {
+    const suggested = isDoctor() ? "Consulta médica" : "Consulta de enfermagem";
+    if ([...el.rTitleSelect.options].some((opt) => opt.value === suggested)) {
+      el.rTitleSelect.value = suggested;
+    }
+  }
+  el.rDate.value = toDateInputValue(appointment.date);
+  el.rDetails.value = [
+    `Origem do atendimento: ${appointment.summary || "Sem resumo"}`,
+    appointment.conduct ? `Conduta: ${appointment.conduct}` : "",
+    appointment.nextStep ? `Próximo passo: ${appointment.nextStep}` : ""
+  ].filter(Boolean).join("\n");
+  _recordDraftMetadata = {
+    sourceAppointmentId: String(appointment.id || "").trim(),
+    sourceDemandType: appointment.demandType || "",
+    sourceAppointmentDate: appointment.date || ""
+  };
+  switchToTab("panelRecord");
+  showToast("Atendimento carregado no formulário de registro.", "ok");
+}
+
 function renderAppointments() {
   el.appointmentList.innerHTML = "";
   if (!state.appointments.length) { el.appointmentList.innerHTML='<div class="empty-msg">Nenhum atendimento.</div>'; return; }
@@ -1885,28 +1915,7 @@ function renderAppointments() {
         return;
       }
 
-      restoreRecordTypeOptions();
-      el.rType.value = "consultation";
-      updateRecordTitleControls();
-      if (el.rTitleSelect?.options?.length) {
-        const suggested = isDoctor() ? "Consulta médica" : "Consulta de enfermagem";
-        if ([...el.rTitleSelect.options].some((opt) => opt.value === suggested)) {
-          el.rTitleSelect.value = suggested;
-        }
-      }
-      el.rDate.value = toDateInputValue(appointment.date);
-      el.rDetails.value = [
-        `Origem do atendimento: ${appointment.summary || "Sem resumo"}`,
-        appointment.conduct ? `Conduta: ${appointment.conduct}` : "",
-        appointment.nextStep ? `Próximo passo: ${appointment.nextStep}` : ""
-      ].filter(Boolean).join("\n");
-      _recordDraftMetadata = {
-        sourceAppointmentId: appointmentId,
-        sourceDemandType: appointment.demandType || "",
-        sourceAppointmentDate: appointment.date || ""
-      };
-      switchToTab("panelRecord");
-      showToast("Atendimento carregado no formulário de registro.", "ok");
+      prefillRecordFromAppointment(appointment);
     });
   });
 }
@@ -2946,22 +2955,37 @@ el.addRecordBtn.addEventListener("click", async () => {
   } catch(e) { showToast(e.message,"error"); }
 });
 
+async function submitAppointmentAndMaybeGenerateRecord(generateRecord = false) {
+  if (!state.selectedPatient || (!isManager() && !isDoctor())) return;
+  const payload = {
+    date: el.aDate.value,
+    demandType: el.aDemandType?.value || "scheduled",
+    summary: el.aSummary.value,
+    conduct: el.aConduct.value,
+    nextStep: el.aNext.value
+  };
+  const appointment = await api(`/patients/${state.selectedPatient.id}/appointments`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  ["aDate", "aSummary", "aConduct", "aNext"].forEach((id) => { const node = document.getElementById(id); if (node) node.value = ""; });
+  if (el.aDemandType) el.aDemandType.value = "scheduled";
+  showToast(generateRecord ? "Atendimento registrado e pronto para gerar registro clínico." : "Atendimento registrado.", "ok");
+  await refreshSelectedPatientData();
+  await loadMonthlyDemandMetric();
+  if (generateRecord) prefillRecordFromAppointment(appointment);
+}
+
 el.addAppointmentBtn.addEventListener("click", async () => {
-  if (!state.selectedPatient || (!isManager()&&!isDoctor())) return;
   try {
-    await api(`/patients/${state.selectedPatient.id}/appointments`, { method:"POST", body:JSON.stringify({
-      date:el.aDate.value,
-      demandType: el.aDemandType?.value || "scheduled",
-      summary:el.aSummary.value,
-      conduct:el.aConduct.value,
-      nextStep:el.aNext.value
-    })});
-    ["aDate","aSummary","aConduct","aNext"].forEach(id=>{document.getElementById(id).value="";});
-    if (el.aDemandType) el.aDemandType.value = "scheduled";
-    showToast("Atendimento registrado.","ok");
-    await refreshSelectedPatientData();
-    await loadMonthlyDemandMetric();
-  } catch(e) { showToast(e.message,"error"); }
+    await submitAppointmentAndMaybeGenerateRecord(false);
+  } catch (e) { showToast(e.message, "error"); }
+});
+
+el.addAppointmentAndRecordBtn?.addEventListener("click", async () => {
+  try {
+    await submitAppointmentAndMaybeGenerateRecord(true);
+  } catch (e) { showToast(e.message, "error"); }
 });
 
 el.addTaskBtn.addEventListener("click", async () => {
