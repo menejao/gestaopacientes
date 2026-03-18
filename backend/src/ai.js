@@ -209,6 +209,128 @@ function teamPriorities(items) {
   return ranked.slice(0, 20);
 }
 
+function normalizeQueryText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function parseMonthKey(input = "") {
+  const raw = String(input || "").trim();
+  if (/^\d{4}-\d{2}$/.test(raw)) return raw;
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthKeyFromDate(value) {
+  const d = toDateSafe(value);
+  if (!d) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function computeDemandMetrics(items, month = "") {
+  const key = parseMonthKey(month);
+  let scheduled = 0;
+  let spontaneous = 0;
+  for (const context of items) {
+    for (const ap of context.appointments || []) {
+      if (monthKeyFromDate(ap.date || ap.createdAt) !== key) continue;
+      const type = normalizeQueryText(ap.demandType);
+      if (type.includes("spont")) spontaneous += 1;
+      else scheduled += 1;
+    }
+  }
+  const total = scheduled + spontaneous;
+  const ratioScheduled = total > 0 ? Number(((scheduled / total) * 100).toFixed(2)) : 0;
+  const status = total === 0 ? "no_data" : (ratioScheduled < 50 || ratioScheduled > 70 ? "out_of_range" : "in_range");
+  return {
+    month: key,
+    totals: { scheduled, spontaneous, total },
+    ratioScheduled,
+    target: { min: 50, max: 70 },
+    status
+  };
+}
+
+function detectChartInconsistencies(items) {
+  const findings = [];
+  const cpfMap = new Map();
+  const cnsMap = new Map();
+
+  for (const context of items) {
+    const p = context.patient;
+    const patientId = p.id;
+    const patientName = p.name;
+
+    const cpf = String(p.cpf || "").replace(/\D/g, "");
+    const cns = String(p.cns || "").replace(/\D/g, "");
+    if (cpf) cpfMap.set(cpf, [...(cpfMap.get(cpf) || []), { patientId, patientName }]);
+    if (cns) cnsMap.set(cns, [...(cnsMap.get(cns) || []), { patientId, patientName }]);
+
+    const linkedAppointmentIds = new Set(
+      (context.history || [])
+        .map((h) => String(h?.metadata?.sourceAppointmentId || "").trim())
+        .filter(Boolean)
+    );
+
+    const unlinkedOldAppointments = (context.appointments || []).filter((a) => {
+      const id = String(a.id || "").trim();
+      if (!id || linkedAppointmentIds.has(id)) return false;
+      const days = daysBetween(toDateSafe(a.date || a.createdAt));
+      return days !== null && days > 2;
+    });
+    if (unlinkedOldAppointments.length > 0) {
+      findings.push({
+        patientId,
+        patientName,
+        issue: `${unlinkedOldAppointments.length} atendimento(s) sem registro clínico vinculado`,
+        severity: "medium",
+        domain: "consistency"
+      });
+    }
+
+    const futureRecords = (context.history || []).filter((h) => {
+      const d = toDateSafe(h.date || h.createdAt);
+      return d && d.getTime() > Date.now() + (24 * 60 * 60 * 1000);
+    });
+    if (futureRecords.length > 0) {
+      findings.push({
+        patientId,
+        patientName,
+        issue: `${futureRecords.length} registro(s) com data futura`,
+        severity: "high",
+        domain: "consistency"
+      });
+    }
+  }
+
+  for (const [, patients] of cpfMap) {
+    if (patients.length < 2) continue;
+    const names = patients.map((i) => i.patientName).join(", ");
+    findings.push({
+      patientId: patients[0].patientId,
+      patientName: patients[0].patientName,
+      issue: `CPF duplicado entre pacientes: ${names}`,
+      severity: "high",
+      domain: "consistency"
+    });
+  }
+  for (const [, patients] of cnsMap) {
+    if (patients.length < 2) continue;
+    const names = patients.map((i) => i.patientName).join(", ");
+    findings.push({
+      patientId: patients[0].patientId,
+      patientName: patients[0].patientName,
+      issue: `CNS duplicado entre pacientes: ${names}`,
+      severity: "high",
+      domain: "consistency"
+    });
+  }
+
+  return findings;
+}
+
 function dataQualityChecks(items) {
   const findings = [];
   for (const context of items) {
@@ -222,10 +344,10 @@ function dataQualityChecks(items) {
       findings.push({ patientId: p.id, patientName: p.name, issue: `Sem registro há ${r.daysNoEvent} dias`, severity: "high" });
     }
   }
-  return findings;
+  return [...findings, ...detectChartInconsistencies(items)];
 }
 
-function teamReport(items) {
+function teamReport(items, options = {}) {
   const total = items.length;
   const byCategory = {};
   let overdueTasks = 0;
@@ -239,22 +361,63 @@ function teamReport(items) {
     overdueTasks += risk.overdueTasks;
   }
 
+  const demand = computeDemandMetrics(items, options.month);
+  const inconsistencies = detectChartInconsistencies(items);
+  const severeInconsistencies = inconsistencies.filter((f) => f.severity === "high").length;
+  const demandSummary = demand.status === "no_data"
+    ? `Sem atendimentos no mês ${demand.month}.`
+    : `Demanda programada em ${demand.ratioScheduled}% no mês ${demand.month} (meta: 50-70%).`;
+
   return {
     generatedAt: new Date().toISOString(),
     totals: { patients: total, highRiskPatients: highRisk, overdueTasks },
     byCategory,
-    executiveSummary: `Equipe com ${total} paciente(s), ${highRisk} em alto risco e ${overdueTasks} tarefa(s) atrasada(s).`,
+    monthlyDemand: demand,
+    dataConsistency: {
+      totalFindings: inconsistencies.length,
+      highSeverityFindings: severeInconsistencies
+    },
+    executiveSummary: `Equipe com ${total} paciente(s), ${highRisk} em alto risco, ${overdueTasks} tarefa(s) atrasada(s). ${demandSummary} Inconsistências críticas: ${severeInconsistencies}.`,
     recommendations: [
       "Priorizar pacientes de alto risco para contato em 48h.",
       "Revisar tarefas atrasadas em reunião rápida da equipe.",
-      "Atualizar protocolos de categorias com maior pendência."
+      demand.status === "out_of_range"
+        ? "Ajustar agenda mensal para manter demanda programada entre 50% e 70%."
+        : "Manter monitoramento da proporção entre demanda programada e espontânea.",
+      inconsistencies.length
+        ? "Corrigir inconsistências de prontuário e vínculos de atendimento com registro clínico."
+        : "Manter rotina de auditoria de dados para prevenir inconsistências."
     ]
   };
 }
 
 function chatAnswer(question, contexts) {
-  const q = String(question || "").toLowerCase();
+  const originalQ = String(question || "").trim();
+  const q = normalizeQueryText(originalQ);
   if (!q.trim()) return { answer: "Envie uma pergunta para o assistente.", references: [] };
+
+  if (/inconsisten|prontuar|erro de dado|duplicad/.test(q)) {
+    const inconsistencies = detectChartInconsistencies(contexts).slice(0, 12);
+    if (!inconsistencies.length) {
+      return { answer: "Não encontrei inconsistências de prontuário no recorte atual.", references: [] };
+    }
+    return {
+      answer: `Inconsistências encontradas: ${inconsistencies.map((i) => `${i.patientName} (${i.issue})`).join("; ")}.`,
+      references: inconsistencies.map((i) => i.patientName)
+    };
+  }
+
+  if (/demanda|agendada|espontan/.test(q) && /mes|mensal|percent|%/.test(q)) {
+    const monthMatch = originalQ.match(/\b\d{4}-\d{2}\b/);
+    const demand = computeDemandMetrics(contexts, monthMatch?.[0] || "");
+    if (demand.status === "no_data") {
+      return { answer: `Sem atendimentos lançados no mês ${demand.month}.`, references: [] };
+    }
+    return {
+      answer: `No mês ${demand.month}: programada ${demand.totals.scheduled}, espontânea ${demand.totals.spontaneous}, proporção programada ${demand.ratioScheduled}% (meta 50-70%).`,
+      references: []
+    };
+  }
 
   if (q.includes("gestante")) {
     const gest = contexts.filter((c) => c.patient.careCategory === "pregnant").map((c) => c.patient.name);
@@ -270,6 +433,29 @@ function chatAnswer(question, contexts) {
     return {
       answer: `Pendências encontradas: ${pendentes.map((p) => `${p.name} (V:${p.pending.visits || 0}, C:${p.pending.consultations || 0}, Vac:${p.pending.vaccines || 0})`).join("; ")}.`,
       references: pendentes.map((p) => p.name)
+    };
+  }
+
+  if (/risco alto|alto risco|prioridade/.test(q)) {
+    const high = teamPriorities(contexts).filter((p) => p.risk.level === "alto").slice(0, 12);
+    if (!high.length) return { answer: "Não há pacientes em alto risco no momento.", references: [] };
+    return {
+      answer: `Pacientes em alto risco: ${high.map((p) => `${p.patientName} (${p.risk.score})`).join(", ")}.`,
+      references: high.map((p) => p.patientName)
+    };
+  }
+
+  if (/sem telefone|telefone ausente|sem endereco|endereco ausente|sem acs/.test(q)) {
+    const quality = dataQualityChecks(contexts);
+    const filtered = quality.filter((f) =>
+      (/telefone/.test(q) && /telefone/i.test(f.issue))
+      || (/endereco/.test(q) && /endere/i.test(f.issue))
+      || (/sem acs/.test(q) && /acs/i.test(f.issue))
+    ).slice(0, 12);
+    if (!filtered.length) return { answer: "Não encontrei pacientes com esse tipo de pendência.", references: [] };
+    return {
+      answer: `Pendências encontradas: ${filtered.map((f) => `${f.patientName} (${f.issue})`).join("; ")}.`,
+      references: filtered.map((f) => f.patientName)
     };
   }
 

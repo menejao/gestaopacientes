@@ -4242,7 +4242,8 @@ app.post("/ai/team/report", async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const contexts = buildAiTeamContexts(db, req.user);
-  return res.json(teamReport(contexts));
+  const month = String(req.body?.month || "").trim();
+  return res.json(teamReport(contexts, { month }));
 });
 
 app.post("/ai/chat", async (req, res) => {
