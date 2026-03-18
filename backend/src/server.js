@@ -1332,6 +1332,55 @@ function isClinicalConsultation(entry) {
   return false;
 }
 
+function parseRapidTestTrimester(text = "") {
+  const firstTrimesterPattern = /(?:\b1\s*(?:o|º)?\b|\bprimeir[oa]\b|\bt1\b)\s*(?:trim|trimestre|semestre)|(?:trim|trimestre|semestre)\s*(?:\b1\s*(?:o|º)?\b|\bprimeir[oa]\b|\bt1\b)/;
+  const thirdTrimesterPattern = /(?:\b3\s*(?:o|º)?\b|\bterceir[oa]\b|\bt3\b)\s*(?:trim|trimestre|semestre)|(?:trim|trimestre|semestre)\s*(?:\b3\s*(?:o|º)?\b|\bterceir[oa]\b|\bt3\b)/;
+  return {
+    explicitFirst: firstTrimesterPattern.test(text),
+    explicitThird: thirdTrimesterPattern.test(text)
+  };
+}
+
+function detectRapidTestCoverage(entries, gestationStartDate) {
+  const coverage = {
+    hivFirst: false,
+    sifFirst: false,
+    hivThird: false,
+    sifThird: false
+  };
+
+  for (const entry of entries) {
+    const text = normalizeText(`${entry?.title || ""} ${entry?.details || ""}`);
+    const hasExamContext = /(teste|exame|sorolog|colet|resultado|solicit|avali|procedimento|vdrl|treponem|fta)/.test(text);
+    const hasTarget = /(hiv|sifil|vdrl|treponem|fta)/.test(text);
+    if (!hasExamContext || !hasTarget) continue;
+
+    const hasHiv = /(hiv|anti hiv|hiv 1|hiv 2)/.test(text);
+    const hasSif = /(sifil|sifilis|vdrl|treponem|fta)/.test(text);
+    if (!hasHiv && !hasSif) continue;
+
+    const { explicitFirst, explicitThird } = parseRapidTestTrimester(text);
+    const d = eventDate(entry);
+    const week = d ? Math.floor((daysDiff(gestationStartDate, d) || 0) / 7) : null;
+    const weekInFirst = week !== null && week >= 0 && week <= 13;
+    const weekInThird = week !== null && week >= 28 && week <= 45;
+
+    const markFirst = explicitFirst || (!explicitThird && weekInFirst);
+    const markThird = explicitThird || (!explicitFirst && weekInThird);
+
+    if (markFirst) {
+      if (hasHiv) coverage.hivFirst = true;
+      if (hasSif) coverage.sifFirst = true;
+    }
+    if (markThird) {
+      if (hasHiv) coverage.hivThird = true;
+      if (hasSif) coverage.sifThird = true;
+    }
+  }
+
+  return coverage;
+}
+
 function eventDate(entry) {
   return toDateOnlySafe(entry?.date || entry?.createdAt || "");
 }
@@ -1621,20 +1670,12 @@ function evaluatePregnantProtocol(patient, history) {
     }));
   }
 
-  const testEntries = [...consultations, ...procedures, ...pregnancyHistory];
-  const hasTestContext = (text) => /teste|teste rapido|sorolog|solicit|colet|avali|resultado|exame/.test(text);
-  const testInWindow = (regex, fromWeek, toWeek) => testEntries.some((h) => {
-    const d = eventDate(h);
-    if (!d) return false;
-    const week = Math.floor((daysDiff(timeline.start, d) || 0) / 7);
-    const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
-    return week >= fromWeek && week <= toWeek && hasTestContext(text) && regex.test(text);
-  });
-
-  const hivFirst = testInWindow(/hiv/, 0, 13);
-  const sifFirst = testInWindow(/sifil|sifilis|syphilis/, 0, 13);
-  const hivThird = testInWindow(/hiv/, 28, 45);
-  const sifThird = testInWindow(/sifil|sifilis|syphilis/, 28, 45);
+  const testEntries = [...procedures, ...pregnancyHistory];
+  const rapidTests = detectRapidTestCoverage(testEntries, timeline.start);
+  const hivFirst = rapidTests.hivFirst;
+  const sifFirst = rapidTests.sifFirst;
+  const hivThird = rapidTests.hivThird;
+  const sifThird = rapidTests.sifThird;
 
   if (weeks > 13 && (!hivFirst || !sifFirst)) {
     const overdueFirstTrimesterDays = Math.max((weeks - 13) * 7, 0);
