@@ -318,7 +318,8 @@ function ensureDbShape(db) {
   if (!db.protocolTemplates.length) {
     db.protocolTemplates = buildDefaultProtocolTemplates();
   } else {
-    const defaultsByCategory = Object.fromEntries(buildDefaultProtocolTemplates().map((t) => [t.category, t]));
+    const defaultTemplates = buildDefaultProtocolTemplates();
+    const defaultsByCategory = Object.fromEntries(defaultTemplates.map((t) => [t.category, t]));
     db.protocolTemplates = db.protocolTemplates
       .map((t) => ({
         ...t,
@@ -331,6 +332,17 @@ function ensureDbShape(db) {
         reference: String(t.reference || defaultsByCategory[t.category]?.reference || ""),
         version: String(t.version || defaultsByCategory[t.category]?.version || "1.0")
       }));
+
+    // Garante que toda categoria padrão exista ao menos no template global.
+    const hasGlobalByCategory = new Set(
+      db.protocolTemplates
+        .filter((t) => !t.teamId)
+        .map((t) => String(t.category || ""))
+    );
+    for (const template of defaultTemplates) {
+      if (hasGlobalByCategory.has(template.category)) continue;
+      db.protocolTemplates.push({ ...template });
+    }
   }
 
   db.patients = db.patients.map((p) => ({
