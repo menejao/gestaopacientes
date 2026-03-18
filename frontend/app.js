@@ -19,7 +19,7 @@ const state = {
   demandMonthly: null,
   editingPatientId: null,
   editingProtocolCategory: null,
-  navSection: "patients",
+  navSection: "dashboard",
   workspaceTab: "dashboard",
   dashboardQuery: "",
   dashboardSort: "name_asc",
@@ -74,6 +74,7 @@ const el = {
   sidebar:                  document.querySelector(".sidebar"),
   patientList:              document.getElementById("patientList"),
   patientCount:             document.getElementById("patientCount"),
+  navDashboardBtn:          document.getElementById("navDashboardBtn"),
   navPatientsBtn:           document.getElementById("navPatientsBtn"),
   navProtocolsBtn:          document.getElementById("navProtocolsBtn"),
   navAcsBtn:                document.getElementById("navAcsBtn"),
@@ -1169,7 +1170,7 @@ async function loadProtocolStatusesForDashboard() {
 }
 
 function goHomeDashboard() {
-  switchNavSection("patients");
+  switchNavSection("dashboard");
   switchWorkspaceTab("dashboard");
   state.selectedPatient = null;
   renderPatients();
@@ -1232,9 +1233,9 @@ function switchWorkspaceTab(tab) {
   el.homeTabProtocolsBtn.classList.toggle("hidden", !allowProtocols);
   el.homeTabDashboardBtn.classList.toggle("active", state.workspaceTab === "dashboard");
   el.homeTabProtocolsBtn.classList.toggle("active", state.workspaceTab === "protocols");
-  el.homeDashboardPane.classList.toggle("hidden", state.workspaceTab !== "dashboard");
-  el.homePatientsPane.classList.toggle("hidden", state.workspaceTab !== "dashboard");
-  el.protocolAdminSection.classList.toggle("hidden", state.workspaceTab !== "protocols");
+  if (state.navSection === "dashboard") {
+    el.homeDashboardPane.classList.toggle("hidden", state.workspaceTab !== "dashboard");
+  }
   persistViewState();
 }
 
@@ -1273,14 +1274,15 @@ function renderTeamUsersLists() {
 
 function switchNavSection(section) {
   const isMgr = isManager();
-  const next = String(section || "patients");
-  const allowed = ["patients", "protocols", "acs", "doctors", "ai"];
-  state.navSection = allowed.includes(next) ? next : "patients";
+  const next = String(section || "dashboard");
+  const allowed = ["dashboard", "patients", "protocols", "acs", "doctors", "ai"];
+  state.navSection = allowed.includes(next) ? next : "dashboard";
 
   if (!isMgr && ["protocols", "acs", "doctors", "ai"].includes(state.navSection)) {
-    state.navSection = "patients";
+    state.navSection = "dashboard";
   }
 
+  el.navDashboardBtn.classList.toggle("active", state.navSection === "dashboard");
   el.navPatientsBtn.classList.toggle("active", state.navSection === "patients");
   el.navProtocolsBtn.classList.toggle("active", state.navSection === "protocols");
   el.navAcsBtn.classList.toggle("active", state.navSection === "acs");
@@ -1294,18 +1296,16 @@ function switchNavSection(section) {
 
   el.openCreateUserModalBtn.classList.toggle("hidden", !isMgr);
 
+  const showDashboardWorkspace = state.navSection === "dashboard";
   const showPatientsWorkspace = state.navSection === "patients";
-  el.homeDashboardPane.classList.toggle("hidden", !showPatientsWorkspace || state.workspaceTab !== "dashboard");
-  el.homePatientsPane.classList.toggle("hidden", !showPatientsWorkspace || state.workspaceTab !== "dashboard");
+  el.homeDashboardPane.classList.toggle("hidden", !showDashboardWorkspace || state.workspaceTab !== "dashboard");
+  el.homePatientsPane.classList.toggle("hidden", !showPatientsWorkspace);
   el.protocolAdminSection.classList.toggle("hidden", state.navSection !== "protocols");
   el.acsAdminSection.classList.toggle("hidden", state.navSection !== "acs");
   el.doctorsAdminSection.classList.toggle("hidden", state.navSection !== "doctors");
   el.aiHubSection.classList.toggle("hidden", state.navSection !== "ai");
 
-  if (state.navSection === "patients") {
-    switchWorkspaceTab("dashboard");
-  }
-  if (showPatientsWorkspace && !["dashboard", "protocols"].includes(state.workspaceTab)) {
+  if (state.navSection === "dashboard") {
     switchWorkspaceTab("dashboard");
   }
   if (isMobileLayout()) closeSidebarDrawer();
@@ -1944,7 +1944,7 @@ async function bootstrapAfterLogin() {
   if (el.topFilterAcs) el.topFilterAcs.value = "";
   if (el.topFilterCategory) el.topFilterCategory.value = "";
   switchWorkspaceTab(state.workspaceTab);
-  switchNavSection(savedView?.navSection || "patients");
+  switchNavSection(savedView?.navSection || "dashboard");
   await loadPatients();
   await loadGlobalTasks();
   await loadMonthlyDemandMetric();
@@ -2045,6 +2045,7 @@ el.quickSelectFirstPatientBtn?.addEventListener("click", () => {
   openPatientCreateModal();
 });
 
+el.navDashboardBtn?.addEventListener("click", () => switchNavSection("dashboard"));
 el.navPatientsBtn?.addEventListener("click", () => switchNavSection("patients"));
 el.navProtocolsBtn?.addEventListener("click", () => switchNavSection("protocols"));
 el.navAcsBtn?.addEventListener("click", () => switchNavSection("acs"));
