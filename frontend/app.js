@@ -1889,30 +1889,47 @@ function renderProtocolSummary() {
 }
 
 // -- Render: appointments -------------------------------------------------------
-function prefillRecordFromAppointment(appointment) {
-  if (!appointment) return;
-  restoreRecordTypeOptions();
-  el.rType.value = "consultation";
-  updateRecordTitleControls();
-  if (el.rTitleSelect?.options?.length) {
-    const suggested = isDoctor() ? "Consulta médica" : "Consulta de enfermagem";
-    if ([...el.rTitleSelect.options].some((opt) => opt.value === suggested)) {
-      el.rTitleSelect.value = suggested;
+function buildRecordPayloadFromAppointment(appointment) {
+  const sourceAppointmentId = String(appointment?.id || "").trim();
+  const title = isDoctor() ? "Consulta médica" : "Consulta de enfermagem";
+  return {
+    type: "consultation",
+    date: toDateInputValue(appointment?.date) || toDateInputValue(new Date()),
+    title,
+    details: [
+      `Origem do atendimento: ${appointment?.summary || "Sem resumo"}`,
+      appointment?.conduct ? `Conduta: ${appointment.conduct}` : "",
+      appointment?.nextStep ? `Próximo passo: ${appointment.nextStep}` : ""
+    ].filter(Boolean).join("\n"),
+    protocolTag: state.selectedPatient?.careCategory,
+    metadata: {
+      sourceAppointmentId,
+      sourceDemandType: appointment?.demandType || "",
+      sourceAppointmentDate: appointment?.date || ""
     }
-  }
-  el.rDate.value = toDateInputValue(appointment.date);
-  el.rDetails.value = [
-    `Origem do atendimento: ${appointment.summary || "Sem resumo"}`,
-    appointment.conduct ? `Conduta: ${appointment.conduct}` : "",
-    appointment.nextStep ? `Próximo passo: ${appointment.nextStep}` : ""
-  ].filter(Boolean).join("\n");
-  _recordDraftMetadata = {
-    sourceAppointmentId: String(appointment.id || "").trim(),
-    sourceDemandType: appointment.demandType || "",
-    sourceAppointmentDate: appointment.date || ""
   };
-  switchToTab("panelRecord");
-  showToast("Atendimento carregado no formulário de registro.", "ok");
+}
+
+async function createClinicalRecordFromAppointment(appointment) {
+  if (!appointment || !state.selectedPatient) return false;
+  const appointmentId = String(appointment.id || "").trim();
+  if (!appointmentId) return false;
+  const alreadyLinked = (state.history || []).some((h) =>
+    h?.source === "clinicalRecord" && String(h?.metadata?.sourceAppointmentId || "").trim() === appointmentId
+  );
+  if (alreadyLinked) {
+    showToast("Este atendimento já possui registro clínico vinculado.", "error");
+    return false;
+  }
+  const payload = buildRecordPayloadFromAppointment(appointment);
+  await api(`/patients/${state.selectedPatient.id}/records`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  _recordDraftMetadata = null;
+  await refreshSelectedPatientData();
+  showToast("Registro clínico criado automaticamente.", "ok");
+  return true;
 }
 
 function renderAppointments() {
@@ -1949,20 +1966,14 @@ function renderAppointments() {
   });
 
   document.querySelectorAll(".appt-to-record-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const appointment = state.appointments.find((item) => item.id === btn.dataset.appointmentId);
       if (!appointment) return;
-
-      const appointmentId = String(appointment.id || "").trim();
-      const alreadyLinked = (state.history || []).some((h) =>
-        h?.source === "clinicalRecord" && String(h?.metadata?.sourceAppointmentId || "").trim() === appointmentId
-      );
-      if (alreadyLinked) {
-        showToast("Este atendimento já possui registro clínico vinculado.", "error");
-        return;
+      try {
+        await createClinicalRecordFromAppointment(appointment);
+      } catch (e) {
+        showToast(e.message, "error");
       }
-
-      prefillRecordFromAppointment(appointment);
     });
   });
 }
@@ -3055,10 +3066,10 @@ async function submitAppointmentAndMaybeGenerateRecord(generateRecord = false) {
   });
   ["aDate", "aSummary", "aConduct", "aNext"].forEach((id) => { const node = document.getElementById(id); if (node) node.value = ""; });
   if (el.aDemandType) el.aDemandType.value = "scheduled";
-  showToast(generateRecord ? "Atendimento registrado e pronto para gerar registro clínico." : "Atendimento registrado.", "ok");
+  showToast("Atendimento registrado.", "ok");
   await refreshSelectedPatientData();
   await loadMonthlyDemandMetric();
-  if (generateRecord) prefillRecordFromAppointment(appointment);
+  if (generateRecord) await createClinicalRecordFromAppointment(appointment);
 }
 
 el.addAppointmentBtn.addEventListener("click", async () => {
