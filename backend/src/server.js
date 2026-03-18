@@ -733,13 +733,15 @@ function getCouncilIntegrationConfig() {
   const token = String(process.env.COUNCIL_VERIFY_TOKEN || "").trim();
   const timeoutMs = Number(process.env.COUNCIL_VERIFY_TIMEOUT_MS || 7000);
   const provider = String(process.env.COUNCIL_VERIFY_PROVIDER || "generic").trim().toLowerCase();
+  const requireEvidence = String(process.env.COUNCIL_VERIFY_REQUIRE_EVIDENCE || "true").trim().toLowerCase();
 
   return {
     mode: ["off", "optional", "required"].includes(mode) ? mode : "optional",
     provider: ["generic", "n8n", "make"].includes(provider) ? provider : "generic",
     url,
     token,
-    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 1000 ? timeoutMs : 7000
+    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 1000 ? timeoutMs : 7000,
+    requireEvidence: !["0", "false", "no", "off"].includes(requireEvidence)
   };
 }
 
@@ -771,6 +773,56 @@ function normalizeProviderResponse(provider, data) {
     provider: data?.provider || "external-http",
     error: data?.error || "",
     details: data
+  };
+}
+
+function pickFirstValue(source, keys = []) {
+  if (!source || typeof source !== "object") return "";
+  for (const key of keys) {
+    const value = source[key];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
+function normalizeCouncilEvidence(details = {}) {
+  const flat = details && typeof details === "object" ? details : {};
+  const numberRaw = pickFirstValue(flat, [
+    "councilNumber",
+    "council_number",
+    "registrationNumber",
+    "registration_number",
+    "number",
+    "crm",
+    "coren"
+  ]);
+  const ufRaw = pickFirstValue(flat, [
+    "councilUf",
+    "council_uf",
+    "registrationUf",
+    "registration_uf",
+    "uf",
+    "state"
+  ]);
+  const statusRaw = pickFirstValue(flat, [
+    "status",
+    "registrationStatus",
+    "registration_status",
+    "situation"
+  ]);
+  const professionalName = pickFirstValue(flat, [
+    "professionalName",
+    "professional_name",
+    "name",
+    "fullName",
+    "full_name"
+  ]);
+
+  return {
+    number: numberRaw.replace(/\D/g, ""),
+    uf: ufRaw.toUpperCase(),
+    status: statusRaw,
+    professionalName
   };
 }
 
@@ -844,6 +896,31 @@ async function verifyCouncilExternally(payload) {
         provider: data.provider || "external-http",
         status: "fallback"
       };
+    }
+
+    if (normalized.valid && config.requireEvidence) {
+      const evidence = normalizeCouncilEvidence(normalized.details);
+      if (!evidence.number || !evidence.uf) {
+        return {
+          checked: true,
+          valid: false,
+          provider: normalized.provider,
+          status: "rejected",
+          error: "Provedor nao retornou evidencia minima do conselho"
+        };
+      }
+
+      const expectedNumber = String(payload.councilNumber || "").replace(/\D/g, "");
+      const expectedUf = String(payload.councilUf || "").trim().toUpperCase();
+      if (evidence.number !== expectedNumber || evidence.uf !== expectedUf) {
+        return {
+          checked: true,
+          valid: false,
+          provider: normalized.provider,
+          status: "rejected",
+          error: "Conselho retornado pelo provedor nao confere com numero/UF informados"
+        };
+      }
     }
 
     return {
@@ -1066,7 +1143,8 @@ app.get("/integrations/council/status", (_req, res) => {
     mode: config.mode,
     provider: config.provider,
     configured: Boolean(config.url),
-    timeoutMs: config.timeoutMs
+    timeoutMs: config.timeoutMs,
+    requireEvidence: config.requireEvidence
   });
 });
 
@@ -1306,28 +1384,35 @@ app.patch("/me", async (req, res) => {
         return { error: { status: 409, message: `${councilType} ja cadastrado para outro usuario` } };
       }
 
-      const external = await verifyCouncilExternally({
-        role,
-        councilType,
-        councilNumber: localCheck.councilNumber,
-        councilUf: localCheck.councilUf,
-        name: next.name,
-        email: next.email
-      });
+      const unchangedCouncil = String(current.councilType || "").toUpperCase() === String(councilType || "").toUpperCase()
+        && String(current.councilNumber || "") === String(localCheck.councilNumber || "")
+        && String(current.councilUf || "").toUpperCase() === String(localCheck.councilUf || "").toUpperCase();
 
-      if (!external.valid) {
-        return { error: { status: 400, message: external.error || "Conselho nao validado no provedor externo" } };
+      if (!unchangedCouncil) {
+        const external = await verifyCouncilExternally({
+          role,
+          councilType,
+          councilNumber: localCheck.councilNumber,
+          councilUf: localCheck.councilUf,
+          name: next.name,
+          email: next.email
+        });
+
+        if (!external.valid) {
+          return { error: { status: 400, message: external.error || "Conselho nao validado no provedor externo" } };
+        }
+
+        next.councilVerification = {
+          checked: external.checked,
+          provider: external.provider,
+          status: external.status,
+          verifiedAt: new Date().toISOString()
+        };
       }
 
       next.councilType = councilType;
       next.councilNumber = localCheck.councilNumber;
       next.councilUf = localCheck.councilUf;
-      next.councilVerification = {
-        checked: external.checked,
-        provider: external.provider,
-        status: external.status,
-        verifiedAt: new Date().toISOString()
-      };
     }
 
     next.updatedAt = new Date().toISOString();

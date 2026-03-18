@@ -470,8 +470,8 @@ function updateRegisterFormVisibility() {
   if (needsCouncil) {
     el.councilNumLabel.textContent = `Numero do conselho (${cType})`;
     const maxLen = cType === "CRM" ? 8 : 10;
-    el.registerCouncilNumber.placeholder = cType === "CRM" ? "Ex: 123456" : "Ex: 1234567";
-    el.registerCouncilNumber.maxLength = maxLen;
+    el.registerCouncilNumber.placeholder = cType === "CRM" ? "Ex: 1234 5678" : "Ex: 12345 67890";
+    el.registerCouncilNumber.maxLength = maxLen + 1;
     el.registerCouncilNumber.value = formatCouncilNumber(el.registerCouncilNumber.value, maxLen);
   }
 }
@@ -527,8 +527,15 @@ function fillCouncilUfSelects() {
   fillUfSelect(el.profileCouncilUf);
 }
 
-function formatCouncilNumber(value, maxLen) {
+function councilDigits(value, maxLen) {
   return String(value || "").replace(/\D/g, "").slice(0, Number(maxLen || 10));
+}
+
+function formatCouncilNumber(value, maxLen) {
+  const digits = councilDigits(value, maxLen);
+  const splitIndex = Number(maxLen) === 8 ? 4 : 5;
+  if (digits.length <= splitIndex) return digits;
+  return `${digits.slice(0, splitIndex)} ${digits.slice(splitIndex)}`;
 }
 
 async function reloadTemplateData() {
@@ -861,9 +868,9 @@ function openProfileModal() {
   el.profileCouncilWrap.classList.toggle("hidden", !needsCouncil);
   if (needsCouncil) {
     const maxLen = state.user.role === "doctor" ? 8 : 10;
-    el.profileCouncilNumber.maxLength = maxLen;
-    el.profileCouncilNumber.placeholder = state.user.role === "doctor" ? "Ex: 123456" : "Ex: 1234567";
-    el.profileCouncilNumber.value = state.user.councilNumber || "";
+    el.profileCouncilNumber.maxLength = maxLen + 1;
+    el.profileCouncilNumber.placeholder = state.user.role === "doctor" ? "Ex: 1234 5678" : "Ex: 12345 67890";
+    el.profileCouncilNumber.value = formatCouncilNumber(state.user.councilNumber || "", maxLen);
     el.profileCouncilUf.value = state.user.councilUf || "";
   }
   el.profileModal.classList.remove("hidden");
@@ -1530,8 +1537,8 @@ function updateCreateUserRoleVisibility() {
   const isDoctorRole = el.managerCreateRole.value === "doctor";
   el.managerCreateCouncilWrap.classList.toggle("hidden", !isDoctorRole);
   if (isDoctorRole) {
-    el.managerCreateCouncilNumber.maxLength = 8;
-    el.managerCreateCouncilNumber.placeholder = "Ex: 123456";
+    el.managerCreateCouncilNumber.maxLength = 9;
+    el.managerCreateCouncilNumber.placeholder = "Ex: 1234 5678";
     el.managerCreateCouncilNumber.value = formatCouncilNumber(el.managerCreateCouncilNumber.value, 8);
   }
 }
@@ -1561,7 +1568,7 @@ el.saveCreateUserBtn?.addEventListener("click", async () => {
     };
 
     if (payload.role === "doctor") {
-      payload.councilNumber = formatCouncilNumber(el.managerCreateCouncilNumber.value, 8);
+      payload.councilNumber = councilDigits(el.managerCreateCouncilNumber.value, 8);
       payload.councilUf = String(el.managerCreateCouncilUf.value || "").toUpperCase().trim();
     }
 
@@ -1762,7 +1769,8 @@ el.saveProfileBtn?.addEventListener("click", async () => {
     };
     if (el.profilePassword.value.trim()) payload.password = el.profilePassword.value.trim();
     if (["doctor", "nurse_manager"].includes(state.user.role)) {
-      payload.councilNumber = el.profileCouncilNumber.value.trim();
+      const maxLen = state.user.role === "doctor" ? 8 : 10;
+      payload.councilNumber = councilDigits(el.profileCouncilNumber.value, maxLen);
       payload.councilUf = el.profileCouncilUf.value.trim().toUpperCase();
     }
 
