@@ -62,16 +62,6 @@
               <span class="btn-text">Acessar sistema</span>
               <span class="btn-spin hidden"></span>
             </button>
-            <div id="login2faWrap" class="hidden" style="margin-top:.7rem;">
-              <div class="field-group">
-                <label class="field-label">Código de confirmação (2 fatores)</label>
-                <input id="login2faCode" class="field-input" inputmode="numeric" maxlength="6" placeholder="Digite o código recebido por e-mail"/>
-              </div>
-              <div class="inline-actions" style="justify-content:flex-end;">
-                <button id="loginBackBtn" class="btn-secondary">Voltar</button>
-                <button id="loginVerifyBtn" class="btn-primary">Confirmar login</button>
-              </div>
-            </div>
             <p class="auth-demo">Demo: <code>ana@clinica.local</code> / <code>123456</code></p>
           </div>
 
@@ -92,10 +82,11 @@
                   <p class="field-help">Use mínimo de 8 caracteres com maiúscula, número e símbolo.</p>
                 </div>
               </div>
-            <div class="field-group hidden">
+            <div class="field-group">
               <label class="field-label">Perfil</label>
               <select id="registerRole" class="field-select">
                 <option value="nurse_manager">Enfermeira</option>
+                <option value="doctor">Médico(a)</option>
               </select>
             </div>
             <div id="registerTeamWrap" class="field-group hidden">
@@ -107,7 +98,7 @@
               <input id="registerTeamName" class="field-input" placeholder="Ex: Equipe Norte"/>
             </div>
             <div id="registerCouncilNumberWrap" class="field-group">
-              <label class="field-label" id="councilNumLabel">Número do conselho</label>
+              <label class="field-label" id="councilNumLabel">Conselho</label>
               <input id="registerCouncilNumber" class="field-input" placeholder="Somente números" inputmode="numeric" maxlength="12"/>
             </div>
             <div id="registerCouncilUfWrap" class="field-group">
@@ -118,16 +109,6 @@
               <span class="btn-text">Criar cadastro</span>
               <span class="btn-spin hidden"></span>
             </button>
-            <div id="registerCodeWrap" class="hidden" style="margin-top:.7rem;">
-              <div class="field-group">
-                <label class="field-label">Código de confirmação do cadastro</label>
-                <input id="registerCodeInput" class="field-input" inputmode="numeric" maxlength="6" placeholder="Digite o código enviado por e-mail"/>
-              </div>
-              <div class="inline-actions" style="justify-content:flex-end;">
-                <button id="registerCodeCancelBtn" class="btn-secondary">Cancelar</button>
-                <button id="registerConfirmBtn" class="btn-primary">Confirmar cadastro</button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
