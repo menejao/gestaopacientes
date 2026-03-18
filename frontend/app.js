@@ -1622,16 +1622,50 @@ function renderProtocolSummary() {
     </li>`).join("") || "<li class='vaccine-item'>Sem vacinas recomendadas.</li>";
 
   const specialAlerts = Array.isArray(s.specialAlerts) ? s.specialAlerts : [];
+  const scheduleAlerts = ["visits", "consultations", "vaccines"]
+    .map((key) => ({ key, item: s.schedule?.[key] }))
+    .filter(({ item }) => item && Number(item.pending || 0) > 0 && Number(item.intervalDays || 0) > 0)
+    .map(({ key, item }) => {
+      const labels = { visits: "visita", consultations: "consulta", vaccines: "vacina" };
+      const overdue = Number(item.overdueDays || 0);
+      const daysLeft = item.daysLeft === null || item.daysLeft === undefined ? null : Number(item.daysLeft);
+      let severity = "low";
+      let severityClass = "status progress";
+      if (overdue > 0) {
+        severity = "high";
+        severityClass = "status alert";
+      } else if (daysLeft !== null && daysLeft <= 3) {
+        severity = "high";
+        severityClass = "status alert";
+      } else if (daysLeft !== null && daysLeft <= 7) {
+        severity = "medium";
+        severityClass = "status pending";
+      }
+      const deadlineText = overdue > 0
+        ? `${overdue} dia(s) em atraso`
+        : (daysLeft !== null ? `faltam ${daysLeft} dia(s)` : "prazo em acompanhamento");
+      return {
+        title: `Pendência de ${labels[key]} (${item.pending})`,
+        detail: `Prazo: ${deadlineText}.`,
+        severity,
+        severityClass
+      };
+    });
+  const allPatientAlerts = [...specialAlerts, ...scheduleAlerts];
+  allPatientAlerts.sort((a, b) => {
+    const weight = (x) => (x === "high" ? 3 : (x === "medium" ? 2 : 1));
+    return weight(b.severity || "low") - weight(a.severity || "low");
+  });
   const gestWeeks = Number(s.specialMonitoring?.timeline?.gestationalWeeks);
   const puerDays = Number(s.specialMonitoring?.timeline?.daysAfterBirth);
   const timelineBadge = Number.isFinite(gestWeeks)
     ? `<div class="proto-section-label">Idade gestacional estimada: ${gestWeeks} semana(s)</div>`
     : (Number.isFinite(puerDays) ? `<div class="proto-section-label">Puerpério: ${puerDays} dia(s) pós-parto</div>` : "");
-  const specialHtml = specialAlerts.length
+  const specialHtml = allPatientAlerts.length
     ? `
       <div class="proto-section-label">Alertas clínicos da categoria</div>
       <div class="record-list">
-        ${specialAlerts.map((item) => `
+        ${allPatientAlerts.map((item) => `
           <div class="record-card">
             <div class="record-hd">
               <span class="record-title">${item.title || item.activity || "Alerta do protocolo"}</span>
