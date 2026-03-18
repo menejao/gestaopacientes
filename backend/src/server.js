@@ -1675,7 +1675,7 @@ function evaluatePregnantProtocol(patient, history) {
     }));
   }
 
-  const testEntries = [...procedures, ...pregnancyHistory];
+  const testEntries = [...procedures];
   const rapidTests = detectRapidTestCoverage(testEntries, timeline.start);
   const hivFirst = rapidTests.hivFirst;
   const sifFirst = rapidTests.sifFirst;
