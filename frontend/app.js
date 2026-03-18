@@ -3,6 +3,7 @@ const SESSION_KEY = "saudeubs_session";
 const VIEW_STATE_KEY = "saudeubs_view_state";
 const SESSION_INACTIVITY_MS = 1000 * 60 * 60 * 24 * 7;
 const SESSION_TOUCH_THROTTLE_MS = 30000;
+const PRESENCE_PING_MS = 30000;
 const BRAZIL_UFS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO",
   "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",
@@ -17,6 +18,8 @@ const state = {
   protocolSummary: null, protocolTemplates: [], publicTeams: [],
   protocolByPatient: {},
   demandMonthly: null,
+  teamActivityLog: [],
+  teamActivityWindowSeconds: 120,
   editingPatientId: null,
   editingProtocolCategory: null,
   editingTeamUserId: null,
@@ -185,6 +188,8 @@ const el = {
   kpiDemandAlert:           document.getElementById("kpiDemandAlert"),
   categorySummaryList:      document.getElementById("categorySummaryList"),
   priorityTaskList:         document.getElementById("priorityTaskList"),
+  teamActivityCard:         document.getElementById("teamActivityCard"),
+  teamActivityList:         document.getElementById("teamActivityList"),
   protocolDeadlineAlertsList: document.getElementById("protocolDeadlineAlertsList"),
   homePatientSortSelect:    document.getElementById("homePatientSortSelect"),
   homePatientNameInput:     document.getElementById("homePatientNameInput"),
@@ -287,6 +292,8 @@ let _lastSessionTouchAt = 0;
 let _inactivityTimer = null;
 let _protocolStatusesRequestSeq = 0;
 let _recordDraftMetadata = null;
+let _presencePingTimer = null;
+let _activityLogRefreshTimer = null;
 function showToast(msg, type = "default", ms = 3000) {
   el.toast.textContent = msg;
   el.toast.className = `toast ${type}`;
@@ -336,6 +343,8 @@ function logoutUser(showReason = false) {
   el.createUserModal?.classList.add("hidden");
   el.editTeamUserModal?.classList.add("hidden");
   clearSessionStore();
+  if (_presencePingTimer) { clearInterval(_presencePingTimer); _presencePingTimer = null; }
+  if (_activityLogRefreshTimer) { clearInterval(_activityLogRefreshTimer); _activityLogRefreshTimer = null; }
   updateSessionView();
   if (showReason) showToast("Sessão encerrada por inatividade.", "error", 3500);
 }
@@ -869,6 +878,7 @@ function renderWorkspaceHome() {
 
   renderProtocolDeadlineAlerts();
   renderMonthlyDemandKpi();
+  renderTeamActivityLog();
   renderProtocolAdminList();
   renderDashboardFilterOptions();
   renderHomePatientTable();
@@ -904,6 +914,43 @@ function renderMonthlyDemandKpi() {
     el.kpiDemandAlert.textContent = "Sem dados de atendimentos no mês.";
     el.kpiDemandAlert.style.color = "";
   }
+}
+
+function userRoleLabel(role) {
+  const map = { nurse_manager: "Enfermeira", doctor: "Médico(a)", acs: "ACS" };
+  return map[String(role || "").toLowerCase()] || String(role || "-");
+}
+
+function renderTeamActivityLog() {
+  if (!el.teamActivityCard || !el.teamActivityList) return;
+  const canView = isManager();
+  el.teamActivityCard.classList.toggle("hidden", !canView);
+  if (!canView) return;
+
+  const items = Array.isArray(state.teamActivityLog) ? state.teamActivityLog : [];
+  if (!items.length) {
+    el.teamActivityList.innerHTML = '<div class="empty-msg">Sem dados de atividade no momento.</div>';
+    return;
+  }
+
+  const onlineLabel = state.teamActivityWindowSeconds
+    ? `online <= ${Math.floor(Number(state.teamActivityWindowSeconds || 0) / 60)} min`
+    : "online";
+
+  el.teamActivityList.innerHTML = items.map((u) => {
+    const online = Boolean(u.online);
+    const statusClass = online ? "status done" : "status pending";
+    const statusText = online ? "ONLINE" : "OFFLINE";
+    const seenText = u.lastSeenAt ? new Date(u.lastSeenAt).toLocaleString("pt-BR") : "Sem atividade";
+    return `
+      <div class="home-task-row">
+        <div>
+          <p class="home-task-title">${u.name} <span class="home-task-meta">(${userRoleLabel(u.role)})</span></p>
+          <p class="home-task-meta">${u.email || "-"} | Última atividade: ${seenText}</p>
+        </div>
+        <span class="${statusClass}" title="${onlineLabel}">${statusText}</span>
+      </div>`;
+  }).join("");
 }
 
 function renderProtocolDeadlineAlerts() {
@@ -2140,6 +2187,43 @@ async function loadGlobalTasks() {
   }
   renderWorkspaceHome();
 }
+async function loadTeamActivityLog() {
+  if (!isManager()) {
+    state.teamActivityLog = [];
+    renderTeamActivityLog();
+    return;
+  }
+  try {
+    const payload = await api("/users/activity-log");
+    state.teamActivityLog = Array.isArray(payload?.items) ? payload.items : [];
+    state.teamActivityWindowSeconds = Number(payload?.onlineWindowSeconds || 120);
+  } catch {
+    state.teamActivityLog = [];
+  }
+  renderTeamActivityLog();
+}
+
+async function sendPresencePing() {
+  if (!state.token) return;
+  try { await api("/me/presence", { method: "POST", body: "{}" }); } catch {}
+}
+
+function startPresenceAndActivityTimers() {
+  if (_presencePingTimer) clearInterval(_presencePingTimer);
+  if (_activityLogRefreshTimer) clearInterval(_activityLogRefreshTimer);
+
+  sendPresencePing();
+  _presencePingTimer = setInterval(() => {
+    sendPresencePing();
+  }, PRESENCE_PING_MS);
+
+  if (isManager()) {
+    loadTeamActivityLog();
+    _activityLogRefreshTimer = setInterval(() => {
+      loadTeamActivityLog();
+    }, PRESENCE_PING_MS);
+  }
+}
 async function loadMonthlyDemandMetric() {
   if (!(isManager() || isDoctor())) {
     state.demandMonthly = null;
@@ -2180,6 +2264,7 @@ async function bootstrapAfterLogin() {
   const savedView = readViewState() || {};
   touchSession(true);
   setupInactivityWatcher();
+  startPresenceAndActivityTimers();
   // Mostra a aplicação imediatamente para evitar tela branca durante o carregamento.
   el.authScreen.classList.add("hidden");
   el.appScreen.classList.remove("hidden");

@@ -27,6 +27,7 @@ const FRONTEND_ORIGINS = String(process.env.FRONTEND_ORIGINS || "")
   .filter(Boolean);
 const AUTH_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
 const AUTH_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 20);
+const USER_ONLINE_THRESHOLD_MS = Number(process.env.USER_ONLINE_THRESHOLD_MS || 2 * 60 * 1000);
 const authRateMap = new Map();
 
 if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
@@ -2664,7 +2665,10 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
         status: externalCheck.status,
         verifiedAt: new Date().toISOString()
       },
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+      lastSeenIp: getClientIp(req)
     };
     db.users.push(user);
     if (role === "nurse_manager" && !team.managerUserId) {
@@ -2723,6 +2727,23 @@ app.post("/auth/login", authRateLimit, async (req, res) => {
     user = db.users.find((u) => u.id === user.id) || user;
   }
 
+  await withDb((mutableDb) => {
+    ensureDbShape(mutableDb);
+    const idx = mutableDb.users.findIndex((u) => u.id === user.id);
+    if (idx >= 0) {
+      mutableDb.users[idx].lastLoginAt = new Date().toISOString();
+      mutableDb.users[idx].lastSeenAt = new Date().toISOString();
+      mutableDb.users[idx].lastSeenIp = getClientIp(req);
+      mutableDb.users[idx].updatedAt = new Date().toISOString();
+    }
+  });
+  {
+    const latestDb = await readDb();
+    ensureDbShape(latestDb);
+    user = latestDb.users.find((u) => u.id === user.id) || user;
+    db = latestDb;
+  }
+
   const safeUser = sanitizeUser(user, db);
   const token = createToken(user, db);
   return res.json({ user: safeUser, token });
@@ -2740,6 +2761,20 @@ app.get("/me", async (req, res) => {
   const user = db.users.find((u) => u.id === req.user.id);
   if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
   return res.json(sanitizeUser(user, db));
+});
+
+app.post("/me/presence", async (req, res) => {
+  const nowIso = new Date().toISOString();
+  await withDb((db) => {
+    ensureDbShape(db);
+    const idx = db.users.findIndex((u) => u.id === req.user.id);
+    if (idx >= 0) {
+      db.users[idx].lastSeenAt = nowIso;
+      db.users[idx].lastSeenIp = getClientIp(req);
+      db.users[idx].updatedAt = nowIso;
+    }
+  });
+  return res.json({ ok: true, lastSeenAt: nowIso });
 });
 
 app.patch("/me", async (req, res) => {
@@ -3008,6 +3043,35 @@ app.get("/users", async (req, res) => {
     .map((u) => sanitizeUser(u, db));
 
   return res.json(safeUsers.map(({ password, ...u }) => u));
+});
+
+app.get("/users/activity-log", requireManager, async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const now = Date.now();
+  const items = db.users
+    .filter((u) => u.teamId === req.user.teamId)
+    .map((u) => {
+      const lastSeenAt = String(u.lastSeenAt || u.lastLoginAt || "");
+      const lastSeenTs = parseFlexibleDate(lastSeenAt)?.getTime() || NaN;
+      const online = Number.isFinite(lastSeenTs) ? (now - lastSeenTs <= USER_ONLINE_THRESHOLD_MS) : false;
+      return {
+        id: u.id,
+        name: u.name,
+        role: canonicalRole(u.role),
+        email: u.email,
+        lastLoginAt: u.lastLoginAt || "",
+        lastSeenAt,
+        online
+      };
+    })
+    .sort((a, b) => Number(b.online) - Number(a.online) || String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
+
+  return res.json({
+    generatedAt: new Date().toISOString(),
+    onlineWindowSeconds: Math.floor(USER_ONLINE_THRESHOLD_MS / 1000),
+    items
+  });
 });
 
 app.post("/users", requireManager, async (req, res) => {
