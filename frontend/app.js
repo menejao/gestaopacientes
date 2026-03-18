@@ -1889,10 +1889,7 @@ function renderAppointments() {
       el.rType.value = "consultation";
       updateRecordTitleControls();
       if (el.rTitleSelect?.options?.length) {
-        const summary = String(appointment.summary || "").toLowerCase();
-        let suggested = "Consulta médica";
-        if (/enferm/.test(summary)) suggested = "Consulta de enfermagem";
-        if (/odont|dent/.test(summary)) suggested = "Consulta odontológica";
+        const suggested = isDoctor() ? "Consulta médica" : "Consulta de enfermagem";
         if ([...el.rTitleSelect.options].some((opt) => opt.value === suggested)) {
           el.rTitleSelect.value = suggested;
         }
