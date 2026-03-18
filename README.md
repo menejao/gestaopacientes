@@ -134,6 +134,18 @@ Arquivos de apoio ja prontos:
 - Manter controle de incidentes com plano de resposta e notificação.
 - Restringir acess? por perfil, revisar logs periodicamente e registrar consentimentos quando aplicavel.
 
+## Kit 0800 de governanca (pronto)
+- Politica LGPD minima:
+  - `docs/governanca/01-politica-lgpd-minima.md`
+- Rotina semanal:
+  - `docs/governanca/02-rotina-semanal-0800.md`
+- Resposta a incidente:
+  - `docs/governanca/03-resposta-incidente-0800.md`
+- Checklist de go-live:
+  - `docs/governanca/04-checklist-go-live-ubs.md`
+- Rotina mensal de auditoria:
+  - `docs/governanca/05-rotina-mensal-auditoria.md`
+
 ## Integração externa de conselho (ja acoplada)
 - O cadastro ja faz chamada para um provedor externo de validação de conselho.
 - Configurar no backend (`backend/.env.example`):
