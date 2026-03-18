@@ -2078,6 +2078,19 @@ function fillRecordVaccines() {
     .join("");
 }
 
+function enableSimpleMultiSelect(selectEl) {
+  if (!selectEl || selectEl.dataset.simpleMultiBound === "1") return;
+  selectEl.dataset.simpleMultiBound = "1";
+  // Permite marcar/desmarcar com clique simples, sem precisar Ctrl/Cmd.
+  selectEl.addEventListener("mousedown", (event) => {
+    const opt = event.target;
+    if (!(opt instanceof HTMLOptionElement)) return;
+    event.preventDefault();
+    opt.selected = !opt.selected;
+    selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
 function restoreRecordTypeOptions() {
   if (!el.rType) return;
   const selected = String(el.rType.value || "");
@@ -3161,6 +3174,7 @@ el.sendMsgBtn.addEventListener("click", async () => {
 // -- Init ----------------------------------------------------------------------
 async function initApp() {
   fillRecordVaccines();
+  enableSimpleMultiSelect(el.rVaccineMulti);
   updateRecordTitleControls();
   fillCouncilUfSelects();
   const raw = localStorage.getItem(SESSION_KEY);
