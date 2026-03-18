@@ -352,8 +352,14 @@ function ensureDbShape(db) {
 
   db.patients = db.patients.map((p) => ({
     ...p,
+    cpf: p.cpf ? String(p.cpf) : "",
+    cns: p.cns ? String(p.cns) : "",
+    cnsCpf: p.cnsCpf ? String(p.cnsCpf) : (p.cpf ? String(p.cpf) : ""),
     careCategory: String(p.careCategory || "general"),
     chronicConditions: normalizeChronicConditions(p.chronicConditions),
+    motherName: p.motherName ? String(p.motherName) : "",
+    phoneAlt: p.phoneAlt ? String(p.phoneAlt) : "",
+    maritalStatus: p.maritalStatus ? String(p.maritalStatus) : "",
     sexAtBirth: p.sexAtBirth ? String(p.sexAtBirth) : "",
     genderIdentity: p.genderIdentity ? String(p.genderIdentity) : "",
     birthDate: p.birthDate ? String(p.birthDate) : "",
@@ -571,11 +577,16 @@ function buildPatientAccessReport(db, patient) {
     patient: {
       id: patient.id,
       name: patient.name,
+      motherName: patient.motherName || "",
+      cpf: patient.cpf || "",
+      cns: patient.cns || "",
       cnsCpf: patient.cnsCpf || "",
       phone: patient.phone || "",
+      phoneAlt: patient.phoneAlt || "",
       address: patient.address || "",
       careCategory: patient.careCategory || "general",
       chronicConditions: normalizeChronicConditions(patient.chronicConditions),
+      maritalStatus: patient.maritalStatus || "",
       sexAtBirth: patient.sexAtBirth || "",
       genderIdentity: patient.genderIdentity || "",
       birthDate: patient.birthDate || "",
@@ -634,13 +645,18 @@ function buildPatientAccessReport(db, patient) {
 function applyPatientCorrection(db, user, patient, corrections = {}) {
   const allowed = new Set([
     "name",
+    "motherName",
     "phone",
+    "phoneAlt",
+    "cpf",
+    "cns",
     "cnsCpf",
     "address",
     "microArea",
     "assignedAcsId",
     "careCategory",
     "chronicConditions",
+    "maritalStatus",
     "sexAtBirth",
     "genderIdentity",
     "birthDate",
@@ -697,12 +713,17 @@ function anonymizePatientBundle(db, user, patient, reason = "", requestId = "") 
   db.patients[idxPatient] = {
     ...db.patients[idxPatient],
     name: anonymizedName,
+    motherName: "",
+    cpf: "",
+    cns: "",
     cnsCpf: "",
     phone: "",
+    phoneAlt: "",
     address: "",
     microArea: "",
     assignedAcsId: "",
     chronicConditions: [],
+    maritalStatus: "",
     sexAtBirth: "",
     genderIdentity: "",
     birthDate: "",
@@ -2796,13 +2817,20 @@ app.post("/patients", requireManager, async (req, res) => {
     id: uuidv4(),
     teamId: req.user.teamId,
     name: String(payload.name).trim(),
-    cnsCpf: payload.cnsCpf ? String(payload.cnsCpf).trim() : "",
+    motherName: payload.motherName ? String(payload.motherName).trim() : "",
+    cpf: payload.cpf ? String(payload.cpf).trim() : "",
+    cns: payload.cns ? String(payload.cns).trim() : "",
+    cnsCpf: payload.cnsCpf
+      ? String(payload.cnsCpf).trim()
+      : (payload.cpf ? String(payload.cpf).trim() : (payload.cns ? String(payload.cns).trim() : "")),
     address: payload.address ? String(payload.address).trim() : "",
     phone: String(payload.phone).trim(),
+    phoneAlt: payload.phoneAlt ? String(payload.phoneAlt).trim() : "",
     microArea: payload.microArea ? String(payload.microArea).trim() : "",
     assignedAcsId: payload.assignedAcsId ? String(payload.assignedAcsId).trim() : "",
     careCategory: normalizeCategory(payload.careCategory, protocolMap),
     chronicConditions: normalizeChronicConditions(payload.chronicConditions),
+    maritalStatus: payload.maritalStatus ? String(payload.maritalStatus).trim().toLowerCase() : "",
     sexAtBirth: payload.sexAtBirth ? String(payload.sexAtBirth).trim().toLowerCase() : "",
     genderIdentity: payload.genderIdentity ? String(payload.genderIdentity).trim().toLowerCase() : "",
     birthDate: payload.birthDate ? String(payload.birthDate).trim() : "",
@@ -2849,6 +2877,7 @@ app.put("/patients/:id", async (req, res) => {
     const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
     const doctorAllowed = new Set([
       "phone",
+      "phoneAlt",
       "address",
       "comorbidities",
       "medications",
@@ -2866,10 +2895,30 @@ app.put("/patients/:id", async (req, res) => {
       ...current,
       ...safePayload,
       teamId: current.teamId,
+      motherName: safePayload?.motherName !== undefined
+        ? String(safePayload.motherName || "").trim()
+        : String(current.motherName || ""),
+      phoneAlt: safePayload?.phoneAlt !== undefined
+        ? String(safePayload.phoneAlt || "").trim()
+        : String(current.phoneAlt || ""),
+      cpf: safePayload?.cpf !== undefined
+        ? String(safePayload.cpf || "").trim()
+        : String(current.cpf || ""),
+      cns: safePayload?.cns !== undefined
+        ? String(safePayload.cns || "").trim()
+        : String(current.cns || ""),
+      cnsCpf: safePayload?.cnsCpf !== undefined
+        ? String(safePayload.cnsCpf || "").trim()
+        : (safePayload?.cpf !== undefined
+          ? String(safePayload.cpf || "").trim()
+          : String(current.cnsCpf || current.cpf || current.cns || "")),
       careCategory: safePayload?.careCategory ? normalizeCategory(safePayload.careCategory, protocolMap) : current.careCategory,
       chronicConditions: safePayload?.chronicConditions !== undefined
         ? normalizeChronicConditions(safePayload.chronicConditions)
         : normalizeChronicConditions(current.chronicConditions),
+      maritalStatus: safePayload?.maritalStatus !== undefined
+        ? String(safePayload.maritalStatus || "").trim().toLowerCase()
+        : String(current.maritalStatus || ""),
       sexAtBirth: safePayload?.sexAtBirth !== undefined
         ? String(safePayload.sexAtBirth || "").trim().toLowerCase()
         : String(current.sexAtBirth || ""),

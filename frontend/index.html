@@ -665,40 +665,49 @@
 
     <!-- PATIENT MODAL -->
     <div id="patientModal" class="modal hidden">
-      <div class="modal-card">
+      <div class="modal-card patient-modal-card">
         <div class="modal-hd">
           <h3 id="patientModalTitle">Novo cadastro de paciente</h3>
           <button id="closePatientModalBtn" class="icon-btn">X</button>
         </div>
         <div class="field-group"><label class="field-label">Nome</label><input id="pName" class="field-input" placeholder="Nome completo"/></div>
+        <div id="pMotherNameWrap" class="field-group hidden"><label class="field-label">Nome da mae</label><input id="pMotherName" class="field-input" placeholder="Nome da mãe da criança"/></div>
         <div class="field-row">
-          <div class="field-group"><label class="field-label">Telefone</label><input id="pPhone" class="field-input" placeholder="(00) 00000-0000" inputmode="numeric" maxlength="15"/></div>
-          <div class="field-group"><label class="field-label">CPF</label><input id="pDoc" class="field-input" placeholder="000.000.000-00" inputmode="numeric" maxlength="14"/></div>
+          <div class="field-group"><label class="field-label">Telefone principal</label><input id="pPhone" class="field-input" placeholder="(00) 00000-0000" inputmode="numeric" maxlength="15"/></div>
+          <div class="field-group"><label class="field-label">Telefone secundario</label><input id="pPhoneAlt" class="field-input" placeholder="(00) 00000-0000" inputmode="numeric" maxlength="15"/></div>
+        </div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">CPF</label><input id="pCpf" class="field-input" placeholder="000.000.000-00" inputmode="numeric" maxlength="14"/></div>
+          <div class="field-group"><label class="field-label">CNS</label><input id="pCns" class="field-input" placeholder="000 0000 0000 0000" inputmode="numeric" maxlength="19"/></div>
         </div>
         <div class="field-row">
           <div class="field-group"><label class="field-label">CEP</label><input id="pCep" class="field-input" placeholder="00000-000" inputmode="numeric" maxlength="9"/></div>
+          <div class="field-group"><label class="field-label">Numero</label><input id="pNumber" class="field-input" placeholder="Numero da residência" inputmode="numeric" maxlength="10"/></div>
+        </div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Rua</label><input id="pStreet" class="field-input" placeholder="Rua"/></div>
+          <div class="field-group"><label class="field-label">Bairro</label><input id="pNeighborhood" class="field-input" placeholder="Bairro"/></div>
+        </div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Cidade</label><input id="pCity" class="field-input" placeholder="Cidade"/></div>
           <div class="field-group"><label class="field-label">Estado (UF)</label><input id="pState" class="field-input" placeholder="Ex: SP" maxlength="2"/></div>
         </div>
         <div class="field-row">
-          <div class="field-group"><label class="field-label">Rua</label><input id="pStreet" class="field-input" placeholder="Rua e número"/></div>
-          <div class="field-group"><label class="field-label">Bairro</label><input id="pNeighborhood" class="field-input" placeholder="Bairro"/></div>
-        </div>
-        <div class="field-group"><label class="field-label">Cidade</label><input id="pCity" class="field-input" placeholder="Cidade"/></div>
-        <div class="field-row">
-          <div class="field-group"><label class="field-label">ACS</label><select id="pAcs" class="field-select"></select></div>
-          <div class="field-group"><label class="field-label">Categoria</label><select id="pCareCategory" class="field-select"></select></div>
-        </div>
-        <div id="pChronicConditionsWrap" class="field-group hidden">
-          <label class="field-label">Condição crônica (pode marcar as duas)</label>
-          <div class="inline-actions">
-            <label><input id="pChronicHypertension" type="checkbox"/> Hipertenso</label>
-            <label><input id="pChronicDiabetes" type="checkbox"/> Diabético</label>
+          <div class="field-group"><label class="field-label">Data de nascimento</label><input id="pBirthDate" type="date" class="field-input"/></div>
+          <div class="field-group"><label class="field-label">Estado civil</label>
+            <select id="pMaritalStatus" class="field-select">
+              <option value="">Não informado</option>
+              <option value="single">Solteiro(a)</option>
+              <option value="married">Casado(a)</option>
+              <option value="stable_union">União estável</option>
+              <option value="divorced">Divorciado(a)</option>
+              <option value="widowed">Viúvo(a)</option>
+            </select>
           </div>
         </div>
-        <div class="field-group"><label class="field-label">Data de nascimento</label><input id="pBirthDate" type="date" class="field-input"/></div>
         <div class="field-row">
           <div class="field-group">
-            <label class="field-label">Sexo ao nascer</label>
+            <label class="field-label">Sexo</label>
             <select id="pSexAtBirth" class="field-select">
               <option value="">Não informado</option>
               <option value="female">Feminino</option>
@@ -706,6 +715,10 @@
               <option value="intersex">Intersexo</option>
             </select>
           </div>
+          <div class="field-group"><label class="field-label">ACS</label><select id="pAcs" class="field-select"></select></div>
+        </div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Categoria</label><select id="pCareCategory" class="field-select"></select></div>
           <div class="field-group">
             <label class="field-label">Identidade de gênero</label>
             <select id="pGenderIdentity" class="field-select">
@@ -717,6 +730,13 @@
               <option value="non_binary">Não binário</option>
               <option value="other">Outro</option>
             </select>
+          </div>
+        </div>
+        <div id="pChronicConditionsWrap" class="field-group hidden">
+          <label class="field-label">Condição crônica (pode marcar as duas)</label>
+          <div class="inline-actions">
+            <label><input id="pChronicHypertension" type="checkbox"/> Hipertenso</label>
+            <label><input id="pChronicDiabetes" type="checkbox"/> Diabético</label>
           </div>
         </div>
         <div class="field-row">
