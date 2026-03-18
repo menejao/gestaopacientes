@@ -3028,6 +3028,58 @@ app.put("/patients/:id", async (req, res) => {
   return res.json(updated);
 });
 
+app.delete("/patients/:id", requireManager, async (req, res) => {
+  const { id } = req.params;
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const patientIndex = db.patients.findIndex((p) => p.id === id && p.teamId === req.user.teamId);
+    if (patientIndex < 0) return { error: "Paciente não encontrado" };
+
+    const patient = db.patients[patientIndex];
+    const teamPatientIds = new Set([patient.id]);
+
+    const appointmentsBefore = db.appointments.length;
+    db.appointments = db.appointments.filter((a) => !teamPatientIds.has(a.patientId));
+    const appointmentsRemoved = appointmentsBefore - db.appointments.length;
+
+    const tasksBefore = db.tasks.length;
+    db.tasks = db.tasks.filter((t) => !teamPatientIds.has(t.patientId));
+    const tasksRemoved = tasksBefore - db.tasks.length;
+
+    const messagesBefore = db.messages.length;
+    db.messages = db.messages.filter((m) => !teamPatientIds.has(m.patientId));
+    const messagesRemoved = messagesBefore - db.messages.length;
+
+    const recordsBefore = db.clinicalRecords.length;
+    db.clinicalRecords = db.clinicalRecords.filter((r) => !teamPatientIds.has(r.patientId));
+    const recordsRemoved = recordsBefore - db.clinicalRecords.length;
+
+    db.patients.splice(patientIndex, 1);
+
+    addAuditLog(db, req.user, "patient.deleted", "patient", id, {
+      name: patient.name,
+      appointmentsRemoved,
+      tasksRemoved,
+      messagesRemoved,
+      recordsRemoved
+    });
+
+    return {
+      ok: true,
+      removed: {
+        appointments: appointmentsRemoved,
+        tasks: tasksRemoved,
+        messages: messagesRemoved,
+        clinicalRecords: recordsRemoved
+      }
+    };
+  });
+
+  if (result?.error) return res.status(404).json({ error: result.error });
+  return res.json(result);
+});
+
 app.get("/patients/:id/appointments", async (req, res) => {
   const { id } = req.params;
   const db = await readDb();

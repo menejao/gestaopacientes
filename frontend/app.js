@@ -121,6 +121,7 @@ const el = {
   closePatientModalBtn:     document.getElementById("closePatientModalBtn"),
   cancelPatientModalBtn:    document.getElementById("cancelPatientModalBtn"),
   editPatientBtn:           document.getElementById("editPatientBtn"),
+  deletePatientBtn:         document.getElementById("deletePatientBtn"),
   backToHomeBtn:            document.getElementById("backToHomeBtn"),
   emptyState:               document.getElementById("emptyState"),
   patientContent:           document.getElementById("patientContent"),
@@ -645,6 +646,7 @@ function applyRolePermissions() {
     el.addAppointmentBtn.classList.remove("hidden");
     el.addTaskBtn.classList.remove("hidden");
     el.editPatientBtn.classList.remove("hidden");
+    el.deletePatientBtn.classList.remove("hidden");
     el.auditTab.classList.remove("hidden");
     el.appointmentFormCard.classList.remove("hidden");
     el.taskFormCard.classList.remove("hidden");
@@ -662,6 +664,7 @@ function applyRolePermissions() {
   if (isDoctor()) {
     el.addAppointmentBtn.classList.remove("hidden");
     el.editPatientBtn.classList.remove("hidden");
+    el.deletePatientBtn.classList.add("hidden");
     el.appointmentFormCard.classList.remove("hidden");
     clinFields.forEach(id => { document.getElementById(id).disabled = false; });
     patientFields.forEach(id => { document.getElementById(id).disabled = false; });
@@ -673,6 +676,7 @@ function applyRolePermissions() {
   }
   // ACS
   el.editPatientBtn.classList.add("hidden");
+  el.deletePatientBtn.classList.add("hidden");
   el.addAppointmentBtn.classList.add("hidden");
   el.appointmentFormCard.classList.add("hidden");
   clinFields.forEach(id => { document.getElementById(id).disabled = true; });
@@ -1402,6 +1406,34 @@ function openPatientEdit() {
   el.patientModal.classList.remove("hidden");
 }
 
+async function deleteSelectedPatient() {
+  if (!state.selectedPatient) return;
+  if (!isManager()) {
+    showToast("Somente enfermeira pode excluir paciente.", "error");
+    return;
+  }
+  const patientName = state.selectedPatient.name || "este paciente";
+  const ok = confirm(`Excluir ${patientName}? Esta ação remove cadastro, atendimentos, tarefas, mensagens e registros.`);
+  if (!ok) return;
+
+  try {
+    await api(`/patients/${state.selectedPatient.id}`, { method: "DELETE" });
+    showToast("Paciente excluído com sucesso.", "ok");
+    state.selectedPatient = null;
+    state.appointments = [];
+    state.tasks = [];
+    state.messages = [];
+    state.history = [];
+    state.protocolSummary = null;
+    await loadPatients();
+    await loadGlobalTasks();
+    renderPatientHeader();
+    renderWorkspaceHome();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
 // -- Tab switching -------------------------------------------------------------
 document.querySelectorAll(".ptab").forEach(tab => {
   tab.addEventListener("click", () => {
@@ -2072,6 +2104,7 @@ el.aiTranscriptionBtn?.addEventListener("click", async () => {
 el.homeBtn?.addEventListener("click", goHomeDashboard);
 el.backToHomeBtn?.addEventListener("click", goHomeDashboard);
 el.editPatientBtn?.addEventListener("click", openPatientEdit);
+el.deletePatientBtn?.addEventListener("click", deleteSelectedPatient);
 
 el.profileBtn?.addEventListener("click", openProfileModal);
 el.topbarUser?.addEventListener("click", openProfileModal);
