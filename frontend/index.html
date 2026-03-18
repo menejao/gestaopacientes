@@ -24,13 +24,13 @@
           <span class="brand-name">SaudeUBS</span>
         </div>
         <div class="auth-hero">
-          <h1>Gestao clinica<br>para atencao basica</h1>
-          <p>Prontuarios, protocolos e comunicacao<br>entre enfermagem e ACS.</p>
+          <h1>Gestao clínica<br>para atenção b?sica</h1>
+          <p>Prontuários, protocolos e comunicação<br>entre enfermagem e ACS.</p>
         </div>
         <div class="auth-stats">
           <div class="auth-stat"><span>Protocolo</span><strong>Integrado</strong></div>
           <div class="auth-stat-div"></div>
-          <div class="auth-stat"><span>Historico</span><strong>Completo</strong></div>
+          <div class="auth-stat"><span>Histórico</span><strong>Completo</strong></div>
           <div class="auth-stat-div"></div>
           <div class="auth-stat"><span>Equipe</span><strong>Conectada</strong></div>
         </div>
@@ -74,12 +74,12 @@
               <div class="field-row">
                 <div class="field-group">
                   <label class="field-label">E-mail</label>
-                  <input id="registerEmail" type="email" class="field-input" placeholder="voce@unidade.local"/>
+                  <input id="registerEmail" type="email" class="field-input" placeholder="você@unidade.local"/>
                 </div>
                 <div class="field-group">
                   <label class="field-label">Senha</label>
                   <input id="registerPassword" type="password" class="field-input" placeholder="Digite sua senha"/>
-                  <p class="field-help">Use minimo de 8 caracteres com maiuscula, numero e simbolo.</p>
+                  <p class="field-help">Use mínimo de 8 caracteres com maiúscula, número e símbolo.</p>
                 </div>
               </div>
             <div class="field-group">
@@ -97,8 +97,8 @@
               <input id="registerTeamName" class="field-input" placeholder="Ex: Equipe Norte"/>
             </div>
             <div id="registerCouncilNumberWrap" class="field-group hidden">
-              <label class="field-label" id="councilNumLabel">Numero do conselho</label>
-              <input id="registerCouncilNumber" class="field-input" placeholder="Somente numeros" inputmode="numeric" maxlength="12"/>
+              <label class="field-label" id="councilNumLabel">Número do conselho</label>
+              <input id="registerCouncilNumber" class="field-input" placeholder="Somente números" inputmode="numeric" maxlength="12"/>
             </div>
             <div id="registerCouncilUfWrap" class="field-group hidden">
               <label class="field-label">UF do conselho</label>
@@ -160,7 +160,7 @@
               </button>
             </div>
             <div class="sidebar-section-hd">
-              <span class="sidebar-hd-title">Navegacao</span>
+              <span class="sidebar-hd-title">Navegação</span>
             </div>
             <div class="mobile-menu-session">
               <div class="mobile-menu-user">
@@ -180,12 +180,12 @@
               <button id="navPatientsBtn" class="nav-link active">Pacientes</button>
               <button id="navProtocolsBtn" class="nav-link">Protocolos</button>
               <button id="navAcsBtn" class="nav-link">ACS</button>
-              <button id="navDoctorsBtn" class="nav-link">Medicos</button>
+              <button id="navDoctorsBtn" class="nav-link">Médicos</button>
               <button id="navAiBtn" class="nav-link">IA Assistida</button>
             </div>
             <div class="form-divider"></div>
             <div class="nav-actions">
-              <button id="openCreateUserModalBtn" class="btn-secondary btn-block hidden">Cadastrar ACS/Medico</button>
+              <button id="openCreateUserModalBtn" class="btn-secondary btn-block hidden">Cadastrar ACS/Médico</button>
             </div>
           </div>
         </aside>
@@ -199,7 +199,7 @@
               <div>
                 <p class="home-kicker">Workspace da equipe</p>
                 <h1 class="home-title">Gestao de pacientes - UBS Francisca Lima de Lira</h1>
-                <p class="home-sub">Acompanhe pacientes, protocolos e pendencias da equipe em tempo real.</p>
+                <p class="home-sub">Acompanhe pacientes, protocolos e pendências da equipe em tempo real.</p>
               </div>
               <div class="home-actions">
                 <button id="quickSelectFirstPatientBtn" class="btn-secondary">Novo paciente</button>
@@ -221,17 +221,23 @@
               <article class="home-kpi-card">
                 <p class="home-kpi-label">Com ACS definido</p>
                 <p id="kpiPatientsAssigned" class="home-kpi-value">0</p>
-                <p class="home-kpi-foot">Pacientes com responsavel</p>
+                <p class="home-kpi-foot">Pacientes com responsável</p>
               </article>
               <article class="home-kpi-card">
-                <p class="home-kpi-label">Pendencias abertas</p>
+                <p class="home-kpi-label">Pendências abertas</p>
                 <p id="kpiTasksOpen" class="home-kpi-value">0</p>
                 <p class="home-kpi-foot">Tarefas pendentes e em andamento</p>
               </article>
               <article class="home-kpi-card">
                 <p class="home-kpi-label">Categorias em uso</p>
                 <p id="kpiCategories" class="home-kpi-value">0</p>
-                <p class="home-kpi-foot">Protocolos ativos no territorio</p>
+                <p class="home-kpi-foot">Protocolos ativos no territ?rio</p>
+              </article>
+              <article class="home-kpi-card">
+                <p class="home-kpi-label">Demanda programada (mês)</p>
+                <p id="kpiDemandRatio" class="home-kpi-value">--</p>
+                <p id="kpiDemandMeta" class="home-kpi-foot">Meta: 50% a 70%</p>
+                <p id="kpiDemandAlert" class="home-kpi-foot"></p>
               </article>
             </section>
 
@@ -241,7 +247,7 @@
                 <div id="categorySummaryList"></div>
               </article>
               <article class="panel-card">
-                <div class="panel-card-hd">Pendencias prioritarias</div>
+                <div class="panel-card-hd">Pendências priorit?rias</div>
                 <div id="priorityTaskList"></div>
               </article>
               <article class="panel-card">
@@ -258,7 +264,7 @@
                   <option value="name_asc">Nome (A-Z)</option>
                   <option value="name_desc">Nome (Z-A)</option>
                   <option value="category_asc">Categoria (A-Z)</option>
-                  <option value="microarea_asc">Microarea (A-Z)</option>
+                  <option value="microarea_asc">Microárea (A-Z)</option>
                 </select>
               </div>
               <div class="table-filters">
@@ -269,10 +275,10 @@
                   <option value="">Todos ACS</option>
                 </select>
                 <select id="homePatientProtocolStatusFilter" class="field-select">
-                  <option value="all">Todos status protocolo</option>
+                  <option value="all">Todos os status do protocolo</option>
                   <option value="ok">Em dia</option>
                   <option value="attention">Atraso leve</option>
-                  <option value="critical">Atraso critico</option>
+                  <option value="critical">Atraso crítico</option>
                 </select>
                 <button id="homePatientExportBtn" class="btn-secondary">Exportar CSV</button>
               </div>
@@ -282,7 +288,7 @@
                     <tr>
                       <th>Paciente</th>
                       <th>Categoria</th>
-                      <th>Microarea</th>
+                      <th>Microárea</th>
                       <th>ACS</th>
                       <th>Protocolo</th>
                       <th></th>
@@ -309,8 +315,8 @@
             </section>
 
             <section id="doctorsAdminSection" class="panel-card workspace-pane hidden">
-              <div class="panel-card-hd">Medicos da equipe</div>
-              <p class="home-task-meta">Lista completa de medicos com equipe vinculada.</p>
+              <div class="panel-card-hd">Médicos da equipe</div>
+              <p class="home-task-meta">Lista completa de médicos com equipe vinculada.</p>
               <div id="doctorList"></div>
             </section>
 
@@ -325,7 +331,7 @@
 
             <section id="aiHubSection" class="panel-card workspace-pane hidden">
               <div class="panel-card-hd">IA Assistida da Equipe</div>
-              <p class="home-task-meta">Use IA para prioridade do dia, qualidade de dados, relatorio e perguntas operacionais.</p>
+              <p class="home-task-meta">Use IA para prioridade do dia, qualidade de dados, relat?rio e perguntas operacionais.</p>
               <div class="inline-actions" style="margin:.6rem 0;">
                 <button id="aiLoadPrioritiesBtn" class="btn-secondary">Prioridades do dia</button>
                 <button id="aiLoadQualityBtn" class="btn-secondary">Qualidade de dados</button>
@@ -334,7 +340,7 @@
               <div class="field-group">
                 <label class="field-label">Pergunte ao assistente da equipe</label>
                 <div class="inline-actions">
-                  <input id="aiTeamQuestionInput" class="field-input" placeholder="Ex: Quais pacientes estao com protocolo atrasado?" />
+                  <input id="aiTeamQuestionInput" class="field-input" placeholder="Ex: Quais pacientes estão com protocolo atrasado?" />
                   <button id="aiAskTeamBtn" class="btn-primary">Perguntar</button>
                 </div>
               </div>
@@ -380,11 +386,11 @@
               </button>
               <button class="ptab" data-panel="panelHistory">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-                Historico
+                Histórico
               </button>
               <button class="ptab" data-panel="panelMessages">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v9H9l-3 2v-2H2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-                Comunicacao
+                Comunicação
               </button>
               <button class="ptab" data-panel="panelAi">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -413,7 +419,7 @@
                       <option value="consultation">Consulta</option>
                       <option value="vaccine">Vacina</option>
                       <option value="procedure">Procedimento</option>
-                      <option value="note">Observacao</option>
+                      <option value="note">Observação</option>
                     </select>
                   </div>
                   <div class="field-group">
@@ -434,13 +440,20 @@
                 <div class="panel-card" id="appointmentFormCard">
                   <div class="panel-card-hd">Novo Atendimento</div>
                   <div class="field-group"><label class="field-label">Data / Hora</label><input id="aDate" type="datetime-local" class="field-input"/></div>
+                  <div class="field-group">
+                    <label class="field-label">Tipo de demanda</label>
+                    <select id="aDemandType" class="field-select">
+                      <option value="scheduled">Programada (agendada)</option>
+                      <option value="spontaneous">Espontânea</option>
+                    </select>
+                  </div>
                   <div class="field-group"><label class="field-label">Resumo</label><textarea id="aSummary" class="field-textarea" rows="3" placeholder="Resumo do atendimento..."></textarea></div>
                   <div class="field-group"><label class="field-label">Conduta</label><textarea id="aConduct" class="field-textarea" rows="2" placeholder="Conduta adotada..."></textarea></div>
-                  <div class="field-group"><label class="field-label">Proximo passo</label><textarea id="aNext" class="field-textarea" rows="2" placeholder="Encaminhamentos..."></textarea></div>
+                  <div class="field-group"><label class="field-label">Próximo passo</label><textarea id="aNext" class="field-textarea" rows="2" placeholder="Encaminhamentos..."></textarea></div>
                   <button id="addAppointmentBtn" class="btn-primary">Registrar atendimento</button>
                 </div>
                 <div class="panel-card">
-                  <div class="panel-card-hd">Historico de atendimentos</div>
+                  <div class="panel-card-hd">Histórico de atendimentos</div>
                   <div id="appointmentList"></div>
                 </div>
               </div>
@@ -452,10 +465,10 @@
                 <div class="panel-card" id="taskFormCard">
                   <div class="panel-card-hd">Nova Tarefa para ACS</div>
                   <div class="field-group"><label class="field-label">Titulo</label><input id="tTitle" class="field-input" placeholder="Ex: Verificar pressao arterial"/></div>
-                  <div class="field-group"><label class="field-label">Observacoes</label><textarea id="tNotes" class="field-textarea" rows="3" placeholder="Instrucoes adicionais..."></textarea></div>
+                  <div class="field-group"><label class="field-label">Observações</label><textarea id="tNotes" class="field-textarea" rows="3" placeholder="Instrucoes adicionais..."></textarea></div>
                   <div class="field-row">
                     <div class="field-group"><label class="field-label">Prazo</label><input id="tDue" type="date" class="field-input"/></div>
-                    <div class="field-group"><label class="field-label">ACS responsavel</label><select id="tAssignee" class="field-select"></select></div>
+                    <div class="field-group"><label class="field-label">ACS responsável</label><select id="tAssignee" class="field-select"></select></div>
                   </div>
                   <button id="addTaskBtn" class="btn-primary">Criar tarefa</button>
                 </div>
@@ -486,19 +499,19 @@
               <div class="panel-card">
                 <div class="panel-card-hd">IA do paciente</div>
                 <div class="inline-actions" style="margin-bottom:.6rem;">
-                  <button id="aiPatientSummaryBtn" class="btn-secondary">Resumo clinico</button>
+                  <button id="aiPatientSummaryBtn" class="btn-secondary">Resumo clínico</button>
                   <button id="aiPatientProtocolBtn" class="btn-secondary">Destaques do protocolo</button>
                   <button id="aiPatientAcsMsgBtn" class="btn-secondary">Mensagem para ACS</button>
                   <button id="aiPatientSuggestBtn" class="btn-secondary">Sugerir categoria</button>
                 </div>
                 <div class="field-group">
-                  <label class="field-label">Evolucao assistida (texto livre opcional)</label>
-                  <textarea id="aiEvolutionInput" class="field-textarea" rows="3" placeholder="Ex: Paciente refere tontura ha 2 dias..."></textarea>
+                  <label class="field-label">Evolução assistida (texto livre opcional)</label>
+                  <textarea id="aiEvolutionInput" class="field-textarea" rows="3" placeholder="Ex: Paciente refere tontura há 2 dias..."></textarea>
                   <button id="aiEvolutionBtn" class="btn-primary" style="margin-top:.45rem;">Gerar evolucao (SOAP)</button>
                 </div>
                 <div class="field-group">
-                  <label class="field-label">Transcricao/estrutura de audio (cole texto)</label>
-                  <textarea id="aiTranscriptionInput" class="field-textarea" rows="2" placeholder="Cole aqui o texto capturado do audio"></textarea>
+                  <label class="field-label">Transcrição/estrutura de áudio (cole texto)</label>
+                  <textarea id="aiTranscriptionInput" class="field-textarea" rows="2" placeholder="Cole aqui o texto capturado do áudio"></textarea>
                   <button id="aiTranscriptionBtn" class="btn-secondary" style="margin-top:.45rem;">Estruturar texto</button>
                 </div>
                 <pre id="aiPatientOutput" class="code-block"></pre>
@@ -534,7 +547,7 @@
           <div class="field-group">
             <label class="field-label">Nova senha</label>
             <input id="profilePassword" type="password" class="field-input" placeholder="Digite uma nova senha"/>
-            <p class="field-help">Use minimo de 8 caracteres com maiuscula, numero e simbolo.</p>
+            <p class="field-help">Use mínimo de 8 caracteres com maiúscula, número e símbolo.</p>
           </div>
         <div id="profileCouncilWrap" class="hidden">
           <div class="field-row">
@@ -554,7 +567,7 @@
           <button id="closeFilterModalBtn" class="icon-btn">X</button>
         </div>
         <div class="field-group">
-          <label class="field-label">Microarea</label>
+          <label class="field-label">Microárea</label>
           <input id="topFilterMicroArea" class="field-input" placeholder="Ex: MA-03"/>
         </div>
         <div class="field-group">
@@ -585,7 +598,7 @@
             <input id="protocolCategoryInput" class="field-input" placeholder="ex: hipertenso_alto_risco"/>
           </div>
           <div class="field-group">
-            <label class="field-label">Nome exibicao</label>
+            <label class="field-label">Nome de exibição</label>
             <input id="protocolLabelInput" class="field-input" placeholder="Ex: Hipertenso Alto Risco"/>
           </div>
         </div>
@@ -605,7 +618,7 @@
             <input id="protocolVaccinesTargetInput" type="number" min="0" max="99" class="field-input" value="0"/>
           </div>
           <div class="field-group">
-            <label class="field-label">Lista de vacinas (virgula)</label>
+            <label class="field-label">Lista de vacinas (vírgula)</label>
             <input id="protocolVaccinesListInput" class="field-input" placeholder="Influenza, COVID-19"/>
           </div>
         </div>
@@ -625,14 +638,14 @@
             <input id="protocolVaccineDeadlineInput" type="number" min="0" max="3650" class="field-input" value="0"/>
           </div>
           <div class="field-group">
-            <label class="field-label">Observacao</label>
-            <input class="field-input" value="Defina conforme protocolo oficial do Ministerio da Saude" disabled/>
+            <label class="field-label">Observação</label>
+            <input class="field-input" value="Defina conforme protocolo oficial do Ministério da Saúde" disabled/>
           </div>
         </div>
         <div class="field-row">
           <div class="field-group">
             <label class="field-label">Orgao normativo</label>
-            <input id="protocolAuthorityInput" class="field-input" value="Ministerio da Saude"/>
+            <input id="protocolAuthorityInput" class="field-input" value="Ministério da Saúde"/>
           </div>
           <div class="field-group">
             <label class="field-label">Referencia normativa</label>
@@ -640,7 +653,7 @@
           </div>
         </div>
         <div class="field-group">
-          <label class="field-label">Versao do protocolo</label>
+          <label class="field-label">Versão do protocolo</label>
           <input id="protocolVersionInput" class="field-input" placeholder="Ex: 2026.1"/>
         </div>
         <div class="inline-actions" style="justify-content:flex-end;">
@@ -667,7 +680,7 @@
           <div class="field-group"><label class="field-label">Estado (UF)</label><input id="pState" class="field-input" placeholder="Ex: SP" maxlength="2"/></div>
         </div>
         <div class="field-row">
-          <div class="field-group"><label class="field-label">Rua</label><input id="pStreet" class="field-input" placeholder="Rua e numero"/></div>
+          <div class="field-group"><label class="field-label">Rua</label><input id="pStreet" class="field-input" placeholder="Rua e número"/></div>
           <div class="field-group"><label class="field-label">Bairro</label><input id="pNeighborhood" class="field-input" placeholder="Bairro"/></div>
         </div>
         <div class="field-group"><label class="field-label">Cidade</label><input id="pCity" class="field-input" placeholder="Cidade"/></div>
@@ -675,8 +688,47 @@
           <div class="field-group"><label class="field-label">ACS</label><select id="pAcs" class="field-select"></select></div>
           <div class="field-group"><label class="field-label">Categoria</label><select id="pCareCategory" class="field-select"></select></div>
         </div>
+        <div id="pChronicConditionsWrap" class="field-group hidden">
+          <label class="field-label">Condição crônica (pode marcar as duas)</label>
+          <div class="inline-actions">
+            <label><input id="pChronicHypertension" type="checkbox"/> Hipertenso</label>
+            <label><input id="pChronicDiabetes" type="checkbox"/> Diabético</label>
+          </div>
+        </div>
+        <div class="field-group"><label class="field-label">Data de nascimento</label><input id="pBirthDate" type="date" class="field-input"/></div>
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label">Sexo ao nascer</label>
+            <select id="pSexAtBirth" class="field-select">
+              <option value="">Não informado</option>
+              <option value="female">Feminino</option>
+              <option value="male">Masculino</option>
+              <option value="intersex">Intersexo</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Identidade de gênero</label>
+            <select id="pGenderIdentity" class="field-select">
+              <option value="">Não informado</option>
+              <option value="cis_woman">Mulher cis</option>
+              <option value="cis_man">Homem cis</option>
+              <option value="trans_man">Homem trans</option>
+              <option value="trans_woman">Mulher trans</option>
+              <option value="non_binary">Não binário</option>
+              <option value="other">Outro</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">DUM (início da gestação)</label><input id="pPregnancyStartDate" type="date" class="field-input"/></div>
+          <div class="field-group"><label class="field-label">DPP (data provável do parto)</label><input id="pExpectedDeliveryDate" type="date" class="field-input"/></div>
+        </div>
+        <div class="field-row">
+          <div class="field-group"><label class="field-label">Início do pré-natal</label><input id="pPrenatalStartDate" type="date" class="field-input"/></div>
+          <div class="field-group"><label class="field-label">Data do parto (puerpério)</label><input id="pPostpartumStartDate" type="date" class="field-input"/></div>
+        </div>
         <div class="field-group"><label class="field-label">Comorbidades</label><textarea id="pComorb" class="field-textarea" rows="2"></textarea></div>
-        <div class="field-group"><label class="field-label">Medicacoes</label><textarea id="pMeds" class="field-textarea" rows="2"></textarea></div>
+        <div class="field-group"><label class="field-label">Medicações</label><textarea id="pMeds" class="field-textarea" rows="2"></textarea></div>
         <div class="field-group"><label class="field-label">Alergias</label><textarea id="pAllergies" class="field-textarea" rows="2"></textarea></div>
         <div class="inline-actions" style="justify-content:flex-end;">
           <button id="cancelPatientModalBtn" class="btn-secondary">Cancelar</button>
@@ -689,7 +741,7 @@
     <div id="createUserModal" class="modal hidden">
       <div class="modal-card">
         <div class="modal-hd">
-          <h3>Cadastrar ACS ou Medico</h3>
+          <h3>Cadastrar ACS ou Médico</h3>
           <button id="closeCreateUserModalBtn" class="icon-btn">X</button>
         </div>
         <div class="field-row">
@@ -705,7 +757,7 @@
         <div class="field-group">
           <label class="field-label">Senha</label>
           <input id="managerCreatePassword" type="password" class="field-input" placeholder="Digite a senha inicial"/>
-          <p class="field-help">Use minimo de 8 caracteres com maiuscula, numero e simbolo.</p>
+          <p class="field-help">Use mínimo de 8 caracteres com maiúscula, número e símbolo.</p>
         </div>
         <div id="managerCreateCouncilWrap" class="field-row hidden">
           <div class="field-group"><label class="field-label">Numero conselho</label><input id="managerCreateCouncilNumber" class="field-input" inputmode="numeric" maxlength="12"/></div>
@@ -722,4 +774,6 @@
     <script src="./app.js"></script>
   </body>
 </html>
+
+
 

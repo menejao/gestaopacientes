@@ -1,4 +1,4 @@
-function toDateSafe(value) {
+﻿function toDateSafe(value) {
   const d = new Date(value || "");
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -43,15 +43,15 @@ function patientSummary(context) {
     headline: `${context.patient.name} | Risco ${risk.level.toUpperCase()} (${risk.score})`,
     resumoClinico: [
       `Categoria: ${protocol.categoryLabel || context.patient.careCategory || "geral"}.`,
-      `Comorbidades: ${sanitizeText(context.patient.comorbidities) || "nao informado"}.`,
-      `Medicacoes: ${sanitizeText(context.patient.medications) || "nao informado"}.`,
-      `Alergias: ${sanitizeText(context.patient.allergies) || "nao informado"}.`
+      `Comorbidades: ${sanitizeText(context.patient.comorbidities) || "não informado"}.`,
+      `Medicações: ${sanitizeText(context.patient.medications) || "não informado"}.`,
+      `Alergias: ${sanitizeText(context.patient.allergies) || "não informado"}.`
     ].join(" "),
     protocolo: {
       visitas: `${completed.visits}/${targets.visits}`,
       consultas: `${completed.consultations}/${targets.consultations}`,
       vacinas: `${completed.vaccines}/${targets.vaccines}`,
-      pendencias: pending
+      pendências: pending
     },
     ultimoEvento: lastEvent
       ? `${lastEvent.type} em ${new Date(lastEvent.date).toLocaleDateString("pt-BR")} - ${sanitizeText(lastEvent.title)}`
@@ -88,8 +88,8 @@ function protocolHighlights(context) {
       : "Protocolo em dia para esta categoria.",
     acoesSugeridas: [
       pending.visits > 0 ? "Reservar agenda de visita domiciliar com ACS." : null,
-      pending.consultations > 0 ? "Agendar consulta de enfermagem/medica da categoria." : null,
-      pending.vaccines > 0 ? "Conferir esquema vacinal e registrar aplicacao." : null
+      pending.consultations > 0 ? "Agendar consulta de enfermagem/médica da categoria." : null,
+      pending.vaccines > 0 ? "Conferir esquema vacinal e registrar aplicação." : null
     ].filter(Boolean)
   };
 }
@@ -102,8 +102,8 @@ function evolutionDraft(context, payload = {}) {
 
   const subjective = notaLivre || "Paciente sem queixas novas registradas neste atendimento.";
   const objective = [
-    ultimaConsulta ? `Ultima consulta: ${sanitizeText(ultimaConsulta.title)}.` : null,
-    ultimaVisita ? `Ultima visita domiciliar: ${sanitizeText(ultimaVisita.title)}.` : null,
+    ultimaConsulta ? `Última consulta: ${sanitizeText(ultimaConsulta.title)}.` : null,
+    ultimaVisita ? `Última visita domiciliar: ${sanitizeText(ultimaVisita.title)}.` : null,
     `Protocolo atual: ${sintese.protocolo.visitas} visitas, ${sintese.protocolo.consultas} consultas, ${sintese.protocolo.vacinas} vacinas.`
   ].filter(Boolean).join(" ");
 
@@ -128,10 +128,10 @@ function acsMessage(context) {
     short: `ACS, acompanhar ${context.patient.name}. ${highlights.destaque}`,
     detailed: [
       `Paciente: ${context.patient.name}`,
-      `Microarea: ${context.patient.microArea || "-"}`,
+      `Microárea: ${context.patient.microArea || "-"}`,
       `Risco atual: ${risk.level.toUpperCase()} (${risk.score})`,
-      `Orientacao principal: ${highlights.acoesSugeridas[0] || "Manter monitoramento rotineiro."}`,
-      "Registrar retorno no sistema apos visita."
+      `Orientação principal: ${highlights.acoesSugeridas[0] || "Manter monitoramento rotineiro."}`,
+      "Registrar retorno no sistema após visita."
     ].join("\n")
   };
 }
@@ -149,16 +149,19 @@ function suggestProtocolCategory(context) {
   let category = context.patient.careCategory || "general";
   if (/gesta|prenatal|gravida/.test(text)) {
     category = "pregnant";
-    signals.push("Termos relacionados a gestacao/prenatal.");
+    signals.push("Termos relacionados a gestação/pré-natal.");
   } else if (/puerper|pos-parto/.test(text)) {
     category = "puerperal";
-    signals.push("Termos relacionados ao puerperio.");
-  } else if (/preventivo|papanicolau|colo do utero/.test(text)) {
+    signals.push("Termos relacionados ao puerpério.");
+  } else if (/preventivo|papanicolau|colo do utero|citopat/.test(text)) {
     category = "pap_only";
-    signals.push("Historico focado em rastreamento citopatologico.");
+    signals.push("Termos relacionados a rastreamento de colo do útero.");
+  } else if (/idos|geriatr|longev/.test(text)) {
+    category = "elderly";
+    signals.push("Termos relacionados ao cuidado da pessoa idosa.");
   } else if (/diabet|hiperten|dcnt|cronica/.test(text)) {
     category = "chronic";
-    signals.push("Comorbidades cronicas mencionadas.");
+    signals.push("Comorbidades crônicas mencionadas.");
   }
 
   return {
@@ -183,7 +186,7 @@ function transcribePayload(payload = {}) {
 
   return {
     transcript: "",
-    warning: "Transcricao de audio bruto ainda nao habilitada neste ambiente. Envie texto no campo transcript para estruturar automaticamente."
+    warning: "Transcrição de áudio bruto ainda não habilitada neste ambiente. Envie texto no campo transcript para estruturar automaticamente."
   };
 }
 
@@ -198,7 +201,7 @@ function teamPriorities(items) {
         acsId: context.patient.assignedAcsId || "",
         risk,
         protocol: context.protocolSummary?.pending || {},
-        topAction: protocolHighlights(context).acoesSugeridas[0] || "Revisar prontuario e contato ativo."
+        topAction: protocolHighlights(context).acoesSugeridas[0] || "Revisar prontuário e contato ativo."
       };
     })
     .sort((a, b) => b.risk.score - a.risk.score);
@@ -211,12 +214,12 @@ function dataQualityChecks(items) {
   for (const context of items) {
     const p = context.patient;
     if (!sanitizeText(p.phone)) findings.push({ patientId: p.id, patientName: p.name, issue: "Telefone ausente", severity: "high" });
-    if (!sanitizeText(p.address)) findings.push({ patientId: p.id, patientName: p.name, issue: "Endereco ausente", severity: "medium" });
+    if (!sanitizeText(p.address)) findings.push({ patientId: p.id, patientName: p.name, issue: "Endereço ausente", severity: "medium" });
     if (!sanitizeText(p.cnsCpf)) findings.push({ patientId: p.id, patientName: p.name, issue: "Documento CNS/CPF ausente", severity: "medium" });
     if (!sanitizeText(p.assignedAcsId)) findings.push({ patientId: p.id, patientName: p.name, issue: "Paciente sem ACS vinculado", severity: "high" });
     const r = computePatientRisk(context);
     if (r.daysNoEvent !== null && r.daysNoEvent > 60) {
-      findings.push({ patientId: p.id, patientName: p.name, issue: `Sem registro ha ${r.daysNoEvent} dias`, severity: "high" });
+      findings.push({ patientId: p.id, patientName: p.name, issue: `Sem registro há ${r.daysNoEvent} dias`, severity: "high" });
     }
   }
   return findings;
@@ -243,8 +246,8 @@ function teamReport(items) {
     executiveSummary: `Equipe com ${total} paciente(s), ${highRisk} em alto risco e ${overdueTasks} tarefa(s) atrasada(s).`,
     recommendations: [
       "Priorizar pacientes de alto risco para contato em 48h.",
-      "Revisar tarefas atrasadas em reuniao rapida da equipe.",
-      "Atualizar protocolos de categorias com maior pendencia."
+      "Revisar tarefas atrasadas em reunião rápida da equipe.",
+      "Atualizar protocolos de categorias com maior pendência."
     ]
   };
 }
@@ -255,7 +258,7 @@ function chatAnswer(question, contexts) {
 
   if (q.includes("gestante")) {
     const gest = contexts.filter((c) => c.patient.careCategory === "pregnant").map((c) => c.patient.name);
-    return { answer: gest.length ? `Gestantes cadastradas: ${gest.join(", ")}.` : "Nao encontrei gestantes cadastradas.", references: gest };
+    return { answer: gest.length ? `Gestantes cadastradas: ${gest.join(", ")}.` : "Não encontrei gestantes cadastradas.", references: gest };
   }
 
   if (q.includes("atras") || q.includes("penden")) {
@@ -263,16 +266,16 @@ function chatAnswer(question, contexts) {
       .map((c) => ({ name: c.patient.name, pending: c.protocolSummary?.pending || {} }))
       .filter((i) => Number(i.pending.visits || 0) + Number(i.pending.consultations || 0) + Number(i.pending.vaccines || 0) > 0)
       .slice(0, 12);
-    if (!pendentes.length) return { answer: "Nao ha pendencias de protocolo no momento.", references: [] };
+    if (!pendentes.length) return { answer: "Não há pendências de protocolo no momento.", references: [] };
     return {
-      answer: `Pendencias encontradas: ${pendentes.map((p) => `${p.name} (V:${p.pending.visits || 0}, C:${p.pending.consultations || 0}, Vac:${p.pending.vaccines || 0})`).join("; ")}.`,
+      answer: `Pendências encontradas: ${pendentes.map((p) => `${p.name} (V:${p.pending.visits || 0}, C:${p.pending.consultations || 0}, Vac:${p.pending.vaccines || 0})`).join("; ")}.`,
       references: pendentes.map((p) => p.name)
     };
   }
 
   const priorities = teamPriorities(contexts).slice(0, 5);
   return {
-    answer: `Sugestao de foco do dia: ${priorities.map((p) => `${p.patientName} [${p.risk.level}]`).join(", ")}.`,
+    answer: `Sugestão de foco do dia: ${priorities.map((p) => `${p.patientName} [${p.risk.level}]`).join(", ")}.`,
     references: priorities.map((p) => p.patientName)
   };
 }
@@ -289,3 +292,4 @@ export {
   teamReport,
   chatAnswer
 };
+

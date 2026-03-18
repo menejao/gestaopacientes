@@ -15,6 +15,7 @@ const state = {
   messages: [], auditLogs: [], history: [],
   protocolSummary: null, protocolTemplates: [], publicTeams: [],
   protocolByPatient: {},
+  demandMonthly: null,
   editingPatientId: null,
   editingProtocolCategory: null,
   navSection: "patients",
@@ -88,6 +89,16 @@ const el = {
   pState:                   document.getElementById("pState"),
   pAcs:                     document.getElementById("pAcs"),
   pCareCategory:            document.getElementById("pCareCategory"),
+  pChronicConditionsWrap:   document.getElementById("pChronicConditionsWrap"),
+  pChronicHypertension:     document.getElementById("pChronicHypertension"),
+  pChronicDiabetes:         document.getElementById("pChronicDiabetes"),
+  pBirthDate:               document.getElementById("pBirthDate"),
+  pSexAtBirth:              document.getElementById("pSexAtBirth"),
+  pGenderIdentity:          document.getElementById("pGenderIdentity"),
+  pPregnancyStartDate:      document.getElementById("pPregnancyStartDate"),
+  pExpectedDeliveryDate:    document.getElementById("pExpectedDeliveryDate"),
+  pPrenatalStartDate:       document.getElementById("pPrenatalStartDate"),
+  pPostpartumStartDate:     document.getElementById("pPostpartumStartDate"),
   pComorb:                  document.getElementById("pComorb"),
   pMeds:                    document.getElementById("pMeds"),
   pAllergies:               document.getElementById("pAllergies"),
@@ -118,6 +129,7 @@ const el = {
   vaccineNameWrap:          document.getElementById("vaccineNameWrap"),
   addRecordBtn:             document.getElementById("addRecordBtn"),
   aDate:                    document.getElementById("aDate"),
+  aDemandType:              document.getElementById("aDemandType"),
   aSummary:                 document.getElementById("aSummary"),
   aConduct:                 document.getElementById("aConduct"),
   aNext:                    document.getElementById("aNext"),
@@ -142,6 +154,9 @@ const el = {
   kpiPatientsAssigned:      document.getElementById("kpiPatientsAssigned"),
   kpiTasksOpen:             document.getElementById("kpiTasksOpen"),
   kpiCategories:            document.getElementById("kpiCategories"),
+  kpiDemandRatio:           document.getElementById("kpiDemandRatio"),
+  kpiDemandMeta:            document.getElementById("kpiDemandMeta"),
+  kpiDemandAlert:           document.getElementById("kpiDemandAlert"),
   categorySummaryList:      document.getElementById("categorySummaryList"),
   priorityTaskList:         document.getElementById("priorityTaskList"),
   protocolDeadlineAlertsList: document.getElementById("protocolDeadlineAlertsList"),
@@ -264,7 +279,7 @@ function logoutUser(showReason = false) {
   el.createUserModal?.classList.add("hidden");
   clearSessionStore();
   updateSessionView();
-  if (showReason) showToast("Sessao encerrada por inatividade.", "error", 3500);
+  if (showReason) showToast("Sessão encerrada por inatividade.", "error", 3500);
 }
 
 function setupInactivityWatcher() {
@@ -292,7 +307,7 @@ const isManager = () => state.user?.role === "nurse_manager";
 const isDoctor  = () => state.user?.role === "doctor";
 const isAcs     = () => state.user?.role === "acs";
 const canAcsUpdateTask = t => isAcs() && t.assigneeId === state.user.id;
-const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Nao atribuido";
+const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Não atribu?do";
 const catLabel     = cat => state.protocolTemplates.find(t => t.category === cat)?.label || "Geral";
 const taskOpen     = t => ["pending", "in_progress"].includes(t.status);
 const prettyJson   = (obj) => JSON.stringify(obj, null, 2);
@@ -374,6 +389,24 @@ function buildAddress() {
   if (stateUf) parts.push(`UF: ${stateUf}`);
   if (cep) parts.push(`CEP: ${cep}`);
   return parts.join(" | ");
+}
+
+function getSelectedChronicConditions() {
+  const values = [];
+  if (el.pChronicHypertension?.checked) values.push("hypertension");
+  if (el.pChronicDiabetes?.checked) values.push("diabetes");
+  return values;
+}
+
+function setSelectedChronicConditions(items = []) {
+  const set = new Set(Array.isArray(items) ? items : []);
+  if (el.pChronicHypertension) el.pChronicHypertension.checked = set.has("hypertension");
+  if (el.pChronicDiabetes) el.pChronicDiabetes.checked = set.has("diabetes");
+}
+
+function updateChronicConditionsVisibility() {
+  const isChronic = el.pCareCategory?.value === "chronic";
+  el.pChronicConditionsWrap?.classList.toggle("hidden", !isChronic);
 }
 
 // -- API ----------------------------------------------------------------------
@@ -490,8 +523,8 @@ function validateCouncil(role, num, uf) {
   const maxLen = role === "doctor" ? 8 : 10;
   const validUf = /^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/;
   if (d.length < 4 || d.length > maxLen) return { ok:false, message:`Conselho deve ter entre 4 e ${maxLen} digitos` };
-  if (isRepDigits(d)) return { ok:false, message:"Conselho invalido: digitos repetidos" };
-  if (isSeqDigits(d)) return { ok:false, message:"Conselho invalido: sequencia numerica" };
+  if (isRepDigits(d)) return { ok:false, message:"Conselho inválido: dígitos repetidos" };
+  if (isSeqDigits(d)) return { ok:false, message:"Conselho inválido: sequência numérica" };
   if (!validUf.test(u)) return { ok:false, message:"UF do conselho invalida" };
   return { ok:true, number:d, uf:u };
 }
@@ -556,10 +589,10 @@ async function reloadTemplateData() {
 
 // -- Role permissions ----------------------------------------------------------
 function applyRolePermissions() {
-  const patientFields = ["pName","pPhone","pDoc","pCep","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory"];
+  const patientFields = ["pName","pPhone","pDoc","pCep","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pPrenatalStartDate","pPostpartumStartDate"];
   const taskFields = ["tTitle","tNotes","tDue","tAssignee"];
-  const mgrFields = ["pName","pPhone","pDoc","pCep","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","tTitle","tNotes","tDue","tAssignee"];
-  const clinFields = ["aDate","aSummary","aConduct","aNext"];
+  const mgrFields = ["pName","pPhone","pDoc","pCep","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pPrenatalStartDate","pPostpartumStartDate","tTitle","tNotes","tDue","tAssignee"];
+  const clinFields = ["aDate","aDemandType","aSummary","aConduct","aNext"];
 
   if (isManager()) {
     el.addAppointmentBtn.classList.remove("hidden");
@@ -635,6 +668,9 @@ function renderPatientHeader() {
   el.patientAvatar.textContent = p.name.charAt(0).toUpperCase();
   const chips = [
     `<span class="chip blue">${catLabel(p.careCategory)}</span>`,
+    p.careCategory === "chronic" && Array.isArray(p.chronicConditions) && p.chronicConditions.length
+      ? `<span class="chip">${p.chronicConditions.map((c) => c === "diabetes" ? "Diabetes" : "Hipertensão").join(" + ")}</span>`
+      : null,
     p.microArea && `<span class="chip">MA ${p.microArea}</span>`,
     p.phone     && `<span class="chip">${p.phone}</span>`,
     p.cnsCpf    && `<span class="chip">${p.cnsCpf}</span>`,
@@ -681,7 +717,7 @@ function renderWorkspaceHome() {
   }
 
   if (!priorityTasks.length) {
-    el.priorityTaskList.innerHTML = '<div class="empty-msg">Sem pendencias prioritarias.</div>';
+    el.priorityTaskList.innerHTML = '<div class="empty-msg">Sem pendências priorit?rias.</div>';
   } else {
     el.priorityTaskList.innerHTML = priorityTasks.map(t => `
       <div class="home-task-row">
@@ -694,9 +730,42 @@ function renderWorkspaceHome() {
   }
 
   renderProtocolDeadlineAlerts();
+  renderMonthlyDemandKpi();
   renderProtocolAdminList();
   renderDashboardFilterOptions();
   renderHomePatientTable();
+}
+
+function renderMonthlyDemandKpi() {
+  if (!el.kpiDemandRatio || !el.kpiDemandMeta || !el.kpiDemandAlert) return;
+  if (!(isManager() || isDoctor())) {
+    el.kpiDemandRatio.textContent = "--";
+    el.kpiDemandMeta.textContent = "Disponível para enfermeira e médica";
+    el.kpiDemandAlert.textContent = "";
+    return;
+  }
+
+  const metric = state.demandMonthly;
+  if (!metric) {
+    el.kpiDemandRatio.textContent = "--";
+    el.kpiDemandMeta.textContent = "Meta: 50% a 70%";
+    el.kpiDemandAlert.textContent = "Carregando indicador mensal...";
+    return;
+  }
+
+  el.kpiDemandRatio.textContent = `${Number(metric.ratioScheduled || 0).toFixed(2)}%`;
+  el.kpiDemandMeta.textContent = `Programada: ${metric.totals?.scheduled || 0} | Espontânea: ${metric.totals?.spontaneous || 0} | Total: ${metric.totals?.total || 0}`;
+
+  if (metric.status === "out_of_range") {
+    el.kpiDemandAlert.textContent = "Alerta: fora da meta mensal (50% a 70%).";
+    el.kpiDemandAlert.style.color = "#b42318";
+  } else if (metric.status === "in_range") {
+    el.kpiDemandAlert.textContent = "Dentro da meta mensal.";
+    el.kpiDemandAlert.style.color = "#067647";
+  } else {
+    el.kpiDemandAlert.textContent = "Sem dados de atendimentos no mês.";
+    el.kpiDemandAlert.style.color = "";
+  }
 }
 
 function renderProtocolDeadlineAlerts() {
@@ -737,6 +806,7 @@ function renderProtocolDeadlineAlerts() {
       }
 
       alerts.push({
+        source: "interval",
         patientName: patient.name,
         category: summary.categoryLabel || catLabel(patient.careCategory),
         activity: labels[key],
@@ -744,6 +814,29 @@ function renderProtocolDeadlineAlerts() {
         overdue,
         severity,
         severityClass,
+        score
+      });
+    });
+
+    const special = Array.isArray(summary.specialAlerts) ? summary.specialAlerts : [];
+    special.forEach((item) => {
+      const severity = item.severity || "low";
+      const overdue = Number(item.overdue || 0);
+      const daysLeft = item.daysLeft === null || item.daysLeft === undefined ? null : Number(item.daysLeft);
+      let score = severity === "high" ? 90 : (severity === "medium" ? 70 : 40);
+      if (overdue > 0) score += Math.min(overdue, 30);
+      if (daysLeft !== null && daysLeft <= 7) score += 12;
+      alerts.push({
+        source: "clinical",
+        patientName: patient.name,
+        category: item.category || summary.categoryLabel || catLabel(patient.careCategory),
+        activity: item.activity || "protocolo clínico",
+        title: item.title || "Pendência do protocolo",
+        detail: item.detail || "",
+        daysLeft,
+        overdue,
+        severity,
+        severityClass: item.severityClass || (severity === "high" ? "status alert" : (severity === "medium" ? "status pending" : "status progress")),
         score
       });
     });
@@ -757,13 +850,14 @@ function renderProtocolDeadlineAlerts() {
   }
 
   el.protocolDeadlineAlertsList.innerHTML = topAlerts.map((alert) => {
-    const deadlineText = alert.overdue > 0
-      ? `${alert.overdue} dia(s) em atraso`
-      : `faltam ${alert.daysLeft} dia(s)`;
+    let deadlineText = "";
+    if (alert.overdue > 0) deadlineText = `${alert.overdue} dia(s) em atraso`;
+    else if (alert.daysLeft !== null && alert.daysLeft !== undefined) deadlineText = `faltam ${alert.daysLeft} dia(s)`;
+    else deadlineText = alert.detail || "Atenção ao protocolo";
     return `
       <div class="home-task-row">
         <div>
-          <p class="home-task-title">${alert.patientName} - ${alert.activity}</p>
+          <p class="home-task-title">${alert.patientName} - ${alert.title || alert.activity}</p>
           <p class="home-task-meta">${alert.category} | ${deadlineText}</p>
         </div>
         <span class="${alert.severityClass}">${alert.severity === "high" ? "ALTO" : (alert.severity === "medium" ? "MEDIO" : "BAIXO")}</span>
@@ -774,6 +868,12 @@ function renderProtocolDeadlineAlerts() {
 function protocolStatusInfo(summary) {
   if (!summary) {
     return { key: "loading", label: "Carregando...", className: "status progress" };
+  }
+
+  const specialAlerts = Array.isArray(summary.specialAlerts) ? summary.specialAlerts : [];
+  const highSpecial = specialAlerts.filter((a) => a.severity === "high").length;
+  if (highSpecial > 0) {
+    return { key: "critical", label: `Atenção clínica (${highSpecial} alerta[s])`, className: "status alert" };
   }
 
   const pendingTotal = Number(summary.pending?.visits || 0)
@@ -794,7 +894,7 @@ function protocolStatusInfo(summary) {
 
   const completion = targetTotal > 0 ? doneTotal / targetTotal : 0;
   if (completion < 0.4) {
-    return { key: "critical", label: `Atraso critico (${doneTotal}/${targetTotal || 0})`, className: "status alert" };
+    return { key: "critical", label: `Atraso crítico (${doneTotal}/${targetTotal || 0})`, className: "status alert" };
   }
 
   return { key: "attention", label: `Atraso leve (${doneTotal}/${targetTotal || 0})`, className: "status pending" };
@@ -862,7 +962,7 @@ function renderHomePatientTable() {
     }).join("");
   }
 
-  el.homePatientPageInfo.textContent = `Pagina ${state.dashboardPage} de ${totalPages} | ${total} paciente(s)`;
+  el.homePatientPageInfo.textContent = `P?gina ${state.dashboardPage} de ${totalPages} | ${total} paciente(s)`;
   el.homePatientPrevBtn.disabled = state.dashboardPage <= 1;
   el.homePatientNextBtn.disabled = state.dashboardPage >= totalPages;
 
@@ -893,7 +993,7 @@ function exportDashboardPatientsCsv() {
     ];
   });
 
-  const header = ["Paciente", "Telefone", "Microarea", "Categoria", "ACS", "Status Protocolo"];
+  const header = ["Paciente", "Telefone", "Microárea", "Categoria", "ACS", "Status Protocolo"];
   const csvEscape = (value) => `"${String(value || "").replace(/"/g, '""')}"`;
   const csv = [header, ...rows].map((r) => r.map(csvEscape).join(",")).join("\n");
 
@@ -959,7 +1059,7 @@ function closeProfileModal() {
 
 function requireSelectedPatientForAi() {
   if (!state.selectedPatient) {
-    showToast("Selecione um paciente para usar IA.", "error");
+    showToast("Selecione um paciente para usar a IA.", "error");
     switchNavSection("patients");
     return false;
   }
@@ -1004,7 +1104,7 @@ function renderTeamUsersLists() {
     .filter((u) => u.role === "doctor")
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 
-  const teamLine = (user) => user.teamName ? `Equipe: ${user.teamName}` : "Equipe: nao informada";
+  const teamLine = (user) => user.teamName ? `Equipe: ${user.teamName}` : "Equipe: não informada";
 
   el.acsList.innerHTML = acsUsers.length
     ? acsUsers.map((u) => `
@@ -1026,7 +1126,7 @@ function renderTeamUsersLists() {
         </div>
         <span class="home-task-meta">${u.email}</span>
       </div>`).join("")
-    : '<div class="empty-msg">Nenhum medico cadastrado.</div>';
+    : '<div class="empty-msg">Nenhum médico cadastrado.</div>';
 }
 
 function switchNavSection(section) {
@@ -1159,7 +1259,7 @@ function renderProtocolAdminList() {
       el.protocolAuthorityInput.value = template.authority || "Ministerio da Saude";
       el.protocolReferenceInput.value = template.reference || "";
       el.protocolVersionInput.value = template.version || "1.0";
-      el.createProtocolBtn.textContent = "Confirmar alteracoes";
+      el.createProtocolBtn.textContent = "Confirmar alterações";
       el.protocolModalTitle.textContent = "Editar protocolo";
       openProtocolModal();
       showToast("Editando categoria de protocolo.", "ok");
@@ -1173,11 +1273,11 @@ function renderProtocolAdminList() {
       try {
         const usage = await api(`/protocol/templates/${category}/usage`);
         if (!usage.canDelete) {
-          showToast(`Acao bloqueada: ${usage.patientCount} pacientes e ${usage.recordsCount} registros usam esta categoria.`, "error", 5000);
+          showToast(`Ação bloqueada: ${usage.patientCount} pacientes e ${usage.recordsCount} registros usam esta categoria.`, "error", 5000);
           return;
         }
 
-        if (!confirm(`Excluir categoria '${category}'? Esta acao e critica e nao pode ser desfeita.`)) return;
+        if (!confirm(`Excluir categoria '${category}'? Esta ação ? cr?tica e não pode ser desfeita.`)) return;
         await api(`/protocol/templates/${category}`, { method: "DELETE" });
         showToast("Categoria excluida.", "ok");
         resetProtocolForm();
@@ -1224,6 +1324,15 @@ function openPatientEdit() {
   el.pCep.value = addressParts.cep || "";
   el.pAcs.value = p.assignedAcsId || "";
   el.pCareCategory.value = p.careCategory || "general";
+  setSelectedChronicConditions(p.chronicConditions || []);
+  updateChronicConditionsVisibility();
+  el.pBirthDate.value = p.birthDate || "";
+  el.pSexAtBirth.value = p.sexAtBirth || "";
+  el.pGenderIdentity.value = p.genderIdentity || "";
+  el.pPregnancyStartDate.value = p.pregnancyStartDate || "";
+  el.pExpectedDeliveryDate.value = p.expectedDeliveryDate || "";
+  el.pPrenatalStartDate.value = p.prenatalStartDate || "";
+  el.pPostpartumStartDate.value = p.postpartumStartDate || "";
   el.pComorb.value = p.comorbidities || "";
   el.pMeds.value = p.medications || "";
   el.pAllergies.value = p.allergies || "";
@@ -1274,8 +1383,8 @@ function renderProtocolSummary() {
       <div class="proto-stat-sub">${b.pending>0?`${b.pending} pendente${b.pending!==1?"s":""}`:"Em dia"}</div>
     </div>`).join("")}</div>`;
 
-  const alerts = stats.filter(b=>b.pending>0).map(b=>`<span class="proto-alert warn">? ${b.pending} ${b.label.toLowerCase()}</span>`).join("");
-  const allOk  = !alerts ? `<span class="proto-alert ok">? Protocolo em dia</span>` : "";
+  const alerts = stats.filter(b=>b.pending>0).map(b=>`<span class="proto-alert warn">• ${b.pending} ${b.label.toLowerCase()}</span>`).join("");
+  const allOk  = !alerts ? `<span class="proto-alert ok">• Protocolo em dia</span>` : "";
   const critical = stats.filter((b) => b.pending > 0);
   const criticalBox = critical.length
     ? `<div class="protocol-critical-box">Falta concluir: ${critical.map((b) => `${b.pending} ${b.label.toLowerCase()}`).join(" | ")}</div>`
@@ -1287,11 +1396,37 @@ function renderProtocolSummary() {
       ${v.name}
     </li>`).join("") || "<li class='vaccine-item'>Sem vacinas recomendadas.</li>";
 
+  const specialAlerts = Array.isArray(s.specialAlerts) ? s.specialAlerts : [];
+  const gestWeeks = Number(s.specialMonitoring?.timeline?.gestationalWeeks);
+  const puerDays = Number(s.specialMonitoring?.timeline?.daysAfterBirth);
+  const timelineBadge = Number.isFinite(gestWeeks)
+    ? `<div class="proto-section-label">Idade gestacional estimada: ${gestWeeks} semana(s)</div>`
+    : (Number.isFinite(puerDays) ? `<div class="proto-section-label">Puerpério: ${puerDays} dia(s) pós-parto</div>` : "");
+  const specialHtml = specialAlerts.length
+    ? `
+      <div class="proto-section-label">Alertas clínicos da categoria</div>
+      <div class="record-list">
+        ${specialAlerts.map((item) => `
+          <div class="record-card">
+            <div class="record-hd">
+              <span class="record-title">${item.title || item.activity || "Alerta do protocolo"}</span>
+              <span class="${item.severityClass || "status pending"}">${item.severity === "high" ? "ALTO" : (item.severity === "medium" ? "MÉDIO" : "BAIXO")}</span>
+            </div>
+            <div class="record-body">
+              <p>${item.detail || "Atenção necessária no protocolo."}</p>
+            </div>
+          </div>
+        `).join("")}
+      </div>`
+    : "";
+
   el.protocolSummary.innerHTML = `
     ${statsHtml}
     ${criticalBox}
     <div class="proto-alerts">${alerts||allOk}</div>
     ${s.categoryLabel?`<div class="proto-section-label">Categoria ativa: ${s.categoryLabel}</div>`:""}
+    ${timelineBadge}
+    ${specialHtml}
     <div class="proto-section-label">Checklist de vacinas</div>
     <ul class="vaccine-list">${vaccines}</ul>`;
 }
@@ -1301,6 +1436,7 @@ function renderAppointments() {
   el.appointmentList.innerHTML = "";
   if (!state.appointments.length) { el.appointmentList.innerHTML='<div class="empty-msg">Nenhum atendimento.</div>'; return; }
   state.appointments.forEach(a => {
+    const demandLabel = a.demandType === "spontaneous" ? "Espontânea" : "Programada";
     const d = document.createElement("div");
     d.className = "record-card";
     d.innerHTML = `
@@ -1309,6 +1445,7 @@ function renderAppointments() {
         <span class="record-date">${new Date(a.date).toLocaleString("pt-BR")}</span>
       </div>
       <div class="record-body">
+        <p><strong>Demanda:</strong> ${demandLabel}</p>
         ${a.conduct  ? `<p><strong>Conduta:</strong> ${a.conduct}</p>` : ""}
         ${a.nextStep ? `<p><strong>Proximo:</strong> ${a.nextStep}</p>` : ""}
       </div>`;
@@ -1379,11 +1516,11 @@ function renderMessages() {
 }
 
 // -- Render: history timeline ---------------------------------------------------
-const typeLabel = { visit:"Visita", consultation:"Consulta", vaccine:"Vacina", procedure:"Procedimento", note:"Observacao" };
+const typeLabel = { visit:"Visita", consultation:"Consulta", vaccine:"Vacina", procedure:"Procedimento", note:"Observação" };
 
 function renderHistory() {
   el.historyList.innerHTML = "";
-  if (!state.history.length) { el.historyList.innerHTML='<div class="empty-msg">Sem historico.</div>'; return; }
+  if (!state.history.length) { el.historyList.innerHTML='<div class="empty-msg">Sem histórico.</div>'; return; }
   state.history.forEach(r => {
     const d = document.createElement("div");
     d.className = "tl-item";
@@ -1442,7 +1579,7 @@ async function loadPatients() {
   renderPatients();
   renderWorkspaceHome();
   loadProtocolStatusesForDashboard().catch(() => {
-    showToast("Nao foi possivel atualizar status de protocolo agora.", "error", 2500);
+    showToast("Não foi possivel atualizar status de protocolo agora.", "error", 2500);
   });
 }
 async function loadGlobalTasks() {
@@ -1451,6 +1588,19 @@ async function loadGlobalTasks() {
     state.globalTasks = Array.isArray(allTasks) ? allTasks : [];
   } catch {
     state.globalTasks = [];
+  }
+  renderWorkspaceHome();
+}
+async function loadMonthlyDemandMetric() {
+  if (!(isManager() || isDoctor())) {
+    state.demandMonthly = null;
+    renderWorkspaceHome();
+    return;
+  }
+  try {
+    state.demandMonthly = await api("/metrics/demand/monthly");
+  } catch {
+    state.demandMonthly = null;
   }
   renderWorkspaceHome();
 }
@@ -1504,6 +1654,7 @@ async function bootstrapAfterLogin() {
   if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
   if (el.homePatientAcsFilter) el.homePatientAcsFilter.value = "";
   if (el.homePatientProtocolStatusFilter) el.homePatientProtocolStatusFilter.value = "all";
+  if (el.aDemandType) el.aDemandType.value = "scheduled";
   if (el.topFilterMicroArea) el.topFilterMicroArea.value = "";
   if (el.topFilterAcs) el.topFilterAcs.value = "";
   if (el.topFilterCategory) el.topFilterCategory.value = "";
@@ -1511,6 +1662,7 @@ async function bootstrapAfterLogin() {
   switchNavSection("patients");
   await loadPatients();
   await loadGlobalTasks();
+  await loadMonthlyDemandMetric();
   renderWorkspaceHome();
 }
 
@@ -1540,7 +1692,7 @@ el.loginBtn.addEventListener("click", withSpinner(el.loginBtn, async () => {
 el.registerBtn.addEventListener("click", withSpinner(el.registerBtn, async () => {
   const role = el.registerRole.value;
   if (!passwordStrong(el.registerPassword.value)) {
-    throw new Error("Senha fraca: minimo 8 caracteres, 1 maiuscula, 1 numero e 1 especial.");
+    throw new Error("Senha fraca: mínimo de 8 caracteres, 1 maiúscula, 1 número e 1 especial.");
   }
   const check = validateCouncil(role, el.registerCouncilNumber.value, el.registerCouncilUf.value);
   if (!check.ok) { showToast(check.message, "error"); throw new Error(check.message); }
@@ -1578,12 +1730,16 @@ function openPatientCreateModal() {
   state.editingPatientId = null;
   el.patientModalTitle.textContent = "Novo cadastro de paciente";
   el.createPatientBtn.textContent = "Salvar";
-  ["pName","pPhone","pDoc","pCep","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies"].forEach((id) => {
+  ["pName","pPhone","pDoc","pCep","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pPrenatalStartDate","pPostpartumStartDate"].forEach((id) => {
     const ref = document.getElementById(id);
     if (ref) ref.value = "";
   });
+  if (el.pSexAtBirth) el.pSexAtBirth.value = "";
+  if (el.pGenderIdentity) el.pGenderIdentity.value = "";
   el.pAcs.value = "";
   el.pCareCategory.value = "general";
+  setSelectedChronicConditions([]);
+  updateChronicConditionsVisibility();
   el.patientModal.classList.remove("hidden");
 }
 
@@ -1616,6 +1772,7 @@ window.addEventListener("resize", () => {
 });
 
 el.openPatientModalBtn?.addEventListener("click", openPatientCreateModal);
+el.pCareCategory?.addEventListener("change", updateChronicConditionsVisibility);
 el.closePatientModalBtn?.addEventListener("click", () => el.patientModal.classList.add("hidden"));
 el.cancelPatientModalBtn?.addEventListener("click", () => el.patientModal.classList.add("hidden"));
 el.patientModal?.addEventListener("click", (e) => {
@@ -1646,7 +1803,7 @@ el.managerCreateRole?.addEventListener("change", updateCreateUserRoleVisibility)
 el.saveCreateUserBtn?.addEventListener("click", async () => {
   try {
     if (!passwordStrong(el.managerCreatePassword.value)) {
-      throw new Error("Senha fraca: minimo 8 caracteres, 1 maiuscula, 1 numero e 1 especial.");
+      throw new Error("Senha fraca: mínimo de 8 caracteres, 1 maiúscula, 1 número e 1 especial.");
     }
 
     const payload = {
@@ -1666,7 +1823,7 @@ el.saveCreateUserBtn?.addEventListener("click", async () => {
       body: JSON.stringify(payload)
     });
 
-    showToast("Usuario cadastrado com sucesso.", "ok");
+    showToast("Usuário cadastrado com sucesso.", "ok");
     el.managerCreateName.value = "";
     el.managerCreateEmail.value = "";
     el.managerCreatePassword.value = "";
@@ -1703,7 +1860,7 @@ el.pCep?.addEventListener("blur", async () => {
     if (!String(el.pCity.value || "").trim()) el.pCity.value = data.localidade || "";
     if (!String(el.pState.value || "").trim()) el.pState.value = String(data.uf || "").toUpperCase().slice(0, 2);
   } catch {
-    // Ignora falha de CEP para nao travar cadastro.
+    // Ignora falha de CEP para não travar cadastro.
   }
 });
 
@@ -1887,15 +2044,6 @@ el.createProtocolBtn?.addEventListener("click", async () => {
       showToast("Preencha categoria e nome.", "error");
       return;
     }
-    const invalidDeadline = (
-      (payload.targets.visits > 0 && payload.deadlines.visits <= 0)
-      || (payload.targets.consultations > 0 && payload.deadlines.consultations <= 0)
-      || (payload.targets.vaccines > 0 && payload.deadlines.vaccines <= 0)
-    );
-    if (invalidDeadline) {
-      showToast("Defina os prazos oficiais (em dias) para cada item com meta maior que zero.", "error");
-      return;
-    }
 
     if (state.editingProtocolCategory) {
       await api(`/protocol/templates/${state.editingProtocolCategory}`, {
@@ -1927,6 +2075,14 @@ el.createPatientBtn.addEventListener("click", async () => {
       name:el.pName.value, phone:el.pPhone.value, cnsCpf:el.pDoc.value,
       address:buildAddress(),
       careCategory:el.pCareCategory.value, assignedAcsId:el.pAcs.value,
+      chronicConditions: getSelectedChronicConditions(),
+      birthDate: el.pBirthDate.value || "",
+      sexAtBirth: el.pSexAtBirth.value || "",
+      genderIdentity: el.pGenderIdentity.value || "",
+      pregnancyStartDate: el.pPregnancyStartDate.value || "",
+      expectedDeliveryDate: el.pExpectedDeliveryDate.value || "",
+      prenatalStartDate: el.pPrenatalStartDate.value || "",
+      postpartumStartDate: el.pPostpartumStartDate.value || "",
       comorbidities:el.pComorb.value, medications:el.pMeds.value, allergies:el.pAllergies.value
     };
 
@@ -1942,10 +2098,14 @@ el.createPatientBtn.addEventListener("click", async () => {
       showToast("Paciente cadastrado com sucesso!","ok");
     }
 
-    ["pName","pPhone","pDoc","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies"].forEach(id=>{document.getElementById(id).value="";});
+    ["pName","pPhone","pDoc","pStreet","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pPrenatalStartDate","pPostpartumStartDate"].forEach(id=>{document.getElementById(id).value="";});
+    if (el.pSexAtBirth) el.pSexAtBirth.value = "";
+    if (el.pGenderIdentity) el.pGenderIdentity.value = "";
     el.pCep.value = "";
     el.pAcs.value = "";
     el.pCareCategory.value = "general";
+    setSelectedChronicConditions([]);
+    updateChronicConditionsVisibility();
     state.editingPatientId = null;
     el.createPatientBtn.textContent = "Salvar";
     el.patientModal.classList.add("hidden");
@@ -1978,11 +2138,17 @@ el.addAppointmentBtn.addEventListener("click", async () => {
   if (!state.selectedPatient || (!isManager()&&!isDoctor())) return;
   try {
     await api(`/patients/${state.selectedPatient.id}/appointments`, { method:"POST", body:JSON.stringify({
-      date:el.aDate.value, summary:el.aSummary.value, conduct:el.aConduct.value, nextStep:el.aNext.value
+      date:el.aDate.value,
+      demandType: el.aDemandType?.value || "scheduled",
+      summary:el.aSummary.value,
+      conduct:el.aConduct.value,
+      nextStep:el.aNext.value
     })});
     ["aDate","aSummary","aConduct","aNext"].forEach(id=>{document.getElementById(id).value="";});
+    if (el.aDemandType) el.aDemandType.value = "scheduled";
     showToast("Atendimento registrado.","ok");
     await refreshSelectedPatientData();
+    await loadMonthlyDemandMetric();
   } catch(e) { showToast(e.message,"error"); }
 });
 
@@ -2053,6 +2219,8 @@ async function initApp() {
 }
 
 initApp();
+
+
 
 
 

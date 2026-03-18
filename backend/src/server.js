@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
@@ -30,7 +30,7 @@ const AUTH_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 20)
 const authRateMap = new Map();
 
 if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
-  throw new Error("JWT_SECRET obrigatorio em producao");
+  throw new Error("JWT_SECRET obrigatório em produção");
 }
 
 const DEFAULT_CARE_PROTOCOLS = {
@@ -44,30 +44,30 @@ const DEFAULT_CARE_PROTOCOLS = {
   pregnant: {
     category: "pregnant",
     label: "Gestante",
-    targets: { visits: 6, consultations: 7, vaccines: 3 },
-    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
-    vaccines: ["dTpa", "Hepatite B", "Influenza"]
-  },
-  puerperal: {
-    category: "puerperal",
-    label: "Puerpera",
-    targets: { visits: 2, consultations: 2, vaccines: 1 },
+    targets: { visits: 3, consultations: 7, vaccines: 1 },
     deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: ["dTpa"]
   },
-  pap_only: {
-    category: "pap_only",
-    label: "Somente Papanicolau",
+  puerperal: {
+    category: "puerperal",
+    label: "Puérpera",
     targets: { visits: 1, consultations: 1, vaccines: 0 },
     deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: []
   },
+  pap_only: {
+    category: "pap_only",
+    label: "Rastreamento Feminino/Trans",
+    targets: { visits: 0, consultations: 1, vaccines: 1 },
+    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
+    vaccines: ["HPV"]
+  },
   child_followup: {
     category: "child_followup",
     label: "Puericultura",
-    targets: { visits: 4, consultations: 6, vaccines: 6 },
+    targets: { visits: 2, consultations: 10, vaccines: 0 },
     deadlines: { visits: 0, consultations: 0, vaccines: 0 },
-    vaccines: ["BCG", "Pentavalente", "Polio", "Rotavirus", "Pneumococica", "Meningococica"]
+    vaccines: ["BCG", "Hepatite B", "Penta", "VIP", "Pneumo 10", "Rotavírus", "Meningocócica", "Influenza", "COVID", "Febre amarela", "ACWY", "Tríplice viral", "DTP", "Varicela", "Hepatite A"]
   },
   chronic: {
     category: "chronic",
@@ -75,6 +75,13 @@ const DEFAULT_CARE_PROTOCOLS = {
     targets: { visits: 3, consultations: 3, vaccines: 2 },
     deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: ["Influenza", "COVID-19"]
+  },
+  elderly: {
+    category: "elderly",
+    label: "Pessoa Idosa",
+    targets: { visits: 2, consultations: 1, vaccines: 1 },
+    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
+    vaccines: ["Influenza"]
   }
 };
 
@@ -93,8 +100,8 @@ function buildDefaultProtocolTemplates() {
       version: "Rede Cegonha"
     },
     pap_only: {
-      reference: "https://www.inca.gov.br/controle-do-cancer-do-colo-do-utero/acoes-de-controle/rastreamento",
-      version: "Rastreamento vigente"
+      reference: "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/c/cancer-do-colo-do-utero",
+      version: "Rastreamento Colo e Mama"
     },
     child_followup: {
       reference: "https://www.gov.br/saude/pt-br/vacinacao/calendario",
@@ -103,6 +110,10 @@ function buildDefaultProtocolTemplates() {
     chronic: {
       reference: "https://bvsms.saude.gov.br/bvs/publicacoes/plano_acoes_estrategicas_enfrentamento_dc_nt_2021_2030.pdf",
       version: "DCNT 2021-2030"
+    },
+    elderly: {
+      reference: "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/s/saude-da-pessoa-idosa",
+      version: "Cuidado da Pessoa Idosa"
     }
   };
 
@@ -143,7 +154,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
     if (!FRONTEND_ORIGINS.length) return callback(null, true);
     if (FRONTEND_ORIGINS.includes(origin)) return callback(null, true);
-    return callback(new Error("Origem nao permitida por CORS"));
+    return callback(new Error("Origem não permitida por CORS"));
   }
 }));
 
@@ -162,6 +173,12 @@ function canonicalRole(role) {
   if (input === "medica") return "doctor";
   if (input === "enfermeiro") return "nurse_manager";
   return input;
+}
+
+function normalizeDemandType(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (raw === "spontaneous" || raw === "espontanea" || raw === "espontânea") return "spontaneous";
+  return "scheduled";
 }
 
 function councilTypeForRole(role) {
@@ -302,18 +319,37 @@ function ensureDbShape(db) {
     db.protocolTemplates = buildDefaultProtocolTemplates();
   } else {
     const defaultsByCategory = Object.fromEntries(buildDefaultProtocolTemplates().map((t) => [t.category, t]));
-    db.protocolTemplates = db.protocolTemplates.map((t) => ({
-      ...t,
-      deadlines: {
-        visits: Number(t.deadlines?.visits ?? defaultsByCategory[t.category]?.deadlines?.visits ?? 0),
-        consultations: Number(t.deadlines?.consultations ?? defaultsByCategory[t.category]?.deadlines?.consultations ?? 0),
-        vaccines: Number(t.deadlines?.vaccines ?? defaultsByCategory[t.category]?.deadlines?.vaccines ?? 0)
-      },
-      authority: String(t.authority || "Ministerio da Saude"),
-      reference: String(t.reference || defaultsByCategory[t.category]?.reference || ""),
-      version: String(t.version || defaultsByCategory[t.category]?.version || "1.0")
-    }));
+    db.protocolTemplates = db.protocolTemplates
+      .map((t) => ({
+        ...t,
+        deadlines: {
+          visits: Number(t.deadlines?.visits ?? defaultsByCategory[t.category]?.deadlines?.visits ?? 0),
+          consultations: Number(t.deadlines?.consultations ?? defaultsByCategory[t.category]?.deadlines?.consultations ?? 0),
+          vaccines: Number(t.deadlines?.vaccines ?? defaultsByCategory[t.category]?.deadlines?.vaccines ?? 0)
+        },
+        authority: String(t.authority || "Ministerio da Saude"),
+        reference: String(t.reference || defaultsByCategory[t.category]?.reference || ""),
+        version: String(t.version || defaultsByCategory[t.category]?.version || "1.0")
+      }));
   }
+
+  db.patients = db.patients.map((p) => ({
+    ...p,
+    careCategory: String(p.careCategory || "general"),
+    chronicConditions: normalizeChronicConditions(p.chronicConditions),
+    sexAtBirth: p.sexAtBirth ? String(p.sexAtBirth) : "",
+    genderIdentity: p.genderIdentity ? String(p.genderIdentity) : "",
+    birthDate: p.birthDate ? String(p.birthDate) : "",
+    pregnancyStartDate: p.pregnancyStartDate ? String(p.pregnancyStartDate) : "",
+    expectedDeliveryDate: p.expectedDeliveryDate ? String(p.expectedDeliveryDate) : "",
+    prenatalStartDate: p.prenatalStartDate ? String(p.prenatalStartDate) : "",
+    postpartumStartDate: p.postpartumStartDate ? String(p.postpartumStartDate) : ""
+  }));
+
+  db.appointments = db.appointments.map((a) => ({
+    ...a,
+    demandType: normalizeDemandType(a.demandType)
+  }));
 }
 
 function getTeamById(db, id) {
@@ -459,13 +495,13 @@ function requireAuth(req, res, next) {
     };
     return next();
   } catch {
-    return res.status(401).json({ error: "Token invalido ou expirado" });
+    return res.status(401).json({ error: "Token inválido ou expirado" });
   }
 }
 
 function requireManager(req, res, next) {
   if (!isManager(req.user)) {
-    return res.status(403).json({ error: "Somente enfermeira pode executar esta acao" });
+    return res.status(403).json({ error: "Somente enfermeira pode executar esta ação" });
   }
   return next();
 }
@@ -522,6 +558,14 @@ function buildPatientAccessReport(db, patient) {
       phone: patient.phone || "",
       address: patient.address || "",
       careCategory: patient.careCategory || "general",
+      chronicConditions: normalizeChronicConditions(patient.chronicConditions),
+      sexAtBirth: patient.sexAtBirth || "",
+      genderIdentity: patient.genderIdentity || "",
+      birthDate: patient.birthDate || "",
+      pregnancyStartDate: patient.pregnancyStartDate || "",
+      expectedDeliveryDate: patient.expectedDeliveryDate || "",
+      prenatalStartDate: patient.prenatalStartDate || "",
+      postpartumStartDate: patient.postpartumStartDate || "",
       assignedAcsId: patient.assignedAcsId || "",
       comorbidities: patient.comorbidities || "",
       medications: patient.medications || "",
@@ -538,6 +582,7 @@ function buildPatientAccessReport(db, patient) {
       id: a.id,
       date: a.date,
       summary: a.summary,
+      demandType: normalizeDemandType(a.demandType),
       conduct: a.conduct || "",
       nextStep: a.nextStep || "",
       createdAt: a.createdAt
@@ -578,6 +623,14 @@ function applyPatientCorrection(db, user, patient, corrections = {}) {
     "microArea",
     "assignedAcsId",
     "careCategory",
+    "chronicConditions",
+    "sexAtBirth",
+    "genderIdentity",
+    "birthDate",
+    "pregnancyStartDate",
+    "expectedDeliveryDate",
+    "prenatalStartDate",
+    "postpartumStartDate",
     "comorbidities",
     "medications",
     "allergies"
@@ -590,6 +643,15 @@ function applyPatientCorrection(db, user, patient, corrections = {}) {
     if (key === "careCategory") {
       const normalized = normalizeCategory(String(value || "").trim(), getProtocolTemplateMap(db, user.teamId));
       if (next[key] !== normalized) {
+        next[key] = normalized;
+        changedFields.push(key);
+      }
+      continue;
+    }
+    if (key === "chronicConditions") {
+      const normalized = normalizeChronicConditions(value);
+      const current = normalizeChronicConditions(next[key]);
+      if (JSON.stringify(current) !== JSON.stringify(normalized)) {
         next[key] = normalized;
         changedFields.push(key);
       }
@@ -623,6 +685,14 @@ function anonymizePatientBundle(db, user, patient, reason = "", requestId = "") 
     address: "",
     microArea: "",
     assignedAcsId: "",
+    chronicConditions: [],
+    sexAtBirth: "",
+    genderIdentity: "",
+    birthDate: "",
+    pregnancyStartDate: "",
+    expectedDeliveryDate: "",
+    prenatalStartDate: "",
+    postpartumStartDate: "",
     comorbidities: "",
     medications: "",
     allergies: "",
@@ -708,6 +778,14 @@ function normalizeCategory(value, templateMap = DEFAULT_CARE_PROTOCOLS) {
   return templateMap[next] ? next : "general";
 }
 
+function normalizeChronicConditions(value) {
+  const list = Array.isArray(value) ? value : [];
+  const normalized = list
+    .map((item) => String(item || "").trim().toLowerCase())
+    .filter((item) => ["hypertension", "diabetes"].includes(item));
+  return [...new Set(normalized)];
+}
+
 function validateCouncilData(role, councilNumber, councilUf) {
   if (!roleNeedsCouncil(role)) {
     return { ok: true };
@@ -729,11 +807,11 @@ function validateCouncilData(role, councilNumber, councilUf) {
   }
 
   if (isRepeatedDigits(numberDigits)) {
-    return { ok: false, message: "Numero do conselho invalido (digitos repetidos)" };
+    return { ok: false, message: "Número do conselho inválido (dígitos repetidos)" };
   }
 
   if (isSequentialDigits(numberDigits)) {
-    return { ok: false, message: "Numero do conselho invalido (sequencia numerica)" };
+    return { ok: false, message: "Número do conselho inválido (sequência numérica)" };
   }
 
   if (!VALID_UF.has(uf)) {
@@ -768,7 +846,7 @@ function normalizeProviderResponse(provider, data) {
     return {
       valid,
       provider: base.provider || "n8n",
-      error: base.error || (valid ? "" : "Conselho nao aprovado no n8n"),
+      error: base.error || (valid ? "" : "Conselho não aprovado no n8n"),
       details: base
     };
   }
@@ -779,7 +857,7 @@ function normalizeProviderResponse(provider, data) {
     return {
       valid,
       provider: base.provider || "make",
-      error: base.error || (valid ? "" : "Conselho nao aprovado no Make"),
+      error: base.error || (valid ? "" : "Conselho não aprovado no Make"),
       details: base
     };
   }
@@ -861,7 +939,7 @@ async function verifyCouncilExternally(payload) {
         valid: false,
         provider: "missing-url",
         status: "error",
-        error: "Integracao externa de conselho nao configurada"
+        error: "Integração externa de conselho não configurada"
       };
     }
 
@@ -922,7 +1000,7 @@ async function verifyCouncilExternally(payload) {
           valid: false,
           provider: normalized.provider,
           status: "rejected",
-          error: "Provedor nao retornou evidencia minima do conselho"
+          error: "Provedor não retornou evidência m?nima do conselho"
         };
       }
 
@@ -934,7 +1012,7 @@ async function verifyCouncilExternally(payload) {
           valid: false,
           provider: normalized.provider,
           status: "rejected",
-          error: "Conselho retornado pelo provedor nao confere com numero/UF informados"
+          error: "Conselho retornado pelo provedor não confere com número/UF informados"
         };
       }
     }
@@ -953,7 +1031,7 @@ async function verifyCouncilExternally(payload) {
         valid: false,
         provider: "external-http",
         status: "error",
-        error: "Integracao de validacao de conselho indisponivel"
+        error: "Integração de validação de conselho indispon?vel"
       };
     }
 
@@ -990,11 +1068,11 @@ function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
     .filter(Boolean))];
 
   if (!category || category.length < 2) {
-    return { ok: false, error: "category invalida (use letras, numeros e _)" };
+    return { ok: false, error: "category inválida (use letras, numeros e _)" };
   }
 
   if (!label) {
-    return { ok: false, error: "label e obrigatorio" };
+    return { ok: false, error: "label ? obrigatório" };
   }
 
   const numbers = [
@@ -1005,7 +1083,7 @@ function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
 
   for (const [key, value] of numbers) {
     if (!Number.isFinite(value) || value < 0 || value > 99) {
-      return { ok: false, error: `targets.${key} deve ser numero entre 0 e 99` };
+      return { ok: false, error: `targets.${key} deve ser número entre 0 e 99` };
     }
   }
 
@@ -1017,18 +1095,8 @@ function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
 
   for (const [key, value] of deadlineNumbers) {
     if (!Number.isFinite(value) || value < 0 || value > 3650) {
-      return { ok: false, error: `deadlines.${key} deve ser numero entre 0 e 3650 dias` };
+      return { ok: false, error: `deadlines.${key} deve ser número entre 0 e 3650 dias` };
     }
-  }
-
-  if (Math.floor(visits) > 0 && Math.floor(deadlineVisits) <= 0) {
-    return { ok: false, error: "deadlines.visits deve ser maior que zero quando houver meta de visitas" };
-  }
-  if (Math.floor(consultations) > 0 && Math.floor(deadlineConsultations) <= 0) {
-    return { ok: false, error: "deadlines.consultations deve ser maior que zero quando houver meta de consultas" };
-  }
-  if (Math.floor(vaccinesTarget) > 0 && Math.floor(deadlineVaccines) <= 0) {
-    return { ok: false, error: "deadlines.vaccines deve ser maior que zero quando houver meta de vacinas" };
   }
 
   return {
@@ -1079,9 +1147,9 @@ function getAllowedPatients(db, user, query) {
 
 function getPatientOrError(db, user, patientId) {
   const patient = db.patients.find((p) => p.id === patientId);
-  if (!patient) return { error: { status: 404, message: "Paciente nao encontrado" } };
+  if (!patient) return { error: { status: 404, message: "Paciente não encontrado" } };
   if (!canAccessPatient(user, patient)) {
-    return { error: { status: 403, message: "Sem permissao para este paciente" } };
+    return { error: { status: 403, message: "Sem permissão para este paciente" } };
   }
   return { patient };
 }
@@ -1099,7 +1167,7 @@ function buildPatientHistory(db, patientId) {
       source: "appointment",
       createdBy: a.createdBy,
       createdAt: a.createdAt,
-      metadata: {}
+      metadata: { demandType: normalizeDemandType(a.demandType) }
     }));
 
   const clinicalEvents = db.clinicalRecords
@@ -1107,6 +1175,849 @@ function buildPatientHistory(db, patientId) {
     .map((r) => ({ ...r, source: "clinicalRecord" }));
 
   return [...appointmentEvents, ...clinicalEvents].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function toDateOnlySafe(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function daysDiff(from, to = new Date()) {
+  const left = toDateOnlySafe(from);
+  const right = toDateOnlySafe(to);
+  if (!left || !right) return null;
+  return Math.floor((right.getTime() - left.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function addDays(baseDate, days) {
+  const d = toDateOnlySafe(baseDate);
+  if (!d) return null;
+  d.setDate(d.getDate() + Number(days || 0));
+  return d;
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function eventDate(entry) {
+  return toDateOnlySafe(entry?.date || entry?.createdAt || "");
+}
+
+function filterHistoryByPeriod(history, start, end) {
+  const from = toDateOnlySafe(start);
+  const until = toDateOnlySafe(end);
+  return history.filter((h) => {
+    const d = eventDate(h);
+    if (!d) return false;
+    if (from && d < from) return false;
+    if (until && d > until) return false;
+    return true;
+  });
+}
+
+function detectGestationTimeline(patient) {
+  const rawStart = toDateOnlySafe(patient?.pregnancyStartDate);
+  const rawDue = toDateOnlySafe(patient?.expectedDeliveryDate);
+  const start = rawStart || (rawDue ? addDays(rawDue, -280) : null);
+  const due = rawDue || (rawStart ? addDays(rawStart, 280) : null);
+  const prenatalStart = toDateOnlySafe(patient?.prenatalStartDate);
+  const now = toDateOnlySafe(new Date());
+
+  const gestationalDays = start ? Math.max(daysDiff(start, now) || 0, 0) : null;
+  const gestationalWeeks = gestationalDays !== null ? Math.floor(gestationalDays / 7) : null;
+  const daysUntilDue = due ? daysDiff(now, due) : null;
+
+  return { start, due, prenatalStart, gestationalDays, gestationalWeeks, daysUntilDue };
+}
+
+function detectPuerperalTimeline(patient) {
+  const start = toDateOnlySafe(patient?.postpartumStartDate);
+  const now = toDateOnlySafe(new Date());
+  const daysAfterBirth = start ? Math.max(daysDiff(start, now) || 0, 0) : null;
+  const daysLeft = daysAfterBirth === null ? null : 42 - daysAfterBirth;
+  return { start, daysAfterBirth, daysLeft };
+}
+
+function makeClinicalAlert({
+  id,
+  activity,
+  title,
+  detail,
+  severity = "low",
+  daysLeft = null,
+  overdueDays = 0,
+  categoryLabel = "Gestante"
+}) {
+  return {
+    id,
+    activity,
+    title,
+    detail,
+    severity,
+    severityClass: severity === "high" ? "status alert" : (severity === "medium" ? "status pending" : "status progress"),
+    category: categoryLabel,
+    daysLeft,
+    overdue: Math.max(Number(overdueDays || 0), 0)
+  };
+}
+
+function evaluatePregnantProtocol(patient, history) {
+  const timeline = detectGestationTimeline(patient);
+  const alerts = [];
+  const categoryLabel = "Gestante";
+
+  if (!timeline.start || !timeline.due) {
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-dates-missing",
+      activity: "dados gestacionais",
+      title: "Definir DUM ou DPP",
+      detail: "Sem data-base de gestação. Cadastre DUM ou DPP para calcular prazos e alertas.",
+      severity: "high",
+      categoryLabel
+    }));
+    return { timeline, alerts, checklist: {} };
+  }
+
+  const pregnancyHistory = filterHistoryByPeriod(history, timeline.start, timeline.due);
+  const visits = pregnancyHistory.filter((h) => h.type === "visit");
+  const consultations = pregnancyHistory.filter((h) => h.type === "consultation");
+  const procedures = pregnancyHistory.filter((h) => h.type === "procedure");
+  const vaccines = pregnancyHistory.filter((h) => h.type === "vaccine");
+
+  const weeks = Number(timeline.gestationalWeeks || 0);
+  const visitPending = Math.max(3 - visits.length, 0);
+  if (visitPending > 0) {
+    const severity = weeks >= 32 ? "high" : (weeks >= 24 ? "medium" : "low");
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-visits",
+      activity: "visita ACS",
+      title: `Faltam ${visitPending} visita(s) domiciliar(es)`,
+      detail: `Meta mínima de 3 visitas durante a gestação. Realizadas: ${visits.length}.`,
+      severity,
+      daysLeft: timeline.daysUntilDue,
+      overdueDays: timeline.daysUntilDue !== null && timeline.daysUntilDue < 0 ? Math.abs(timeline.daysUntilDue) : 0,
+      categoryLabel
+    }));
+  }
+
+  const prenatalStart = timeline.prenatalStart;
+  if (!prenatalStart) {
+    if (weeks >= 12) {
+      alerts.push(makeClinicalAlert({
+        id: "prenatal-start-missing",
+        activity: "início do pré-natal",
+        title: "Pré-natal sem data de início",
+        detail: "O pré-natal deve iniciar até 12 semanas. Registre a data de início.",
+        severity: "high",
+        categoryLabel
+      }));
+    }
+  } else {
+    const prenatalWeek = Math.floor((daysDiff(timeline.start, prenatalStart) || 0) / 7);
+    if (prenatalWeek > 12) {
+      alerts.push(makeClinicalAlert({
+        id: "prenatal-start-late",
+        activity: "início do pré-natal",
+        title: `Pré-natal iniciado com ${prenatalWeek} semanas`,
+        detail: "Início recomendado até 12 semanas de gestação.",
+        severity: "high",
+        categoryLabel
+      }));
+    }
+  }
+
+  const consultPending = Math.max(7 - consultations.length, 0);
+  if (consultPending > 0) {
+    const severity = weeks >= 35 ? "high" : (weeks >= 28 ? "medium" : "low");
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-consult-total",
+      activity: "consultas pré-natais",
+      title: `Faltam ${consultPending} consulta(s)`,
+      detail: `Meta mínima de 7 consultas durante a gestação. Realizadas: ${consultations.length}.`,
+      severity,
+      categoryLabel
+    }));
+  }
+
+  const lastConsultDate = consultations.length ? eventDate(consultations[0]) : null;
+  if (lastConsultDate && weeks >= 12) {
+    const daysSinceConsult = daysDiff(lastConsultDate, new Date());
+    const expectedInterval = weeks >= 35 ? 7 : (weeks >= 28 ? 14 : 30);
+    if (daysSinceConsult !== null && daysSinceConsult > expectedInterval) {
+      alerts.push(makeClinicalAlert({
+        id: "pregnancy-consult-cadence",
+        activity: "intervalo de consultas",
+        title: "Consulta pré-natal em atraso",
+        detail: `Última consulta há ${daysSinceConsult} dia(s). Intervalo recomendado atual: ${expectedInterval} dia(s).`,
+        severity: "high",
+        overdueDays: daysSinceConsult - expectedInterval,
+        categoryLabel
+      }));
+    }
+  } else if (weeks >= 20 && !consultations.length) {
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-consult-first-missing",
+      activity: "consultas pré-natais",
+      title: "Sem consultas registradas na gestação",
+      detail: "Registre consulta médica ou de enfermagem para iniciar o seguimento por faixa de semanas.",
+      severity: "high",
+      categoryLabel
+    }));
+  }
+
+  const oralEvents = [...consultations, ...procedures].filter((h) => {
+    const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
+    return /dent|odont|bucal|cirurgiao dentista/.test(text);
+  });
+  if (!oralEvents.length) {
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-dental",
+      activity: "consulta odontológica",
+      title: "Falta consulta odontológica",
+      detail: "Gestante deve ter pelo menos 1 consulta com cirurgião-dentista durante a gestação.",
+      severity: weeks >= 35 ? "high" : (weeks >= 24 ? "medium" : "low"),
+      categoryLabel
+    }));
+  }
+
+  const dtpaInWindow = vaccines.some((h) => {
+    const d = eventDate(h);
+    if (!d) return false;
+    const week = Math.floor((daysDiff(timeline.start, d) || 0) / 7);
+    const text = normalizeText(`${h.metadata?.vaccineName || ""} ${h.title || ""} ${h.details || ""}`);
+    return week >= 20 && week <= 26 && text.includes("dtpa");
+  });
+  if (!dtpaInWindow && weeks >= 20) {
+    const severity = weeks > 26 ? "high" : "medium";
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-dtpa",
+      activity: "vacina dTpa",
+      title: weeks > 26 ? "Janela da dTpa vencida" : "Aplicar dTpa entre 20ª e 26ª semana",
+      detail: "Não há registro de dTpa na janela recomendada da gestação.",
+      severity,
+      categoryLabel
+    }));
+  }
+
+  const testEntries = [...consultations, ...procedures, ...pregnancyHistory];
+  const testInWindow = (regex, fromWeek, toWeek) => testEntries.some((h) => {
+    const d = eventDate(h);
+    if (!d) return false;
+    const week = Math.floor((daysDiff(timeline.start, d) || 0) / 7);
+    const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
+    return week >= fromWeek && week <= toWeek && regex.test(text);
+  });
+
+  const hivFirst = testInWindow(/hiv/, 0, 13);
+  const sifFirst = testInWindow(/sifil|sifilis|syphilis/, 0, 13);
+  const hivThird = testInWindow(/hiv/, 28, 45);
+  const sifThird = testInWindow(/sifil|sifilis|syphilis/, 28, 45);
+
+  if (weeks > 13 && (!hivFirst || !sifFirst)) {
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-tests-first-trimester",
+      activity: "testes rápidos 1º trimestre",
+      title: "Teste rápido pendente no 1º trimestre",
+      detail: `Pendência: ${!hivFirst ? "HIV" : ""}${!hivFirst && !sifFirst ? " e " : ""}${!sifFirst ? "sífilis" : ""}.`,
+      severity: "high",
+      categoryLabel
+    }));
+  }
+
+  if (weeks >= 28 && (!hivThird || !sifThird)) {
+    alerts.push(makeClinicalAlert({
+      id: "pregnancy-tests-third-trimester",
+      activity: "testes rápidos 3º trimestre",
+      title: "Teste rápido pendente no 3º trimestre",
+      detail: `Pendência: ${!hivThird ? "HIV" : ""}${!hivThird && !sifThird ? " e " : ""}${!sifThird ? "sífilis" : ""}.`,
+      severity: weeks >= 35 ? "high" : "medium",
+      categoryLabel
+    }));
+  }
+
+  return {
+    timeline,
+    alerts,
+    checklist: {
+      visitsDone: visits.length,
+      consultationsDone: consultations.length,
+      dentalDone: oralEvents.length > 0,
+      dtpaDone: dtpaInWindow,
+      hivFirstTrimesterDone: hivFirst,
+      sifilisFirstTrimesterDone: sifFirst,
+      hivThirdTrimesterDone: hivThird,
+      sifilisThirdTrimesterDone: sifThird
+    }
+  };
+}
+
+function evaluatePuerperalProtocol(patient, history) {
+  const timeline = detectPuerperalTimeline(patient);
+  const alerts = [];
+  const categoryLabel = "Puérpera";
+
+  if (!timeline.start) {
+    alerts.push(makeClinicalAlert({
+      id: "puerperal-start-missing",
+      activity: "início do puerpério",
+      title: "Definir data do parto",
+      detail: "Cadastre a data do parto para controlar o prazo de 42 dias do puerpério.",
+      severity: "high",
+      categoryLabel
+    }));
+    return { timeline, alerts, checklist: {} };
+  }
+
+  const periodEnd = addDays(timeline.start, 42);
+  const puerperalHistory = filterHistoryByPeriod(history, timeline.start, periodEnd);
+  const visits = puerperalHistory.filter((h) => h.type === "visit");
+  const consultations = puerperalHistory.filter((h) => h.type === "consultation");
+  const overdue = timeline.daysLeft !== null && timeline.daysLeft < 0 ? Math.abs(timeline.daysLeft) : 0;
+  const severityByDeadline = overdue > 0 ? "high" : ((timeline.daysLeft || 0) <= 7 ? "high" : ((timeline.daysLeft || 0) <= 14 ? "medium" : "low"));
+
+  if (visits.length < 1) {
+    alerts.push(makeClinicalAlert({
+      id: "puerperal-visit",
+      activity: "visita ACS",
+      title: "Visita domiciliar pendente no puerpério",
+      detail: "Necessário 1 visita domiciliar do ACS até 42 dias pós-parto.",
+      severity: severityByDeadline,
+      daysLeft: timeline.daysLeft,
+      overdueDays: overdue,
+      categoryLabel
+    }));
+  }
+
+  if (consultations.length < 1) {
+    alerts.push(makeClinicalAlert({
+      id: "puerperal-consult",
+      activity: "consulta puerperal",
+      title: "Consulta puerperal pendente",
+      detail: "Necessária 1 consulta médica ou de enfermagem até 42 dias pós-parto.",
+      severity: severityByDeadline,
+      daysLeft: timeline.daysLeft,
+      overdueDays: overdue,
+      categoryLabel
+    }));
+  }
+
+  return {
+    timeline,
+    alerts,
+    checklist: {
+      visitsDone: visits.length,
+      consultationsDone: consultations.length
+    }
+  };
+}
+
+function evaluatePapOnlyProtocol(patient, history) {
+  const alerts = [];
+  const categoryLabel = "Rastreamento Feminino/Trans";
+  const birthDate = toDateOnlySafe(patient?.birthDate);
+  const ageYears = yearsFromDate(birthDate, new Date());
+  const sexAtBirth = String(patient?.sexAtBirth || "").trim().toLowerCase();
+  const genderIdentity = String(patient?.genderIdentity || "").trim().toLowerCase();
+  const isFemale = sexAtBirth === "female";
+  const isTransMan = genderIdentity === "trans_man";
+  const eligiblePapPopulation = isFemale || isTransMan;
+  const now = toDateOnlySafe(new Date());
+
+  if (ageYears === null) {
+    alerts.push(makeClinicalAlert({
+      id: "pap-birthdate-missing",
+      activity: "dados demográficos",
+      title: "Data de nascimento não informada",
+      detail: "Cadastre a data de nascimento para aplicar as regras de idade de rastreamento.",
+      severity: "high",
+      categoryLabel
+    }));
+  }
+  if (!sexAtBirth && !genderIdentity) {
+    alerts.push(makeClinicalAlert({
+      id: "pap-sex-gender-missing",
+      activity: "dados demográficos",
+      title: "Sexo ao nascer/identidade de gênero não informados",
+      detail: "Preencha sexo ao nascer e identidade de gênero para aplicar as regras de elegibilidade.",
+      severity: "medium",
+      categoryLabel
+    }));
+  }
+
+  const history12 = filterHistoryByPeriod(history, addDays(now, -365), now);
+  const history24 = filterHistoryByPeriod(history, addDays(now, -730), now);
+  const history36 = filterHistoryByPeriod(history, addDays(now, -1095), now);
+
+  if (eligiblePapPopulation && ageYears !== null && ageYears >= 25 && ageYears <= 64) {
+    const papDone = history36.some((h) => {
+      const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
+      return /papanicolau|citopat|colo do utero|preventivo|oncotica|coleta/.test(text);
+    });
+    if (!papDone) {
+      alerts.push(makeClinicalAlert({
+        id: "pap-screening-36m",
+        activity: "rastreamento de colo do útero",
+        title: "Papanicolau/citopatológico pendente",
+        detail: "Necessário registro coletado, solicitado ou avaliado nos últimos 36 meses (25 a 64 anos).",
+        severity: "high",
+        categoryLabel
+      }));
+    }
+  }
+
+  if (isFemale && ageYears !== null && ageYears >= 9 && ageYears <= 14) {
+    const hpvDose = history.some((h) => {
+      if (h.type !== "vaccine") return false;
+      const text = normalizeText(`${h.metadata?.vaccineName || ""} ${h.title || ""} ${h.details || ""}`);
+      return /hpv/.test(text);
+    });
+    if (!hpvDose) {
+      alerts.push(makeClinicalAlert({
+        id: "pap-hpv-9-14",
+        activity: "vacina HPV",
+        title: "Dose de HPV pendente",
+        detail: "Necessária pelo menos 1 dose de HPV para meninas de 9 a 14 anos.",
+        severity: "high",
+        categoryLabel
+      }));
+    }
+  }
+
+  if (ageYears !== null && ageYears >= 14 && ageYears <= 69) {
+    const consultDone = history12.some((h) => h.type === "consultation");
+    if (!consultDone) {
+      alerts.push(makeClinicalAlert({
+        id: "pap-consult-12m",
+        activity: "consulta anual",
+        title: "Consulta anual pendente",
+        detail: "Necessária pelo menos 1 consulta médica ou de enfermagem nos últimos 12 meses (14 a 69 anos).",
+        severity: "medium",
+        categoryLabel
+      }));
+    }
+  }
+
+  if (eligiblePapPopulation && ageYears !== null && ageYears >= 50 && ageYears <= 69) {
+    const breastDone = history24.some((h) => {
+      const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
+      return /(mamografia|rastreamento de mama|cancer de mama|exame de mama)/.test(text);
+    });
+    if (!breastDone) {
+      alerts.push(makeClinicalAlert({
+        id: "pap-breast-24m",
+        activity: "rastreamento de mama",
+        title: "Rastreamento de mama pendente",
+        detail: "Necessário exame de rastreamento de câncer de mama solicitado ou avaliado nos últimos 24 meses (50 a 69 anos).",
+        severity: "high",
+        categoryLabel
+      }));
+    }
+  }
+
+  return {
+    timeline: { birthDate, ageYears },
+    alerts,
+    checklist: {
+      eligiblePapPopulation,
+      ageYears
+    }
+  };
+}
+
+function monthsFromDate(startDate, endDate = new Date()) {
+  const start = toDateOnlySafe(startDate);
+  const end = toDateOnlySafe(endDate);
+  if (!start || !end) return null;
+  let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  if (end.getDate() < start.getDate()) months -= 1;
+  return Math.max(months, 0);
+}
+
+function yearsFromDate(startDate, endDate = new Date()) {
+  const start = toDateOnlySafe(startDate);
+  const end = toDateOnlySafe(endDate);
+  if (!start || !end) return null;
+  let years = end.getFullYear() - start.getFullYear();
+  const monthDelta = end.getMonth() - start.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && end.getDate() < start.getDate())) {
+    years -= 1;
+  }
+  return Math.max(years, 0);
+}
+
+function matchesAnyAlias(text, aliases = []) {
+  return aliases.some((alias) => text.includes(alias));
+}
+
+function evaluateChildProtocol(patient, history) {
+  const alerts = [];
+  const categoryLabel = "Puericultura";
+  const birthDate = toDateOnlySafe(patient?.birthDate);
+  if (!birthDate) {
+    alerts.push(makeClinicalAlert({
+      id: "child-birthdate-missing",
+      activity: "dados da criança",
+      title: "Definir data de nascimento",
+      detail: "Cadastre a data de nascimento para controlar consultas, visitas e vacinas por mês de vida.",
+      severity: "high",
+      categoryLabel
+    }));
+    return { timeline: { birthDate: null, ageMonths: null, ageDays: null }, alerts, checklist: {}, acsFocus: [] };
+  }
+
+  const ageDays = Math.max(daysDiff(birthDate, new Date()) || 0, 0);
+  const ageMonths = monthsFromDate(birthDate, new Date());
+  const until2Years = addDays(birthDate, 730);
+  const history0to24m = filterHistoryByPeriod(history, birthDate, until2Years);
+  const firstMonthEnd = addDays(birthDate, 30);
+  const first6MonthsEnd = addDays(birthDate, 183);
+
+  const consultations = history0to24m.filter((h) => h.type === "consultation");
+  const visits = history0to24m.filter((h) => h.type === "visit");
+  const consultationsFirstMonth = consultations.filter((h) => {
+    const d = eventDate(h);
+    return d && d <= firstMonthEnd;
+  });
+  const visitsFirstMonth = visits.filter((h) => {
+    const d = eventDate(h);
+    return d && d <= firstMonthEnd;
+  });
+  const visitsFirst6Months = visits.filter((h) => {
+    const d = eventDate(h);
+    return d && d <= first6MonthsEnd;
+  });
+
+  if (ageDays > 30 && consultationsFirstMonth.length < 1) {
+    alerts.push(makeClinicalAlert({
+      id: "child-consult-first-month",
+      activity: "consulta no 1º mês",
+      title: "Consulta inicial pendente",
+      detail: "Necessária 1 consulta médica ou de enfermagem no primeiro mês de vida.",
+      severity: "high",
+      categoryLabel
+    }));
+  }
+
+  const targetConsults = ageMonths >= 24 ? 10 : Math.min(10, Math.max(1, Math.ceil(((ageMonths || 0) / 24) * 9) + 1));
+  const consultPending = Math.max(targetConsults - consultations.length, 0);
+  if (consultPending > 0) {
+    alerts.push(makeClinicalAlert({
+      id: "child-consult-total",
+      activity: "consultas até 2 anos",
+      title: `Faltam ${consultPending} consulta(s) até 2 anos`,
+      detail: `Registradas: ${consultations.length}. Esperado para idade atual: ${targetConsults}.`,
+      severity: ageMonths >= 18 ? "high" : (ageMonths >= 12 ? "medium" : "low"),
+      categoryLabel
+    }));
+  }
+
+  if (ageDays > 30 && visitsFirstMonth.length < 1) {
+    alerts.push(makeClinicalAlert({
+      id: "child-visit-first-month",
+      activity: "visita ACS 1º mês",
+      title: "Visita domiciliar pendente no 1º mês",
+      detail: "Necessária 1 visita do ACS dentro do primeiro mês de vida.",
+      severity: "high",
+      categoryLabel
+    }));
+  }
+
+  if (ageDays > 183 && visitsFirst6Months.length < 2) {
+    const missing = 2 - visitsFirst6Months.length;
+    alerts.push(makeClinicalAlert({
+      id: "child-visit-first-6m",
+      activity: "visitas ACS até 6 meses",
+      title: `Falta(m) ${missing} visita(s) do ACS até o 6º mês`,
+      detail: `Registradas até 6 meses: ${visitsFirst6Months.length}.`,
+      severity: "high",
+      categoryLabel
+    }));
+  }
+
+  const vaccinePlan = [
+    { month: 0, vaccine: "bcg", label: "BCG", aliases: ["bcg"], acsHighlight: true },
+    { month: 0, vaccine: "hepatite_b", label: "Hepatite B", aliases: ["hepatite b"], acsHighlight: true },
+    { month: 2, vaccine: "penta", label: "Penta", aliases: ["penta", "pentavalente"], acsHighlight: true },
+    { month: 2, vaccine: "vip", label: "VIP", aliases: ["vip", "polio inativada"], acsHighlight: true },
+    { month: 2, vaccine: "pneumo10", label: "Pneumo 10", aliases: ["pneumo 10", "pneumo10", "pneumococ"], acsHighlight: true },
+    { month: 2, vaccine: "rotavirus", label: "Rotavírus", aliases: ["rota", "rotavirus"], acsHighlight: true },
+    { month: 3, vaccine: "meningo", label: "Meningocócica", aliases: ["meningo"], acsHighlight: false },
+    { month: 4, vaccine: "penta", label: "Penta", aliases: ["penta", "pentavalente"], acsHighlight: true },
+    { month: 4, vaccine: "vip", label: "VIP", aliases: ["vip", "polio inativada"], acsHighlight: true },
+    { month: 4, vaccine: "pneumo10", label: "Pneumo 10", aliases: ["pneumo 10", "pneumo10", "pneumococ"], acsHighlight: true },
+    { month: 4, vaccine: "rotavirus", label: "Rotavírus", aliases: ["rota", "rotavirus"], acsHighlight: true },
+    { month: 5, vaccine: "meningo", label: "Meningocócica", aliases: ["meningo"], acsHighlight: false },
+    { month: 6, vaccine: "penta", label: "Penta", aliases: ["penta", "pentavalente"], acsHighlight: true },
+    { month: 6, vaccine: "vip", label: "VIP", aliases: ["vip", "polio inativada"], acsHighlight: true },
+    { month: 6, vaccine: "influenza", label: "Influenza", aliases: ["influenza", "gripe"], acsHighlight: false },
+    { month: 6, vaccine: "covid", label: "COVID", aliases: ["covid"], acsHighlight: false },
+    { month: 7, vaccine: "covid", label: "COVID", aliases: ["covid"], acsHighlight: false },
+    { month: 9, vaccine: "covid", label: "COVID", aliases: ["covid"], acsHighlight: false },
+    { month: 9, vaccine: "febre_amarela", label: "Febre amarela", aliases: ["febre amarela"], acsHighlight: true },
+    { month: 12, vaccine: "pneumo10", label: "Pneumo 10", aliases: ["pneumo 10", "pneumo10", "pneumococ"], acsHighlight: true },
+    { month: 12, vaccine: "acwy", label: "ACWY", aliases: ["acwy"], acsHighlight: false },
+    { month: 12, vaccine: "triplice_viral", label: "Tríplice viral", aliases: ["triplice viral", "triviral"], acsHighlight: true },
+    { month: 15, vaccine: "dtp", label: "DTP", aliases: ["dtp"], acsHighlight: false },
+    { month: 15, vaccine: "vip", label: "VIP", aliases: ["vip", "polio inativada"], acsHighlight: true },
+    { month: 15, vaccine: "triplice_viral", label: "Tríplice viral", aliases: ["triplice viral", "triviral"], acsHighlight: true },
+    { month: 15, vaccine: "varicela", label: "Varicela", aliases: ["varicela"], acsHighlight: false },
+    { month: 15, vaccine: "hepatite_a", label: "Hepatite A", aliases: ["hepatite a"], acsHighlight: false }
+  ];
+
+  const vaccineEvents = history0to24m
+    .filter((h) => h.type === "vaccine")
+    .map((h) => ({
+      date: eventDate(h),
+      text: normalizeText(`${h.metadata?.vaccineName || ""} ${h.title || ""} ${h.details || ""}`)
+    }))
+    .filter((h) => h.date && h.text);
+
+  const appliedCountByVaccine = {};
+  for (const event of vaccineEvents) {
+    for (const item of vaccinePlan) {
+      if (matchesAnyAlias(event.text, item.aliases)) {
+        appliedCountByVaccine[item.vaccine] = (appliedCountByVaccine[item.vaccine] || 0) + 1;
+      }
+    }
+  }
+
+  const requiredByNow = {};
+  for (const item of vaccinePlan) {
+    if ((ageMonths || 0) >= item.month) {
+      requiredByNow[item.vaccine] = (requiredByNow[item.vaccine] || 0) + 1;
+    }
+  }
+
+  const acsFocus = [];
+  const grouped = new Map();
+  for (const item of vaccinePlan) {
+    if ((ageMonths || 0) < item.month) continue;
+    const required = requiredByNow[item.vaccine] || 0;
+    const applied = appliedCountByVaccine[item.vaccine] || 0;
+    if (applied >= required) continue;
+    const key = `${item.vaccine}:${item.month}`;
+    grouped.set(key, item);
+  }
+
+  for (const item of grouped.values()) {
+    const overdueMonths = Math.max((ageMonths || 0) - item.month, 0);
+    const severity = overdueMonths >= 3 ? "high" : (overdueMonths >= 1 ? "medium" : "low");
+    alerts.push(makeClinicalAlert({
+      id: `child-vaccine-${item.vaccine}-${item.month}`,
+      activity: "vacina",
+      title: `Vacina pendente: ${item.label} (${item.month} mês[es])`,
+      detail: `Dose prevista aos ${item.month} mês[es] de vida ainda não identificada no histórico.`,
+      severity,
+      categoryLabel
+    }));
+    if (item.acsHighlight) {
+      acsFocus.push(`${item.label} (${item.month}m)`);
+    }
+  }
+
+  return {
+    timeline: { birthDate, ageMonths, ageDays },
+    alerts,
+    acsFocus: [...new Set(acsFocus)],
+    checklist: {
+      consultationsFirstMonthDone: consultationsFirstMonth.length > 0,
+      consultationsDone0to24m: consultations.length,
+      visitsFirstMonthDone: visitsFirstMonth.length > 0,
+      visitsDone0to6m: visitsFirst6Months.length
+    }
+  };
+}
+
+function evaluateElderlyProtocol(_patient, history) {
+  const alerts = [];
+  const categoryLabel = "Pessoa Idosa";
+  const now = toDateOnlySafe(new Date());
+  const periodStart = addDays(now, -365);
+  const periodHistory = filterHistoryByPeriod(history, periodStart, now);
+
+  const consultations = periodHistory.filter((h) => h.type === "consultation");
+  const visits = periodHistory
+    .filter((h) => h.type === "visit")
+    .map((h) => eventDate(h))
+    .filter(Boolean)
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  const vaccines = periodHistory.filter((h) => h.type === "vaccine");
+  const influenzaDone = vaccines.some((h) => {
+    const text = normalizeText(`${h.metadata?.vaccineName || ""} ${h.title || ""} ${h.details || ""}`);
+    return /influenza|gripe/.test(text);
+  });
+
+  if (consultations.length < 1) {
+    alerts.push(makeClinicalAlert({
+      id: "elderly-consult-12m",
+      activity: "consulta em 12 meses",
+      title: "Consulta anual pendente",
+      detail: "Necessária pelo menos 1 consulta médica ou de enfermagem dentro de 12 meses.",
+      severity: "high",
+      categoryLabel
+    }));
+  }
+
+  let visitsWithMinInterval = false;
+  if (visits.length >= 2) {
+    for (let i = 1; i < visits.length; i += 1) {
+      const diff = daysDiff(visits[i - 1], visits[i]);
+      if ((diff || 0) >= 30) {
+        visitsWithMinInterval = true;
+        break;
+      }
+    }
+  }
+  if (!visitsWithMinInterval) {
+    alerts.push(makeClinicalAlert({
+      id: "elderly-visits-12m",
+      activity: "visitas ACS em 12 meses",
+      title: "Visitas domiciliares pendentes",
+      detail: "Necessárias 2 visitas do ACS com intervalo mínimo de 30 dias dentro de 12 meses.",
+      severity: "high",
+      categoryLabel
+    }));
+  }
+
+  if (!influenzaDone) {
+    alerts.push(makeClinicalAlert({
+      id: "elderly-flu-12m",
+      activity: "vacina influenza",
+      title: "Vacina influenza pendente",
+      detail: "Necessária 1 dose de influenza dentro dos últimos 12 meses.",
+      severity: "medium",
+      categoryLabel
+    }));
+  }
+
+  return {
+    timeline: {
+      periodStart,
+      periodEnd: now
+    },
+    alerts,
+    checklist: {
+      consultationDone12m: consultations.length >= 1,
+      visitsDone12m: visits.length,
+      visitsWithMin30Days: visitsWithMinInterval,
+      influenzaDone12m: influenzaDone
+    }
+  };
+}
+
+function evaluateChronicProtocol(patient, history) {
+  const conditions = normalizeChronicConditions(patient?.chronicConditions);
+  const alerts = [];
+  const categoryLabel = "Condição crônica";
+  if (!conditions.length) {
+    alerts.push(makeClinicalAlert({
+      id: "chronic-conditions-missing",
+      activity: "subtipo crônico",
+      title: "Selecione hipertensão e/ou diabetes",
+      detail: "No cadastro do paciente crônico, marque uma ou as duas condições para ativar as regras de acompanhamento.",
+      severity: "medium",
+      categoryLabel
+    }));
+    return { alerts, checklist: { conditions: [] }, timeline: {} };
+  }
+
+  const now = toDateOnlySafe(new Date());
+  const period6Start = addDays(now, -183);
+  const period12Start = addDays(now, -365);
+  const history6 = filterHistoryByPeriod(history, period6Start, now);
+  const history12 = filterHistoryByPeriod(history, period12Start, now);
+  const consultations6 = history6.filter((h) => h.type === "consultation");
+  const visits12 = history12
+    .filter((h) => h.type === "visit")
+    .map((h) => eventDate(h))
+    .filter(Boolean)
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  let visitsWithMinInterval = false;
+  if (visits12.length >= 2) {
+    for (let i = 1; i < visits12.length; i += 1) {
+      const diff = daysDiff(visits12[i - 1], visits12[i]);
+      if ((diff || 0) >= 30) {
+        visitsWithMinInterval = true;
+        break;
+      }
+    }
+  }
+
+  for (const condition of conditions) {
+    const label = condition === "diabetes" ? "Diabetes" : "Hipertensão";
+    if (consultations6.length < 1) {
+      alerts.push(makeClinicalAlert({
+        id: `chronic-${condition}-consult-6m`,
+        activity: "consulta em 6 meses",
+        title: `${label}: consulta semestral pendente`,
+        detail: "Necessária pelo menos 1 consulta médica ou de enfermagem nos últimos 6 meses.",
+        severity: "high",
+        categoryLabel
+      }));
+    }
+    if (!visitsWithMinInterval) {
+      alerts.push(makeClinicalAlert({
+        id: `chronic-${condition}-visits-12m`,
+        activity: "visitas ACS em 12 meses",
+        title: `${label}: visitas domiciliares pendentes`,
+        detail: "Necessárias pelo menos 2 visitas do ACS com intervalo mínimo de 30 dias, dentro de 12 meses.",
+        severity: "high",
+        categoryLabel
+      }));
+    }
+
+    if (condition === "diabetes") {
+      const diabetesEntries12 = history12.filter((h) => ["consultation", "procedure", "note"].includes(h.type));
+      const hasGlycated = diabetesEntries12.some((h) => {
+        const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
+        return /hemoglobina glicada|hba1c|glicada/.test(text);
+      });
+      const hasFootAssessment = diabetesEntries12.some((h) => {
+        const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
+        return /avaliac.*pe|avaliacao dos pes|exame dos pes|inspecao dos pes|pe diabetico/.test(text);
+      });
+
+      if (!hasGlycated) {
+        alerts.push(makeClinicalAlert({
+          id: "chronic-diabetes-hba1c-12m",
+          activity: "hemoglobina glicada",
+          title: "Diabetes: registro de hemoglobina glicada pendente",
+          detail: "Registrar solicitação/realização/avaliação de hemoglobina glicada ao menos 1 vez em 12 meses.",
+          severity: "high",
+          categoryLabel
+        }));
+      }
+      if (!hasFootAssessment) {
+        alerts.push(makeClinicalAlert({
+          id: "chronic-diabetes-foot-12m",
+          activity: "avaliação dos pés",
+          title: "Diabetes: avaliação dos pés pendente",
+          detail: "Registrar pelo menos 1 avaliação dos pés em 12 meses.",
+          severity: "medium",
+          categoryLabel
+        }));
+      }
+    }
+  }
+
+  return {
+    alerts,
+    timeline: { period6Start, period12Start, periodEnd: now },
+    checklist: {
+      conditions,
+      consultationDone6m: consultations6.length >= 1,
+      visitsDone12m: visits12.length,
+      visitsWithMin30Days12m: visitsWithMinInterval
+    }
+  };
 }
 
 function buildProtocolSummary(patient, history, templateMap) {
@@ -1165,6 +2076,28 @@ function buildProtocolSummary(patient, history, templateMap) {
     done: appliedVaccineNames.includes(name)
   }));
 
+  let specialMonitoring = null;
+  let specialAlerts = [];
+  if (template.category === "pregnant") {
+    specialMonitoring = evaluatePregnantProtocol(patient, history);
+    specialAlerts = specialMonitoring.alerts || [];
+  } else if (template.category === "puerperal") {
+    specialMonitoring = evaluatePuerperalProtocol(patient, history);
+    specialAlerts = specialMonitoring.alerts || [];
+  } else if (template.category === "pap_only") {
+    specialMonitoring = evaluatePapOnlyProtocol(patient, history);
+    specialAlerts = specialMonitoring.alerts || [];
+  } else if (template.category === "child_followup") {
+    specialMonitoring = evaluateChildProtocol(patient, history);
+    specialAlerts = specialMonitoring.alerts || [];
+  } else if (template.category === "chronic") {
+    specialMonitoring = evaluateChronicProtocol(patient, history);
+    specialAlerts = specialMonitoring.alerts || [];
+  } else if (template.category === "elderly") {
+    specialMonitoring = evaluateElderlyProtocol(patient, history);
+    specialAlerts = specialMonitoring.alerts || [];
+  }
+
   return {
     category: template.category,
     categoryLabel: template.label,
@@ -1178,6 +2111,8 @@ function buildProtocolSummary(patient, history, templateMap) {
       consultations: scheduleOf("consultations"),
       vaccines: scheduleOf("vaccines")
     },
+    specialAlerts,
+    specialMonitoring,
     vaccines: {
       recommended: recommendedVaccines,
       appliedNames: [...new Set(appliedVaccineNames)]
@@ -1205,6 +2140,62 @@ function buildAiPatientContext(db, user, patient) {
 function buildAiTeamContexts(db, user) {
   const patients = getAllowedPatients(db, user, {});
   return patients.map((patient) => buildAiPatientContext(db, user, patient));
+}
+
+function parseMonthPeriod(monthText = "") {
+  const now = new Date();
+  const fallbackYear = now.getFullYear();
+  const fallbackMonth = now.getMonth() + 1;
+  const raw = String(monthText || "").trim();
+  const match = /^(\d{4})-(\d{2})$/.exec(raw);
+  const year = match ? Number(match[1]) : fallbackYear;
+  const month = match ? Number(match[2]) : fallbackMonth;
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    return null;
+  }
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 1);
+  return { year, month, start, end, key: `${year}-${String(month).padStart(2, "0")}` };
+}
+
+function buildMonthlyDemandMetric(db, teamId, monthText = "") {
+  const period = parseMonthPeriod(monthText);
+  if (!period) return null;
+
+  const teamPatientIds = new Set(db.patients.filter((p) => p.teamId === teamId).map((p) => p.id));
+  const inMonth = db.appointments.filter((a) => {
+    if (!teamPatientIds.has(a.patientId)) return false;
+    const d = new Date(a.date || a.createdAt || "");
+    if (Number.isNaN(d.getTime())) return false;
+    return d >= period.start && d < period.end;
+  });
+
+  const scheduled = inMonth.filter((a) => normalizeDemandType(a.demandType) === "scheduled").length;
+  const spontaneous = inMonth.filter((a) => normalizeDemandType(a.demandType) === "spontaneous").length;
+  const total = scheduled + spontaneous;
+  const ratioScheduled = total > 0 ? Number(((scheduled / total) * 100).toFixed(2)) : 0;
+  const min = 50;
+  const max = 70;
+  const outOfRange = total > 0 && (ratioScheduled < min || ratioScheduled > max);
+
+  return {
+    month: period.key,
+    range: {
+      start: period.start.toISOString(),
+      endExclusive: period.end.toISOString()
+    },
+    totals: {
+      scheduled,
+      spontaneous,
+      total
+    },
+    ratioScheduled,
+    target: { min, max },
+    status: total === 0 ? "no_data" : (outOfRange ? "out_of_range" : "in_range"),
+    alert: outOfRange
+      ? `Razão programada fora da faixa (50-70%). Atual: ${ratioScheduled.toFixed(2)}%.`
+      : ""
+  };
 }
 
 app.get("/health", (_req, res) => {
@@ -1243,23 +2234,23 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
   const councilType = councilTypeForRole(role);
 
   if (!name || !email || !password || !role) {
-    return res.status(400).json({ error: "name, email, password e role sao obrigatorios" });
+    return res.status(400).json({ error: "name, email, password e role são obrigatórios" });
   }
 
   if (!isValidEmail(email)) {
-    return res.status(400).json({ error: "Email invalido" });
+    return res.status(400).json({ error: "E-mail inválido" });
   }
 
   if (!isValidEmail(email)) {
-    return res.status(400).json({ error: "Email invalido" });
+    return res.status(400).json({ error: "E-mail inválido" });
   }
 
   if (!isStrongPassword(password)) {
-    return res.status(400).json({ error: "Senha fraca: minimo 8 caracteres, 1 letra maiuscula, 1 numero e 1 caractere especial" });
+    return res.status(400).json({ error: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial" });
   }
 
   if (!ALLOWED_SELF_REGISTER_ROLES.includes(role) || role !== "nurse_manager") {
-    return res.status(400).json({ error: "Cadastro publico permitido apenas para enfermeira" });
+    return res.status(400).json({ error: "Cadastro p?blico permitido apenas para enfermeira" });
   }
 
   const councilValidation = validateCouncilData(role, payload.councilNumber, payload.councilUf);
@@ -1278,7 +2269,7 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
 
   if (!externalCheck.valid) {
     return res.status(400).json({
-      error: externalCheck.error || "Conselho nao validado no provedor externo"
+      error: externalCheck.error || "Conselho não validado no provedor externo"
     });
   }
 
@@ -1304,12 +2295,12 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
       teamId = team.id;
     } else {
       if (!teamId) {
-        return { error: "teamId e obrigatorio para ACS e Medica" };
+        return { error: "teamId ? obrigatório para ACS e Médica" };
       }
 
       const teamExists = db.teams.some((t) => t.id === teamId);
       if (!teamExists) {
-        return { error: "Equipe informada nao existe" };
+        return { error: "Equipe informada não existe" };
       }
     }
 
@@ -1322,7 +2313,7 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
     });
 
     if (duplicatedCouncil) {
-      return { error: `${councilType} ja cadastrado para outro usuario` };
+      return { error: `${councilType} j? cadastrado para outro usuário` };
     }
 
     const user = {
@@ -1412,7 +2403,7 @@ app.get("/me", async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const user = db.users.find((u) => u.id === req.user.id);
-  if (!user) return res.status(404).json({ error: "Usuario nao encontrado" });
+  if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
   return res.json(sanitizeUser(user, db));
 });
 
@@ -1422,21 +2413,21 @@ app.patch("/me", async (req, res) => {
   const result = await withDb(async (db) => {
     ensureDbShape(db);
     const index = db.users.findIndex((u) => u.id === req.user.id);
-    if (index < 0) return { error: { status: 404, message: "Usuario nao encontrado" } };
+    if (index < 0) return { error: { status: 404, message: "Usuário não encontrado" } };
 
     const current = db.users[index];
     const next = { ...current };
 
     if (payload.name !== undefined) {
       const name = String(payload.name || "").trim();
-      if (!name) return { error: { status: 400, message: "Nome nao pode ficar vazio" } };
+      if (!name) return { error: { status: 400, message: "Nome não pode ficar vazio" } };
       next.name = name;
     }
 
     if (payload.email !== undefined) {
       const email = String(payload.email || "").trim().toLowerCase();
-      if (!email) return { error: { status: 400, message: "Email nao pode ficar vazio" } };
-      if (!isValidEmail(email)) return { error: { status: 400, message: "Email invalido" } };
+      if (!email) return { error: { status: 400, message: "Email não pode ficar vazio" } };
+      if (!isValidEmail(email)) return { error: { status: 400, message: "E-mail inválido" } };
       const exists = db.users.some((u) => u.id !== current.id && String(u.email).toLowerCase() === email);
       if (exists) return { error: { status: 409, message: "Email ja em uso por outro usuario" } };
       next.email = email;
@@ -1445,7 +2436,7 @@ app.patch("/me", async (req, res) => {
     if (payload.password !== undefined) {
       const password = String(payload.password || "");
       if (!isStrongPassword(password)) {
-        return { error: { status: 400, message: "Senha fraca: minimo 8 caracteres, 1 letra maiuscula, 1 numero e 1 caractere especial" } };
+        return { error: { status: 400, message: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial" } };
       }
       next.password = hashPassword(password);
     }
@@ -1467,7 +2458,7 @@ app.patch("/me", async (req, res) => {
       });
 
       if (duplicated) {
-        return { error: { status: 409, message: `${councilType} ja cadastrado para outro usuario` } };
+        return { error: { status: 409, message: `${councilType} j? cadastrado para outro usuário` } };
       }
 
       const unchangedCouncil = String(current.councilType || "").toUpperCase() === String(councilType || "").toUpperCase()
@@ -1485,7 +2476,7 @@ app.patch("/me", async (req, res) => {
         });
 
         if (!external.valid) {
-          return { error: { status: 400, message: external.error || "Conselho nao validado no provedor externo" } };
+          return { error: { status: 400, message: external.error || "Conselho não validado no provedor externo" } };
         }
 
         next.councilVerification = {
@@ -1522,7 +2513,7 @@ app.get("/protocol/templates/:category/usage", requireManager, async (req, res) 
   const db = await readDb();
   ensureDbShape(db);
   const template = db.protocolTemplates.find((t) => t.category === category && (!t.teamId || t.teamId === req.user.teamId));
-  if (!template) return res.status(404).json({ error: "Categoria de protocolo nao encontrada" });
+  if (!template) return res.status(404).json({ error: "Categoria de protocolo não encontrada" });
 
   const patientCount = db.patients.filter(
     (p) => p.teamId === req.user.teamId && p.careCategory === category
@@ -1604,20 +2595,20 @@ app.put("/protocol/templates/:category", requireManager, async (req, res) => {
     return createdOverride;
   });
 
-  if (!result) return res.status(404).json({ error: "Categoria de protocolo nao encontrada" });
+  if (!result) return res.status(404).json({ error: "Categoria de protocolo não encontrada" });
   return res.json(result);
 });
 
 app.delete("/protocol/templates/:category", requireManager, async (req, res) => {
   const category = String(req.params.category || "").trim();
   if (category === "general") {
-    return res.status(400).json({ error: "Categoria general nao pode ser excluida" });
+    return res.status(400).json({ error: "Categoria general não pode ser exclu?da" });
   }
 
   const result = await withDb((db) => {
     ensureDbShape(db);
     const index = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId);
-    if (index < 0) return { error: { status: 404, message: "Categoria de protocolo nao encontrada" } };
+    if (index < 0) return { error: { status: 404, message: "Categoria de protocolo não encontrada" } };
 
     const patientCount = db.patients.filter(
       (p) => p.teamId === req.user.teamId && p.careCategory === category
@@ -1667,7 +2658,7 @@ app.post("/users", requireManager, async (req, res) => {
   const role = canonicalRole(payload.role);
 
   if (!name || !email || !password || !role) {
-    return res.status(400).json({ error: "name, email, password e role sao obrigatorios" });
+    return res.status(400).json({ error: "name, email, password e role são obrigatórios" });
   }
 
   if (!["acs", "doctor"].includes(role)) {
@@ -1675,7 +2666,7 @@ app.post("/users", requireManager, async (req, res) => {
   }
 
   if (!isStrongPassword(password)) {
-    return res.status(400).json({ error: "Senha fraca: minimo 8 caracteres, 1 letra maiuscula, 1 numero e 1 caractere especial" });
+    return res.status(400).json({ error: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial" });
   }
 
   const councilType = councilTypeForRole(role);
@@ -1695,7 +2686,7 @@ app.post("/users", requireManager, async (req, res) => {
 
   if (!externalCheck.valid) {
     return res.status(400).json({
-      error: externalCheck.error || "Conselho nao validado no provedor externo"
+      error: externalCheck.error || "Conselho não validado no provedor externo"
     });
   }
 
@@ -1714,7 +2705,7 @@ app.post("/users", requireManager, async (req, res) => {
     });
 
     if (duplicatedCouncil) {
-      return { error: `${councilType} ja cadastrado para outro usuario` };
+      return { error: `${councilType} j? cadastrado para outro usuário` };
     }
 
     const user = {
@@ -1762,7 +2753,7 @@ app.post("/patients", requireManager, async (req, res) => {
   const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
 
   if (!payload.name || !payload.phone) {
-    return res.status(400).json({ error: "Nome e telefone sao obrigatorios" });
+    return res.status(400).json({ error: "Nome e telefone são obrigatórios" });
   }
 
   const patient = {
@@ -1775,6 +2766,14 @@ app.post("/patients", requireManager, async (req, res) => {
     microArea: payload.microArea ? String(payload.microArea).trim() : "",
     assignedAcsId: payload.assignedAcsId ? String(payload.assignedAcsId).trim() : "",
     careCategory: normalizeCategory(payload.careCategory, protocolMap),
+    chronicConditions: normalizeChronicConditions(payload.chronicConditions),
+    sexAtBirth: payload.sexAtBirth ? String(payload.sexAtBirth).trim().toLowerCase() : "",
+    genderIdentity: payload.genderIdentity ? String(payload.genderIdentity).trim().toLowerCase() : "",
+    birthDate: payload.birthDate ? String(payload.birthDate).trim() : "",
+    pregnancyStartDate: payload.pregnancyStartDate ? String(payload.pregnancyStartDate).trim() : "",
+    expectedDeliveryDate: payload.expectedDeliveryDate ? String(payload.expectedDeliveryDate).trim() : "",
+    prenatalStartDate: payload.prenatalStartDate ? String(payload.prenatalStartDate).trim() : "",
+    postpartumStartDate: payload.postpartumStartDate ? String(payload.postpartumStartDate).trim() : "",
     comorbidities: payload.comorbidities ? String(payload.comorbidities).trim() : "",
     medications: payload.medications ? String(payload.medications).trim() : "",
     allergies: payload.allergies ? String(payload.allergies).trim() : "",
@@ -1802,7 +2801,7 @@ app.put("/patients/:id", async (req, res) => {
   const payload = req.body;
 
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Sem permissao para editar paciente" });
+    return res.status(403).json({ error: "Sem permissão para editar paciente" });
   }
 
   const updated = await withDb((db) => {
@@ -1812,7 +2811,18 @@ app.put("/patients/:id", async (req, res) => {
 
     const current = db.patients[index];
     const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
-    const doctorAllowed = new Set(["phone", "address", "comorbidities", "medications", "allergies"]);
+    const doctorAllowed = new Set([
+      "phone",
+      "address",
+      "comorbidities",
+      "medications",
+      "allergies",
+      "birthDate",
+      "pregnancyStartDate",
+      "expectedDeliveryDate",
+      "prenatalStartDate",
+      "postpartumStartDate"
+    ]);
     const safePayload = isDoctor(req.user)
       ? Object.fromEntries(Object.entries(payload || {}).filter(([k]) => doctorAllowed.has(k)))
       : payload;
@@ -1821,6 +2831,15 @@ app.put("/patients/:id", async (req, res) => {
       ...safePayload,
       teamId: current.teamId,
       careCategory: safePayload?.careCategory ? normalizeCategory(safePayload.careCategory, protocolMap) : current.careCategory,
+      chronicConditions: safePayload?.chronicConditions !== undefined
+        ? normalizeChronicConditions(safePayload.chronicConditions)
+        : normalizeChronicConditions(current.chronicConditions),
+      sexAtBirth: safePayload?.sexAtBirth !== undefined
+        ? String(safePayload.sexAtBirth || "").trim().toLowerCase()
+        : String(current.sexAtBirth || ""),
+      genderIdentity: safePayload?.genderIdentity !== undefined
+        ? String(safePayload.genderIdentity || "").trim().toLowerCase()
+        : String(current.genderIdentity || ""),
       id,
       updatedAt: new Date().toISOString(),
       updatedBy: req.user.id
@@ -1835,7 +2854,7 @@ app.put("/patients/:id", async (req, res) => {
   });
 
   if (!updated) {
-    return res.status(404).json({ error: "Paciente nao encontrado" });
+    return res.status(404).json({ error: "Paciente não encontrado" });
   }
 
   return res.json(updated);
@@ -1851,7 +2870,11 @@ app.get("/patients/:id/appointments", async (req, res) => {
 
   const appointments = db.appointments
     .filter((a) => a.patientId === id)
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map((a) => ({
+      ...a,
+      demandType: normalizeDemandType(a.demandType)
+    }));
 
   return res.json(appointments);
 });
@@ -1865,7 +2888,7 @@ app.post("/patients/:id/appointments", async (req, res) => {
   }
 
   if (!payload.date || !payload.summary) {
-    return res.status(400).json({ error: "Data e resumo sao obrigatorios" });
+    return res.status(400).json({ error: "Data e resumo são obrigatórios" });
   }
 
   const db = await readDb();
@@ -1878,6 +2901,7 @@ app.post("/patients/:id/appointments", async (req, res) => {
     patientId: id,
     date: String(payload.date),
     summary: String(payload.summary),
+    demandType: normalizeDemandType(payload.demandType),
     conduct: payload.conduct ? String(payload.conduct) : "",
     nextStep: payload.nextStep ? String(payload.nextStep) : "",
     createdBy: req.user.id,
@@ -1900,14 +2924,14 @@ app.post("/patients/:id/records", async (req, res) => {
   const payload = req.body;
 
   if (!payload.type || !payload.date || !payload.title) {
-    return res.status(400).json({ error: "type, date e title sao obrigatorios" });
+    return res.status(400).json({ error: "type, date e title são obrigatórios" });
   }
 
   const allowedTypes = ["visit", "consultation", "vaccine", "procedure", "note"];
   const type = String(payload.type);
 
   if (!allowedTypes.includes(type)) {
-    return res.status(400).json({ error: "Tipo de registro invalido" });
+    return res.status(400).json({ error: "Tipo de registro inválido" });
   }
 
   const db = await readDb();
@@ -1916,11 +2940,11 @@ app.post("/patients/:id/records", async (req, res) => {
   if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
 
   if (isAcs(req.user) && !["visit", "note"].includes(type)) {
-    return res.status(403).json({ error: "ACS pode registrar apenas visita e observacao" });
+    return res.status(403).json({ error: "ACS pode registrar apenas visita e observação" });
   }
 
   if (isDoctor(req.user) && ["visit"].includes(type)) {
-    return res.status(403).json({ error: "Medica nao registra visita domiciliar" });
+    return res.status(403).json({ error: "Médica não registra visita domiciliar" });
   }
 
   const record = {
@@ -1974,6 +2998,20 @@ app.get("/patients/:id/protocol-summary", async (req, res) => {
   return res.json(buildProtocolSummary(lookup.patient, history, getProtocolTemplateMap(db, req.user.teamId)));
 });
 
+app.get("/metrics/demand/monthly", async (req, res) => {
+  if (!(isManager(req.user) || isDoctor(req.user))) {
+    return res.status(403).json({ error: "Apenas enfermeira e médica podem acessar este indicador" });
+  }
+  const db = await readDb();
+  ensureDbShape(db);
+  const month = String(req.query.month || "").trim();
+  const metric = buildMonthlyDemandMetric(db, req.user.teamId, month);
+  if (!metric) {
+    return res.status(400).json({ error: "Parâmetro month inválido. Use YYYY-MM." });
+  }
+  return res.json(metric);
+});
+
 app.get("/tasks", async (req, res) => {
   const { patientId, assigneeId } = req.query;
   const db = await readDb();
@@ -1996,7 +3034,7 @@ app.post("/tasks", requireManager, async (req, res) => {
   const payload = req.body;
 
   if (!payload.patientId || !payload.assigneeId || !payload.title) {
-    return res.status(400).json({ error: "patientId, assigneeId e title sao obrigatorios" });
+    return res.status(400).json({ error: "patientId, assigneeId e title são obrigatórios" });
   }
 
   const db = await readDb();
@@ -2006,7 +3044,7 @@ app.post("/tasks", requireManager, async (req, res) => {
 
   const assignee = db.users.find((u) => u.id === String(payload.assigneeId));
   if (!assignee || canonicalRole(assignee.role) !== "acs" || assignee.teamId !== req.user.teamId) {
-    return res.status(400).json({ error: "Responsavel deve ser ACS da mesma equipe" });
+    return res.status(400).json({ error: "Responsável deve ser ACS da mesma equipe" });
   }
 
   const task = {
@@ -2089,11 +3127,11 @@ app.patch("/tasks/:id", async (req, res) => {
   });
 
   if (updated === "forbidden") {
-    return res.status(403).json({ error: "Sem permissao para atualizar esta tarefa" });
+    return res.status(403).json({ error: "Sem permissão para atualizar esta tarefa" });
   }
 
   if (!updated) {
-    return res.status(404).json({ error: "Tarefa nao encontrada" });
+    return res.status(404).json({ error: "Tarefa não encontrada" });
   }
 
   return res.json(updated);
@@ -2119,7 +3157,7 @@ app.post("/patients/:id/messages", async (req, res) => {
   const payload = req.body;
 
   if (!payload.text) {
-    return res.status(400).json({ error: "text e obrigatorio" });
+    return res.status(400).json({ error: "text ? obrigatório" });
   }
 
   const db = await readDb();
@@ -2192,11 +3230,11 @@ app.post("/privacy/requests", requireManager, async (req, res) => {
     : {};
 
   if (!patientId || !PRIVACY_REQUEST_TYPES.has(type)) {
-    return res.status(400).json({ error: "patientId e type (access|correction|deletion) sao obrigatorios" });
+    return res.status(400).json({ error: "patientId e type (access|correction|deletion) são obrigatórios" });
   }
 
   if (type === "correction" && !Object.keys(correctionData).length) {
-    return res.status(400).json({ error: "correctionData e obrigatorio para solicitacao de correcao" });
+    return res.status(400).json({ error: "correctionData ? obrigatório para solicitação de correção" });
   }
 
   const db = await readDb();
@@ -2275,9 +3313,9 @@ app.patch("/privacy/requests/:id", requireManager, async (req, res) => {
     return next;
   });
 
-  if (result === "invalid_status") return res.status(400).json({ error: "status invalido" });
-  if (result === "manual_completed_not_allowed") return res.status(400).json({ error: "Use /privacy/requests/:id/execute para concluir a solicitacao" });
-  if (!result) return res.status(404).json({ error: "Solicitacao nao encontrada" });
+  if (result === "invalid_status") return res.status(400).json({ error: "status inválido" });
+  if (result === "manual_completed_not_allowed") return res.status(400).json({ error: "Use /privacy/requests/:id/execute para concluir a solicitação" });
+  if (!result) return res.status(404).json({ error: "Solicitação não encontrada" });
   return res.json(result);
 });
 
@@ -2288,18 +3326,18 @@ app.post("/privacy/requests/:id/execute", requireManager, async (req, res) => {
   const outcome = await withDb((db) => {
     ensureDbShape(db);
     const reqIndex = db.privacyRequests.findIndex((item) => item.id === id && item.teamId === req.user.teamId);
-    if (reqIndex < 0) return { error: { status: 404, message: "Solicitacao nao encontrada" } };
+    if (reqIndex < 0) return { error: { status: 404, message: "Solicitação não encontrada" } };
 
     const requestItem = db.privacyRequests[reqIndex];
     if (requestItem.status === "completed") {
-      return { error: { status: 409, message: "Solicitacao ja concluida" } };
+      return { error: { status: 409, message: "Solicitação j? conclu?da" } };
     }
     if (requestItem.status === "rejected") {
-      return { error: { status: 409, message: "Solicitacao rejeitada. Nao pode ser executada." } };
+      return { error: { status: 409, message: "Solicitação rejeitada. Não pode ser executada." } };
     }
 
     const patient = db.patients.find((p) => p.id === requestItem.patientId && p.teamId === req.user.teamId);
-    if (!patient) return { error: { status: 404, message: "Paciente da solicitacao nao encontrado" } };
+    if (!patient) return { error: { status: 404, message: "Paciente da solicitação não encontrado" } };
 
     let result = {};
     if (requestItem.type === "access") {
@@ -2369,7 +3407,7 @@ app.post("/privacy/requests/:id/execute", requireManager, async (req, res) => {
       return { request: requestItem };
     }
 
-    return { error: { status: 400, message: "Tipo de solicitacao nao suportado" } };
+    return { error: { status: 400, message: "Tipo de solicitação não suportado" } };
   });
 
   if (outcome.error) return res.status(outcome.error.status).json({ error: outcome.error.message });
@@ -2382,7 +3420,7 @@ app.post("/privacy/retention/anonymize", requireManager, async (req, res) => {
   const dryRun = Boolean(payload.dryRun);
 
   if (!Number.isFinite(olderThanDays) || olderThanDays < 30) {
-    return res.status(400).json({ error: "olderThanDays deve ser numero >= 30" });
+    return res.status(400).json({ error: "olderThanDays deve ser número >= 30" });
   }
 
   const cutoff = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
@@ -2548,7 +3586,7 @@ app.post("/ai/team/data-quality", async (req, res) => {
 
 app.post("/ai/team/report", async (req, res) => {
   if (!isManager(req.user)) {
-    return res.status(403).json({ error: "Somente enfermeira pode gerar relatorio executivo" });
+    return res.status(403).json({ error: "Somente enfermeira pode gerar relat?rio executivo" });
   }
   const db = await readDb();
   ensureDbShape(db);
@@ -2566,7 +3604,7 @@ app.post("/ai/chat", async (req, res) => {
 
 app.use((err, _req, res, _next) => {
   if (String(err?.message || "").includes("CORS")) {
-    return res.status(403).json({ error: "Origem bloqueada por politica de seguranca" });
+    return res.status(403).json({ error: "Origem bloqueada por política de segurança" });
   }
   return res.status(500).json({ error: "Erro interno do servidor" });
 });
@@ -2584,6 +3622,8 @@ async function startServer() {
 }
 
 startServer();
+
+
 
 
 

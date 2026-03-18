@@ -1,16 +1,16 @@
-# Sistema de Gestao de Pacientes (Enfermagem + ACS)
+﻿# Sistema de Gestao de Pacientes (Enfermagem + ACS)
 
 MVP inicial para:
 - Cadastro de pacientes
 - Registro de atendimentos
-- Criacao e acompanhamento de tarefas para ACS
-- Mural de comunicacao por paciente
-- Filtro de pacientes por microarea e ACS
+- Criação e acompanhamento de tarefas para ACS
+- Mural de comunicação por paciente
+- Filtro de pacientes por microárea e ACS
 - Auditoria basica das alteracoes
-- Categorizacao clinica (gestante, puerpera, preventivo/Papanicolau etc.)
-- Historico clinico completo com visitas, consultas, vacinas e procedimentos
+- Categorização clínica (gestante, puérpera, rastreamento feminino/trans, puericultura, idosa, crônicos etc.)
+- Histórico clínico completo com visitas, consultas, vacinas e procedimentos
 - Resumo de protocolo com metas x realizado
-- IA assistida para equipe e paciente (resumo, alertas, priorizacao, chat, relatorios)
+- IA assistida para equipe e paciente (resumo, alertas, priorização, chat, relat?rios)
 
 ## Tecnologias
 - Backend: Node.js + Express
@@ -44,7 +44,7 @@ Arquitetura recomendada para custo zero inicial:
 Arquivos de apoio ja prontos:
 - `render.yaml` (deploy do backend)
 - `backend/.env.example` (variaveis necessarias)
-- `frontend/config.prod.example.js` (URL da API em producao)
+- `frontend/config.prod.example.js` (URL da API em produção)
 
 ### Backend (Render + Neon)
 1. Criar banco no Neon e copiar `DATABASE_URL`.
@@ -67,20 +67,20 @@ Arquivos de apoio ja prontos:
 
 ## Logins e cadastro
 - Enfermeira (conta inicial): `ana@clinica.local` / `123456`
-- ACS, Medica e Enfermeiro(a) gestor(a): podem criar conta na tela inicial (`POST /auth/register`)
+- ACS, Médica e Enfermeiro(a) gestor(a): podem criar conta na tela inicial (`POST /auth/register`)
 - Regras de cadastro:
-  - Medica e Enfermeiro(a) precisam informar conselho (numero + UF)
-  - Conselho e validado (digitos, UF, faixa de tamanho por tipo e bloqueio de sequencias/repeticoes) e nao pode duplicar
+  - Médica e Enfermeiro(a) precisam informar conselho (número + UF)
+  - Conselho é validado (dígitos, UF, faixa de tamanho por tipo e bloqueio de sequências/repeti??es) e não pode duplicar
   - Enfermeiro(a) gestor(a) cria uma nova equipe no cadastro
-  - ACS e Medica entram em uma equipe existente
+  - ACS e Médica entram em uma equipe existente
 
 ## Equipes
-- Todos os dados sao separados por equipe.
+- Todos os dados são separados por equipe.
 - Cada equipe e vinculada a uma enfermeira.
-- Usuarios so acessam pacientes, tarefas e registros da propria equipe.
+- Usuários s? acessam pacientes, tarefas e registros da própria equipe.
 
-## Autenticacao e permissao
-- Autenticacao via JWT (`POST /auth/login` retorna `token`).
+## Autenticação e permissão
+- Autenticação via JWT (`POST /auth/login` retorna `token`).
 - Rotas de dados exigem `Authorization: Bearer <token>`.
 - Perfil `nurse_manager` (enfermeira):
   - cria/edita paciente
@@ -88,59 +88,59 @@ Arquivos de apoio ja prontos:
   - cria atendimentos
   - atualiza tarefas
   - visualiza auditoria
-- Perfil `doctor` (medica):
+- Perfil `doctor` (médica):
   - visualiza pacientes
   - cria atendimento
-  - registra consulta, vacina, procedimento e observacao
+  - registra consulta, vacina, procedimento e observação
 - Perfil `acs`:
   - visualiza apenas pacientes atribuidos a ele
   - atualiza apenas o `status` das tarefas atribuidas a si
-  - registra visita e observacao no historico clinico
+  - registra visita e observação no histórico clinico
   - envia mensagens no mural do paciente
 
 ## Categorias clinicas e protocolo
 - Cada paciente pode ser classificado por categoria de cuidado:
-  - `general`, `pregnant`, `puerperal`, `pap_only`, `child_followup`, `chronic`
+  - `general`, `pregnant`, `puerperal`, `pap_only`, `child_followup`, `chronic`, `elderly`
 - O sistema possui templates de protocolo por categoria (metas de visitas, consultas e vacinas).
 - O resumo de protocolo consolida:
   - total realizado de visitas, consultas e vacinas
-  - pendencias em relacao ao protocolo
+  - pendências em relação ao protocolo
   - checklist de vacinas recomendadas
 
 ## Variavel de ambiente (opcional)
 - `JWT_SECRET`: chave usada para assinar tokens.
-- Se nao informar, a API usa uma chave padrao de desenvolvimento.
-- `NODE_ENV`: use `production` em producao.
+- Se não informar, a API usa uma chave padr?o de desenvolvimento.
+- `NODE_ENV`: use `production` em produção.
 - `FRONTEND_ORIGINS`: lista CSV de origens permitidas (CORS), ex: `https://app.exemplo.com`.
-- `AUTH_RATE_LIMIT_WINDOW_MS`: janela de limitacao de tentativas de autenticacao (ms).
+- `AUTH_RATE_LIMIT_WINDOW_MS`: janela de limitação de tentativas de autenticacao (ms).
 - `AUTH_RATE_LIMIT_MAX_ATTEMPTS`: maximo de tentativas por IP na janela.
 
 ## Seguranca e LGPD (baseline tecnico)
-- Senhas sao armazenadas com hash (`scrypt`) e migradas automaticamente se legadas em texto puro.
-- JWT exige segredo forte em producao (`JWT_SECRET` obrigatorio).
+- Senhas são armazenadas com hash (`scrypt`) e migradas automaticamente se legadas em texto puro.
+- JWT exige segredo forte em produção (`JWT_SECRET` obrigatorio).
 - CORS restrito por allowlist via `FRONTEND_ORIGINS`.
-- Rotas de login/registro possuem limitacao de tentativas por IP.
+- Rotas de login/registro possuem limitação de tentativas por IP.
 - Headers de seguranca HTTP basicos habilitados (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`).
 - Auditoria de acoes criticas habilitada para rastreabilidade.
 
-## Governanca recomendada (operacao real)
-- Definir base legal e finalidade por dado coletado (minimizacao obrigatoria).
+## Governança recomendada (operação real)
+- Definir base legal e finalidade por dado coletado (minimização obrigatoria).
 - Nomear encarregado (DPO) e manter canal de atendimento ao titular.
-- Publicar politica de privacidade e termos de uso internos.
-- Implementar rotina de direitos do titular: acesso, correcao, eliminacao e portabilidade.
+- Publicar politica de privacidade e termos de us? internos.
+- Implementar rotina de direitos do titular: acesso, correção, eliminação e portabilidade.
 - Definir prazo de retencao e descarte seguro por tipo de registro.
-- Manter controle de incidentes com plano de resposta e notificacao.
-- Restringir acesso por perfil, revisar logs periodicamente e registrar consentimentos quando aplicavel.
+- Manter controle de incidentes com plano de resposta e notificação.
+- Restringir acess? por perfil, revisar logs periodicamente e registrar consentimentos quando aplicavel.
 
-## Integracao externa de conselho (ja acoplada)
-- O cadastro ja faz chamada para um provedor externo de validacao de conselho.
+## Integração externa de conselho (ja acoplada)
+- O cadastro ja faz chamada para um provedor externo de validação de conselho.
 - Configurar no backend (`backend/.env.example`):
   - `COUNCIL_VERIFY_MODE`: `off`, `optional` ou `required`
   - `COUNCIL_VERIFY_PROVIDER`: `generic`, `n8n` ou `make`
   - `COUNCIL_VERIFY_URL`
   - `COUNCIL_VERIFY_TOKEN`
   - `COUNCIL_VERIFY_TIMEOUT_MS`
-- Recomendado para producao: `COUNCIL_VERIFY_MODE=required`
+- Recomendado para produção: `COUNCIL_VERIFY_MODE=required`
 - Exemplo pronto de payload/resposta: `backend/integrations/council-webhook-example.json`
 - Template importavel do n8n (mock funcional): `backend/integrations/n8n-workflow-template.json`
 - Payload enviado para o provedor:
@@ -159,6 +159,7 @@ Arquivos de apoio ja prontos:
 - `GET/POST /patients`
 - `PUT /patients/:id`
 - `GET/POST /patients/:id/appointments`
+- `GET /metrics/demand/monthly` (enfermeira e médica)
 - `GET /patients/:id/history`
 - `GET /patients/:id/protocol-summary`
 - `POST /patients/:id/records`
@@ -182,8 +183,18 @@ Arquivos de apoio ja prontos:
 - `POST /ai/team/report` (somente enfermeira)
 - `POST /ai/chat`
 
+## Indicador mensal de demanda
+- Nos atendimentos (`POST /patients/:id/appointments`), use `demandType`:
+  - `scheduled` para demanda programada/agendada
+  - `spontaneous` para demanda espontânea
+- Fórmula mensal monitorada:
+  - `(atendimentos programados / total de atendimentos) * 100`
+- Faixa esperada:
+  - entre `50%` e `70%` (com alerta quando fora)
+
 ## Proximos passos sugeridos
 - Banco de dados real (PostgreSQL)
-- Edicao de cadastro do paciente na tela
-- Dashboard de indicadores por microarea/ACS
-- Prontuario com anexos e exportacao PDF
+- Edi??o de cadastro do paciente na tela
+- Dashboard de indicadores por microárea/ACS
+- Prontuário com anexos e exportação PDF
+
