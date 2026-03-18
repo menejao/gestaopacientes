@@ -3133,6 +3133,16 @@ app.put("/users/:id", requireManager, async (req, res) => {
       if (duplicated) return { error: { status: 409, message: "E-mail já em uso por outro usuário" } };
       next.email = email;
     }
+    if (payload.password !== undefined) {
+      const password = String(payload.password || "");
+      if (!password) {
+        return { error: { status: 400, message: "Senha não pode ficar vazia" } };
+      }
+      if (!isStrongPassword(password)) {
+        return { error: { status: 400, message: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial" } };
+      }
+      next.password = hashPassword(password);
+    }
 
     if (roleNeedsCouncil(role) && (payload.councilNumber !== undefined || payload.councilUf !== undefined)) {
       const candidateNumber = payload.councilNumber !== undefined ? payload.councilNumber : current.councilNumber;

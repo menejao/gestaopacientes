@@ -1303,6 +1303,15 @@ function renderTeamUsersLists() {
       const email = prompt(`Editar ${roleLabel} - E-mail`, target.email || "");
       if (email === null) return;
       const payload = { name: name.trim(), email: email.trim() };
+      const password = prompt(`Editar ${roleLabel} - Nova senha (deixe em branco para manter a atual)`, "");
+      if (password === null) return;
+      if (String(password || "").trim()) {
+        if (!passwordStrong(password)) {
+          showToast("Senha fraca: mínimo de 8 caracteres, 1 maiúscula, 1 número e 1 especial.", "error");
+          return;
+        }
+        payload.password = String(password);
+      }
       if (target.role === "doctor") {
         const currentCouncil = formatCouncilNumber(target.councilNumber || "", 8);
         const council = prompt("Número do conselho (CRM, somente números)", currentCouncil);
