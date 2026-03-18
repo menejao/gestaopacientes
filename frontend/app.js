@@ -571,21 +571,17 @@ el.logoutBtn?.addEventListener("click", () => logoutUser(false));
 
 // -- Register visibility -------------------------------------------------------
 function updateRegisterFormVisibility() {
-  const role = el.registerRole.value;
-  const needsCouncil = ["doctor","nurse_manager"].includes(role);
-  const isNM = role === "nurse_manager";
-  const cType = role === "doctor" ? "CRM" : "COREN";
-  el.registerCouncilNumberWrap.classList.toggle("hidden", !needsCouncil);
-  el.registerCouncilUfWrap.classList.toggle("hidden", !needsCouncil);
-  el.registerTeamNameWrap.classList.toggle("hidden", !isNM);
-  el.registerTeamWrap.classList.toggle("hidden", isNM);
-  if (needsCouncil) {
-    el.councilNumLabel.textContent = `Numero do conselho (${cType})`;
-    const maxLen = cType === "CRM" ? 8 : 10;
-    el.registerCouncilNumber.placeholder = cType === "CRM" ? "Ex: 1234 5678" : "Ex: 12345 67890";
-    el.registerCouncilNumber.maxLength = maxLen + 1;
-    el.registerCouncilNumber.value = formatCouncilNumber(el.registerCouncilNumber.value, maxLen);
-  }
+  const role = "nurse_manager";
+  if (el.registerRole) el.registerRole.value = role;
+  el.registerCouncilNumberWrap.classList.remove("hidden");
+  el.registerCouncilUfWrap.classList.remove("hidden");
+  el.registerTeamNameWrap.classList.remove("hidden");
+  el.registerTeamWrap.classList.add("hidden");
+  el.councilNumLabel.textContent = "Numero do conselho (COREN)";
+  const maxLen = 10;
+  el.registerCouncilNumber.placeholder = "Ex: 12345 67890";
+  el.registerCouncilNumber.maxLength = maxLen + 1;
+  el.registerCouncilNumber.value = formatCouncilNumber(el.registerCouncilNumber.value, maxLen);
 }
 
 function readViewState() {
@@ -641,6 +637,7 @@ function fillAcsSelect(sel, withAll=false) {
   state.users.filter(u => u.role === "acs").forEach(u => sel.appendChild(Object.assign(document.createElement("option"), { value:u.id, textContent:u.name })));
 }
 function fillTeamSelect() {
+  if (!el.registerTeam) return;
   el.registerTeam.innerHTML = "";
   state.publicTeams.forEach(t => el.registerTeam.appendChild(Object.assign(document.createElement("option"), { value:t.id, textContent:t.name })));
 }
@@ -2150,7 +2147,7 @@ el.loginBtn.addEventListener("click", withSpinner(el.loginBtn, async () => {
 }));
 
 el.registerBtn.addEventListener("click", withSpinner(el.registerBtn, async () => {
-  const role = el.registerRole.value;
+  const role = "nurse_manager";
   if (!passwordStrong(el.registerPassword.value)) {
     throw new Error("Senha fraca: mínimo de 8 caracteres, 1 maiúscula, 1 número e 1 especial.");
   }
@@ -2159,8 +2156,8 @@ el.registerBtn.addEventListener("click", withSpinner(el.registerBtn, async () =>
   const payload = await api("/auth/register", { method:"POST", body:JSON.stringify({
     name: el.registerName.value.trim(), email: el.registerEmail.value.trim(),
     password: el.registerPassword.value, role,
-    teamId: role==="nurse_manager" ? "" : el.registerTeam.value,
-    teamName: role==="nurse_manager" ? el.registerTeamName.value.trim() : "",
+    teamId: "",
+    teamName: el.registerTeamName.value.trim(),
     councilNumber: check.number||"", councilUf: check.uf||""
   })});
   state.user = payload.user; state.token = payload.token;
@@ -2176,9 +2173,9 @@ function loginWithEnter(e) {
 el.loginEmail?.addEventListener("keydown", loginWithEnter);
 el.loginPassword?.addEventListener("keydown", loginWithEnter);
 
-el.registerRole.addEventListener("change", updateRegisterFormVisibility);
+el.registerRole?.addEventListener("change", updateRegisterFormVisibility);
 el.registerCouncilNumber.addEventListener("input", () => {
-  const maxLen = el.registerRole.value === "doctor" ? 8 : 10;
+  const maxLen = 10;
   el.registerCouncilNumber.value = formatCouncilNumber(el.registerCouncilNumber.value, maxLen);
 });
 el.profileCouncilNumber?.addEventListener("input", () => {
