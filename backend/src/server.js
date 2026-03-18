@@ -1307,8 +1307,22 @@ function isDentalRecord(entry) {
   return isDentalText(text);
 }
 
+function isMedicalOrNursingConsultationText(textValue = "") {
+  const text = normalizeText(textValue);
+  if (!text) return false;
+  return /consulta/.test(text) && /(medic|enferm|pre natal|prenatal)/.test(text);
+}
+
 function isClinicalConsultation(entry) {
-  return entry?.type === "consultation" && !isDentalRecord(entry);
+  if (!entry || isDentalRecord(entry)) return false;
+  if (entry.type === "consultation") return true;
+
+  if (["procedure", "note"].includes(String(entry.type || ""))) {
+    const text = `${entry?.title || ""} ${entry?.details || ""}`;
+    return isMedicalOrNursingConsultationText(text);
+  }
+
+  return false;
 }
 
 function eventDate(entry) {
