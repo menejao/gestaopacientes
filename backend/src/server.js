@@ -144,6 +144,14 @@ const VALID_UF = new Set([
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
 ]);
+const DEFAULT_TEAM_COLORS = [
+  "Rosa",
+  "Azul",
+  "Verde",
+  "Amarela",
+  "Laranja",
+  "Roxa"
+];
 
 app.use(cors());
 app.set("trust proxy", 1);
@@ -315,6 +323,23 @@ function ensureDbShape(db) {
     });
 
     db.users = db.users.map((u) => ({ ...u, teamId: u.teamId || defaultTeamId }));
+  }
+
+  // Garante equipes base por cor para o auto cadastro público.
+  const byId = new Set(db.teams.map((t) => String(t.id || "").trim().toLowerCase()));
+  const byName = new Set(db.teams.map((t) => String(t.name || "").trim().toLowerCase()));
+  for (const color of DEFAULT_TEAM_COLORS) {
+    const id = `team-${color.toLowerCase()}`;
+    const name = `Equipe ${color}`;
+    if (byId.has(id) || byName.has(name.toLowerCase())) continue;
+    db.teams.push({
+      id,
+      name,
+      managerUserId: "",
+      createdAt: new Date().toISOString()
+    });
+    byId.add(id);
+    byName.add(name.toLowerCase());
   }
 
   if (!db.protocolTemplates.length) {
@@ -2548,7 +2573,10 @@ app.get("/protocol/templates", requireAuth, async (req, res) => {
 app.get("/teams/public", async (_req, res) => {
   const db = await readDb();
   ensureDbShape(db);
-  res.json(db.teams.map((t) => ({ id: t.id, name: t.name })));
+  const items = db.teams
+    .map((t) => ({ id: t.id, name: t.name }))
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
+  res.json(items);
 });
 
 app.get("/integrations/council/status", (_req, res) => {
@@ -2620,46 +2648,12 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
       return { error: `${councilType} já cadastrado para outro usuário`, status: 409 };
     }
 
-    let teamId = "";
-    if (role === "nurse_manager") {
-      const teamNameInput = String(payload.teamName || "").trim();
-      const teamName = teamNameInput || `Equipe ${name}`;
-      const managerUserId = uuidv4();
-      teamId = `team-${uuidv4()}`;
-      db.teams.push({
-        id: teamId,
-        name: teamName,
-        managerUserId,
-        createdAt: new Date().toISOString()
-      });
-      const user = {
-        id: managerUserId,
-        name,
-        role,
-        email,
-        password: hashPassword(password),
-        teamId,
-        councilType,
-        councilNumber: councilValidation.councilNumber || "",
-        councilUf: councilValidation.councilUf || "",
-        councilVerification: {
-          checked: externalCheck.checked,
-          provider: externalCheck.provider,
-          status: externalCheck.status,
-          verifiedAt: new Date().toISOString()
-        },
-        createdAt: new Date().toISOString()
-      };
-      db.users.push(user);
-      return { user, db };
-    }
-
-    teamId = String(payload.teamId || "").trim();
+    const teamId = String(payload.teamId || "").trim();
     if (!teamId) {
-      return { error: "teamId é obrigatório para médica", status: 400 };
+      return { error: "teamId é obrigatório para cadastro", status: 400 };
     }
-    const teamExists = db.teams.some((t) => t.id === teamId);
-    if (!teamExists) {
+    const team = db.teams.find((t) => t.id === teamId);
+    if (!team) {
       return { error: "Equipe informada não existe", status: 400 };
     }
 
@@ -2682,6 +2676,10 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
       createdAt: new Date().toISOString()
     };
     db.users.push(user);
+    if (role === "nurse_manager" && !team.managerUserId) {
+      team.managerUserId = user.id;
+      team.updatedAt = new Date().toISOString();
+    }
     return { user, db };
   });
 

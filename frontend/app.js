@@ -574,11 +574,10 @@ function updateRegisterFormVisibility() {
   const role = el.registerRole?.value || "nurse_manager";
   el.registerCouncilNumberWrap.classList.remove("hidden");
   el.registerCouncilUfWrap.classList.remove("hidden");
-  const isDoctorRole = role === "doctor";
-  el.registerTeamNameWrap.classList.toggle("hidden", isDoctorRole);
-  el.registerTeamWrap.classList.toggle("hidden", !isDoctorRole);
+  el.registerTeamNameWrap?.classList.add("hidden");
+  el.registerTeamWrap?.classList.remove("hidden");
   el.councilNumLabel.textContent = "Conselho";
-  const maxLen = isDoctorRole ? 8 : 10;
+  const maxLen = role === "doctor" ? 8 : 10;
   el.registerCouncilNumber.placeholder = "Somente números";
   el.registerCouncilNumber.maxLength = maxLen + 1;
   el.registerCouncilNumber.value = formatCouncilNumber(el.registerCouncilNumber.value, maxLen);
@@ -639,6 +638,7 @@ function fillAcsSelect(sel, withAll=false) {
 function fillTeamSelect() {
   if (!el.registerTeam) return;
   el.registerTeam.innerHTML = "";
+  el.registerTeam.appendChild(Object.assign(document.createElement("option"), { value: "", textContent: "Selecione a equipe" }));
   state.publicTeams.forEach(t => el.registerTeam.appendChild(Object.assign(document.createElement("option"), { value:t.id, textContent:t.name })));
 }
 
@@ -2151,13 +2151,15 @@ el.registerBtn.addEventListener("click", withSpinner(el.registerBtn, async () =>
   if (!passwordStrong(el.registerPassword.value)) {
     throw new Error("Senha fraca: mínimo de 8 caracteres, 1 maiúscula, 1 número e 1 especial.");
   }
+  if (!String(el.registerTeam?.value || "").trim()) {
+    throw new Error("Selecione a equipe para continuar.");
+  }
   const check = validateCouncil(role, el.registerCouncilNumber.value, el.registerCouncilUf.value);
   if (!check.ok) { showToast(check.message, "error"); throw new Error(check.message); }
   const payload = await api("/auth/register", { method:"POST", body:JSON.stringify({
     name: el.registerName.value.trim(), email: el.registerEmail.value.trim(),
     password: el.registerPassword.value, role,
-    teamId: role === "doctor" ? el.registerTeam.value : "",
-    teamName: role === "nurse_manager" ? el.registerTeamName.value.trim() : "",
+    teamId: el.registerTeam.value,
     councilNumber: check.number||"", councilUf: check.uf||""
   })});
   state.user = payload.user; state.token = payload.token;
