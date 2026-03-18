@@ -548,7 +548,7 @@ el.togglePass?.addEventListener("click", () => {
 function updateSessionView() {
   if (!state.user) {
     el.logoutBtn.classList.add("hidden");
-    el.homeBtn.classList.add("hidden");
+    el.homeBtn?.classList.add("hidden");
     el.profileBtn?.classList.add("hidden");
     if (el.mobileUserName) el.mobileUserName.textContent = "-";
     if (el.mobileUserRole) el.mobileUserRole.textContent = "-";
@@ -557,15 +557,17 @@ function updateSessionView() {
   }
   const roleMap = { nurse_manager: "Enfermeira", doctor: "Médico(a)", acs: "ACS" };
   const roleText = roleMap[state.user.role] || state.user.role;
+  const teamText = String(state.user.teamName || "").trim();
+  const roleWithTeam = teamText ? `${roleText} • ${teamText}` : roleText;
   const avatarText = state.user.name.charAt(0).toUpperCase();
   el.userName.textContent  = state.user.name;
-  el.userRole.textContent  = roleText;
+  el.userRole.textContent  = roleWithTeam;
   el.userAvatar.textContent = avatarText;
   if (el.mobileUserName) el.mobileUserName.textContent = state.user.name;
-  if (el.mobileUserRole) el.mobileUserRole.textContent = roleText;
+  if (el.mobileUserRole) el.mobileUserRole.textContent = roleWithTeam;
   if (el.mobileUserAvatar) el.mobileUserAvatar.textContent = avatarText;
   el.logoutBtn.classList.remove("hidden");
-  el.homeBtn.classList.remove("hidden");
+  el.homeBtn?.classList.add("hidden");
   el.profileBtn?.classList.remove("hidden");
 }
 
