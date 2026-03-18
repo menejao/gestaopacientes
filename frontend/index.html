@@ -208,6 +208,7 @@
 
             <nav class="workspace-tabs">
               <button id="homeTabDashboardBtn" class="workspace-tab active" data-home-tab="dashboard">Painel</button>
+              <button id="homeTabPatientsBtn" class="workspace-tab" data-home-tab="patients">Pacientes cadastrados</button>
               <button id="homeTabProtocolsBtn" class="workspace-tab" data-home-tab="protocols">Protocolos</button>
             </nav>
 
@@ -257,7 +258,7 @@
               </article>
             </section>
 
-            <section class="panel-card">
+            <section id="homePatientsPane" class="panel-card workspace-pane hidden">
               <div class="panel-card-hd">Pacientes da equipe</div>
               <div class="table-toolbar">
                 <select id="homePatientSortSelect" class="field-select">
@@ -266,6 +267,7 @@
                   <option value="category_asc">Categoria (A-Z)</option>
                   <option value="microarea_asc">Microárea (A-Z)</option>
                 </select>
+                <button id="homePatientBulkDeleteBtn" class="btn-secondary hidden">Excluir selecionados</button>
               </div>
               <div class="table-filters">
                 <select id="homePatientCategoryFilter" class="field-select">
@@ -286,12 +288,13 @@
                 <table class="saas-table">
                   <thead>
                     <tr>
+                      <th><input id="homePatientSelectAll" type="checkbox" /></th>
                       <th>Paciente</th>
                       <th>Categoria</th>
                       <th>Microárea</th>
                       <th>ACS</th>
                       <th>Protocolo</th>
-                      <th></th>
+                      <th>Ações</th>
                     </tr>
                   </thead>
                   <tbody id="homePatientTableBody"></tbody>

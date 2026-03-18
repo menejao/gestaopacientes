@@ -989,6 +989,10 @@ body { background: var(--bg); color: var(--text-primary); min-height: 100vh; }
   background: #f8fbff;
 }
 
+.home-patient-row {
+  cursor: pointer;
+}
+
 .table-footer {
   margin-top: .7rem;
   display: flex;

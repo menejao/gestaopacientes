@@ -1,5 +1,6 @@
 ﻿const API_URL = window.__APP_CONFIG?.apiUrl || "http://localhost:3001";
 const SESSION_KEY = "saudeubs_session";
+const VIEW_STATE_KEY = "saudeubs_view_state";
 const SESSION_INACTIVITY_MS = 1000 * 60 * 60 * 24 * 7;
 const SESSION_TOUCH_THROTTLE_MS = 30000;
 const BRAZIL_UFS = [
@@ -27,6 +28,7 @@ const state = {
   dashboardCategory: "",
   dashboardAcsId: "",
   dashboardProtocolStatus: "all",
+  selectedPatientIds: new Set(),
   filters: { microArea: "", acsId: "", careCategory: "" }
 };
 
@@ -162,8 +164,10 @@ const el = {
   togglePass:               document.getElementById("togglePass"),
   quickSelectFirstPatientBtn: document.getElementById("quickSelectFirstPatientBtn"),
   homeTabDashboardBtn:      document.getElementById("homeTabDashboardBtn"),
+  homeTabPatientsBtn:       document.getElementById("homeTabPatientsBtn"),
   homeTabProtocolsBtn:      document.getElementById("homeTabProtocolsBtn"),
   homeDashboardPane:        document.getElementById("homeDashboardPane"),
+  homePatientsPane:         document.getElementById("homePatientsPane"),
   kpiPatientsTotal:         document.getElementById("kpiPatientsTotal"),
   kpiPatientsAssigned:      document.getElementById("kpiPatientsAssigned"),
   kpiTasksOpen:             document.getElementById("kpiTasksOpen"),
@@ -175,6 +179,8 @@ const el = {
   priorityTaskList:         document.getElementById("priorityTaskList"),
   protocolDeadlineAlertsList: document.getElementById("protocolDeadlineAlertsList"),
   homePatientSortSelect:    document.getElementById("homePatientSortSelect"),
+  homePatientBulkDeleteBtn: document.getElementById("homePatientBulkDeleteBtn"),
+  homePatientSelectAll:     document.getElementById("homePatientSelectAll"),
   homePatientCategoryFilter: document.getElementById("homePatientCategoryFilter"),
   homePatientAcsFilter:     document.getElementById("homePatientAcsFilter"),
   homePatientProtocolStatusFilter: document.getElementById("homePatientProtocolStatusFilter"),
@@ -280,6 +286,7 @@ function touchSession(force = false) {
 
 function clearSessionStore() {
   localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(VIEW_STATE_KEY);
 }
 
 function logoutUser(showReason = false) {
@@ -559,6 +566,29 @@ function updateRegisterFormVisibility() {
     el.registerCouncilNumber.maxLength = maxLen + 1;
     el.registerCouncilNumber.value = formatCouncilNumber(el.registerCouncilNumber.value, maxLen);
   }
+}
+
+function readViewState() {
+  try {
+    const raw = localStorage.getItem(VIEW_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistViewState() {
+  if (!state.token) return;
+  const activePatientPanel = document.querySelector(".ptab.active")?.dataset.panel || "panelProtocol";
+  const payload = {
+    navSection: state.navSection,
+    workspaceTab: state.workspaceTab,
+    selectedPatientId: state.selectedPatient?.id || "",
+    activePatientPanel
+  };
+  localStorage.setItem(VIEW_STATE_KEY, JSON.stringify(payload));
 }
 
 // -- Council validation --------------------------------------------------------
@@ -998,19 +1028,24 @@ function renderHomePatientTable() {
   const pageItems = list.slice(start, start + state.dashboardPageSize);
 
   if (!pageItems.length) {
-    el.homePatientTableBody.innerHTML = '<tr><td colspan="6"><div class="empty-msg">Nenhum paciente encontrado para esse filtro.</div></td></tr>';
+    el.homePatientTableBody.innerHTML = '<tr><td colspan="7"><div class="empty-msg">Nenhum paciente encontrado para esse filtro.</div></td></tr>';
   } else {
     el.homePatientTableBody.innerHTML = pageItems.map((p) => {
       const summary = state.protocolByPatient[p.id];
       const statusInfo = protocolStatusInfo(summary);
+      const checked = state.selectedPatientIds.has(p.id) ? "checked" : "";
       return `
-        <tr>
+        <tr class="home-patient-row" data-patient-id="${p.id}">
+          <td><input class="home-patient-check" type="checkbox" data-patient-id="${p.id}" ${checked}/></td>
           <td><strong>${p.name}</strong><div class="home-task-meta">${p.phone || "-"}</div></td>
           <td>${catLabel(p.careCategory)}</td>
           <td>${p.microArea || "-"}</td>
           <td>${acsNameById(p.assignedAcsId)}</td>
           <td><span class="${statusInfo.className}">${statusInfo.label}</span></td>
-          <td><button class="btn-secondary home-open-patient-btn" data-patient-id="${p.id}">Abrir</button></td>
+          <td class="inline-actions">
+            <button class="btn-secondary home-open-patient-btn" data-patient-id="${p.id}">Abrir</button>
+            ${isManager() ? `<button class="btn-secondary home-delete-patient-btn" data-patient-id="${p.id}">Excluir</button>` : ""}
+          </td>
         </tr>`;
     }).join("");
   }
@@ -1025,6 +1060,46 @@ function renderHomePatientTable() {
       if (patient) await selectPatient(patient);
     });
   });
+
+  document.querySelectorAll(".home-delete-patient-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await deletePatientsByIds([btn.dataset.patientId]);
+    });
+  });
+
+  document.querySelectorAll(".home-patient-check").forEach((check) => {
+    check.addEventListener("click", (event) => event.stopPropagation());
+    check.addEventListener("change", () => {
+      const patientId = check.dataset.patientId;
+      if (!patientId) return;
+      if (check.checked) state.selectedPatientIds.add(patientId);
+      else state.selectedPatientIds.delete(patientId);
+      if (el.homePatientSelectAll) {
+        const selectable = pageItems.map((item) => item.id);
+        el.homePatientSelectAll.checked = selectable.length > 0 && selectable.every((id) => state.selectedPatientIds.has(id));
+      }
+      if (el.homePatientBulkDeleteBtn) {
+        el.homePatientBulkDeleteBtn.classList.toggle("hidden", !isManager() || state.selectedPatientIds.size === 0);
+      }
+    });
+  });
+
+  document.querySelectorAll(".home-patient-row").forEach((row) => {
+    row.addEventListener("click", async (event) => {
+      if (event.target.closest("button") || event.target.closest("input")) return;
+      const patientId = row.dataset.patientId;
+      const patient = state.patients.find((item) => item.id === patientId);
+      if (patient) await selectPatient(patient);
+    });
+  });
+
+  if (el.homePatientSelectAll) {
+    const selectable = pageItems.map((item) => item.id);
+    el.homePatientSelectAll.checked = selectable.length > 0 && selectable.every((id) => state.selectedPatientIds.has(id));
+  }
+  if (el.homePatientBulkDeleteBtn) {
+    el.homePatientBulkDeleteBtn.classList.toggle("hidden", !isManager() || state.selectedPatientIds.size === 0);
+  }
 }
 
 function exportDashboardPatientsCsv() {
@@ -1141,12 +1216,17 @@ async function runPatientAi(path, payload = {}) {
 
 function switchWorkspaceTab(tab) {
   const allowProtocols = isManager();
-  state.workspaceTab = tab === "protocols" && allowProtocols ? "protocols" : "dashboard";
+  if (tab === "protocols" && allowProtocols) state.workspaceTab = "protocols";
+  else if (tab === "patients") state.workspaceTab = "patients";
+  else state.workspaceTab = "dashboard";
   el.homeTabProtocolsBtn.classList.toggle("hidden", !allowProtocols);
   el.homeTabDashboardBtn.classList.toggle("active", state.workspaceTab === "dashboard");
+  el.homeTabPatientsBtn.classList.toggle("active", state.workspaceTab === "patients");
   el.homeTabProtocolsBtn.classList.toggle("active", state.workspaceTab === "protocols");
   el.homeDashboardPane.classList.toggle("hidden", state.workspaceTab !== "dashboard");
+  el.homePatientsPane.classList.toggle("hidden", state.workspaceTab !== "patients");
   el.protocolAdminSection.classList.toggle("hidden", state.workspaceTab !== "protocols");
+  persistViewState();
 }
 
 function renderTeamUsersLists() {
@@ -1205,14 +1285,19 @@ function switchNavSection(section) {
 
   el.openCreateUserModalBtn.classList.toggle("hidden", !isMgr);
 
-  el.homeDashboardPane.classList.toggle("hidden", state.navSection !== "patients");
+  const showPatientsWorkspace = state.navSection === "patients";
+  el.homeDashboardPane.classList.toggle("hidden", !showPatientsWorkspace || state.workspaceTab !== "dashboard");
+  el.homePatientsPane.classList.toggle("hidden", !showPatientsWorkspace || state.workspaceTab !== "patients");
   el.protocolAdminSection.classList.toggle("hidden", state.navSection !== "protocols");
   el.acsAdminSection.classList.toggle("hidden", state.navSection !== "acs");
   el.doctorsAdminSection.classList.toggle("hidden", state.navSection !== "doctors");
   el.aiHubSection.classList.toggle("hidden", state.navSection !== "ai");
 
-  if (state.navSection === "patients") switchWorkspaceTab("dashboard");
+  if (state.navSection === "patients" && !["dashboard", "patients", "protocols"].includes(state.workspaceTab)) {
+    switchWorkspaceTab("dashboard");
+  }
   if (isMobileLayout()) closeSidebarDrawer();
+  persistViewState();
 }
 
 function openProtocolModal() {
@@ -1436,6 +1521,38 @@ async function deleteSelectedPatient() {
   }
 }
 
+async function deletePatientsByIds(ids = []) {
+  const uniqueIds = [...new Set((ids || []).filter(Boolean))];
+  if (!uniqueIds.length) return;
+  if (!isManager()) {
+    showToast("Somente enfermeira pode excluir pacientes.", "error");
+    return;
+  }
+  const ok = confirm(`Excluir ${uniqueIds.length} paciente(s)? Esta ação remove todos os dados vinculados.`);
+  if (!ok) return;
+  try {
+    for (const patientId of uniqueIds) {
+      await api(`/patients/${patientId}`, { method: "DELETE" });
+    }
+    showToast(`${uniqueIds.length} paciente(s) excluído(s).`, "ok");
+    state.selectedPatientIds = new Set();
+    if (state.selectedPatient && uniqueIds.includes(state.selectedPatient.id)) {
+      state.selectedPatient = null;
+      state.appointments = [];
+      state.tasks = [];
+      state.messages = [];
+      state.history = [];
+      state.protocolSummary = null;
+    }
+    await loadPatients();
+    await loadGlobalTasks();
+    renderPatientHeader();
+    renderWorkspaceHome();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
 // -- Tab switching -------------------------------------------------------------
 document.querySelectorAll(".ptab").forEach(tab => {
   tab.addEventListener("click", () => {
@@ -1456,6 +1573,7 @@ function switchToTab(panelId) {
     p.classList.toggle("active", p.id === panelId);
     p.classList.toggle("hidden", p.id !== panelId);
   });
+  persistViewState();
 }
 
 // -- Render: protocol summary ---------------------------------------------------
@@ -1661,6 +1779,8 @@ async function loadPatients() {
   if (state.filters.careCategory) p.set("careCategory", state.filters.careCategory);
   const q = p.toString();
   state.patients = await api(`/patients${q ? `?${q}` : ""}`);
+  const validIds = new Set(state.patients.map((item) => item.id));
+  state.selectedPatientIds = new Set([...state.selectedPatientIds].filter((id) => validIds.has(id)));
   if (state.selectedPatient) {
     const fresh = state.patients.find((pItem) => pItem.id === state.selectedPatient.id);
     if (!fresh) {
@@ -1718,10 +1838,12 @@ async function selectPatient(patient) {
   renderPatientHeader();
   switchToTab("panelProtocol");
   await refreshSelectedPatientData();
+  persistViewState();
 }
 
 // -- Bootstrap -----------------------------------------------------------------
 async function bootstrapAfterLogin() {
+  const savedView = readViewState();
   touchSession(true);
   setupInactivityWatcher();
   const [users] = await Promise.all([api("/users")]);
@@ -1743,7 +1865,7 @@ async function bootstrapAfterLogin() {
   state.dashboardCategory = "";
   state.dashboardAcsId = "";
   state.dashboardProtocolStatus = "all";
-  state.workspaceTab = "dashboard";
+  state.workspaceTab = savedView?.workspaceTab || "dashboard";
   if (el.topbarSearchInput) el.topbarSearchInput.value = "";
   if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
   if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
@@ -1753,11 +1875,19 @@ async function bootstrapAfterLogin() {
   if (el.topFilterMicroArea) el.topFilterMicroArea.value = "";
   if (el.topFilterAcs) el.topFilterAcs.value = "";
   if (el.topFilterCategory) el.topFilterCategory.value = "";
-  switchWorkspaceTab("dashboard");
-  switchNavSection("patients");
+  switchWorkspaceTab(state.workspaceTab);
+  switchNavSection(savedView?.navSection || "patients");
   await loadPatients();
   await loadGlobalTasks();
   await loadMonthlyDemandMetric();
+  if (savedView?.selectedPatientId) {
+    const restored = state.patients.find((p) => p.id === savedView.selectedPatientId);
+    if (restored) {
+      await selectPatient(restored);
+      if (savedView.activePatientPanel) switchToTab(savedView.activePatientPanel);
+    }
+  }
+  persistViewState();
   renderWorkspaceHome();
 }
 
@@ -1972,6 +2102,7 @@ el.pCep?.addEventListener("blur", async () => {
 });
 
 el.homeTabDashboardBtn?.addEventListener("click", () => switchWorkspaceTab("dashboard"));
+el.homeTabPatientsBtn?.addEventListener("click", () => switchWorkspaceTab("patients"));
 el.homeTabProtocolsBtn?.addEventListener("click", () => switchWorkspaceTab("protocols"));
 
 el.openProtocolModalBtn?.addEventListener("click", () => {
@@ -2056,6 +2187,22 @@ el.homePatientPrevBtn?.addEventListener("click", () => {
 el.homePatientNextBtn?.addEventListener("click", () => {
   state.dashboardPage += 1;
   renderHomePatientTable();
+});
+
+el.homePatientSelectAll?.addEventListener("change", () => {
+  const pageRows = [...document.querySelectorAll(".home-patient-check")]
+    .map((input) => input.dataset.patientId)
+    .filter(Boolean);
+  if (el.homePatientSelectAll.checked) {
+    pageRows.forEach((id) => state.selectedPatientIds.add(id));
+  } else {
+    pageRows.forEach((id) => state.selectedPatientIds.delete(id));
+  }
+  renderHomePatientTable();
+});
+
+el.homePatientBulkDeleteBtn?.addEventListener("click", async () => {
+  await deletePatientsByIds([...state.selectedPatientIds]);
 });
 
 el.aiLoadPrioritiesBtn?.addEventListener("click", async () => {
