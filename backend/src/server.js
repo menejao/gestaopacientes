@@ -323,11 +323,16 @@ function ensureDbShape(db) {
     db.protocolTemplates = db.protocolTemplates
       .map((t) => ({
         ...t,
+        label: defaultsByCategory[t.category]?.label || t.label,
+        targets: defaultsByCategory[t.category]?.targets || t.targets,
         deadlines: {
-          visits: Number(t.deadlines?.visits ?? defaultsByCategory[t.category]?.deadlines?.visits ?? 0),
-          consultations: Number(t.deadlines?.consultations ?? defaultsByCategory[t.category]?.deadlines?.consultations ?? 0),
-          vaccines: Number(t.deadlines?.vaccines ?? defaultsByCategory[t.category]?.deadlines?.vaccines ?? 0)
+          visits: Number(defaultsByCategory[t.category]?.deadlines?.visits ?? t.deadlines?.visits ?? 0),
+          consultations: Number(defaultsByCategory[t.category]?.deadlines?.consultations ?? t.deadlines?.consultations ?? 0),
+          vaccines: Number(defaultsByCategory[t.category]?.deadlines?.vaccines ?? t.deadlines?.vaccines ?? 0)
         },
+        vaccines: Array.isArray(defaultsByCategory[t.category]?.vaccines)
+          ? defaultsByCategory[t.category].vaccines
+          : (Array.isArray(t.vaccines) ? t.vaccines : []),
         authority: String(t.authority || "Ministerio da Saude"),
         reference: String(t.reference || defaultsByCategory[t.category]?.reference || ""),
         version: String(t.version || defaultsByCategory[t.category]?.version || "1.0")
