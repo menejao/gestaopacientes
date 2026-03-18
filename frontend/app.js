@@ -18,6 +18,7 @@ const state = {
   protocolSummary: null, protocolTemplates: [], publicTeams: [],
   protocolByPatient: {},
   demandMonthly: null,
+  dataQuality: null,
   teamActivityLog: [],
   teamActivityWindowSeconds: 120,
   editingPatientId: null,
@@ -186,6 +187,8 @@ const el = {
   kpiDemandRatio:           document.getElementById("kpiDemandRatio"),
   kpiDemandMeta:            document.getElementById("kpiDemandMeta"),
   kpiDemandAlert:           document.getElementById("kpiDemandAlert"),
+  dataQualitySummary:       document.getElementById("dataQualitySummary"),
+  dataQualityList:          document.getElementById("dataQualityList"),
   categorySummaryList:      document.getElementById("categorySummaryList"),
   priorityTaskList:         document.getElementById("priorityTaskList"),
   teamActivityCard:         document.getElementById("teamActivityCard"),
@@ -512,6 +515,56 @@ function updateChronicConditionsVisibility() {
   el.pPuerperalFieldsWrap?.classList.toggle("hidden", !isPuerperal);
 }
 
+function setFieldError(field, message = "") {
+  if (!field) return;
+  field.setCustomValidity(message || "");
+  if (message) field.reportValidity();
+}
+
+function clearPatientFieldErrors() {
+  [
+    el.pName, el.pBirthDate, el.pCpf, el.pCns, el.pCep, el.pStreet, el.pNumber,
+    el.pNeighborhood, el.pCity, el.pState, el.pPhone, el.pPhoneAlt, el.pSexAtBirth,
+    el.pMaritalStatus, el.pMotherName
+  ].forEach((field) => setFieldError(field, ""));
+}
+
+function validatePatientForm() {
+  clearPatientFieldErrors();
+  const required = [
+    ["Nome", el.pName],
+    ["Data de nascimento", el.pBirthDate],
+    ["CPF", el.pCpf],
+    ["CNS", el.pCns],
+    ["CEP", el.pCep],
+    ["Rua", el.pStreet],
+    ["Numero", el.pNumber],
+    ["Bairro", el.pNeighborhood],
+    ["Cidade", el.pCity],
+    ["Estado", el.pState],
+    ["Telefone principal", el.pPhone],
+    ["Telefone secundario", el.pPhoneAlt],
+    ["Sexo", el.pSexAtBirth]
+  ];
+  if (el.pCareCategory.value !== "child_followup") required.push(["Estado civil", el.pMaritalStatus]);
+
+  const firstMissing = required.find(([, field]) => !String(field?.value || "").trim());
+  if (firstMissing) {
+    const [label, field] = firstMissing;
+    setFieldError(field, `Campo obrigatório: ${label}`);
+    showToast(`Preencha o campo obrigatório: ${label}`, "error");
+    return false;
+  }
+
+  if (el.pCareCategory.value === "child_followup" && !String(el.pMotherName.value || "").trim()) {
+    setFieldError(el.pMotherName, "Nome da mãe é obrigatório para criança.");
+    showToast("Para criança, informe o nome da mae.", "error");
+    return false;
+  }
+
+  return true;
+}
+
 // -- API ----------------------------------------------------------------------
 async function api(path, options = {}) {
   touchSession();
@@ -520,9 +573,11 @@ async function api(path, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   const res = await fetch(`${API_URL}${path}`, { ...options, headers, signal: controller.signal }).finally(() => clearTimeout(timeout));
+  const requestId = res.headers.get("X-Request-Id") || "";
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || "Erro na requisição");
+    const message = body.error || "Erro na requisição";
+    throw new Error(requestId ? `${message} [req:${requestId}]` : message);
   }
   touchSession();
   return res.json();
@@ -880,6 +935,7 @@ function renderWorkspaceHome() {
 
   renderProtocolDeadlineAlerts();
   renderMonthlyDemandKpi();
+  renderDataQualityCard();
   renderTeamActivityLog();
   renderProtocolAdminList();
   renderDashboardFilterOptions();
@@ -916,6 +972,41 @@ function renderMonthlyDemandKpi() {
     el.kpiDemandAlert.textContent = "Sem dados de atendimentos no mês.";
     el.kpiDemandAlert.style.color = "";
   }
+}
+
+function renderDataQualityCard() {
+  if (!el.dataQualitySummary || !el.dataQualityList) return;
+  if (!(isManager() || isDoctor())) {
+    el.dataQualitySummary.textContent = "Disponível para enfermeira e médica.";
+    el.dataQualityList.innerHTML = "";
+    return;
+  }
+
+  if (!state.dataQuality) {
+    el.dataQualitySummary.textContent = "Carregando qualidade de dados...";
+    el.dataQualityList.innerHTML = "";
+    return;
+  }
+
+  const metric = state.dataQuality;
+  const stats = metric.stats || {};
+  el.dataQualitySummary.textContent = metric.summary || `Qualidade de dados: ${metric.score || 0}/100`;
+  const rows = [
+    ["Pacientes sem telefone", stats.missingPhone || 0],
+    ["Pacientes sem ACS", stats.missingAcs || 0],
+    ["CPF duplicado", stats.duplicatedCpfPatients || 0],
+    ["CNS duplicado", stats.duplicatedCnsPatients || 0],
+    ["Sem endereço", stats.missingAddress || 0],
+    ["Sem CPF", stats.missingCpf || 0],
+    ["Sem CNS", stats.missingCns || 0]
+  ];
+
+  el.dataQualityList.innerHTML = rows.map(([label, value]) => `
+    <div class="home-list-row">
+      <span class="home-list-main">${label}</span>
+      <span class="home-list-pill">${value}</span>
+    </div>
+  `).join("");
 }
 
 function userRoleLabel(role) {
@@ -1566,6 +1657,7 @@ function renderProtocolAdminList() {
           <p class="home-task-meta">Norma: ${t.authority || "Ministério da Saúde"} | Ref: ${t.reference ? `<a href="${t.reference}" target="_blank" rel="noopener noreferrer">link oficial</a>` : "-"} | Versão: ${t.version || "1.0"}</p>
         </div>
         <div class="inline-actions">
+          <button class="btn-secondary protocol-history-btn" data-category="${t.category}">Histórico</button>
           <button class="btn-secondary protocol-edit-btn" data-category="${t.category}">Editar</button>
           ${t.category !== "general" ? `<button class="btn-secondary protocol-delete-btn" data-category="${t.category}">Excluir</button>` : ""}
         </div>
@@ -1627,6 +1719,33 @@ function renderProtocolAdminList() {
         showToast("Categoria excluída.", "ok");
         resetProtocolForm();
         await reloadTemplateData();
+      } catch (e) {
+        showToast(e.message, "error");
+      }
+    });
+  });
+
+  document.querySelectorAll(".protocol-history-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const category = String(btn.dataset.category || "").trim();
+      if (!category) return;
+      try {
+        const payload = await api(`/protocol/templates/${category}/history`);
+        const items = Array.isArray(payload?.items) ? payload.items : [];
+        if (!items.length) {
+          showToast("Sem histórico para esta categoria.", "default");
+          return;
+        }
+        const preview = items
+          .slice(0, 8)
+          .map((item) => {
+            const when = item.createdAt ? new Date(item.createdAt).toLocaleString("pt-BR") : "-";
+            const who = item.actorUserName || "Sistema";
+            const version = item.payload?.version ? ` | versão ${item.payload.version}` : "";
+            return `${when} | ${item.action} | ${who}${version}`;
+          })
+          .join("\n");
+        alert(`Histórico do protocolo (${category})\n\n${preview}`);
       } catch (e) {
         showToast(e.message, "error");
       }
@@ -2193,7 +2312,7 @@ function renderHistory() {
         }
         showToast(`${kind.charAt(0).toUpperCase()}${kind.slice(1)} excluído com sucesso.`, "ok");
         await refreshSelectedPatientData();
-        await loadMonthlyDemandMetric();
+        await Promise.all([loadMonthlyDemandMetric(), loadDataQualityMetric()]);
         await loadGlobalTasks();
       } catch (e) {
         showToast(e.message, "error");
@@ -2243,6 +2362,9 @@ async function loadPatients(options = {}) {
   }
   renderPatients();
   renderWorkspaceHome();
+  if (isManager() || isDoctor()) {
+    loadDataQualityMetric();
+  }
   if (!skipProtocolStatuses) {
     loadProtocolStatusesForDashboard().catch(() => {
       showToast("Não foi possível atualizar status de protocolo agora.", "error", 2500);
@@ -2308,6 +2430,19 @@ async function loadMonthlyDemandMetric() {
   }
   renderWorkspaceHome();
 }
+async function loadDataQualityMetric() {
+  if (!(isManager() || isDoctor())) {
+    state.dataQuality = null;
+    renderWorkspaceHome();
+    return;
+  }
+  try {
+    state.dataQuality = await api("/metrics/data-quality");
+  } catch {
+    state.dataQuality = null;
+  }
+  renderWorkspaceHome();
+}
 async function loadAppointments()    { if (!state.selectedPatient) return; state.appointments   = await api(`/patients/${state.selectedPatient.id}/appointments`);    renderAppointments(); }
 async function loadTasks()           { if (!state.selectedPatient) return; state.tasks          = await api(`/tasks?patientId=${state.selectedPatient.id}`);          renderTasks(); }
 async function loadMessages()        { if (!state.selectedPatient) return; state.messages       = await api(`/patients/${state.selectedPatient.id}/messages`);        renderMessages(); }
@@ -2347,27 +2482,46 @@ async function bootstrapAfterLogin() {
   if (isAcs()) { state.filters.acsId = state.user.id; }
   applyRolePermissions();
   resetProtocolForm();
-  state.dashboardQuery = "";
-  state.dashboardSort = "name_asc";
-  state.dashboardPage = 1;
-  state.dashboardCategory = "";
-  state.dashboardAcsId = "";
-  state.dashboardProtocolStatus = "all";
-  state.workspaceTab = "dashboard";
-  if (el.topbarSearchInput) el.topbarSearchInput.value = "";
-  if (el.homePatientNameInput) el.homePatientNameInput.value = "";
-  if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
-  if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
-  if (el.homePatientAcsFilter) el.homePatientAcsFilter.value = "";
-  if (el.homePatientProtocolStatusFilter) el.homePatientProtocolStatusFilter.value = "all";
+  if (!state.dashboardSort) state.dashboardSort = "name_asc";
+  if (!Number.isFinite(Number(state.dashboardPage)) || state.dashboardPage < 1) state.dashboardPage = 1;
+  if (!state.dashboardProtocolStatus) state.dashboardProtocolStatus = "all";
   if (el.aDemandType) el.aDemandType.value = "scheduled";
-  if (el.topFilterMicroArea) el.topFilterMicroArea.value = "";
-  if (el.topFilterAcs) el.topFilterAcs.value = "";
-  if (el.topFilterCategory) el.topFilterCategory.value = "";
+  if (el.topbarSearchInput) el.topbarSearchInput.value = state.dashboardQuery || "";
+  if (el.homePatientNameInput) el.homePatientNameInput.value = state.dashboardQuery || "";
+  if (el.homePatientSortSelect) el.homePatientSortSelect.value = state.dashboardSort || "name_asc";
+  if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = state.dashboardCategory || "";
+  if (el.homePatientAcsFilter) el.homePatientAcsFilter.value = state.dashboardAcsId || "";
+  if (el.homePatientProtocolStatusFilter) el.homePatientProtocolStatusFilter.value = state.dashboardProtocolStatus || "all";
+  if (el.topFilterMicroArea) el.topFilterMicroArea.value = state.filters.microArea || "";
+  if (el.topFilterAcs) el.topFilterAcs.value = state.filters.acsId || "";
+  if (el.topFilterCategory) el.topFilterCategory.value = state.filters.careCategory || "";
   switchWorkspaceTab(state.workspaceTab);
   switchNavSection(state.navSection);
   renderWorkspaceHome();
-  await loadPatients({ skipProtocolStatuses: true });
+
+  try {
+    const boot = await api("/bootstrap");
+    state.patients = Array.isArray(boot?.patients) ? boot.patients : [];
+    state.users = Array.isArray(boot?.users) ? boot.users : [];
+    state.globalTasks = Array.isArray(boot?.tasks) ? boot.tasks : [];
+    state.protocolTemplates = Array.isArray(boot?.protocolTemplates) ? boot.protocolTemplates : [];
+    state.demandMonthly = boot?.demandMonthly || null;
+    state.dataQuality = boot?.dataQuality || null;
+    fillAcsSelect(el.tAssignee);
+    fillAcsSelect(el.pAcs);
+    fillAcsSelect(el.topFilterAcs, true);
+    renderTeamUsersLists();
+    renderProtocolAdminList();
+    renderPatients();
+    renderWorkspaceHome();
+  } catch {
+    await loadPatients({ skipProtocolStatuses: true });
+  }
+
+  if (!state.patients.length) {
+    await loadPatients({ skipProtocolStatuses: true });
+  }
+
   if (savedView.selectedPatientId) {
     const savedPatient = state.patients.find((item) => item.id === savedView.selectedPatientId);
     if (savedPatient) {
@@ -2398,6 +2552,7 @@ async function bootstrapAfterLogin() {
 
   loadGlobalTasks();
   loadMonthlyDemandMetric();
+  loadDataQualityMetric();
   persistViewState();
 }
 
@@ -2947,34 +3102,7 @@ el.createProtocolBtn?.addEventListener("click", async () => {
 el.createPatientBtn.addEventListener("click", async () => {
   try {
     const editingId = state.editingPatientId;
-    const required = [
-      ["Nome", el.pName.value],
-      ["Data de nascimento", el.pBirthDate.value],
-      ["CPF", el.pCpf.value],
-      ["CNS", el.pCns.value],
-      ["CEP", el.pCep.value],
-      ["Rua", el.pStreet.value],
-      ["Numero", el.pNumber.value],
-      ["Bairro", el.pNeighborhood.value],
-      ["Cidade", el.pCity.value],
-      ["Estado", el.pState.value],
-      ["Telefone principal", el.pPhone.value],
-      ["Telefone secundario", el.pPhoneAlt.value],
-      ["Sexo", el.pSexAtBirth.value]
-    ];
-    if (el.pCareCategory.value !== "child_followup") {
-      required.push(["Estado civil", el.pMaritalStatus.value]);
-    }
-    const missing = required.filter(([, value]) => !String(value || "").trim()).map(([label]) => label);
-    if (missing.length) {
-      showToast(`Preencha os campos obrigatórios: ${missing.join(", ")}`, "error", 4500);
-      return;
-    }
-
-    if (el.pCareCategory.value === "child_followup" && !String(el.pMotherName.value || "").trim()) {
-      showToast("Para criança, informe o nome da mae.", "error");
-      return;
-    }
+    if (!validatePatientForm()) return;
 
     const payload = {
       name: el.pName.value.trim(),
@@ -3128,7 +3256,7 @@ async function submitAppointmentAndMaybeGenerateRecord(generateRecord = false) {
   if (el.aDemandType) el.aDemandType.value = "scheduled";
   showToast("Atendimento registrado.", "ok");
   await refreshSelectedPatientData();
-  await loadMonthlyDemandMetric();
+  await Promise.all([loadMonthlyDemandMetric(), loadDataQualityMetric()]);
   if (generateRecord) await createClinicalRecordFromAppointment(appointment);
 }
 

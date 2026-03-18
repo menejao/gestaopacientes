@@ -28,6 +28,7 @@ const FRONTEND_ORIGINS = String(process.env.FRONTEND_ORIGINS || "")
 const AUTH_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
 const AUTH_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 20);
 const USER_ONLINE_THRESHOLD_MS = Number(process.env.USER_ONLINE_THRESHOLD_MS || 2 * 60 * 1000);
+const REQUEST_LOG_ENABLED = String(process.env.REQUEST_LOG_ENABLED || "true").trim().toLowerCase() !== "false";
 const authRateMap = new Map();
 
 if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
@@ -175,6 +176,24 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: "1mb" }));
 
+app.use((req, res, next) => {
+  req.requestId = crypto.randomUUID();
+  req.requestStartedAt = Date.now();
+  res.setHeader("X-Request-Id", req.requestId);
+
+  res.on("finish", () => {
+    if (!REQUEST_LOG_ENABLED) return;
+    const durationMs = Date.now() - req.requestStartedAt;
+    const safeUserId = req.user?.id || "-";
+    const ip = getClientIp(req);
+    console.log(
+      `[req:${req.requestId}] ${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs}ms user=${safeUserId} ip=${ip}`
+    );
+  });
+
+  next();
+});
+
 function canonicalRole(role) {
   const input = String(role || "").trim().toLowerCase();
   if (input === "nurse") return "nurse_manager";
@@ -309,6 +328,7 @@ function ensureDbShape(db) {
   ensureArray(db, "auditLogs");
   ensureArray(db, "clinicalRecords");
   ensureArray(db, "protocolTemplates");
+  ensureArray(db, "protocolTemplateVersions");
   ensureArray(db, "privacyRequests");
   ensureArray(db, "registerVerifications");
   ensureArray(db, "loginChallenges");
@@ -546,7 +566,8 @@ function requireAuth(req, res, next) {
     const payload = jwt.verify(token, JWT_SECRET);
     req.user = {
       ...payload,
-      role: canonicalRole(payload.role)
+      role: canonicalRole(payload.role),
+      requestId: req.requestId || ""
     };
     return next();
   } catch {
@@ -555,22 +576,49 @@ function requireAuth(req, res, next) {
 }
 
 function requireManager(req, res, next) {
-  if (!isManager(req.user)) {
+  if (!hasRole(req.user, ["nurse_manager"])) {
     return res.status(403).json({ error: "Somente enfermeira pode executar esta ação" });
   }
   return next();
 }
 
 function requireManagerOrDoctor(req, res, next) {
-  if (!(isManager(req.user) || isDoctor(req.user))) {
+  if (!hasRole(req.user, ["nurse_manager", "doctor"])) {
     return res.status(403).json({ error: "Apenas enfermeira ou médica podem executar esta ação" });
   }
   return next();
 }
 
+function hasRole(user, allowedRoles = []) {
+  const current = canonicalRole(user?.role);
+  return allowedRoles.map((r) => canonicalRole(r)).includes(current);
+}
+
+function requireRoles(allowedRoles = [], errorMessage = "Sem permissão para esta ação") {
+  return (req, res, next) => {
+    if (!hasRole(req.user, allowedRoles)) {
+      return res.status(403).json({ error: errorMessage });
+    }
+    return next();
+  };
+}
+
+function hashAuditPayload(payload) {
+  return crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+}
+
+function getLastAuditHash(db) {
+  const list = Array.isArray(db.auditLogs) ? db.auditLogs : [];
+  if (!list.length) return "";
+  const last = list[list.length - 1];
+  return String(last?.hash || "");
+}
+
 function addAuditLog(db, user, action, entity, entityId, details = {}) {
   ensureArray(db, "auditLogs");
-  db.auditLogs.push({
+  const nowIso = new Date().toISOString();
+  const prevHash = getLastAuditHash(db);
+  const logEntry = {
     id: uuidv4(),
     action,
     entity,
@@ -579,7 +627,17 @@ function addAuditLog(db, user, action, entity, entityId, details = {}) {
     userName: user.name,
     userRole: canonicalRole(user.role),
     details,
-    createdAt: new Date().toISOString()
+    requestId: user?.requestId || "",
+    createdAt: nowIso
+  };
+  const hash = hashAuditPayload({
+    ...logEntry,
+    prevHash
+  });
+  db.auditLogs.push({
+    ...logEntry,
+    prevHash,
+    hash
   });
 }
 
@@ -2542,8 +2600,137 @@ function buildMonthlyDemandMetric(db, teamId, monthText = "") {
   };
 }
 
+function buildDataQualityMetric(db, teamId) {
+  const teamPatients = db.patients.filter((p) => p.teamId === teamId);
+  const total = teamPatients.length;
+  const cpfIndex = new Map();
+  const cnsIndex = new Map();
+  const stats = {
+    totalPatients: total,
+    missingPhone: 0,
+    missingAddress: 0,
+    missingCpf: 0,
+    missingCns: 0,
+    missingAcs: 0,
+    duplicatedCpfPatients: 0,
+    duplicatedCnsPatients: 0
+  };
+
+  for (const patient of teamPatients) {
+    const phone = String(patient.phone || "").trim();
+    const address = String(patient.address || "").trim();
+    const cpf = String(patient.cpf || "").replace(/\D+/g, "");
+    const cns = String(patient.cns || "").replace(/\D+/g, "");
+    if (!phone) stats.missingPhone += 1;
+    if (!address) stats.missingAddress += 1;
+    if (!cpf) stats.missingCpf += 1;
+    if (!cns) stats.missingCns += 1;
+    if (!String(patient.assignedAcsId || "").trim()) stats.missingAcs += 1;
+    if (cpf) cpfIndex.set(cpf, (cpfIndex.get(cpf) || 0) + 1);
+    if (cns) cnsIndex.set(cns, (cnsIndex.get(cns) || 0) + 1);
+  }
+
+  stats.duplicatedCpfPatients = teamPatients.filter((p) => {
+    const cpf = String(p.cpf || "").replace(/\D+/g, "");
+    return cpf && (cpfIndex.get(cpf) || 0) > 1;
+  }).length;
+  stats.duplicatedCnsPatients = teamPatients.filter((p) => {
+    const cns = String(p.cns || "").replace(/\D+/g, "");
+    return cns && (cnsIndex.get(cns) || 0) > 1;
+  }).length;
+
+  const critical = stats.missingPhone + stats.missingAcs + stats.duplicatedCpfPatients + stats.duplicatedCnsPatients;
+  const warning = stats.missingAddress + stats.missingCpf + stats.missingCns;
+  const score = total > 0 ? Math.max(0, Math.min(100, Math.round(100 - ((critical * 2 + warning) / total) * 25))) : 100;
+
+  return {
+    generatedAt: new Date().toISOString(),
+    score,
+    stats,
+    summary: `Qualidade de dados: ${score}/100. Críticos: ${critical}. Alertas: ${warning}.`
+  };
+}
+
+function snapshotProtocolTemplateVersion(db, actorUser, action, template) {
+  ensureArray(db, "protocolTemplateVersions");
+  db.protocolTemplateVersions.push({
+    id: uuidv4(),
+    category: String(template?.category || ""),
+    teamId: String(template?.teamId || ""),
+    action,
+    actorUserId: actorUser?.id || "",
+    actorUserName: actorUser?.name || "",
+    actorRole: canonicalRole(actorUser?.role || ""),
+    payload: template || {},
+    createdAt: new Date().toISOString()
+  });
+}
+
+function validateClinicalRecordPayload({ user, patient, type, title, date, details, metadata }) {
+  const normalizedTitle = String(title || "").trim();
+  if (!normalizedTitle) return { ok: false, error: "Título do registro é obrigatório" };
+  if (!toDateOnlySafe(date)) return { ok: false, error: "Data do registro inválida" };
+  if (String(normalizedTitle).length > 180) return { ok: false, error: "Título excede o limite de 180 caracteres" };
+  if (String(details || "").length > 4000) return { ok: false, error: "Detalhes excedem o limite de 4000 caracteres" };
+
+  if (isAcs(user)) {
+    if (type !== "visit") return { ok: false, error: "ACS pode registrar apenas visita domiciliar" };
+    if (normalizeText(normalizedTitle) !== "visita acs") {
+      return { ok: false, error: "ACS deve registrar o título padrão 'Visita ACS'" };
+    }
+  }
+
+  if (isDoctor(user) && type === "visit") {
+    return { ok: false, error: "Médica não registra visita domiciliar" };
+  }
+
+  if (type === "vaccine") {
+    const vaccineName = String(metadata?.vaccineName || normalizedTitle).trim();
+    if (!vaccineName) return { ok: false, error: "Informe o nome da vacina no título ou em metadata.vaccineName" };
+  }
+
+  const patientCategory = normalizeCategory(patient?.careCategory || "general", DEFAULT_CARE_PROTOCOLS);
+  if (patientCategory === "pregnant" && type === "consultation" && isDentalText(normalizedTitle)) {
+    return { ok: true, warning: "Consulta odontológica registrada separadamente das consultas pré-natais." };
+  }
+
+  return { ok: true };
+}
+
 app.get("/health", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+app.get("/bootstrap", requireAuth, async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+
+  const patients = getAllowedPatients(db, req.user, {});
+  const users = db.users
+    .filter((u) => u.teamId === req.user.teamId)
+    .map((u) => sanitizeUser(u, db));
+  const protocolTemplates = db.protocolTemplates
+    .filter((t) => !t.deleted)
+    .filter((t) => !t.teamId || t.teamId === req.user.teamId);
+  const teamPatientIds = new Set(patients.map((p) => p.id));
+  const tasks = db.tasks.filter((t) => teamPatientIds.has(t.patientId));
+  const demandMonthly = (isManager(req.user) || isDoctor(req.user))
+    ? buildMonthlyDemandMetric(db, req.user.teamId)
+    : null;
+  const dataQuality = (isManager(req.user) || isDoctor(req.user))
+    ? buildDataQualityMetric(db, req.user.teamId)
+    : null;
+
+  return res.json({
+    serverTime: new Date().toISOString(),
+    user: { ...req.user, teamName: getTeamNameById(db, req.user.teamId) },
+    patients,
+    users,
+    tasks,
+    protocolTemplates,
+    demandMonthly,
+    dataQuality
+  });
 });
 
 app.get("/protocol/templates", requireAuth, async (req, res) => {
@@ -2903,6 +3090,18 @@ app.get("/protocol/templates/:category/usage", requireManagerOrDoctor, async (re
   });
 });
 
+app.get("/protocol/templates/:category/history", requireManagerOrDoctor, async (req, res) => {
+  const category = String(req.params.category || "").trim();
+  const db = await readDb();
+  ensureDbShape(db);
+  const items = db.protocolTemplateVersions
+    .filter((entry) => String(entry.category || "") === category)
+    .filter((entry) => !entry.teamId || entry.teamId === req.user.teamId)
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .slice(0, 25);
+  return res.json({ items });
+});
+
 app.post("/protocol/templates", requireManagerOrDoctor, async (req, res) => {
   const payloadCheck = sanitizeProtocolTemplatePayload(req.body || {});
   if (!payloadCheck.ok) return res.status(400).json({ error: payloadCheck.error });
@@ -2918,6 +3117,7 @@ app.post("/protocol/templates", requireManagerOrDoctor, async (req, res) => {
       teamId: req.user.teamId
     };
     db.protocolTemplates.push(created);
+    snapshotProtocolTemplateVersion(db, req.user, "created", created);
     addAuditLog(db, req.user, "protocol_template.created", "protocol_template", created.category, {
       label: created.label
     });
@@ -2940,6 +3140,7 @@ app.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, res
     const index = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId && !t.deleted);
     if (index >= 0) {
       const current = db.protocolTemplates[index];
+      snapshotProtocolTemplateVersion(db, req.user, "before_update", current);
       const next = {
         ...current,
         ...payloadCheck.template,
@@ -2947,6 +3148,7 @@ app.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, res
         teamId: req.user.teamId
       };
       db.protocolTemplates[index] = next;
+      snapshotProtocolTemplateVersion(db, req.user, "updated", next);
       addAuditLog(db, req.user, "protocol_template.updated", "protocol_template", category, {
         changedFields: Object.keys(req.body || {})
       });
@@ -2963,6 +3165,7 @@ app.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, res
       teamId: req.user.teamId
     };
     db.protocolTemplates.push(createdOverride);
+    snapshotProtocolTemplateVersion(db, req.user, "override_created", createdOverride);
     addAuditLog(db, req.user, "protocol_template.override_created", "protocol_template", category, {
       changedFields: Object.keys(req.body || {})
     });
@@ -3006,6 +3209,7 @@ app.delete("/protocol/templates/:category", requireManagerOrDoctor, async (req, 
     }
 
     if (teamIndex >= 0) {
+      snapshotProtocolTemplateVersion(db, req.user, "deleted", db.protocolTemplates[teamIndex]);
       db.protocolTemplates.splice(teamIndex, 1);
       addAuditLog(db, req.user, "protocol_template.deleted", "protocol_template", category, {
         mode: "team_override_removed"
@@ -3013,14 +3217,16 @@ app.delete("/protocol/templates/:category", requireManagerOrDoctor, async (req, 
     } else {
       const existingTombstone = db.protocolTemplates.find((t) => t.category === category && t.teamId === req.user.teamId && t.deleted);
       if (!existingTombstone) {
-        db.protocolTemplates.push({
+        const tombstone = {
           category,
           label: String(globalTemplate?.label || category),
           teamId: req.user.teamId,
           deleted: true,
           deletedAt: new Date().toISOString(),
           deletedBy: req.user.id
-        });
+        };
+        db.protocolTemplates.push(tombstone);
+        snapshotProtocolTemplateVersion(db, req.user, "team_tombstone_created", tombstone);
       }
       addAuditLog(db, req.user, "protocol_template.deleted", "protocol_template", category, {
         mode: "team_tombstone_on_global"
@@ -3697,18 +3903,17 @@ app.post("/patients/:id/records", async (req, res) => {
   const lookup = getPatientOrError(db, req.user, id);
   if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
 
-  if (isAcs(req.user) && type !== "visit") {
-    return res.status(403).json({ error: "ACS pode registrar apenas visita domiciliar" });
-  }
-  if (isAcs(req.user)) {
-    const normalizedTitle = String(payload.title || "").trim().toLowerCase();
-    if (normalizedTitle !== "visita acs") {
-      return res.status(400).json({ error: "ACS deve registrar o título padrão 'Visita ACS'" });
-    }
-  }
-
-  if (isDoctor(req.user) && ["visit"].includes(type)) {
-    return res.status(403).json({ error: "Médica não registra visita domiciliar" });
+  const integrityCheck = validateClinicalRecordPayload({
+    user: req.user,
+    patient: lookup.patient,
+    type,
+    title: payload.title,
+    date: payload.date,
+    details: payload.details,
+    metadata: payload.metadata
+  });
+  if (!integrityCheck.ok) {
+    return res.status(400).json({ error: integrityCheck.error });
   }
 
   const record = {
@@ -3736,7 +3941,10 @@ app.post("/patients/:id/records", async (req, res) => {
     });
   });
 
-  return res.status(201).json(record);
+  return res.status(201).json({
+    ...record,
+    warning: integrityCheck.warning || ""
+  });
 });
 
 app.delete("/patients/:id/records/:recordId", async (req, res) => {
@@ -3809,6 +4017,12 @@ app.get("/metrics/demand/monthly", async (req, res) => {
     return res.status(400).json({ error: "Parâmetro month inválido. Use YYYY-MM." });
   }
   return res.json(metric);
+});
+
+app.get("/metrics/data-quality", requireRoles(["nurse_manager", "doctor"], "Apenas enfermeira e médica podem acessar qualidade de dados"), async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  return res.json(buildDataQualityMetric(db, req.user.teamId));
 });
 
 app.get("/tasks", async (req, res) => {
@@ -3986,6 +4200,48 @@ app.get("/audit-logs", requireManagerOrDoctor, async (req, res) => {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return res.json(logs.slice(0, 200));
+});
+
+app.get("/audit-logs/export", requireManagerOrDoctor, async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const format = String(req.query.format || "json").trim().toLowerCase();
+  const patientId = req.query.patientId ? String(req.query.patientId) : "";
+  const logs = db.auditLogs
+    .filter((log) => {
+      if (!patientId) return true;
+      if (log.entity === "patient" && log.entityId === patientId) return true;
+      if (log.details && log.details.patientId === patientId) return true;
+      return false;
+    })
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+  if (format === "csv") {
+    const header = "id,createdAt,action,entity,entityId,userId,userName,userRole,requestId,prevHash,hash";
+    const lines = logs.map((item) => ([
+      item.id,
+      item.createdAt,
+      item.action,
+      item.entity,
+      item.entityId,
+      item.userId,
+      item.userName,
+      item.userRole,
+      item.requestId || "",
+      item.prevHash || "",
+      item.hash || ""
+    ].map((value) => `"${String(value || "").replace(/"/g, "\"\"")}"`).join(",")));
+    const csv = [header, ...lines].join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="audit-logs-${new Date().toISOString().slice(0, 10)}.csv"`);
+    return res.send(csv);
+  }
+
+  return res.json({
+    generatedAt: new Date().toISOString(),
+    total: logs.length,
+    items: logs
+  });
 });
 
 app.get("/privacy/requests", requireManager, async (req, res) => {

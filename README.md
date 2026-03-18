@@ -155,17 +155,20 @@ Arquivos de apoio ja prontos:
 - `POST /auth/register`
 - `GET /teams/public`
 - `GET /integrations/council/status`
+- `GET /bootstrap`
 - `GET /protocol/templates`
 - `GET/POST /patients`
 - `PUT /patients/:id`
 - `GET/POST /patients/:id/appointments`
 - `GET /metrics/demand/monthly` (enfermeira e médica)
+- `GET /metrics/data-quality` (enfermeira e médica)
 - `GET /patients/:id/history`
 - `GET /patients/:id/protocol-summary`
 - `POST /patients/:id/records`
 - `GET/POST/PATCH /tasks`
 - `GET/POST /patients/:id/messages`
-- `GET /audit-logs` (somente enfermeira)
+- `GET /audit-logs` (enfermeira e médica)
+- `GET /audit-logs/export?format=json|csv` (enfermeira e médica)
 - `GET /privacy/requests` (somente enfermeira)
 - `POST /privacy/requests` (somente enfermeira)
 - `PATCH /privacy/requests/:id` (somente enfermeira)
@@ -182,6 +185,11 @@ Arquivos de apoio ja prontos:
 - `POST /ai/team/data-quality`
 - `POST /ai/team/report` (somente enfermeira)
 - `POST /ai/chat`
+
+## Testes
+- Backend:
+  - `cd backend`
+  - `npm test`
 
 ## Indicador mensal de demanda
 - Nos atendimentos (`POST /patients/:id/appointments`), use `demandType`:
