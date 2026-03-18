@@ -1310,6 +1310,15 @@ function switchNavSection(section) {
     switchWorkspaceTab("patients");
     state.dashboardQuery = "";
     if (el.topbarSearchInput) el.topbarSearchInput.value = "";
+    state.filters.microArea = "";
+    state.filters.acsId = isAcs() ? state.user.id : "";
+    state.filters.careCategory = "";
+    if (el.topFilterMicroArea) el.topFilterMicroArea.value = "";
+    if (el.topFilterAcs) el.topFilterAcs.value = state.filters.acsId || "";
+    if (el.topFilterCategory) el.topFilterCategory.value = "";
+    loadPatients().catch(() => {
+      showToast("Não foi possível recarregar a lista completa de pacientes.", "error");
+    });
   }
   if (showPatientsWorkspace && !["dashboard", "patients", "protocols"].includes(state.workspaceTab)) {
     switchWorkspaceTab("dashboard");
