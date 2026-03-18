@@ -898,6 +898,7 @@ function getCouncilIntegrationConfig() {
   const url = String(process.env.COUNCIL_VERIFY_URL || "").trim();
   const token = String(process.env.COUNCIL_VERIFY_TOKEN || "").trim();
   const timeoutMs = Number(process.env.COUNCIL_VERIFY_TIMEOUT_MS || 7000);
+  const retries = Number(process.env.COUNCIL_VERIFY_RETRIES || 2);
   const provider = String(process.env.COUNCIL_VERIFY_PROVIDER || "generic").trim().toLowerCase();
   const requireEvidence = String(process.env.COUNCIL_VERIFY_REQUIRE_EVIDENCE || "true").trim().toLowerCase();
 
@@ -907,6 +908,7 @@ function getCouncilIntegrationConfig() {
     url,
     token,
     timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 1000 ? timeoutMs : 7000,
+    retries: Number.isFinite(retries) ? Math.max(0, Math.min(5, Math.floor(retries))) : 2,
     requireEvidence: !["0", "false", "no", "off"].includes(requireEvidence)
   };
 }
@@ -1023,99 +1025,118 @@ async function verifyCouncilExternally(payload) {
     };
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), config.timeoutMs);
-
-  try {
-    const headers = {
-      "Content-Type": "application/json"
-    };
-
-    if (config.token) {
-      headers.Authorization = `Bearer ${config.token}`;
-    }
-
-    const response = await fetch(config.url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-
-    const data = await response.json().catch(() => ({}));
-    const normalized = normalizeProviderResponse(config.provider, data);
-
-    if (!response.ok) {
-      if (config.mode === "required") {
-        return {
-          checked: true,
-          valid: false,
-          provider: normalized.provider,
-          status: "error",
-          error: normalized.error || "Falha ao validar conselho no provedor externo"
-        };
-      }
-
-      return {
-        checked: true,
-        valid: true,
-        provider: data.provider || "external-http",
-        status: "fallback"
-      };
-    }
-
-    if (normalized.valid && config.requireEvidence) {
-      const evidence = normalizeCouncilEvidence(normalized.details);
-      if (!evidence.number || !evidence.uf) {
-        return {
-          checked: true,
-          valid: false,
-          provider: normalized.provider,
-          status: "rejected",
-          error: "Provedor não retornou evidência m?nima do conselho"
-        };
-      }
-
-      const expectedNumber = String(payload.councilNumber || "").replace(/\D/g, "");
-      const expectedUf = String(payload.councilUf || "").trim().toUpperCase();
-      if (evidence.number !== expectedNumber || evidence.uf !== expectedUf) {
-        return {
-          checked: true,
-          valid: false,
-          provider: normalized.provider,
-          status: "rejected",
-          error: "Conselho retornado pelo provedor não confere com número/UF informados"
-        };
-      }
-    }
-
-    return {
-      checked: true,
-      valid: normalized.valid,
-      provider: normalized.provider,
-      status: normalized.valid ? "verified" : "rejected",
-      details: normalized.details
-    };
-  } catch (_error) {
-    if (config.mode === "required") {
-      return {
-        checked: true,
-        valid: false,
-        provider: "external-http",
-        status: "error",
-        error: "Integração de validação de conselho indispon?vel"
-      };
-    }
-
-    return {
-      checked: true,
-      valid: true,
-      provider: "external-http",
-      status: "fallback"
-    };
-  } finally {
-    clearTimeout(timer);
+  const headers = {
+    "Content-Type": "application/json"
+  };
+  if (config.token) {
+    headers.Authorization = `Bearer ${config.token}`;
   }
+
+  let lastUnavailableError = "";
+  const maxAttempts = Math.max(1, config.retries + 1);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), config.timeoutMs);
+
+    try {
+      const response = await fetch(config.url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      const data = await response.json().catch(() => ({}));
+      const normalized = normalizeProviderResponse(config.provider, data);
+
+      if (!response.ok) {
+        const retriable = response.status >= 500 || response.status === 429;
+        if (retriable && attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+          continue;
+        }
+
+        if (config.mode === "required") {
+          return {
+            checked: true,
+            valid: false,
+            provider: normalized.provider,
+            status: "error",
+            error: normalized.error || `Falha ao validar conselho no provedor externo (HTTP ${response.status})`
+          };
+        }
+
+        return {
+          checked: true,
+          valid: true,
+          provider: data.provider || "external-http",
+          status: "fallback"
+        };
+      }
+
+      if (normalized.valid && config.requireEvidence) {
+        const evidence = normalizeCouncilEvidence(normalized.details);
+        if (!evidence.number || !evidence.uf) {
+          return {
+            checked: true,
+            valid: false,
+            provider: normalized.provider,
+            status: "rejected",
+            error: "Provedor não retornou evidência mínima do conselho"
+          };
+        }
+
+        const expectedNumber = String(payload.councilNumber || "").replace(/\D/g, "");
+        const expectedUf = String(payload.councilUf || "").trim().toUpperCase();
+        if (evidence.number !== expectedNumber || evidence.uf !== expectedUf) {
+          return {
+            checked: true,
+            valid: false,
+            provider: normalized.provider,
+            status: "rejected",
+            error: "Conselho retornado pelo provedor não confere com número/UF informados"
+          };
+        }
+      }
+
+      return {
+        checked: true,
+        valid: normalized.valid,
+        provider: normalized.provider,
+        status: normalized.valid ? "verified" : "rejected",
+        details: normalized.details
+      };
+    } catch (error) {
+      lastUnavailableError = error?.name === "AbortError"
+        ? `timeout de ${config.timeoutMs}ms`
+        : (error?.message || "erro de rede");
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        continue;
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  if (config.mode === "required") {
+    return {
+      checked: true,
+      valid: false,
+      provider: "external-http",
+      status: "error",
+      error: `Integração de validação de conselho indisponível (${lastUnavailableError || "sem resposta"})`
+    };
+  }
+
+  return {
+    checked: true,
+    valid: true,
+    provider: "external-http",
+    status: "fallback"
+  };
 }
 
 function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
@@ -2535,6 +2556,7 @@ app.get("/integrations/council/status", (_req, res) => {
     provider: config.provider,
     configured: Boolean(config.url),
     timeoutMs: config.timeoutMs,
+    retries: config.retries,
     requireEvidence: config.requireEvidence
   });
 });
