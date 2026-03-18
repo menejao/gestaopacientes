@@ -2040,11 +2040,18 @@ async function selectPatient(patient) {
 
 // -- Bootstrap -----------------------------------------------------------------
 async function bootstrapAfterLogin() {
-  const savedView = readViewState();
+  readViewState();
   touchSession(true);
   setupInactivityWatcher();
-  const hasSavedPatient = Boolean(savedView?.selectedPatientId);
-  el.appScreen.classList.add("hidden");
+  // Mostra a aplicação imediatamente para evitar tela branca durante o carregamento.
+  el.authScreen.classList.add("hidden");
+  el.appScreen.classList.remove("hidden");
+
+  // Ao abrir novamente o sistema, sempre iniciar no Painel.
+  state.selectedPatient = null;
+  state.navSection = "dashboard";
+  state.workspaceTab = "dashboard";
+
   const [users] = await Promise.all([api("/users")]);
   state.users = users;
   fillAcsSelect(el.tAssignee);
@@ -2062,7 +2069,7 @@ async function bootstrapAfterLogin() {
   state.dashboardCategory = "";
   state.dashboardAcsId = "";
   state.dashboardProtocolStatus = "all";
-  state.workspaceTab = savedView?.workspaceTab || "dashboard";
+  state.workspaceTab = "dashboard";
   if (el.topbarSearchInput) el.topbarSearchInput.value = "";
   if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
   if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
@@ -2072,29 +2079,15 @@ async function bootstrapAfterLogin() {
   if (el.topFilterMicroArea) el.topFilterMicroArea.value = "";
   if (el.topFilterAcs) el.topFilterAcs.value = "";
   if (el.topFilterCategory) el.topFilterCategory.value = "";
-  switchWorkspaceTab(state.workspaceTab);
-  switchNavSection(savedView?.navSection || "dashboard");
+  switchWorkspaceTab("dashboard");
+  switchNavSection("dashboard");
   await Promise.all([
-    loadPatients({ skipProtocolStatuses: hasSavedPatient }),
+    loadPatients({ skipProtocolStatuses: false }),
     loadGlobalTasks(),
     loadMonthlyDemandMetric()
   ]);
-  if (savedView?.selectedPatientId) {
-    const restored = state.patients.find((p) => p.id === savedView.selectedPatientId);
-    if (restored) {
-      await selectPatient(restored);
-      if (savedView.activePatientPanel) switchToTab(savedView.activePatientPanel);
-    }
-  }
-  if (!state.selectedPatient && (state.navSection === "dashboard" || state.navSection === "patients")) {
-    loadProtocolStatusesForDashboard().catch(() => {
-      showToast("Não foi possível atualizar status de protocolo agora.", "error", 2500);
-    });
-  }
   persistViewState();
   renderWorkspaceHome();
-  el.authScreen.classList.add("hidden");
-  el.appScreen.classList.remove("hidden");
 }
 
 async function bootstrapBeforeLogin() {
