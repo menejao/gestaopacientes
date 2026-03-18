@@ -1232,13 +1232,47 @@ function buildPatientHistory(db, patientId) {
     .filter((r) => r.patientId === patientId)
     .map((r) => ({ ...r, source: "clinicalRecord" }));
 
-  return [...appointmentEvents, ...clinicalEvents].sort((a, b) => b.date.localeCompare(a.date));
+  return [...appointmentEvents, ...clinicalEvents].sort((a, b) => {
+    const da = eventDate(a);
+    const dbDate = eventDate(b);
+    if (da && dbDate) return dbDate.getTime() - da.getTime();
+    if (da) return -1;
+    if (dbDate) return 1;
+    return String(b.date || "").localeCompare(String(a.date || ""));
+  });
+}
+
+function parseFlexibleDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return new Date(value.getTime());
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    const parsed = new Date(Number(y), Number(m) - 1, Number(d));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const brMatch = raw.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+  if (brMatch) {
+    const [, d, m, y] = brMatch;
+    const parsed = new Date(Number(y), Number(m) - 1, Number(d));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function toDateOnlySafe(value) {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
+  const d = parseFlexibleDate(value);
+  if (!d) return null;
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
@@ -1388,11 +1422,13 @@ function evaluatePregnantProtocol(patient, history) {
 
   const pregnancyHistory = filterHistoryByPeriod(history, timeline.start, timeline.due);
   const visits = pregnancyHistory.filter((h) => h.type === "visit");
+  const allClinicalConsultations = history.filter((h) => isClinicalConsultation(h));
   const allConsultations = pregnancyHistory.filter((h) => h.type === "consultation");
   const consultations = allConsultations.filter((h) => isClinicalConsultation(h));
+  const consultationsTracked = consultations.length > 0 ? consultations : allClinicalConsultations;
   const procedures = pregnancyHistory.filter((h) => h.type === "procedure");
   const vaccines = pregnancyHistory.filter((h) => h.type === "vaccine");
-  const consultationDatesAsc = consultations
+  const consultationDatesAsc = consultationsTracked
     .map((entry) => eventDate(entry))
     .filter(Boolean)
     .sort((a, b) => a.getTime() - b.getTime());
@@ -1444,14 +1480,14 @@ function evaluatePregnantProtocol(patient, history) {
     }
   }
 
-  const consultPending = Math.max(7 - consultations.length, 0);
+  const consultPending = Math.max(7 - consultationsTracked.length, 0);
   if (consultPending > 0) {
     const severity = weeks >= 35 ? "high" : (weeks >= 28 ? "medium" : "low");
     alerts.push(makeClinicalAlert({
       id: "pregnancy-consult-total",
       activity: "consultas pré-natais",
       title: `Faltam ${consultPending} consulta(s)`,
-      detail: `Meta mínima de 7 consultas durante a gestação. Realizadas: ${consultations.length}.`,
+      detail: `Meta mínima de 7 consultas durante a gestação. Realizadas: ${consultationsTracked.length}.`,
       severity,
       categoryLabel
     }));
@@ -1471,7 +1507,7 @@ function evaluatePregnantProtocol(patient, history) {
         categoryLabel
       }));
     }
-  } else if (weeks >= 20 && !consultations.length) {
+  } else if (weeks >= 20 && !consultationsTracked.length) {
     alerts.push(makeClinicalAlert({
       id: "pregnancy-consult-first-missing",
       activity: "consultas pré-natais",
@@ -1565,7 +1601,7 @@ function evaluatePregnantProtocol(patient, history) {
     alerts,
     checklist: {
       visitsDone: visits.length,
-      consultationsDone: consultations.length,
+      consultationsDone: consultationsTracked.length,
       dentalDone: oralEvents.length > 0,
       dtpaDone: dtpaInWindow,
       hivFirstTrimesterDone: hivFirst,
