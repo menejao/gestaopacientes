@@ -1908,7 +1908,7 @@ function renderMessages() {
 }
 
 // -- Render: history timeline ---------------------------------------------------
-const typeLabel = { visit:"Visita", consultation:"Consulta", vaccine:"Vacina", procedure:"Procedimento", note:"Observação" };
+const typeLabel = { visit:"Visita", consultation:"Consulta", appointment:"Atendimento", vaccine:"Vacina", procedure:"Procedimento", note:"Observação" };
 const RECORD_TITLES = {
   visit: ["Visita ACS"],
   consultation: ["Consulta médica", "Consulta de enfermagem", "Consulta odontológica"]

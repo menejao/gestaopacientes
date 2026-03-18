@@ -1281,7 +1281,8 @@ function buildPatientHistory(db, patientId) {
       id: a.id,
       patientId,
       date: a.date,
-      type: "consultation",
+      // Atendimento é indicador operacional (demanda), não evento clínico de protocolo.
+      type: "appointment",
       title: a.summary,
       details: [a.conduct, a.nextStep].filter(Boolean).join(" | "),
       source: "appointment",
