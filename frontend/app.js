@@ -327,7 +327,7 @@ const isManager = () => state.user?.role === "nurse_manager";
 const isDoctor  = () => state.user?.role === "doctor";
 const isAcs     = () => state.user?.role === "acs";
 const canAcsUpdateTask = t => isAcs() && t.assigneeId === state.user.id;
-const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Não atribu?do";
+const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Não atribuído";
 const catLabel     = cat => state.protocolTemplates.find(t => t.category === cat)?.label || "Geral";
 const taskOpen     = t => ["pending", "in_progress"].includes(t.status);
 const prettyJson   = (obj) => JSON.stringify(obj, null, 2);
@@ -473,7 +473,7 @@ async function api(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, { ...options, headers, signal: controller.signal }).finally(() => clearTimeout(timeout));
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || "Erro na requisicao");
+    throw new Error(body.error || "Erro na requisição");
   }
   touchSession();
   return res.json();
@@ -506,7 +506,7 @@ function updateSessionView() {
     if (el.mobileUserAvatar) el.mobileUserAvatar.textContent = "?";
     return;
   }
-  const roleMap = { nurse_manager: "Enfermeira", doctor: "Medico(a)", acs: "ACS" };
+  const roleMap = { nurse_manager: "Enfermeira", doctor: "Médico(a)", acs: "ACS" };
   const roleText = roleMap[state.user.role] || state.user.role;
   const avatarText = state.user.name.charAt(0).toUpperCase();
   el.userName.textContent  = state.user.name;
@@ -797,7 +797,7 @@ function renderWorkspaceHome() {
   }
 
   if (!priorityTasks.length) {
-    el.priorityTaskList.innerHTML = '<div class="empty-msg">Sem pendências priorit?rias.</div>';
+    el.priorityTaskList.innerHTML = '<div class="empty-msg">Sem pendências prioritárias.</div>';
   } else {
     el.priorityTaskList.innerHTML = priorityTasks.map(t => `
       <div class="home-task-row">
@@ -1050,7 +1050,7 @@ function renderHomePatientTable() {
     }).join("");
   }
 
-  el.homePatientPageInfo.textContent = `P?gina ${state.dashboardPage} de ${totalPages} | ${total} paciente(s)`;
+  el.homePatientPageInfo.textContent = `Página ${state.dashboardPage} de ${totalPages} | ${total} paciente(s)`;
   el.homePatientPrevBtn.disabled = state.dashboardPage <= 1;
   el.homePatientNextBtn.disabled = state.dashboardPage >= totalPages;
 
@@ -1424,7 +1424,7 @@ function renderProtocolAdminList() {
           return;
         }
 
-        if (!confirm(`Excluir categoria '${category}'? Esta ação ? cr?tica e não pode ser desfeita.`)) return;
+        if (!confirm(`Excluir categoria '${category}'? Esta ação é crítica e não pode ser desfeita.`)) return;
         await api(`/protocol/templates/${category}`, { method: "DELETE" });
         showToast("Categoria excluida.", "ok");
         resetProtocolForm();
@@ -1497,7 +1497,7 @@ function openPatientEdit() {
   el.pComorb.value = p.comorbidities || "";
   el.pMeds.value = p.medications || "";
   el.pAllergies.value = p.allergies || "";
-  el.createPatientBtn.textContent = "Salvar alteracoes";
+  el.createPatientBtn.textContent = "Salvar alterações";
   el.patientModalTitle.textContent = "Editar paciente";
   el.patientModal.classList.remove("hidden");
 }
@@ -1669,7 +1669,7 @@ function renderAppointments() {
       <div class="record-body">
         <p><strong>Demanda:</strong> ${demandLabel}</p>
         ${a.conduct  ? `<p><strong>Conduta:</strong> ${a.conduct}</p>` : ""}
-        ${a.nextStep ? `<p><strong>Proximo:</strong> ${a.nextStep}</p>` : ""}
+        ${a.nextStep ? `<p><strong>Próximo:</strong> ${a.nextStep}</p>` : ""}
       </div>`;
     el.appointmentList.appendChild(d);
   });
@@ -1803,7 +1803,7 @@ async function loadPatients() {
   renderPatients();
   renderWorkspaceHome();
   loadProtocolStatusesForDashboard().catch(() => {
-    showToast("Não foi possivel atualizar status de protocolo agora.", "error", 2500);
+    showToast("Não foi possível atualizar status de protocolo agora.", "error", 2500);
   });
 }
 async function loadGlobalTasks() {
