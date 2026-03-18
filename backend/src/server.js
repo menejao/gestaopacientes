@@ -1571,10 +1571,13 @@ function evaluatePapOnlyProtocol(patient, history) {
   const history24 = filterHistoryByPeriod(history, addDays(now, -730), now);
   const history36 = filterHistoryByPeriod(history, addDays(now, -1095), now);
 
+  const isRequestedCollectedOrEvaluated = (text) => /solicit|colet|avali/.test(text);
+
   if (eligiblePapPopulation && ageYears !== null && ageYears >= 25 && ageYears <= 64) {
     const papDone = history36.some((h) => {
       const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
-      return /papanicolau|citopat|colo do utero|preventivo|oncotica|coleta/.test(text);
+      const isCervicalScreening = /papanicolau|citopat|colo do utero|preventivo|oncotica/.test(text);
+      return isCervicalScreening && isRequestedCollectedOrEvaluated(text);
     });
     if (!papDone) {
       alerts.push(makeClinicalAlert({
@@ -1620,10 +1623,11 @@ function evaluatePapOnlyProtocol(patient, history) {
     }
   }
 
-  if (eligiblePapPopulation && ageYears !== null && ageYears >= 50 && ageYears <= 69) {
+  if (ageYears !== null && ageYears >= 50 && ageYears <= 69) {
     const breastDone = history24.some((h) => {
       const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
-      return /(mamografia|rastreamento de mama|cancer de mama|exame de mama)/.test(text);
+      const isBreastScreening = /(mamografia|rastreamento de mama|cancer de mama|exame de mama)/.test(text);
+      return isBreastScreening && isRequestedCollectedOrEvaluated(text);
     });
     if (!breastDone) {
       alerts.push(makeClinicalAlert({
