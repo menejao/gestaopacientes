@@ -26,7 +26,6 @@ const state = {
   dashboardPage: 1,
   dashboardPageSize: 8,
   dashboardCategory: "",
-  dashboardTeamId: "",
   dashboardAcsId: "",
   dashboardProtocolStatus: "all",
   selectedPatientIds: new Set(),
@@ -76,7 +75,6 @@ const el = {
   patientList:              document.getElementById("patientList"),
   patientCount:             document.getElementById("patientCount"),
   navPatientsBtn:           document.getElementById("navPatientsBtn"),
-  navPatientsListBtn:       document.getElementById("navPatientsListBtn"),
   navProtocolsBtn:          document.getElementById("navProtocolsBtn"),
   navAcsBtn:                document.getElementById("navAcsBtn"),
   navDoctorsBtn:            document.getElementById("navDoctorsBtn"),
@@ -166,7 +164,6 @@ const el = {
   togglePass:               document.getElementById("togglePass"),
   quickSelectFirstPatientBtn: document.getElementById("quickSelectFirstPatientBtn"),
   homeTabDashboardBtn:      document.getElementById("homeTabDashboardBtn"),
-  homeTabPatientsBtn:       document.getElementById("homeTabPatientsBtn"),
   homeTabProtocolsBtn:      document.getElementById("homeTabProtocolsBtn"),
   homeDashboardPane:        document.getElementById("homeDashboardPane"),
   homePatientsPane:         document.getElementById("homePatientsPane"),
@@ -181,7 +178,6 @@ const el = {
   priorityTaskList:         document.getElementById("priorityTaskList"),
   protocolDeadlineAlertsList: document.getElementById("protocolDeadlineAlertsList"),
   homePatientSortSelect:    document.getElementById("homePatientSortSelect"),
-  homePatientTeamFilter:    document.getElementById("homePatientTeamFilter"),
   homePatientBulkDeleteBtn: document.getElementById("homePatientBulkDeleteBtn"),
   homePatientSelectAll:     document.getElementById("homePatientSelectAll"),
   homePatientCategoryFilter: document.getElementById("homePatientCategoryFilter"),
@@ -1012,7 +1008,6 @@ function getFilteredDashboardPatients() {
     return hay.includes(query);
   });
 
-  if (state.dashboardTeamId) list = list.filter((p) => String(p.teamId || "") === state.dashboardTeamId);
   if (state.dashboardCategory) list = list.filter((p) => p.careCategory === state.dashboardCategory);
   if (state.dashboardAcsId) list = list.filter((p) => p.assignedAcsId === state.dashboardAcsId);
   if (state.dashboardProtocolStatus !== "all") {
@@ -1024,22 +1019,12 @@ function getFilteredDashboardPatients() {
 
 function renderHomePatientTable() {
   if (!el.homePatientTableBody) return;
-  let list = state.workspaceTab === "patients"
-    ? sortedPatientsForDashboard(state.patients)
-    : getFilteredDashboardPatients();
-  if (state.workspaceTab === "patients") {
-    if (state.dashboardTeamId) list = list.filter((p) => String(p.teamId || "") === state.dashboardTeamId);
-    if (state.dashboardAcsId) list = list.filter((p) => p.assignedAcsId === state.dashboardAcsId);
-  }
+  const list = getFilteredDashboardPatients();
   const total = list.length;
-  const totalPages = state.workspaceTab === "patients"
-    ? 1
-    : Math.max(Math.ceil(total / state.dashboardPageSize), 1);
+  const totalPages = Math.max(Math.ceil(total / state.dashboardPageSize), 1);
   if (state.dashboardPage > totalPages) state.dashboardPage = totalPages;
-  const start = state.workspaceTab === "patients" ? 0 : (state.dashboardPage - 1) * state.dashboardPageSize;
-  const pageItems = state.workspaceTab === "patients"
-    ? list
-    : list.slice(start, start + state.dashboardPageSize);
+  const start = (state.dashboardPage - 1) * state.dashboardPageSize;
+  const pageItems = list.slice(start, start + state.dashboardPageSize);
 
   if (!pageItems.length) {
     el.homePatientTableBody.innerHTML = '<tr><td colspan="7"><div class="empty-msg">Nenhum paciente encontrado para esse filtro.</div></td></tr>';
@@ -1065,11 +1050,9 @@ function renderHomePatientTable() {
     }).join("");
   }
 
-  el.homePatientPageInfo.textContent = state.workspaceTab === "patients"
-    ? `${total} paciente(s) cadastrado(s)`
-    : `P?gina ${state.dashboardPage} de ${totalPages} | ${total} paciente(s)`;
-  el.homePatientPrevBtn.disabled = state.workspaceTab === "patients" || state.dashboardPage <= 1;
-  el.homePatientNextBtn.disabled = state.workspaceTab === "patients" || state.dashboardPage >= totalPages;
+  el.homePatientPageInfo.textContent = `P?gina ${state.dashboardPage} de ${totalPages} | ${total} paciente(s)`;
+  el.homePatientPrevBtn.disabled = state.dashboardPage <= 1;
+  el.homePatientNextBtn.disabled = state.dashboardPage >= totalPages;
 
   document.querySelectorAll(".home-open-patient-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -1242,15 +1225,12 @@ async function runPatientAi(path, payload = {}) {
 
 function switchWorkspaceTab(tab) {
   const allowProtocols = isManager();
-  if (tab === "protocols" && allowProtocols) state.workspaceTab = "protocols";
-  else if (tab === "patients") state.workspaceTab = "patients";
-  else state.workspaceTab = "dashboard";
+  state.workspaceTab = tab === "protocols" && allowProtocols ? "protocols" : "dashboard";
   el.homeTabProtocolsBtn.classList.toggle("hidden", !allowProtocols);
   el.homeTabDashboardBtn.classList.toggle("active", state.workspaceTab === "dashboard");
-  el.homeTabPatientsBtn.classList.toggle("active", state.workspaceTab === "patients");
   el.homeTabProtocolsBtn.classList.toggle("active", state.workspaceTab === "protocols");
   el.homeDashboardPane.classList.toggle("hidden", state.workspaceTab !== "dashboard");
-  el.homePatientsPane.classList.toggle("hidden", state.workspaceTab !== "patients");
+  el.homePatientsPane.classList.toggle("hidden", state.workspaceTab !== "dashboard");
   el.protocolAdminSection.classList.toggle("hidden", state.workspaceTab !== "protocols");
   persistViewState();
 }
@@ -1291,7 +1271,7 @@ function renderTeamUsersLists() {
 function switchNavSection(section) {
   const isMgr = isManager();
   const next = String(section || "patients");
-  const allowed = ["patients", "patients_list", "protocols", "acs", "doctors", "ai"];
+  const allowed = ["patients", "protocols", "acs", "doctors", "ai"];
   state.navSection = allowed.includes(next) ? next : "patients";
 
   if (!isMgr && ["protocols", "acs", "doctors", "ai"].includes(state.navSection)) {
@@ -1299,7 +1279,6 @@ function switchNavSection(section) {
   }
 
   el.navPatientsBtn.classList.toggle("active", state.navSection === "patients");
-  el.navPatientsListBtn.classList.toggle("active", state.navSection === "patients_list");
   el.navProtocolsBtn.classList.toggle("active", state.navSection === "protocols");
   el.navAcsBtn.classList.toggle("active", state.navSection === "acs");
   el.navDoctorsBtn.classList.toggle("active", state.navSection === "doctors");
@@ -1312,9 +1291,9 @@ function switchNavSection(section) {
 
   el.openCreateUserModalBtn.classList.toggle("hidden", !isMgr);
 
-  const showPatientsWorkspace = state.navSection === "patients" || state.navSection === "patients_list";
+  const showPatientsWorkspace = state.navSection === "patients";
   el.homeDashboardPane.classList.toggle("hidden", !showPatientsWorkspace || state.workspaceTab !== "dashboard");
-  el.homePatientsPane.classList.toggle("hidden", !showPatientsWorkspace || state.workspaceTab !== "patients");
+  el.homePatientsPane.classList.toggle("hidden", !showPatientsWorkspace || state.workspaceTab !== "dashboard");
   el.protocolAdminSection.classList.toggle("hidden", state.navSection !== "protocols");
   el.acsAdminSection.classList.toggle("hidden", state.navSection !== "acs");
   el.doctorsAdminSection.classList.toggle("hidden", state.navSection !== "doctors");
@@ -1322,35 +1301,8 @@ function switchNavSection(section) {
 
   if (state.navSection === "patients") {
     switchWorkspaceTab("dashboard");
-    if (state.selectedPatient) {
-      state.selectedPatient = null;
-      renderPatientHeader();
-    }
   }
-  if (state.navSection === "patients_list") {
-    switchWorkspaceTab("patients");
-    state.dashboardQuery = "";
-    if (el.topbarSearchInput) el.topbarSearchInput.value = "";
-    state.filters.microArea = "";
-    state.filters.acsId = isAcs() ? state.user.id : "";
-    state.filters.careCategory = "";
-    if (el.topFilterMicroArea) el.topFilterMicroArea.value = "";
-    if (el.topFilterAcs) el.topFilterAcs.value = state.filters.acsId || "";
-    if (el.topFilterCategory) el.topFilterCategory.value = "";
-    if (state.selectedPatient) {
-      state.selectedPatient = null;
-      renderPatientHeader();
-    }
-    el.emptyState?.classList.remove("hidden");
-    el.patientContent?.classList.add("hidden");
-    el.homeDashboardPane?.classList.add("hidden");
-    el.homePatientsPane?.classList.remove("hidden");
-    renderHomePatientTable();
-    loadPatients().catch(() => {
-      showToast("Não foi possível recarregar a lista completa de pacientes.", "error");
-    });
-  }
-  if (showPatientsWorkspace && !["dashboard", "patients", "protocols"].includes(state.workspaceTab)) {
+  if (showPatientsWorkspace && !["dashboard", "protocols"].includes(state.workspaceTab)) {
     switchWorkspaceTab("dashboard");
   }
   if (isMobileLayout()) closeSidebarDrawer();
@@ -1485,10 +1437,9 @@ function renderProtocolAdminList() {
 }
 
 function renderDashboardFilterOptions() {
-  if (!el.homePatientCategoryFilter || !el.homePatientAcsFilter || !el.homePatientTeamFilter) return;
+  if (!el.homePatientCategoryFilter || !el.homePatientAcsFilter) return;
 
   const selectedCategory = state.dashboardCategory;
-  const selectedTeam = state.dashboardTeamId;
   const selectedAcs = state.dashboardAcsId;
 
   el.homePatientCategoryFilter.innerHTML = '<option value="">Todas categorias</option>'
@@ -1499,20 +1450,6 @@ function renderDashboardFilterOptions() {
   el.homePatientAcsFilter.innerHTML = '<option value="">Todos ACS</option>'
     + acsUsers.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
   el.homePatientAcsFilter.value = selectedAcs;
-
-  const teamsMap = new Map();
-  state.patients.forEach((p) => {
-    const id = String(p.teamId || "");
-    if (!id) return;
-    if (!teamsMap.has(id)) {
-      const teamName = state.users.find((u) => u.teamId === id)?.teamName || id;
-      teamsMap.set(id, teamName);
-    }
-  });
-  const teamOptions = [...teamsMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  el.homePatientTeamFilter.innerHTML = '<option value="">Todas equipes</option>'
-    + teamOptions.map(([id, name]) => `<option value="${id}">${name}</option>`).join("");
-  el.homePatientTeamFilter.value = selectedTeam;
 
   if (el.homePatientProtocolStatusFilter) {
     el.homePatientProtocolStatusFilter.value = state.dashboardProtocolStatus;
@@ -1935,13 +1872,11 @@ async function bootstrapAfterLogin() {
   state.dashboardSort = "name_asc";
   state.dashboardPage = 1;
   state.dashboardCategory = "";
-  state.dashboardTeamId = "";
   state.dashboardAcsId = "";
   state.dashboardProtocolStatus = "all";
   state.workspaceTab = savedView?.workspaceTab || "dashboard";
   if (el.topbarSearchInput) el.topbarSearchInput.value = "";
   if (el.homePatientSortSelect) el.homePatientSortSelect.value = "name_asc";
-  if (el.homePatientTeamFilter) el.homePatientTeamFilter.value = "";
   if (el.homePatientCategoryFilter) el.homePatientCategoryFilter.value = "";
   if (el.homePatientAcsFilter) el.homePatientAcsFilter.value = "";
   if (el.homePatientProtocolStatusFilter) el.homePatientProtocolStatusFilter.value = "all";
@@ -2052,11 +1987,6 @@ el.quickSelectFirstPatientBtn?.addEventListener("click", () => {
 });
 
 el.navPatientsBtn?.addEventListener("click", () => switchNavSection("patients"));
-el.navPatientsListBtn?.addEventListener("click", () => {
-  state.selectedPatient = null;
-  renderPatientHeader();
-  switchNavSection("patients_list");
-});
 el.navProtocolsBtn?.addEventListener("click", () => switchNavSection("protocols"));
 el.navAcsBtn?.addEventListener("click", () => switchNavSection("acs"));
 el.navDoctorsBtn?.addEventListener("click", () => switchNavSection("doctors"));
@@ -2181,7 +2111,6 @@ el.pCep?.addEventListener("blur", async () => {
 });
 
 el.homeTabDashboardBtn?.addEventListener("click", () => switchWorkspaceTab("dashboard"));
-el.homeTabPatientsBtn?.addEventListener("click", () => switchWorkspaceTab("patients"));
 el.homeTabProtocolsBtn?.addEventListener("click", () => switchWorkspaceTab("protocols"));
 
 el.openProtocolModalBtn?.addEventListener("click", () => {
@@ -2209,12 +2138,6 @@ el.homePatientSortSelect?.addEventListener("change", () => {
 
 el.homePatientCategoryFilter?.addEventListener("change", () => {
   state.dashboardCategory = el.homePatientCategoryFilter.value || "";
-  state.dashboardPage = 1;
-  renderHomePatientTable();
-});
-
-el.homePatientTeamFilter?.addEventListener("change", () => {
-  state.dashboardTeamId = el.homePatientTeamFilter.value || "";
   state.dashboardPage = 1;
   renderHomePatientTable();
 });
