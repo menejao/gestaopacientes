@@ -139,10 +139,13 @@ const el = {
   auditList:                document.getElementById("auditList"),
   rType:                    document.getElementById("rType"),
   rDate:                    document.getElementById("rDate"),
-  rTitle:                   document.getElementById("rTitle"),
+  rTitleSelectWrap:         document.getElementById("rTitleSelectWrap"),
+  rTitleSelect:             document.getElementById("rTitleSelect"),
+  rTitleInputWrap:          document.getElementById("rTitleInputWrap"),
+  rTitleInput:              document.getElementById("rTitleInput"),
   rDetails:                 document.getElementById("rDetails"),
-  rVaccineName:             document.getElementById("rVaccineName"),
-  vaccineNameWrap:          document.getElementById("vaccineNameWrap"),
+  rVaccineMultiWrap:        document.getElementById("rVaccineMultiWrap"),
+  rVaccineMulti:            document.getElementById("rVaccineMulti"),
   addRecordBtn:             document.getElementById("addRecordBtn"),
   aDate:                    document.getElementById("aDate"),
   aDemandType:              document.getElementById("aDemandType"),
@@ -1739,6 +1742,63 @@ function renderMessages() {
 
 // -- Render: history timeline ---------------------------------------------------
 const typeLabel = { visit:"Visita", consultation:"Consulta", vaccine:"Vacina", procedure:"Procedimento", note:"Observação" };
+const RECORD_TITLES = {
+  visit: ["Visita ACS"],
+  consultation: ["Consulta médica", "Consulta enfermagem", "Consulta odontológica"]
+};
+const MINISTRY_VACCINES = [
+  "BCG",
+  "Hepatite B",
+  "Penta",
+  "VIP",
+  "Pneumo 10",
+  "Rotavírus",
+  "Meningocócica",
+  "dTpa",
+  "DTP",
+  "Influenza",
+  "COVID-19",
+  "Febre amarela",
+  "HPV",
+  "ACWY",
+  "Tríplice viral",
+  "Varicela",
+  "Hepatite A",
+  "SCRV",
+  "Dupla adulto (dT)"
+];
+
+function fillRecordVaccines() {
+  if (!el.rVaccineMulti) return;
+  el.rVaccineMulti.innerHTML = MINISTRY_VACCINES
+    .map((name) => `<option value="${name}">${name}</option>`)
+    .join("");
+}
+
+function selectedVaccineNames() {
+  if (!el.rVaccineMulti) return [];
+  return [...el.rVaccineMulti.options]
+    .filter((opt) => opt.selected)
+    .map((opt) => String(opt.value || "").trim())
+    .filter(Boolean);
+}
+
+function updateRecordTitleControls() {
+  const type = el.rType?.value || "visit";
+  const titleOptions = RECORD_TITLES[type] || [];
+  const useFreeTitle = ["procedure", "note"].includes(type);
+  const useVaccineMulti = type === "vaccine";
+
+  el.rTitleSelectWrap?.classList.toggle("hidden", useFreeTitle || useVaccineMulti);
+  el.rTitleInputWrap?.classList.toggle("hidden", !useFreeTitle);
+  el.rVaccineMultiWrap?.classList.toggle("hidden", !useVaccineMulti);
+
+  if (el.rTitleSelect && titleOptions.length) {
+    el.rTitleSelect.innerHTML = titleOptions.map((title) => `<option value="${title}">${title}</option>`).join("");
+  } else if (el.rTitleSelect) {
+    el.rTitleSelect.innerHTML = "";
+  }
+}
 
 function renderHistory() {
   el.historyList.innerHTML = "";
@@ -1747,8 +1807,9 @@ function renderHistory() {
     const d = document.createElement("div");
     d.className = "tl-item";
     const dt = new Date(r.date);
+    const hasTime = String(r.date || "").includes("T");
     d.innerHTML = `
-      <div class="tl-date">${dt.toLocaleDateString("pt-BR")}<br>${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
+      <div class="tl-date">${dt.toLocaleDateString("pt-BR")}${hasTime ? `<br>${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : ""}</div>
       <div class="tl-spine"><div class="tl-dot"></div><div class="tl-line"></div></div>
       <div class="tl-body">
         <div class="tl-type">${typeLabel[r.type]||r.type}</div>
@@ -1775,10 +1836,8 @@ function renderAuditLogs() {
   });
 }
 
-// -- Vaccine field -------------------------------------------------------------
-el.rType?.addEventListener("change", () => {
-  el.vaccineNameWrap.classList.toggle("hidden", el.rType.value !== "vaccine");
-});
+// -- Record form behavior ------------------------------------------------------
+el.rType?.addEventListener("change", updateRecordTitleControls);
 
 // -- Load data -----------------------------------------------------------------
 async function loadPatients() {
@@ -2426,13 +2485,61 @@ el.createPatientBtn.addEventListener("click", async () => {
 el.addRecordBtn.addEventListener("click", async () => {
   if (!state.selectedPatient) return;
   try {
-    await api(`/patients/${state.selectedPatient.id}/records`, { method:"POST", body:JSON.stringify({
-      type:el.rType.value, date:el.rDate.value, title:el.rTitle.value,
-      details:el.rDetails.value, protocolTag:state.selectedPatient.careCategory,
-      metadata:el.rVaccineName.value ? { vaccineName:el.rVaccineName.value.trim() } : {}
-    })});
-    ["rDate","rTitle","rDetails","rVaccineName"].forEach(id=>{document.getElementById(id).value="";});
-    showToast("Registro salvo.","ok");
+    const type = el.rType.value;
+    const date = String(el.rDate.value || "").trim();
+    const details = el.rDetails.value;
+    if (!date) {
+      showToast("Preencha a data do registro.", "error");
+      return;
+    }
+
+    if (type === "vaccine") {
+      const vaccines = selectedVaccineNames();
+      if (!vaccines.length) {
+        showToast("Selecione pelo menos uma vacina.", "error");
+        return;
+      }
+      for (const vaccineName of vaccines) {
+        await api(`/patients/${state.selectedPatient.id}/records`, {
+          method: "POST",
+          body: JSON.stringify({
+            type,
+            date,
+            title: vaccineName,
+            details,
+            protocolTag: state.selectedPatient.careCategory,
+            metadata: { vaccineName }
+          })
+        });
+      }
+      [...el.rVaccineMulti.options].forEach((opt) => { opt.selected = false; });
+      showToast(`${vaccines.length} vacina(s) registrada(s).`, "ok");
+    } else {
+      let title = type === "procedure" || type === "note"
+        ? String(el.rTitleInput.value || "").trim()
+        : String(el.rTitleSelect.value || "").trim();
+      if (!title && type === "note") title = "Observação livre";
+      if (!title && type === "procedure") title = "Procedimento";
+      if (!title) {
+        showToast("Selecione ou preencha o título do registro.", "error");
+        return;
+      }
+      await api(`/patients/${state.selectedPatient.id}/records`, {
+        method: "POST",
+        body: JSON.stringify({
+          type,
+          date,
+          title,
+          details,
+          protocolTag: state.selectedPatient.careCategory,
+          metadata: {}
+        })
+      });
+      showToast("Registro salvo.", "ok");
+    }
+
+    ["rDate","rDetails","rTitleInput"].forEach(id=>{const node = document.getElementById(id); if (node) node.value="";});
+    updateRecordTitleControls();
     await refreshSelectedPatientData();
   } catch(e) { showToast(e.message,"error"); }
 });
@@ -2484,6 +2591,8 @@ el.sendMsgBtn.addEventListener("click", async () => {
 
 // -- Init ----------------------------------------------------------------------
 async function initApp() {
+  fillRecordVaccines();
+  updateRecordTitleControls();
   fillCouncilUfSelects();
   const raw = localStorage.getItem(SESSION_KEY);
   if (!raw) {

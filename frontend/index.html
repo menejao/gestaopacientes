@@ -426,13 +426,23 @@
                     </select>
                   </div>
                   <div class="field-group">
-                    <label class="field-label">Data / Hora</label>
-                    <input id="rDate" type="datetime-local" class="field-input"/>
+                    <label class="field-label">Data</label>
+                    <input id="rDate" type="date" class="field-input"/>
                   </div>
                 </div>
-                <div class="field-group"><label class="field-label">Titulo</label><input id="rTitle" class="field-input" placeholder="Ex: Visita domiciliar 1"/></div>
+                <div id="rTitleSelectWrap" class="field-group">
+                  <label class="field-label">Título</label>
+                  <select id="rTitleSelect" class="field-select"></select>
+                </div>
+                <div id="rTitleInputWrap" class="field-group hidden">
+                  <label class="field-label">Título</label>
+                  <input id="rTitleInput" class="field-input" placeholder="Descreva o título do registro"/>
+                </div>
                 <div class="field-group"><label class="field-label">Detalhes</label><textarea id="rDetails" class="field-textarea" rows="4" placeholder="Descreva o registro..."></textarea></div>
-                <div id="vaccineNameWrap" class="field-group hidden"><label class="field-label">Nome da vacina</label><input id="rVaccineName" class="field-input" placeholder="Ex: Influenza"/></div>
+                <div id="rVaccineMultiWrap" class="field-group hidden">
+                  <label class="field-label">Vacinas (pode selecionar mais de uma)</label>
+                  <select id="rVaccineMulti" class="field-select" multiple size="8"></select>
+                </div>
                 <button id="addRecordBtn" class="btn-primary">Salvar registro</button>
               </div>
             </div>
