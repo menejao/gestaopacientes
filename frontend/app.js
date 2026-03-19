@@ -2712,9 +2712,6 @@ async function bootstrapAfterLogin() {
   touchSession(true);
   setupInactivityWatcher();
   startPresenceAndActivityTimers();
-  // Mostra a aplicação imediatamente para evitar tela branca durante o carregamento.
-  el.authScreen.classList.add("hidden");
-  el.appScreen.classList.remove("hidden");
   const allowedSections = ["dashboard", "patients", "protocols", "acs", "doctors", "ai"];
   state.navSection = allowedSections.includes(savedView.navSection) ? savedView.navSection : "dashboard";
   state.workspaceTab = savedView.workspaceTab === "protocols" ? "protocols" : "dashboard";
@@ -2739,6 +2736,10 @@ async function bootstrapAfterLogin() {
   switchWorkspaceTab(state.workspaceTab);
   switchNavSection(state.navSection);
   renderWorkspaceHome();
+  // Exibe a aplicação somente após restaurar a navegação salva,
+  // evitando o "flash" do painel padrão ao atualizar.
+  el.authScreen.classList.add("hidden");
+  el.appScreen.classList.remove("hidden");
 
   try {
     const boot = await api("/bootstrap");
@@ -3567,10 +3568,6 @@ async function initApp() {
     await bootstrapBeforeLogin();
     return;
   }
-
-  // Evita flicker da tela de login quando a sessão ainda é válida.
-  el.authScreen.classList.add("hidden");
-  el.appScreen.classList.remove("hidden");
 
   try {
     const parsed = JSON.parse(raw);
