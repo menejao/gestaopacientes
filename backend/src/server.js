@@ -1,5 +1,6 @@
 ﻿import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import { v4 as uuidv4 } from "uuid";
@@ -21,12 +22,18 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const IS_PROD = String(process.env.NODE_ENV || "").trim().toLowerCase() === "production";
 const JWT_SECRET = String(process.env.JWT_SECRET || "").trim() || "dev-only-jwt-secret-change-me";
+const JWT_EXPIRES_IN = String(process.env.JWT_EXPIRES_IN || "12h").trim() || "12h";
+const JWT_ISSUER = String(process.env.JWT_ISSUER || "saudeubs-backend").trim() || "saudeubs-backend";
+const JWT_AUDIENCE = String(process.env.JWT_AUDIENCE || "saudeubs-client").trim() || "saudeubs-client";
 const FRONTEND_ORIGINS = String(process.env.FRONTEND_ORIGINS || "")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);
+const CORS_ALLOW_ALL = String(process.env.CORS_ALLOW_ALL || "").trim().toLowerCase() === "true";
 const AUTH_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
 const AUTH_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 20);
+const GLOBAL_RATE_LIMIT_WINDOW_MS = Number(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || 60 * 1000);
+const GLOBAL_RATE_LIMIT_MAX_REQUESTS = Number(process.env.GLOBAL_RATE_LIMIT_MAX_REQUESTS || 600);
 const USER_ONLINE_THRESHOLD_MS = Number(process.env.USER_ONLINE_THRESHOLD_MS || 2 * 60 * 1000);
 const REQUEST_LOG_ENABLED = String(process.env.REQUEST_LOG_ENABLED || "true").trim().toLowerCase() !== "false";
 const TWOFA_ISSUER = String(process.env.TWOFA_ISSUER || "SaudeUBS").trim() || "SaudeUBS";
@@ -34,9 +41,13 @@ const TWOFA_CHALLENGE_TTL_MS = Number(process.env.TWOFA_CHALLENGE_TTL_MS || 5 * 
 const TWOFA_MAX_ATTEMPTS = Number(process.env.TWOFA_MAX_ATTEMPTS || 5);
 const BACKUP_EXPORT_KEY = String(process.env.BACKUP_EXPORT_KEY || "").trim();
 const authRateMap = new Map();
+const globalRateMap = new Map();
 
 if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
   throw new Error("JWT_SECRET obrigatório em produção");
+}
+if (IS_PROD && !FRONTEND_ORIGINS.length && !CORS_ALLOW_ALL) {
+  throw new Error("FRONTEND_ORIGINS obrigatório em produção (ou defina CORS_ALLOW_ALL=true por sua conta e risco)");
 }
 
 const DEFAULT_CARE_PROTOCOLS = {
@@ -158,14 +169,22 @@ const DEFAULT_TEAM_COLORS = [
   "Amarela"
 ];
 
-app.use(cors());
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "same-site" },
+  contentSecurityPolicy: false
+}));
 
 app.use(cors({
   origin(origin, callback) {
     if (!origin) return callback(null, true);
-    if (!FRONTEND_ORIGINS.length) return callback(null, true);
+    if (!FRONTEND_ORIGINS.length) {
+      if (!IS_PROD || CORS_ALLOW_ALL) return callback(null, true);
+      return callback(new Error("Origem não permitida por CORS"));
+    }
+    if (CORS_ALLOW_ALL) return callback(null, true);
     if (FRONTEND_ORIGINS.includes(origin)) return callback(null, true);
     return callback(new Error("Origem não permitida por CORS"));
   }
@@ -197,6 +216,8 @@ app.use((req, res, next) => {
 
   next();
 });
+
+app.use(globalRateLimit);
 
 function canonicalRole(role) {
   const input = String(role || "").trim().toLowerCase();
@@ -350,6 +371,12 @@ function cleanupRateMap(now = Date.now()) {
   }
 }
 
+function cleanupNamedRateMap(map, windowMs, now = Date.now()) {
+  for (const [key, value] of map.entries()) {
+    if (now - value.firstAt > windowMs) map.delete(key);
+  }
+}
+
 function authRateLimit(req, res, next) {
   const now = Date.now();
   cleanupRateMap(now);
@@ -363,6 +390,24 @@ function authRateLimit(req, res, next) {
   authRateMap.set(ip, bucket);
   if (bucket.count > AUTH_MAX_ATTEMPTS) {
     return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos." });
+  }
+  return next();
+}
+
+function globalRateLimit(req, res, next) {
+  if (req.path === "/health") return next();
+  const now = Date.now();
+  cleanupNamedRateMap(globalRateMap, GLOBAL_RATE_LIMIT_WINDOW_MS, now);
+  const ip = getClientIp(req);
+  const bucket = globalRateMap.get(ip) || { count: 0, firstAt: now };
+  if (now - bucket.firstAt > GLOBAL_RATE_LIMIT_WINDOW_MS) {
+    bucket.count = 0;
+    bucket.firstAt = now;
+  }
+  bucket.count += 1;
+  globalRateMap.set(ip, bucket);
+  if (bucket.count > GLOBAL_RATE_LIMIT_MAX_REQUESTS) {
+    return res.status(429).json({ error: "Muitas requisições. Tente novamente em instantes." });
   }
   return next();
 }
@@ -672,7 +717,12 @@ function createToken(user, db) {
       teamName: getTeamNameById(db, user.teamId)
     },
     JWT_SECRET,
-    { expiresIn: "12h" }
+    {
+      expiresIn: JWT_EXPIRES_IN,
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+      algorithm: "HS256"
+    }
   );
 }
 
@@ -685,7 +735,11 @@ function requireAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET, {
+      algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE
+    });
     req.user = {
       ...payload,
       role: canonicalRole(payload.role),
@@ -3248,6 +3302,12 @@ app.post("/auth/login/verify", authRateLimit, async (req, res) => {
 });
 
 app.use(requireAuth);
+app.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
 
 app.get("/me", async (req, res) => {
   const db = await readDb();
@@ -5077,6 +5137,8 @@ async function startServer() {
 }
 
 startServer();
+
+
 
 
 

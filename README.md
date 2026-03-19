@@ -109,11 +109,17 @@ Arquivos de apoio ja prontos:
 
 ## Variavel de ambiente (opcional)
 - `JWT_SECRET`: chave usada para assinar tokens.
+- `JWT_EXPIRES_IN`: tempo de expiração do token JWT (ex: `8h`, `12h`).
+- `JWT_ISSUER`: emissor esperado do JWT.
+- `JWT_AUDIENCE`: audiencia esperada do JWT.
 - Se não informar, a API usa uma chave padr?o de desenvolvimento.
 - `NODE_ENV`: use `production` em produção.
 - `FRONTEND_ORIGINS`: lista CSV de origens permitidas (CORS), ex: `https://app.exemplo.com`.
+- `CORS_ALLOW_ALL`: libera CORS para qualquer origem (use `false` em produção).
 - `AUTH_RATE_LIMIT_WINDOW_MS`: janela de limitação de tentativas de autenticacao (ms).
 - `AUTH_RATE_LIMIT_MAX_ATTEMPTS`: maximo de tentativas por IP na janela.
+- `GLOBAL_RATE_LIMIT_WINDOW_MS`: janela do rate limit global por IP (ms).
+- `GLOBAL_RATE_LIMIT_MAX_REQUESTS`: maximo de requisicoes por IP na janela global.
 - `DATA_ENCRYPTION_KEY`: chave para criptografia em repouso de dados sensiveis (CPF/CNS e segredo 2FA).
 - `TWOFA_ISSUER`: nome exibido no app autenticador (padrao: `SaudeUBS`).
 - `BACKUP_EXPORT_KEY`: chave dedicada para exportacao automatica de backup via endpoint seguro.
@@ -121,9 +127,11 @@ Arquivos de apoio ja prontos:
 ## Seguranca e LGPD (baseline tecnico)
 - Senhas são armazenadas com hash (`scrypt`) e migradas automaticamente se legadas em texto puro.
 - JWT exige segredo forte em produção (`JWT_SECRET` obrigatorio).
+- JWT validado com `issuer` e `audience`, com expiracao configuravel.
 - CORS restrito por allowlist via `FRONTEND_ORIGINS`.
-- Rotas de login/registro possuem limitação de tentativas por IP.
+- Rotas de login/registro possuem limitação de tentativas por IP e existe rate limit global da API.
 - Headers de seguranca HTTP basicos habilitados (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`).
+- `helmet` habilitado para hardening HTTP e respostas autenticadas com `Cache-Control: no-store`.
 - Auditoria de acoes criticas habilitada para rastreabilidade.
 
 ## Governança recomendada (operação real)
