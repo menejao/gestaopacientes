@@ -1523,6 +1523,21 @@ function addDays(baseDate, days) {
   return d;
 }
 
+function addMonths(baseDate, months) {
+  const d = toDateOnlySafe(baseDate);
+  if (!d) return null;
+  d.setMonth(d.getMonth() + Number(months || 0));
+  return d;
+}
+
+function deadlineSeverity(daysLeft) {
+  const value = Number(daysLeft);
+  if (!Number.isFinite(value)) return "low";
+  if (value < 0) return "high";
+  if (value <= 5) return "medium";
+  return "low";
+}
+
 function normalizeText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -2218,13 +2233,16 @@ function evaluateChildProtocol(patient, history) {
     return d && d <= first6MonthsEnd;
   });
 
-  if (ageDays > 30 && consultationsFirstMonth.length < 1) {
+  const firstMonthDaysLeft = 30 - ageDays;
+  if (consultationsFirstMonth.length < 1) {
     alerts.push(makeClinicalAlert({
       id: "child-consult-first-month",
       activity: "consulta no 1º mês",
       title: "Consulta inicial pendente",
       detail: "Necessária 1 consulta médica ou de enfermagem no primeiro mês de vida.",
-      severity: "high",
+      severity: deadlineSeverity(firstMonthDaysLeft),
+      daysLeft: firstMonthDaysLeft,
+      overdueDays: Math.max(-firstMonthDaysLeft, 0),
       categoryLabel
     }));
   }
@@ -2242,25 +2260,30 @@ function evaluateChildProtocol(patient, history) {
     }));
   }
 
-  if (ageDays > 30 && visitsFirstMonth.length < 1) {
+  if (visitsFirstMonth.length < 1) {
     alerts.push(makeClinicalAlert({
       id: "child-visit-first-month",
       activity: "visita ACS 1º mês",
       title: "Visita domiciliar pendente no 1º mês",
       detail: "Necessária 1 visita do ACS dentro do primeiro mês de vida.",
-      severity: "high",
+      severity: deadlineSeverity(firstMonthDaysLeft),
+      daysLeft: firstMonthDaysLeft,
+      overdueDays: Math.max(-firstMonthDaysLeft, 0),
       categoryLabel
     }));
   }
 
-  if (ageDays > 183 && visitsFirst6Months.length < 2) {
+  const firstSixMonthsDaysLeft = 183 - ageDays;
+  if (visitsFirst6Months.length < 2) {
     const missing = 2 - visitsFirst6Months.length;
     alerts.push(makeClinicalAlert({
       id: "child-visit-first-6m",
       activity: "visitas ACS até 6 meses",
       title: `Falta(m) ${missing} visita(s) do ACS até o 6º mês`,
       detail: `Registradas até 6 meses: ${visitsFirst6Months.length}.`,
-      severity: "high",
+      severity: deadlineSeverity(firstSixMonthsDaysLeft),
+      daysLeft: firstSixMonthsDaysLeft,
+      overdueDays: Math.max(-firstSixMonthsDaysLeft, 0),
       categoryLabel
     }));
   }
@@ -2303,45 +2326,42 @@ function evaluateChildProtocol(patient, history) {
     }))
     .filter((h) => h.date && h.text);
 
-  const appliedCountByVaccine = {};
+  const eventsByVaccine = {};
+  for (const item of vaccinePlan) eventsByVaccine[item.vaccine] = [];
   for (const event of vaccineEvents) {
     for (const item of vaccinePlan) {
       if (matchesAnyAlias(event.text, item.aliases)) {
-        appliedCountByVaccine[item.vaccine] = (appliedCountByVaccine[item.vaccine] || 0) + 1;
+        eventsByVaccine[item.vaccine].push(event.date);
       }
     }
   }
-
-  const requiredByNow = {};
-  for (const item of vaccinePlan) {
-    if ((ageMonths || 0) >= item.month) {
-      requiredByNow[item.vaccine] = (requiredByNow[item.vaccine] || 0) + 1;
-    }
+  for (const key of Object.keys(eventsByVaccine)) {
+    eventsByVaccine[key].sort((a, b) => a.getTime() - b.getTime());
   }
 
   const acsFocus = [];
-  const grouped = new Map();
+  const plannedDoseIndexByVaccine = {};
   for (const item of vaccinePlan) {
-    if ((ageMonths || 0) < item.month) continue;
-    const required = requiredByNow[item.vaccine] || 0;
-    const applied = appliedCountByVaccine[item.vaccine] || 0;
-    if (applied >= required) continue;
-    const key = `${item.vaccine}:${item.month}`;
-    grouped.set(key, item);
-  }
+    plannedDoseIndexByVaccine[item.vaccine] = (plannedDoseIndexByVaccine[item.vaccine] || 0) + 1;
+    const requiredDoseCount = plannedDoseIndexByVaccine[item.vaccine];
+    const appliedDoseCount = (eventsByVaccine[item.vaccine] || []).length;
+    if (appliedDoseCount >= requiredDoseCount) continue;
 
-  for (const item of grouped.values()) {
-    const overdueMonths = Math.max((ageMonths || 0) - item.month, 0);
-    const severity = overdueMonths >= 3 ? "high" : (overdueMonths >= 1 ? "medium" : "low");
+    const dueDate = addMonths(birthDate, item.month);
+    const daysLeft = daysDiff(new Date(), dueDate);
+    const severity = deadlineSeverity(daysLeft);
+    const overdueDays = Math.max(-(Number(daysLeft) || 0), 0);
     alerts.push(makeClinicalAlert({
       id: `child-vaccine-${item.vaccine}-${item.month}`,
       activity: "vacina",
       title: `Vacina pendente: ${item.label} (${item.month} mês[es])`,
-      detail: `Dose prevista aos ${item.month} mês[es] de vida ainda não identificada no histórico.`,
+      detail: `Dose prevista aos ${item.month} mês[es] de vida (${dueDate ? dueDate.toLocaleDateString("pt-BR") : "-"}) ainda não identificada no histórico.`,
       severity,
+      daysLeft,
+      overdueDays,
       categoryLabel
     }));
-    if (item.acsHighlight) {
+    if (item.acsHighlight && Number(daysLeft) <= 30) {
       acsFocus.push(`${item.label} (${item.month}m)`);
     }
   }
@@ -2646,6 +2666,19 @@ function buildProtocolSummary(patient, history, templateMap) {
     specialMonitoring = evaluateElderlyProtocol(patient, history);
     specialAlerts = specialMonitoring.alerts || [];
   }
+
+  const severityWeight = { high: 3, medium: 2, low: 1 };
+  specialAlerts = [...specialAlerts].sort((a, b) => {
+    const aW = severityWeight[String(a?.severity || "low")] || 1;
+    const bW = severityWeight[String(b?.severity || "low")] || 1;
+    if (bW !== aW) return bW - aW;
+    const aOver = Number(a?.overdue || 0);
+    const bOver = Number(b?.overdue || 0);
+    if (bOver !== aOver) return bOver - aOver;
+    const aLeft = Number.isFinite(Number(a?.daysLeft)) ? Number(a.daysLeft) : 999999;
+    const bLeft = Number.isFinite(Number(b?.daysLeft)) ? Number(b.daysLeft) : 999999;
+    return aLeft - bLeft;
+  });
 
   return {
     category: template.category,
