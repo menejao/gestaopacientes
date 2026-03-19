@@ -454,16 +454,26 @@ function ensureDbShape(db) {
     db.protocolTemplates = db.protocolTemplates
       .map((t) => ({
         ...t,
-        label: defaultsByCategory[t.category]?.label || t.label,
-        targets: defaultsByCategory[t.category]?.targets || t.targets,
-        deadlines: {
-          visits: Number(defaultsByCategory[t.category]?.deadlines?.visits ?? t.deadlines?.visits ?? 0),
-          consultations: Number(defaultsByCategory[t.category]?.deadlines?.consultations ?? t.deadlines?.consultations ?? 0),
-          vaccines: Number(defaultsByCategory[t.category]?.deadlines?.vaccines ?? t.deadlines?.vaccines ?? 0)
+        label: t.label || defaultsByCategory[t.category]?.label || String(t.category || "Protocolo"),
+        targets: {
+          visits: Number(
+            t.targets?.visits ?? defaultsByCategory[t.category]?.targets?.visits ?? 0
+          ),
+          consultations: Number(
+            t.targets?.consultations ?? defaultsByCategory[t.category]?.targets?.consultations ?? 0
+          ),
+          vaccines: Number(
+            t.targets?.vaccines ?? defaultsByCategory[t.category]?.targets?.vaccines ?? 0
+          )
         },
-        vaccines: Array.isArray(defaultsByCategory[t.category]?.vaccines)
-          ? defaultsByCategory[t.category].vaccines
-          : (Array.isArray(t.vaccines) ? t.vaccines : []),
+        deadlines: {
+          visits: Number(t.deadlines?.visits ?? defaultsByCategory[t.category]?.deadlines?.visits ?? 0),
+          consultations: Number(t.deadlines?.consultations ?? defaultsByCategory[t.category]?.deadlines?.consultations ?? 0),
+          vaccines: Number(t.deadlines?.vaccines ?? defaultsByCategory[t.category]?.deadlines?.vaccines ?? 0)
+        },
+        vaccines: Array.isArray(t.vaccines)
+          ? t.vaccines
+          : (Array.isArray(defaultsByCategory[t.category]?.vaccines) ? defaultsByCategory[t.category].vaccines : []),
         authority: String(t.authority || "Ministério da Saúde"),
         reference: String(t.reference || defaultsByCategory[t.category]?.reference || ""),
         version: String(t.version || defaultsByCategory[t.category]?.version || "1.0")
@@ -2195,7 +2205,7 @@ function matchesAnyAlias(text, aliases = []) {
   return aliases.some((alias) => text.includes(alias));
 }
 
-function evaluateChildProtocol(patient, history) {
+function evaluateChildProtocol(patient, history, template = null) {
   const alerts = [];
   const categoryLabel = "Puericultura";
   const birthDate = toDateOnlySafe(patient?.birthDate);
@@ -2247,7 +2257,11 @@ function evaluateChildProtocol(patient, history) {
     }));
   }
 
-  const targetConsults = ageMonths >= 24 ? 10 : Math.min(10, Math.max(1, Math.ceil(((ageMonths || 0) / 24) * 9) + 1));
+  const totalConsultTarget = Math.max(1, Number(template?.targets?.consultations ?? 10));
+  const expectedByAge = ageMonths >= 24
+    ? totalConsultTarget
+    : Math.min(totalConsultTarget, Math.max(1, Math.ceil(((ageMonths || 0) / 24) * Math.max(totalConsultTarget - 1, 0)) + 1));
+  const targetConsults = expectedByAge;
   const consultPending = Math.max(targetConsults - consultations.length, 0);
   if (consultPending > 0) {
     alerts.push(makeClinicalAlert({
@@ -2657,7 +2671,7 @@ function buildProtocolSummary(patient, history, templateMap) {
     specialMonitoring = evaluatePapOnlyProtocol(patient, history);
     specialAlerts = specialMonitoring.alerts || [];
   } else if (template.category === "child_followup") {
-    specialMonitoring = evaluateChildProtocol(patient, history);
+    specialMonitoring = evaluateChildProtocol(patient, history, template);
     specialAlerts = specialMonitoring.alerts || [];
   } else if (template.category === "chronic") {
     specialMonitoring = evaluateChronicProtocol(patient, history);
