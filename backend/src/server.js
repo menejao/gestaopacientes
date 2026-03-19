@@ -1535,7 +1535,24 @@ function isDentalText(textValue = "") {
   return /dent|odont|bucal|cirurgiao dentista/.test(text);
 }
 
+function isDentalConsultationTitle(textValue = "") {
+  const text = normalizeText(textValue);
+  if (!text) return false;
+  return /(consulta|atendimento).*(odont|dent|bucal)|odontolog|dentista/.test(text);
+}
+
 function isDentalRecord(entry) {
+  const type = String(entry?.type || "").toLowerCase();
+  const title = String(entry?.title || "");
+  const specialty = normalizeText(entry?.metadata?.specialty || "");
+
+  // Consulta odontológica deve ser detectada principalmente pelo título/especialidade,
+  // não por menções em texto livre da evolução.
+  if (type === "consultation") {
+    if (/odont|dent|bucal/.test(specialty)) return true;
+    return isDentalConsultationTitle(title);
+  }
+
   const text = `${entry?.title || ""} ${entry?.details || ""}`;
   return isDentalText(text);
 }
@@ -1547,8 +1564,10 @@ function isMedicalOrNursingConsultationText(textValue = "") {
 }
 
 function isClinicalConsultation(entry) {
-  if (!entry || isDentalRecord(entry)) return false;
-  if (entry.type === "consultation") return true;
+  if (!entry) return false;
+  if (entry.type === "consultation") {
+    return !isDentalRecord(entry);
+  }
 
   if (["procedure", "note"].includes(String(entry.type || ""))) {
     const text = `${entry?.title || ""} ${entry?.details || ""}`;
