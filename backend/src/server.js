@@ -1557,6 +1557,15 @@ function deadlineSeverity(daysLeft) {
   return "low";
 }
 
+function homeVisitSeverityByDaysLeft(daysLeft) {
+  const value = Number(daysLeft);
+  if (!Number.isFinite(value)) return "low";
+  if (value < 0) return "lost";
+  if (value <= 3) return "high";
+  if (value <= 7) return "medium";
+  return "low";
+}
+
 function normalizeText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -1766,7 +1775,9 @@ function makeClinicalAlert({
     title,
     detail,
     severity,
-    severityClass: severity === "high" ? "status alert" : (severity === "medium" ? "status pending" : "status progress"),
+    severityClass: severity === "lost"
+      ? "status lost"
+      : (severity === "high" ? "status alert" : (severity === "medium" ? "status pending" : "status progress")),
     category: categoryLabel,
     daysLeft,
     overdue: Math.max(Number(overdueDays || 0), 0)
@@ -1808,7 +1819,7 @@ function evaluatePregnantProtocol(patient, history) {
   const weeks = Number(timeline.gestationalWeeks || 0);
   const visitPending = Math.max(3 - visits.length, 0);
   if (visitPending > 0) {
-    const severity = weeks >= 32 ? "high" : (weeks >= 24 ? "medium" : "low");
+    const severity = homeVisitSeverityByDaysLeft(timeline.daysUntilDue);
     alerts.push(makeClinicalAlert({
       id: "pregnancy-visits",
       activity: "visita ACS",
@@ -2032,6 +2043,7 @@ function evaluatePuerperalProtocol(patient, history) {
   const consultations = puerperalHistory.filter((h) => isClinicalConsultation(h));
   const overdue = timeline.daysLeft !== null && timeline.daysLeft < 0 ? Math.abs(timeline.daysLeft) : 0;
   const severityByDeadline = overdue > 0 ? "high" : ((timeline.daysLeft || 0) <= 7 ? "high" : ((timeline.daysLeft || 0) <= 14 ? "medium" : "low"));
+  const visitSeverityByDeadline = homeVisitSeverityByDaysLeft(timeline.daysLeft);
 
   if (visits.length < 1) {
     alerts.push(makeClinicalAlert({
@@ -2039,7 +2051,7 @@ function evaluatePuerperalProtocol(patient, history) {
       activity: "visita ACS",
       title: "Visita domiciliar pendente no puerpério",
       detail: "Necessário 1 visita domiciliar do ACS até 42 dias pós-parto.",
-      severity: severityByDeadline,
+      severity: visitSeverityByDeadline,
       daysLeft: timeline.daysLeft,
       overdueDays: overdue,
       categoryLabel
@@ -2286,7 +2298,7 @@ function evaluateChildProtocol(patient, history, template = null) {
       activity: "visita ACS 1º mês",
       title: "Visita domiciliar pendente no 1º mês",
       detail: "Necessária 1 visita do ACS dentro do primeiro mês de vida.",
-      severity: deadlineSeverity(firstMonthDaysLeft),
+      severity: homeVisitSeverityByDaysLeft(firstMonthDaysLeft),
       daysLeft: firstMonthDaysLeft,
       overdueDays: Math.max(-firstMonthDaysLeft, 0),
       categoryLabel
@@ -2301,7 +2313,7 @@ function evaluateChildProtocol(patient, history, template = null) {
       activity: "visitas ACS até 6 meses",
       title: `Falta(m) ${missing} visita(s) do ACS até o 6º mês`,
       detail: `Registradas até 6 meses: ${visitsFirst6Months.length}.`,
-      severity: deadlineSeverity(firstSixMonthsDaysLeft),
+      severity: homeVisitSeverityByDaysLeft(firstSixMonthsDaysLeft),
       daysLeft: firstSixMonthsDaysLeft,
       overdueDays: Math.max(-firstSixMonthsDaysLeft, 0),
       categoryLabel
@@ -2687,7 +2699,7 @@ function buildProtocolSummary(patient, history, templateMap) {
     specialAlerts = specialMonitoring.alerts || [];
   }
 
-  const severityWeight = { high: 3, medium: 2, low: 1 };
+  const severityWeight = { lost: 4, high: 3, medium: 2, low: 1 };
   specialAlerts = [...specialAlerts].sort((a, b) => {
     const aW = severityWeight[String(a?.severity || "low")] || 1;
     const bW = severityWeight[String(b?.severity || "low")] || 1;

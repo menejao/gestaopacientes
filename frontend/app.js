@@ -1160,6 +1160,18 @@ function renderProtocolDeadlineAlerts() {
   if (!el.protocolDeadlineAlertsList) return;
   const labels = { visits: "visita", consultations: "consulta", vaccines: "vacina" };
   const alerts = [];
+  const severityLabel = (value) => {
+    if (value === "lost") return "PERDIDO";
+    if (value === "high") return "ALTO";
+    if (value === "medium") return "MÉDIO";
+    return "BAIXO";
+  };
+  const classifyVisitDeadline = (daysLeft, overdue) => {
+    if (overdue > 0) return { severity: "lost", severityClass: "status lost" };
+    if (daysLeft <= 3) return { severity: "high", severityClass: "status alert" };
+    if (daysLeft <= 7) return { severity: "medium", severityClass: "status pending" };
+    return { severity: "low", severityClass: "status progress" };
+  };
 
   state.patients.forEach((patient) => {
     const summary = state.protocolByPatient[patient.id];
@@ -1177,20 +1189,27 @@ function renderProtocolDeadlineAlerts() {
       let severityClass = "status progress";
       let score = 0;
 
-      if (overdue > 0) {
-        severity = "high";
-        severityClass = "status alert";
-        score = 100 + overdue;
-      } else if (daysLeft <= 3) {
-        severity = "high";
-        severityClass = "status alert";
-        score = 80 - daysLeft;
-      } else if (daysLeft <= 7) {
-        severity = "medium";
-        severityClass = "status pending";
-        score = 60 - daysLeft;
+      if (key === "visits") {
+        const visitState = classifyVisitDeadline(daysLeft, overdue);
+        severity = visitState.severity;
+        severityClass = visitState.severityClass;
+        score = overdue > 0 ? 130 + overdue : (daysLeft <= 7 ? 70 - daysLeft : 20 - Math.min(daysLeft, 20));
       } else {
-        score = 20 - Math.min(daysLeft, 20);
+        if (overdue > 0) {
+          severity = "high";
+          severityClass = "status alert";
+          score = 100 + overdue;
+        } else if (daysLeft <= 3) {
+          severity = "high";
+          severityClass = "status alert";
+          score = 80 - daysLeft;
+        } else if (daysLeft <= 7) {
+          severity = "medium";
+          severityClass = "status pending";
+          score = 60 - daysLeft;
+        } else {
+          score = 20 - Math.min(daysLeft, 20);
+        }
       }
 
       alerts.push({
@@ -1250,7 +1269,7 @@ function renderProtocolDeadlineAlerts() {
           <p class="home-task-title">${alert.patientName} - ${alert.title || alert.activity}</p>
           <p class="home-task-meta">${alert.category} | ${deadlineText}</p>
         </div>
-        <span class="${alert.severityClass}">${alert.severity === "high" ? "ALTO" : (alert.severity === "medium" ? "MEDIO" : "BAIXO")}</span>
+        <span class="${alert.severityClass}">${severityLabel(alert.severity)}</span>
       </div>`;
   }).join("");
 }
@@ -2089,6 +2108,18 @@ function renderProtocolSummary() {
     return;
   }
   const s = state.protocolSummary;
+  const severityLabel = (value) => {
+    if (value === "lost") return "PERDIDO";
+    if (value === "high") return "ALTO";
+    if (value === "medium") return "MÉDIO";
+    return "BAIXO";
+  };
+  const classifyVisitDeadline = (daysLeft, overdue) => {
+    if (overdue > 0) return { severity: "lost", severityClass: "status lost" };
+    if (daysLeft !== null && daysLeft <= 3) return { severity: "high", severityClass: "status alert" };
+    if (daysLeft !== null && daysLeft <= 7) return { severity: "medium", severityClass: "status pending" };
+    return { severity: "low", severityClass: "status progress" };
+  };
   const pluralize = (count, singular, plural) => `${count} ${count === 1 ? singular : plural}`;
   const stats = [
     { label:"Visitas", nounSingular: "visita", nounPlural: "visitas", done:s.completed.visits,       total:s.targets.visits,       pending:s.pending.visits },
@@ -2128,7 +2159,11 @@ function renderProtocolSummary() {
       const daysLeft = item.daysLeft === null || item.daysLeft === undefined ? null : Number(item.daysLeft);
       let severity = "low";
       let severityClass = "status progress";
-      if (overdue > 0) {
+      if (key === "visits") {
+        const visitState = classifyVisitDeadline(daysLeft, overdue);
+        severity = visitState.severity;
+        severityClass = visitState.severityClass;
+      } else if (overdue > 0) {
         severity = "high";
         severityClass = "status alert";
       } else if (daysLeft !== null && daysLeft <= 3) {
@@ -2145,7 +2180,9 @@ function renderProtocolSummary() {
         title: `Pendência de ${labels[key]} (${item.pending})`,
         detail: `Prazo: ${deadlineText}.`,
         severity,
-        severityClass
+        severityClass,
+        overdue,
+        daysLeft
       };
     });
   const allPatientAlerts = [...specialAlerts, ...scheduleAlerts];
@@ -2192,7 +2229,7 @@ function renderProtocolSummary() {
           <div class="record-card">
             <div class="record-hd">
               <span class="record-title">${item.title || item.activity || "Alerta do protocolo"}</span>
-              <span class="${item.severityClass || "status pending"}">${item.severity === "high" ? "ALTO" : (item.severity === "medium" ? "MÉDIO" : "BAIXO")}</span>
+              <span class="${item.severityClass || "status pending"}">${severityLabel(item.severity)}</span>
             </div>
             <div class="record-body">
               <p>${item.detail || "Atenção necessária no protocolo."}</p>
