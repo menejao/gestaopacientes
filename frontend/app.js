@@ -387,6 +387,52 @@ const prettyJson   = (obj) => JSON.stringify(obj, null, 2);
 const onlyDigits   = (v) => String(v || "").replace(/\D/g, "");
 const passwordStrong = (v) => /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(String(v || ""));
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderAiSection(title, bodyHtml) {
+  return `<section><h4>${escapeHtml(title)}</h4>${bodyHtml}</section>`;
+}
+
+function renderAiReadable(target, data) {
+  if (!target) return;
+  if (!data || typeof data !== "object") {
+    target.innerHTML = `<p>${escapeHtml(data)}</p>`;
+    return;
+  }
+
+  const sections = [];
+  const entries = Object.entries(data);
+  for (const [key, value] of entries) {
+    if (value === null || value === undefined || value === "") continue;
+    const title = key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+
+    if (Array.isArray(value)) {
+      const items = value.map((item) => `<li>${escapeHtml(typeof item === "object" ? prettyJson(item) : item)}</li>`).join("");
+      sections.push(renderAiSection(title, `<ul>${items}</ul>`));
+      continue;
+    }
+
+    if (typeof value === "object") {
+      const lines = Object.entries(value)
+        .map(([k, v]) => `<p><strong>${escapeHtml(k)}:</strong> ${escapeHtml(typeof v === "object" ? prettyJson(v) : v)}</p>`)
+        .join("");
+      sections.push(renderAiSection(title, lines || "<p>-</p>"));
+      continue;
+    }
+
+    sections.push(renderAiSection(title, `<p>${escapeHtml(value)}</p>`));
+  }
+
+  target.innerHTML = sections.length ? sections.join("") : `<p>${escapeHtml(prettyJson(data))}</p>`;
+}
+
 function formatPhone(value) {
   const d = onlyDigits(value).slice(0, 11);
   if (d.length <= 2) return d;
@@ -1468,7 +1514,7 @@ function requireSelectedPatientForAi() {
 async function runTeamAi(path, payload = {}) {
   try {
     const data = await api(path, { method: "POST", body: JSON.stringify(payload) });
-    el.aiHubOutput.textContent = prettyJson(data);
+    renderAiReadable(el.aiHubOutput, data);
   } catch (e) {
     showToast(e.message, "error");
   }
@@ -1478,7 +1524,7 @@ async function runPatientAi(path, payload = {}) {
   if (!requireSelectedPatientForAi()) return;
   try {
     const data = await api(`/ai/patients/${state.selectedPatient.id}${path}`, { method: "POST", body: JSON.stringify(payload) });
-    el.aiPatientOutput.textContent = prettyJson(data);
+    renderAiReadable(el.aiPatientOutput, data);
     switchToTab("panelAi");
   } catch (e) {
     showToast(e.message, "error");
