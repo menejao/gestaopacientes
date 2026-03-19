@@ -3569,6 +3569,11 @@ async function initApp() {
     return;
   }
 
+  // Evita piscar a tela de login durante a validação de sessão.
+  // A tela correta (app ou login) será exibida após essa validação.
+  el.authScreen.classList.add("hidden");
+  el.appScreen.classList.add("hidden");
+
   try {
     const parsed = JSON.parse(raw);
     if (!parsed?.token || !parsed?.expiresAt || Date.now() > Number(parsed.expiresAt)) {
