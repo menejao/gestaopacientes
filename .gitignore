@@ -1,3 +1,16 @@
 backend/node_modules
 *.log
 Thumbs.db
+backend-dotnet/**/bin/
+backend-dotnet/**/obj/
+.dotnet/
+.nuget/
+.nuget/packages/
+.nuget/config/
+.nuget/NuGet.Config
+.nuget/NuGet/
+.nuget/NuGet/*
+.nuget/*
+.appdata/
+.tmp/
+NuGet/
