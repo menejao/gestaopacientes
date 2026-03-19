@@ -1264,7 +1264,9 @@ function protocolStatusInfo(summary) {
   const overdueSpecial = specialAlerts.filter((a) => Number(a?.overdue || 0) > 0).length;
   const dueSoonSpecial = specialAlerts.filter((a) => {
     const overdue = Number(a?.overdue || 0);
-    const daysLeft = Number(a?.daysLeft);
+    const rawDaysLeft = a?.daysLeft;
+    if (rawDaysLeft === null || rawDaysLeft === undefined || rawDaysLeft === "") return false;
+    const daysLeft = Number(rawDaysLeft);
     return overdue <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= 7;
   }).length;
 
@@ -1287,7 +1289,9 @@ function protocolStatusInfo(summary) {
   }, 0);
   const scheduleDueSoon = ["visits", "consultations", "vaccines"].reduce((acc, key) => {
     const item = schedule[key] || {};
-    const daysLeft = Number(item.daysLeft);
+    const rawDaysLeft = item.daysLeft;
+    if (rawDaysLeft === null || rawDaysLeft === undefined || rawDaysLeft === "") return acc;
+    const daysLeft = Number(rawDaysLeft);
     const overdue = Number(item.overdueDays || 0);
     if (overdue > 0) return acc;
     if (!Number.isFinite(daysLeft)) return acc;
