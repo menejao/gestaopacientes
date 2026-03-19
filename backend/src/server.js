@@ -1031,19 +1031,28 @@ function anonymizePatientBundle(db, user, patient, reason = "", requestId = "") 
 
 function getProtocolTemplateMap(db, teamId = "") {
   ensureDbShape(db);
-  const map = {};
   const disabledByTeam = new Set(
     db.protocolTemplates
       .filter((t) => t.teamId === teamId && t.deleted)
       .map((t) => String(t.category || ""))
   );
-  db.protocolTemplates
-    .filter((t) => !t.deleted)
-    .filter((t) => !teamId || !t.teamId || t.teamId === teamId)
-    .filter((t) => !(!t.teamId && disabledByTeam.has(String(t.category || ""))))
-    .forEach((t) => {
-      map[String(t.category)] = t;
-    });
+
+  const map = {};
+  const baseTemplates = db.protocolTemplates
+    .filter((t) => !t.deleted && !t.teamId)
+    .filter((t) => !disabledByTeam.has(String(t.category || "")));
+  for (const item of baseTemplates) {
+    map[String(item.category)] = item;
+  }
+
+  if (teamId) {
+    const teamTemplates = db.protocolTemplates
+      .filter((t) => !t.deleted && t.teamId === teamId);
+    for (const item of teamTemplates) {
+      map[String(item.category)] = item;
+    }
+  }
+
   if (!map.general) {
     const fallback = buildDefaultProtocolTemplates().find((t) => t.category === "general");
     if (fallback) map.general = fallback;
@@ -2922,9 +2931,7 @@ app.get("/bootstrap", requireAuth, async (req, res) => {
   const users = db.users
     .filter((u) => u.teamId === req.user.teamId)
     .map((u) => sanitizeUser(u, db));
-  const protocolTemplates = db.protocolTemplates
-    .filter((t) => !t.deleted)
-    .filter((t) => !t.teamId || t.teamId === req.user.teamId);
+  const protocolTemplates = Object.values(getProtocolTemplateMap(db, req.user.teamId));
   const teamPatientIds = new Set(patients.map((p) => p.id));
   const tasks = db.tasks.filter((t) => teamPatientIds.has(t.patientId));
   const demandMonthly = (isManager(req.user) || isDoctor(req.user))
@@ -2949,15 +2956,7 @@ app.get("/bootstrap", requireAuth, async (req, res) => {
 app.get("/protocol/templates", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
-  const disabledByTeam = new Set(
-    db.protocolTemplates
-      .filter((t) => t.teamId === req.user.teamId && t.deleted)
-      .map((t) => String(t.category || ""))
-  );
-  const items = db.protocolTemplates
-    .filter((t) => !t.deleted)
-    .filter((t) => !t.teamId || t.teamId === req.user.teamId)
-    .filter((t) => !(!t.teamId && disabledByTeam.has(String(t.category || ""))));
+  const items = Object.values(getProtocolTemplateMap(db, req.user.teamId));
   res.json(items);
 });
 
@@ -3459,7 +3458,7 @@ app.get("/protocol/templates/:category/usage", requireManagerOrDoctor, async (re
   const db = await readDb();
   ensureDbShape(db);
   const teamDeleted = db.protocolTemplates.some((t) => t.category === category && t.teamId === req.user.teamId && t.deleted);
-  const template = db.protocolTemplates.find((t) => t.category === category && !t.deleted && (!t.teamId || t.teamId === req.user.teamId));
+  const template = getProtocolTemplateMap(db, req.user.teamId)[category];
   if (!template) return res.status(404).json({ error: "Categoria de protocolo não encontrada" });
 
   const patientCount = db.patients.filter(
