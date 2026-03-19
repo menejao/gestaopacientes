@@ -552,7 +552,9 @@ function ensureDbShape(db) {
     pregnancyStartDate: p.pregnancyStartDate ? String(p.pregnancyStartDate) : "",
     expectedDeliveryDate: p.expectedDeliveryDate ? String(p.expectedDeliveryDate) : "",
     gestationalAgeDumWeeks: Number.isFinite(Number(p.gestationalAgeDumWeeks)) ? Number(p.gestationalAgeDumWeeks) : "",
+    gestationalAgeDumDays: Number.isFinite(Number(p.gestationalAgeDumDays)) ? Number(p.gestationalAgeDumDays) : "",
     gestationalAgeUsgWeeks: Number.isFinite(Number(p.gestationalAgeUsgWeeks)) ? Number(p.gestationalAgeUsgWeeks) : "",
+    gestationalAgeUsgDays: Number.isFinite(Number(p.gestationalAgeUsgDays)) ? Number(p.gestationalAgeUsgDays) : "",
     usgDate1: p.usgDate1 ? String(p.usgDate1) : "",
     usgDate2: p.usgDate2 ? String(p.usgDate2) : "",
     usgDate3: p.usgDate3 ? String(p.usgDate3) : "",
@@ -866,7 +868,9 @@ function buildPatientAccessReport(db, patient) {
       pregnancyStartDate: patient.pregnancyStartDate || "",
       expectedDeliveryDate: patient.expectedDeliveryDate || "",
       gestationalAgeDumWeeks: Number.isFinite(Number(patient.gestationalAgeDumWeeks)) ? Number(patient.gestationalAgeDumWeeks) : "",
+      gestationalAgeDumDays: Number.isFinite(Number(patient.gestationalAgeDumDays)) ? Number(patient.gestationalAgeDumDays) : "",
       gestationalAgeUsgWeeks: Number.isFinite(Number(patient.gestationalAgeUsgWeeks)) ? Number(patient.gestationalAgeUsgWeeks) : "",
+      gestationalAgeUsgDays: Number.isFinite(Number(patient.gestationalAgeUsgDays)) ? Number(patient.gestationalAgeUsgDays) : "",
       usgDate1: patient.usgDate1 || "",
       usgDate2: patient.usgDate2 || "",
       usgDate3: patient.usgDate3 || "",
@@ -941,7 +945,9 @@ function applyPatientCorrection(db, user, patient, corrections = {}) {
     "pregnancyStartDate",
     "expectedDeliveryDate",
     "gestationalAgeDumWeeks",
+    "gestationalAgeDumDays",
     "gestationalAgeUsgWeeks",
+    "gestationalAgeUsgDays",
     "usgDate1",
     "usgDate2",
     "usgDate3",
@@ -1013,7 +1019,9 @@ function anonymizePatientBundle(db, user, patient, reason = "", requestId = "") 
     pregnancyStartDate: "",
     expectedDeliveryDate: "",
     gestationalAgeDumWeeks: "",
+    gestationalAgeDumDays: "",
     gestationalAgeUsgWeeks: "",
+    gestationalAgeUsgDays: "",
     usgDate1: "",
     usgDate2: "",
     usgDate3: "",
@@ -1771,16 +1779,22 @@ function detectGestationTimeline(patient) {
   const dumWeeks = Number.isFinite(Number(patient?.gestationalAgeDumWeeks))
     ? Number(patient.gestationalAgeDumWeeks)
     : null;
+  const dumDays = Number.isFinite(Number(patient?.gestationalAgeDumDays))
+    ? Number(patient.gestationalAgeDumDays)
+    : 0;
   const usgWeeks = Number.isFinite(Number(patient?.gestationalAgeUsgWeeks))
     ? Number(patient.gestationalAgeUsgWeeks)
     : null;
+  const usgDays = Number.isFinite(Number(patient?.gestationalAgeUsgDays))
+    ? Number(patient.gestationalAgeUsgDays)
+    : 0;
   const now = toDateOnlySafe(new Date());
 
   const inferredStartFromUsg = latestUsgDate && usgWeeks !== null
-    ? addDays(latestUsgDate, -Math.max(0, Math.floor(usgWeeks * 7)))
+    ? addDays(latestUsgDate, -Math.max(0, Math.floor(usgWeeks * 7 + usgDays)))
     : null;
   const inferredStartFromDumAge = now && dumWeeks !== null
-    ? addDays(now, -Math.max(0, Math.floor(dumWeeks * 7)))
+    ? addDays(now, -Math.max(0, Math.floor(dumWeeks * 7 + dumDays)))
     : null;
 
   const start = rawStart
@@ -4065,8 +4079,14 @@ app.post("/patients", requireManagerOrDoctor, async (req, res) => {
     gestationalAgeDumWeeks: Number.isFinite(Number(payload.gestationalAgeDumWeeks))
       ? Math.max(0, Math.min(45, Number(payload.gestationalAgeDumWeeks)))
       : "",
+    gestationalAgeDumDays: Number.isFinite(Number(payload.gestationalAgeDumDays))
+      ? Math.max(0, Math.min(6, Number(payload.gestationalAgeDumDays)))
+      : "",
     gestationalAgeUsgWeeks: Number.isFinite(Number(payload.gestationalAgeUsgWeeks))
       ? Math.max(0, Math.min(45, Number(payload.gestationalAgeUsgWeeks)))
+      : "",
+    gestationalAgeUsgDays: Number.isFinite(Number(payload.gestationalAgeUsgDays))
+      ? Math.max(0, Math.min(6, Number(payload.gestationalAgeUsgDays)))
       : "",
     usgDate1: payload.usgDate1 ? String(payload.usgDate1).trim() : "",
     usgDate2: payload.usgDate2 ? String(payload.usgDate2).trim() : "",
@@ -4121,7 +4141,9 @@ app.put("/patients/:id", async (req, res) => {
       "pregnancyStartDate",
       "expectedDeliveryDate",
       "gestationalAgeDumWeeks",
+      "gestationalAgeDumDays",
       "gestationalAgeUsgWeeks",
+      "gestationalAgeUsgDays",
       "usgDate1",
       "usgDate2",
       "usgDate3",
@@ -4170,11 +4192,21 @@ app.put("/patients/:id", async (req, res) => {
           ? Math.max(0, Math.min(45, Number(safePayload.gestationalAgeDumWeeks)))
           : "")
         : (Number.isFinite(Number(current.gestationalAgeDumWeeks)) ? Number(current.gestationalAgeDumWeeks) : ""),
+      gestationalAgeDumDays: safePayload?.gestationalAgeDumDays !== undefined
+        ? (Number.isFinite(Number(safePayload.gestationalAgeDumDays))
+          ? Math.max(0, Math.min(6, Number(safePayload.gestationalAgeDumDays)))
+          : "")
+        : (Number.isFinite(Number(current.gestationalAgeDumDays)) ? Number(current.gestationalAgeDumDays) : ""),
       gestationalAgeUsgWeeks: safePayload?.gestationalAgeUsgWeeks !== undefined
         ? (Number.isFinite(Number(safePayload.gestationalAgeUsgWeeks))
           ? Math.max(0, Math.min(45, Number(safePayload.gestationalAgeUsgWeeks)))
           : "")
         : (Number.isFinite(Number(current.gestationalAgeUsgWeeks)) ? Number(current.gestationalAgeUsgWeeks) : ""),
+      gestationalAgeUsgDays: safePayload?.gestationalAgeUsgDays !== undefined
+        ? (Number.isFinite(Number(safePayload.gestationalAgeUsgDays))
+          ? Math.max(0, Math.min(6, Number(safePayload.gestationalAgeUsgDays)))
+          : "")
+        : (Number.isFinite(Number(current.gestationalAgeUsgDays)) ? Number(current.gestationalAgeUsgDays) : ""),
       usgDate1: safePayload?.usgDate1 !== undefined
         ? String(safePayload.usgDate1 || "").trim()
         : String(current.usgDate1 || ""),

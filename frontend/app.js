@@ -115,7 +115,9 @@ const el = {
   pPregnancyStartDate:      document.getElementById("pPregnancyStartDate"),
   pExpectedDeliveryDate:    document.getElementById("pExpectedDeliveryDate"),
   pGestationalAgeDumWeeks:  document.getElementById("pGestationalAgeDumWeeks"),
+  pGestationalAgeDumDays:   document.getElementById("pGestationalAgeDumDays"),
   pGestationalAgeUsgWeeks:  document.getElementById("pGestationalAgeUsgWeeks"),
+  pGestationalAgeUsgDays:   document.getElementById("pGestationalAgeUsgDays"),
   pUsgDate1:                document.getElementById("pUsgDate1"),
   pUsgDate2:                document.getElementById("pUsgDate2"),
   pUsgDate3:                document.getElementById("pUsgDate3"),
@@ -531,6 +533,14 @@ function parseWeeksInput(value) {
   return Math.max(0, Math.min(parsed, 45));
 }
 
+function parseGestationalDaysInput(value) {
+  const raw = onlyDigits(value).slice(0, 1);
+  if (!raw) return "";
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return "";
+  return Math.max(0, Math.min(parsed, 6));
+}
+
 function splitAddress(address) {
   const raw = String(address || "").trim();
   if (!raw) return { street: "", number: "", neighborhood: "", city: "", state: "", cep: "" };
@@ -879,9 +889,9 @@ async function reloadTemplateData() {
 
 // -- Role permissions ----------------------------------------------------------
 function applyRolePermissions() {
-  const patientFields = ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pMaritalStatus","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeUsgWeeks","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate"];
+  const patientFields = ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pMaritalStatus","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeDumDays","pGestationalAgeUsgWeeks","pGestationalAgeUsgDays","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate"];
   const taskFields = ["tTitle","tNotes","tDue","tAssignee"];
-  const mgrFields = ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pMaritalStatus","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeUsgWeeks","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate","tTitle","tNotes","tDue","tAssignee"];
+  const mgrFields = ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pAcs","pCareCategory","pBirthDate","pSexAtBirth","pMaritalStatus","pGenderIdentity","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeDumDays","pGestationalAgeUsgWeeks","pGestationalAgeUsgDays","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate","tTitle","tNotes","tDue","tAssignee"];
   const clinFields = ["aDate","aDemandType","aSummary","aConduct","aNext"];
 
   if (isManager()) {
@@ -1999,8 +2009,14 @@ function openPatientEdit() {
   el.pGestationalAgeDumWeeks.value = Number.isFinite(Number(p.gestationalAgeDumWeeks))
     ? String(p.gestationalAgeDumWeeks)
     : "";
+  el.pGestationalAgeDumDays.value = Number.isFinite(Number(p.gestationalAgeDumDays))
+    ? String(p.gestationalAgeDumDays)
+    : "";
   el.pGestationalAgeUsgWeeks.value = Number.isFinite(Number(p.gestationalAgeUsgWeeks))
     ? String(p.gestationalAgeUsgWeeks)
+    : "";
+  el.pGestationalAgeUsgDays.value = Number.isFinite(Number(p.gestationalAgeUsgDays))
+    ? String(p.gestationalAgeUsgDays)
     : "";
   el.pUsgDate1.value = p.usgDate1 || "";
   el.pUsgDate2.value = p.usgDate2 || "";
@@ -2876,7 +2892,7 @@ function openPatientCreateModal() {
   state.editingPatientId = null;
   el.patientModalTitle.textContent = "Novo cadastro de paciente";
   el.createPatientBtn.textContent = "Salvar";
-  ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeUsgWeeks","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate"].forEach((id) => {
+  ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pCep","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeDumDays","pGestationalAgeUsgWeeks","pGestationalAgeUsgDays","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate"].forEach((id) => {
     const ref = document.getElementById(id);
     if (ref) ref.value = "";
   });
@@ -3096,9 +3112,17 @@ el.pGestationalAgeDumWeeks?.addEventListener("input", () => {
   const parsed = parseWeeksInput(el.pGestationalAgeDumWeeks.value);
   el.pGestationalAgeDumWeeks.value = parsed === "" ? "" : String(parsed);
 });
+el.pGestationalAgeDumDays?.addEventListener("input", () => {
+  const parsed = parseGestationalDaysInput(el.pGestationalAgeDumDays.value);
+  el.pGestationalAgeDumDays.value = parsed === "" ? "" : String(parsed);
+});
 el.pGestationalAgeUsgWeeks?.addEventListener("input", () => {
   const parsed = parseWeeksInput(el.pGestationalAgeUsgWeeks.value);
   el.pGestationalAgeUsgWeeks.value = parsed === "" ? "" : String(parsed);
+});
+el.pGestationalAgeUsgDays?.addEventListener("input", () => {
+  const parsed = parseGestationalDaysInput(el.pGestationalAgeUsgDays.value);
+  el.pGestationalAgeUsgDays.value = parsed === "" ? "" : String(parsed);
 });
 el.pState?.addEventListener("input", () => { el.pState.value = String(el.pState.value || "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2); });
 el.managerCreateCouncilNumber?.addEventListener("input", () => { el.managerCreateCouncilNumber.value = formatCouncilNumber(el.managerCreateCouncilNumber.value, 8); });
@@ -3378,7 +3402,9 @@ el.createPatientBtn.addEventListener("click", async () => {
       pregnancyStartDate: el.pPregnancyStartDate.value || "",
       expectedDeliveryDate: el.pExpectedDeliveryDate.value || "",
       gestationalAgeDumWeeks: parseWeeksInput(el.pGestationalAgeDumWeeks.value),
+      gestationalAgeDumDays: parseGestationalDaysInput(el.pGestationalAgeDumDays.value),
       gestationalAgeUsgWeeks: parseWeeksInput(el.pGestationalAgeUsgWeeks.value),
+      gestationalAgeUsgDays: parseGestationalDaysInput(el.pGestationalAgeUsgDays.value),
       usgDate1: el.pUsgDate1.value || "",
       usgDate2: el.pUsgDate2.value || "",
       usgDate3: el.pUsgDate3.value || "",
@@ -3399,7 +3425,7 @@ el.createPatientBtn.addEventListener("click", async () => {
       showToast("Paciente cadastrado com sucesso!","ok");
     }
 
-    ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeUsgWeeks","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate"].forEach(id=>{document.getElementById(id).value="";});
+    ["pName","pMotherName","pPhone","pPhoneAlt","pCpf","pCns","pStreet","pNumber","pNeighborhood","pCity","pState","pComorb","pMeds","pAllergies","pBirthDate","pPregnancyStartDate","pExpectedDeliveryDate","pGestationalAgeDumWeeks","pGestationalAgeDumDays","pGestationalAgeUsgWeeks","pGestationalAgeUsgDays","pUsgDate1","pUsgDate2","pUsgDate3","pPrenatalStartDate","pPostpartumStartDate"].forEach(id=>{document.getElementById(id).value="";});
     if (el.pSexAtBirth) el.pSexAtBirth.value = "";
     if (el.pMaritalStatus) el.pMaritalStatus.value = "";
     if (el.pGenderIdentity) el.pGenderIdentity.value = "";
