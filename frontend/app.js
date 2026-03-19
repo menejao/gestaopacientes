@@ -2233,9 +2233,10 @@ function renderProtocolSummary() {
       </div>`
     : `<div class="protocol-ok-box">Sem itens vencidos ou próximos do prazo.</div>`;
   const gestWeeks = Number(s.specialMonitoring?.timeline?.gestationalWeeks);
+  const gestDays = Number(s.specialMonitoring?.timeline?.gestationalDays);
   const puerDays = Number(s.specialMonitoring?.timeline?.daysAfterBirth);
   const timelineBadge = Number.isFinite(gestWeeks)
-    ? `<div class="proto-section-label">Idade gestacional estimada: ${gestWeeks} semana(s)</div>`
+    ? `<div class="proto-section-label">Idade gestacional estimada: ${gestWeeks} semana(s) e ${Number.isFinite(gestDays) ? (Math.max(0, gestDays % 7)) : 0} dia(s)</div>`
     : (Number.isFinite(puerDays) ? `<div class="proto-section-label">Puerpério: ${puerDays} dia(s) pós-parto</div>` : "");
   const specialHtml = allPatientAlerts.length
     ? `

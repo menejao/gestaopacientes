@@ -1771,11 +1771,7 @@ function filterHistoryByPeriod(history, start, end) {
 function detectGestationTimeline(patient) {
   const rawStart = toDateOnlySafe(patient?.pregnancyStartDate);
   const rawDue = toDateOnlySafe(patient?.expectedDeliveryDate);
-  const usgDates = [patient?.usgDate1, patient?.usgDate2, patient?.usgDate3]
-    .map((d) => toDateOnlySafe(d))
-    .filter(Boolean)
-    .sort((a, b) => b.getTime() - a.getTime());
-  const latestUsgDate = usgDates[0] || null;
+  const usgDate1 = toDateOnlySafe(patient?.usgDate1);
   const dumWeeks = Number.isFinite(Number(patient?.gestationalAgeDumWeeks))
     ? Number(patient.gestationalAgeDumWeeks)
     : null;
@@ -1790,15 +1786,17 @@ function detectGestationTimeline(patient) {
     : 0;
   const now = toDateOnlySafe(new Date());
 
-  const inferredStartFromUsg = latestUsgDate && usgWeeks !== null
-    ? addDays(latestUsgDate, -Math.max(0, Math.floor(usgWeeks * 7 + usgDays)))
+  // Regra clínica: se houver 1ª USG com IG informada, ela passa a ser
+  // a referência principal da linha do tempo gestacional até o final.
+  const inferredStartFromFirstUsg = usgDate1 && usgWeeks !== null
+    ? addDays(usgDate1, -Math.max(0, Math.floor(usgWeeks * 7 + usgDays)))
     : null;
   const inferredStartFromDumAge = now && dumWeeks !== null
     ? addDays(now, -Math.max(0, Math.floor(dumWeeks * 7 + dumDays)))
     : null;
 
-  const start = rawStart
-    || inferredStartFromUsg
+  const start = inferredStartFromFirstUsg
+    || rawStart
     || inferredStartFromDumAge
     || (rawDue ? addDays(rawDue, -280) : null);
   const due = rawDue || (start ? addDays(start, 280) : null);
@@ -1815,7 +1813,9 @@ function detectGestationTimeline(patient) {
     gestationalDays,
     gestationalWeeks,
     daysUntilDue,
-    inferredBy: rawStart ? "dum" : (inferredStartFromUsg ? "usg" : (inferredStartFromDumAge ? "ig_dum" : (rawDue ? "dpp" : "")))
+    inferredBy: inferredStartFromFirstUsg
+      ? "usg_1"
+      : (rawStart ? "dum" : (inferredStartFromDumAge ? "ig_dum" : (rawDue ? "dpp" : "")))
   };
 }
 
