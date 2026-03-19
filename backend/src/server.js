@@ -1931,7 +1931,6 @@ function evaluatePregnantProtocol(patient, history) {
       title: "Vacina influenza pendente na gestação",
       detail: "Registrar pelo menos 1 dose de influenza durante a gestação.",
       severity: weeks >= 28 ? "high" : "medium",
-      overdueDays: Math.max((weeks - 12) * 7, 0),
       categoryLabel
     }));
   }
@@ -1943,7 +1942,6 @@ function evaluatePregnantProtocol(patient, history) {
       title: "Vacina COVID-19 pendente na gestação",
       detail: "Registrar pelo menos 1 dose de COVID-19 durante a gestação.",
       severity: weeks >= 28 ? "high" : "medium",
-      overdueDays: Math.max((weeks - 12) * 7, 0),
       categoryLabel
     }));
   }
@@ -1955,7 +1953,6 @@ function evaluatePregnantProtocol(patient, history) {
       title: "Vacina hepatite B pendente na gestação",
       detail: "Registrar dose de hepatite B durante a gestação quando não houver comprovação prévia no prontuário.",
       severity: weeks >= 28 ? "high" : "medium",
-      overdueDays: Math.max((weeks - 12) * 7, 0),
       categoryLabel
     }));
   }

@@ -1270,10 +1270,6 @@ function protocolStatusInfo(summary) {
     return overdue <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= 7;
   }).length;
 
-  const pendingTotal = Number(summary.pending?.visits || 0)
-    + Number(summary.pending?.consultations || 0)
-    + Number(summary.pending?.vaccines || 0);
-
   const doneTotal = Number(summary.completed?.visits || 0)
     + Number(summary.completed?.consultations || 0)
     + Number(summary.completed?.vaccines || 0);
@@ -1307,12 +1303,7 @@ function protocolStatusInfo(summary) {
   if (dueSoonCount > 0) {
     return { key: "attention", label: `Atenção (${dueSoonCount} próximo[s] do prazo)`, className: "status pending" };
   }
-
-  if (pendingTotal <= 0) {
-    return { key: "ok", label: `Em dia (${doneTotal}/${targetTotal || doneTotal || 0})`, className: "status done" };
-  }
-
-  return { key: "attention", label: `Em andamento (${doneTotal}/${targetTotal || 0})`, className: "status pending" };
+  return { key: "ok", label: `Em dia (${doneTotal}/${targetTotal || doneTotal || 0})`, className: "status done" };
 }
 
 function sortedPatientsForDashboard(list) {
@@ -2158,10 +2149,36 @@ function renderProtocolSummary() {
       };
     });
   const allPatientAlerts = [...specialAlerts, ...scheduleAlerts];
+  const classifyPatientAlert = (item) => {
+    const overdue = Number(item?.overdue || 0);
+    const rawDaysLeft = item?.daysLeft;
+    const daysLeft = rawDaysLeft === null || rawDaysLeft === undefined || rawDaysLeft === ""
+      ? null
+      : Number(rawDaysLeft);
+    const dueSoon = overdue <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= 7;
+    return { overdue, daysLeft, dueSoon };
+  };
   allPatientAlerts.sort((a, b) => {
+    const ca = classifyPatientAlert(a);
+    const cb = classifyPatientAlert(b);
+    if (cb.overdue !== ca.overdue) return cb.overdue - ca.overdue;
+    if (cb.dueSoon !== ca.dueSoon) return Number(cb.dueSoon) - Number(ca.dueSoon);
     const weight = (x) => (x === "high" ? 3 : (x === "medium" ? 2 : 1));
     return weight(b.severity || "low") - weight(a.severity || "low");
   });
+  const overdueItems = allPatientAlerts.filter((item) => Number(item?.overdue || 0) > 0);
+  const dueSoonItems = allPatientAlerts.filter((item) => {
+    const rawDaysLeft = item?.daysLeft;
+    if (rawDaysLeft === null || rawDaysLeft === undefined || rawDaysLeft === "") return false;
+    const daysLeft = Number(rawDaysLeft);
+    return Number(item?.overdue || 0) <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= 7;
+  });
+  const priorityBox = (overdueItems.length || dueSoonItems.length)
+    ? `<div class="${overdueItems.length ? "protocol-critical-box" : "protocol-ok-box"}">
+        ${overdueItems.length ? `${overdueItems.length} item(ns) vencido(s)` : "Nenhum item vencido"}
+        ${dueSoonItems.length ? ` | ${dueSoonItems.length} próximo(s) do prazo` : ""}
+      </div>`
+    : `<div class="protocol-ok-box">Sem itens vencidos ou próximos do prazo.</div>`;
   const gestWeeks = Number(s.specialMonitoring?.timeline?.gestationalWeeks);
   const puerDays = Number(s.specialMonitoring?.timeline?.daysAfterBirth);
   const timelineBadge = Number.isFinite(gestWeeks)
@@ -2189,6 +2206,7 @@ function renderProtocolSummary() {
     ${statsHtml}
     ${criticalBox}
     <div class="proto-alerts">${alerts||allOk}</div>
+    ${priorityBox}
     ${s.categoryLabel?`<div class="proto-section-label">Categoria ativa: ${s.categoryLabel}</div>`:""}
     ${timelineBadge}
     ${specialHtml}
