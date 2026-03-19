@@ -1261,10 +1261,12 @@ function protocolStatusInfo(summary) {
   }
 
   const specialAlerts = Array.isArray(summary.specialAlerts) ? summary.specialAlerts : [];
-  const highSpecial = specialAlerts.filter((a) => a.severity === "high").length;
-  if (highSpecial > 0) {
-    return { key: "critical", label: `Atenção clínica (${highSpecial} alerta[s])`, className: "status alert" };
-  }
+  const overdueSpecial = specialAlerts.filter((a) => Number(a?.overdue || 0) > 0).length;
+  const dueSoonSpecial = specialAlerts.filter((a) => {
+    const overdue = Number(a?.overdue || 0);
+    const daysLeft = Number(a?.daysLeft);
+    return overdue <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= 7;
+  }).length;
 
   const pendingTotal = Number(summary.pending?.visits || 0)
     + Number(summary.pending?.consultations || 0)
@@ -1278,16 +1280,35 @@ function protocolStatusInfo(summary) {
     + Number(summary.targets?.consultations || 0)
     + Number(summary.targets?.vaccines || 0);
 
+  const schedule = summary.schedule || {};
+  const scheduleOverdue = ["visits", "consultations", "vaccines"].reduce((acc, key) => {
+    const item = schedule[key] || {};
+    return acc + (Number(item.overdueDays || 0) > 0 ? 1 : 0);
+  }, 0);
+  const scheduleDueSoon = ["visits", "consultations", "vaccines"].reduce((acc, key) => {
+    const item = schedule[key] || {};
+    const daysLeft = Number(item.daysLeft);
+    const overdue = Number(item.overdueDays || 0);
+    if (overdue > 0) return acc;
+    if (!Number.isFinite(daysLeft)) return acc;
+    return acc + (daysLeft >= 0 && daysLeft <= 7 ? 1 : 0);
+  }, 0);
+
+  const overdueCount = overdueSpecial + scheduleOverdue;
+  if (overdueCount > 0) {
+    return { key: "critical", label: `Atraso crítico (${overdueCount} vencido[s])`, className: "status alert" };
+  }
+
+  const dueSoonCount = dueSoonSpecial + scheduleDueSoon;
+  if (dueSoonCount > 0) {
+    return { key: "attention", label: `Atenção (${dueSoonCount} próximo[s] do prazo)`, className: "status pending" };
+  }
+
   if (pendingTotal <= 0) {
     return { key: "ok", label: `Em dia (${doneTotal}/${targetTotal || doneTotal || 0})`, className: "status done" };
   }
 
-  const completion = targetTotal > 0 ? doneTotal / targetTotal : 0;
-  if (completion < 0.4) {
-    return { key: "critical", label: `Atraso crítico (${doneTotal}/${targetTotal || 0})`, className: "status alert" };
-  }
-
-  return { key: "attention", label: `Atraso leve (${doneTotal}/${targetTotal || 0})`, className: "status pending" };
+  return { key: "attention", label: `Em andamento (${doneTotal}/${targetTotal || 0})`, className: "status pending" };
 }
 
 function sortedPatientsForDashboard(list) {
