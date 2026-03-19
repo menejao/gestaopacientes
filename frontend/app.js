@@ -433,6 +433,66 @@ function renderAiReadable(target, data) {
   target.innerHTML = sections.length ? sections.join("") : `<p>${escapeHtml(prettyJson(data))}</p>`;
 }
 
+function riskLabel(level) {
+  const raw = String(level || "").toLowerCase();
+  if (raw === "alto") return "ALTO";
+  if (raw === "moderado") return "MODERADO";
+  return "BAIXO";
+}
+
+function formatTeamAiOutput(path, data) {
+  if (!data || typeof data !== "object") return `<p>${escapeHtml(data)}</p>`;
+
+  if (path === "/ai/team/priorities" && Array.isArray(data.items)) {
+    if (!data.items.length) return "<p>Sem pacientes prioritários no momento.</p>";
+    const lines = data.items.map((item, idx) => {
+      const risk = item?.risk || {};
+      const pending = item?.protocol || {};
+      return `
+        <div class="record-card">
+          <div class="record-hd">
+            <span class="record-title">${idx + 1}. ${escapeHtml(item.patientName || "-")}</span>
+            <span class="status ${String(risk.level || "").toLowerCase() === "alto" ? "alert" : (String(risk.level || "").toLowerCase() === "moderado" ? "pending" : "progress")}">${riskLabel(risk.level)}</span>
+          </div>
+          <div class="record-body">
+            <p><strong>Microárea:</strong> ${escapeHtml(item.microArea || "-")}</p>
+            <p><strong>Pendências:</strong> Visitas ${Number(pending.visits || 0)}, Consultas ${Number(pending.consultations || 0)}, Vacinas ${Number(pending.vaccines || 0)}</p>
+            <p><strong>Ação sugerida:</strong> ${escapeHtml(item.topAction || "Revisar prontuário.")}</p>
+          </div>
+        </div>`;
+    }).join("");
+    return renderAiSection("Prioridades do dia", lines);
+  }
+
+  if (path === "/ai/team/data-quality" && Array.isArray(data.findings)) {
+    if (!data.findings.length) return "<p>Nenhum problema de qualidade de dados encontrado.</p>";
+    const rows = data.findings.map((f, idx) => `
+      <div class="home-task-row">
+        <div>
+          <p class="home-task-title">${idx + 1}. ${escapeHtml(f.patientName || "-")}</p>
+          <p class="home-task-meta">${escapeHtml(f.issue || "-")}</p>
+        </div>
+        <span class="status ${String(f.severity || "").toLowerCase() === "high" ? "alert" : "pending"}">${String(f.severity || "").toUpperCase()}</span>
+      </div>
+    `).join("");
+    return renderAiSection("Qualidade de dados", rows);
+  }
+
+  if (path === "/ai/team/report") {
+    return `
+      ${data.executiveSummary ? renderAiSection("Resumo executivo", `<p>${escapeHtml(data.executiveSummary)}</p>`) : ""}
+      ${data.totals ? renderAiSection("Totais", `
+        <p><strong>Pacientes:</strong> ${Number(data.totals.patients || 0)}</p>
+        <p><strong>Alto risco:</strong> ${Number(data.totals.highRiskPatients || 0)}</p>
+        <p><strong>Tarefas atrasadas:</strong> ${Number(data.totals.overdueTasks || 0)}</p>
+      `) : ""}
+      ${Array.isArray(data.recommendations) ? renderAiSection("Recomendações", `<ul>${data.recommendations.map((r) => `<li>${escapeHtml(r)}</li>`).join("")}</ul>`) : ""}
+    `;
+  }
+
+  return null;
+}
+
 function formatPhone(value) {
   const d = onlyDigits(value).slice(0, 11);
   if (d.length <= 2) return d;
@@ -1514,7 +1574,9 @@ function requireSelectedPatientForAi() {
 async function runTeamAi(path, payload = {}) {
   try {
     const data = await api(path, { method: "POST", body: JSON.stringify(payload) });
-    renderAiReadable(el.aiHubOutput, data);
+    const specific = formatTeamAiOutput(path, data);
+    if (specific) el.aiHubOutput.innerHTML = specific;
+    else renderAiReadable(el.aiHubOutput, data);
   } catch (e) {
     showToast(e.message, "error");
   }
