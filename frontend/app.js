@@ -3411,6 +3411,8 @@ el.addRecordBtn.addEventListener("click", async () => {
     _recordDraftMetadata = null;
     updateRecordTitleControls();
     await refreshSelectedPatientData();
+    await loadProtocolStatusesForDashboard();
+    renderWorkspaceHome();
   } catch(e) { showToast(e.message,"error"); }
 });
 

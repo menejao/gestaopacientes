@@ -3930,7 +3930,7 @@ app.post("/patients", requireManagerOrDoctor, async (req, res) => {
     createdBy: req.user.id
   };
 
-  withDb((db) => {
+  await withDb((db) => {
     ensureDbShape(db);
     db.patients.push(patient);
     addAuditLog(db, req.user, "patient.created", "patient", patient.id, {
@@ -4154,7 +4154,7 @@ app.post("/patients/:id/appointments", async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  withDb((mutableDb) => {
+  await withDb((mutableDb) => {
     ensureDbShape(mutableDb);
     mutableDb.appointments.push(appointment);
     addAuditLog(mutableDb, req.user, "appointment.created", "appointment", appointment.id, {
@@ -4243,7 +4243,7 @@ app.post("/patients/:id/records", async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  withDb((mutableDb) => {
+  await withDb((mutableDb) => {
     ensureDbShape(mutableDb);
     mutableDb.clinicalRecords.push(record);
     addAuditLog(mutableDb, req.user, "clinical_record.created", "clinical_record", record.id, {
@@ -4385,7 +4385,7 @@ app.post("/tasks", requireManagerOrDoctor, async (req, res) => {
     updatedAt: new Date().toISOString()
   };
 
-  withDb((mutableDb) => {
+  await withDb((mutableDb) => {
     ensureDbShape(mutableDb);
     mutableDb.tasks.push(task);
     addAuditLog(mutableDb, req.user, "task.created", "task", task.id, {
@@ -4485,7 +4485,7 @@ app.post("/patients/:id/messages", async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  withDb((mutableDb) => {
+  await withDb((mutableDb) => {
     ensureDbShape(mutableDb);
     mutableDb.messages.push(message);
     addAuditLog(mutableDb, req.user, "message.created", "message", message.id, {
