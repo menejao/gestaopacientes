@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SaudeUbs.Api.Services;
 
 namespace SaudeUbs.Api.Models;
 
@@ -105,6 +106,16 @@ public sealed class ClinicalRecord
     [JsonPropertyName("metadata")] public Dictionary<string, JsonElement>? Metadata { get; set; }
 }
 
+public sealed class ClinicalRecordRequest
+{
+    [JsonPropertyName("type")] public string Type { get; set; } = "";
+    [JsonPropertyName("title")] public string Title { get; set; } = "";
+    [JsonPropertyName("details")] public string? Details { get; set; }
+    [JsonPropertyName("date")] public string Date { get; set; } = "";
+    [JsonPropertyName("protocolTag")] public string? ProtocolTag { get; set; }
+    [JsonPropertyName("metadata")] public Dictionary<string, JsonElement>? Metadata { get; set; }
+}
+
 public sealed class ProtocolTemplate
 {
     [JsonPropertyName("category")] public string Category { get; set; } = "";
@@ -165,7 +176,7 @@ public sealed class PatientUpsertRequest
             MicroArea = (MicroArea ?? "").Trim(),
             AssignedAcsId = (AssignedAcsId ?? "").Trim(),
             CareCategory = string.IsNullOrWhiteSpace(CareCategory) ? "general" : CareCategory.Trim().ToLowerInvariant(),
-            ChronicConditions = NormalizeConditions(ChronicConditions),
+            ChronicConditions = AuthService.NormalizeChronicConditions(ChronicConditions),
             BirthDate = (BirthDate ?? "").Trim(),
             CreatedAt = DateTime.UtcNow.ToString("O")
         };
@@ -175,15 +186,6 @@ public sealed class PatientUpsertRequest
             patient.Extra = new Dictionary<string, JsonElement>(Extra);
         }
         return patient;
-    }
-
-    private static List<string> NormalizeConditions(IEnumerable<string>? values)
-    {
-        return (values ?? Array.Empty<string>())
-            .Select(v => (v ?? "").Trim().ToLowerInvariant())
-            .Where(v => v is "hypertension" or "diabetes")
-            .Distinct()
-            .ToList();
     }
 }
 
@@ -197,4 +199,3 @@ public sealed class HistoryItem
     public string Details { get; set; } = "";
     public string Source { get; set; } = "";
 }
-

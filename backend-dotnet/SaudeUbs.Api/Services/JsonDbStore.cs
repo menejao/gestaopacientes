@@ -19,7 +19,7 @@ public sealed class JsonDbStore
         var envPath = (Environment.GetEnvironmentVariable("DB_JSON_PATH") ?? "").Trim();
         _dbPath = !string.IsNullOrWhiteSpace(envPath)
             ? envPath
-            : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "backend", "data", "db.json"));
+            : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "backend", "data", "db.json"));
     }
 
     public async Task<AppDb> ReadAsync()
@@ -73,4 +73,3 @@ public sealed class JsonDbStore
         return state;
     }
 }
-

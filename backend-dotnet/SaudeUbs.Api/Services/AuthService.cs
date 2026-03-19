@@ -43,11 +43,25 @@ public sealed class AuthService
         if (string.IsNullOrWhiteSpace(value)) return false;
         if (value.StartsWith("s1$", StringComparison.OrdinalIgnoreCase))
         {
-            // Fase inicial .NET: hash scrypt do Node ainda não validado aqui.
-            // Durante migração paralela, manter usuários de homologação com senha em texto no db.json local.
+            // Compatibilidade scrypt do Node será portada no próximo bloco.
             return false;
         }
         return string.Equals(input, value, StringComparison.Ordinal);
+    }
+
+    public bool IsDemoAnaCredential(string email, string password)
+    {
+        return string.Equals((email ?? "").Trim(), "ana@clinica.local", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(password ?? "", "123456", StringComparison.Ordinal);
+    }
+
+    public static List<string> NormalizeChronicConditions(IEnumerable<string>? values)
+    {
+        return (values ?? Array.Empty<string>())
+            .Select(v => (v ?? "").Trim().ToLowerInvariant())
+            .Where(v => v is "hypertension" or "diabetes")
+            .Distinct()
+            .ToList();
     }
 
     public object SanitizeUser(AppDb db, User user)
@@ -134,5 +148,5 @@ public sealed class AuthService
         var text = NormalizeText(value);
         return text.Contains("dent") || text.Contains("odont") || text.Contains("bucal");
     }
-}
 
+}

@@ -136,6 +136,12 @@ public sealed class ProtocolSummaryService
         };
     }
 
+    public string NormalizeCategoryForTeam(AppDb db, string teamId, string? inputCategory)
+    {
+        var map = BuildTemplateMap(db, teamId);
+        return NormalizeCategory(inputCategory, map);
+    }
+
     private static Dictionary<string, ProtocolTemplate> BuildTemplateMap(AppDb db, string teamId)
     {
         var map = DefaultProtocols.ToDictionary(k => k.Key, v => CloneTemplate(v.Value), StringComparer.OrdinalIgnoreCase);
@@ -300,4 +306,3 @@ public sealed class ProtocolSummaryService
         return outAlerts;
     }
 }
-
