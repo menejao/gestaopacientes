@@ -624,8 +624,8 @@ function setSelectedChronicConditions(items = []) {
 
 function updateChronicConditionsVisibility() {
   const category = el.pCareCategory?.value || "";
-  const isChronic = el.pCareCategory?.value === "chronic";
-  el.pChronicConditionsWrap?.classList.toggle("hidden", !isChronic);
+  const showConditions = category === "chronic" || category === "elderly";
+  el.pChronicConditionsWrap?.classList.toggle("hidden", !showConditions);
   const isChild = category === "child_followup";
   const isPregnant = category === "pregnant";
   const isPuerperal = category === "puerperal";
@@ -993,7 +993,7 @@ function renderPatientHeader() {
   el.patientAvatar.textContent = p.name.charAt(0).toUpperCase();
   const chips = [
     `<span class="chip blue">${catLabel(p.careCategory)}</span>`,
-    p.careCategory === "chronic" && Array.isArray(p.chronicConditions) && p.chronicConditions.length
+    (p.careCategory === "chronic" || p.careCategory === "elderly") && Array.isArray(p.chronicConditions) && p.chronicConditions.length
       ? `<span class="chip">${p.chronicConditions.map((c) => c === "diabetes" ? "Diabetes" : "Hipertensão").join(" + ")}</span>`
       : null,
     p.microArea && `<span class="chip">MA ${p.microArea}</span>`,

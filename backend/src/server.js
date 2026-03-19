@@ -2777,8 +2777,20 @@ function buildProtocolSummary(patient, history, templateMap) {
     specialMonitoring = evaluateChronicProtocol(patient, history);
     specialAlerts = specialMonitoring.alerts || [];
   } else if (template.category === "elderly") {
-    specialMonitoring = evaluateElderlyProtocol(patient, history);
-    specialAlerts = specialMonitoring.alerts || [];
+    const elderlyMonitoring = evaluateElderlyProtocol(patient, history);
+    const chronicMonitoring = evaluateChronicProtocol(patient, history);
+    specialMonitoring = {
+      ...elderlyMonitoring,
+      chronic: chronicMonitoring,
+      checklist: {
+        ...(elderlyMonitoring?.checklist || {}),
+        chronicConditions: chronicMonitoring?.checklist?.conditions || []
+      }
+    };
+    specialAlerts = [
+      ...(elderlyMonitoring?.alerts || []),
+      ...(chronicMonitoring?.alerts || [])
+    ];
   }
 
   const severityWeight = { lost: 4, high: 3, medium: 2, low: 1 };
