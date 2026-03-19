@@ -1619,6 +1619,14 @@ function deadlineSeverity(daysLeft) {
   return "low";
 }
 
+function vaccineDeadlineSeverity(daysLeft) {
+  const value = Number(daysLeft);
+  if (!Number.isFinite(value)) return "low";
+  if (value < 0) return "high";
+  if (value <= 2) return "medium";
+  return "low";
+}
+
 function homeVisitSeverityByDaysLeft(daysLeft) {
   const value = Number(daysLeft);
   if (!Number.isFinite(value)) return "low";
@@ -2449,7 +2457,7 @@ function evaluateChildProtocol(patient, history, template = null) {
 
     const dueDate = addMonths(birthDate, item.month);
     const daysLeft = daysDiff(new Date(), dueDate);
-    const severity = deadlineSeverity(daysLeft);
+    const severity = vaccineDeadlineSeverity(daysLeft);
     const overdueDays = Math.max(-(Number(daysLeft) || 0), 0);
     alerts.push(makeClinicalAlert({
       id: `child-vaccine-${item.vaccine}-${item.month}`,

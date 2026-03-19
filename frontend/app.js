@@ -1170,6 +1170,7 @@ function renderProtocolDeadlineAlerts() {
   if (!el.protocolDeadlineAlertsList) return;
   const labels = { visits: "visita", consultations: "consulta", vaccines: "vacina" };
   const alerts = [];
+  const isVaccineAlertItem = (item = {}) => /vacina/i.test(String(item.activity || item.title || ""));
   const severityLabel = (value) => {
     if (value === "lost") return "PERDIDO";
     if (value === "high") return "ALTO";
@@ -1180,6 +1181,11 @@ function renderProtocolDeadlineAlerts() {
     if (overdue > 0) return { severity: "lost", severityClass: "status lost" };
     if (daysLeft <= 3) return { severity: "high", severityClass: "status alert" };
     if (daysLeft <= 7) return { severity: "medium", severityClass: "status pending" };
+    return { severity: "low", severityClass: "status progress" };
+  };
+  const classifyVaccineDeadline = (daysLeft, overdue) => {
+    if (overdue > 0) return { severity: "high", severityClass: "status alert" };
+    if (daysLeft <= 2) return { severity: "medium", severityClass: "status pending" };
     return { severity: "low", severityClass: "status progress" };
   };
 
@@ -1204,6 +1210,11 @@ function renderProtocolDeadlineAlerts() {
         severity = visitState.severity;
         severityClass = visitState.severityClass;
         score = overdue > 0 ? 130 + overdue : (daysLeft <= 7 ? 70 - daysLeft : 20 - Math.min(daysLeft, 20));
+      } else if (key === "vaccines") {
+        const vaccineState = classifyVaccineDeadline(daysLeft, overdue);
+        severity = vaccineState.severity;
+        severityClass = vaccineState.severityClass;
+        score = overdue > 0 ? 120 + overdue : (daysLeft <= 2 ? 65 - daysLeft : 18 - Math.min(daysLeft, 18));
       } else {
         if (overdue > 0) {
           severity = "high";
@@ -1242,7 +1253,10 @@ function renderProtocolDeadlineAlerts() {
       const daysLeft = item.daysLeft === null || item.daysLeft === undefined ? null : Number(item.daysLeft);
       let score = severity === "high" ? 90 : (severity === "medium" ? 70 : 40);
       if (overdue > 0) score += Math.min(overdue, 30);
-      if (daysLeft !== null && daysLeft <= 7) score += 12;
+      if (daysLeft !== null) {
+        const threshold = isVaccineAlertItem(item) ? 2 : 7;
+        if (daysLeft <= threshold) score += 12;
+      }
       alerts.push({
         source: "clinical",
         patientName: patient.name,
@@ -1290,13 +1304,15 @@ function protocolStatusInfo(summary) {
   }
 
   const specialAlerts = Array.isArray(summary.specialAlerts) ? summary.specialAlerts : [];
+  const isVaccineAlertItem = (item = {}) => /vacina/i.test(String(item.activity || item.title || ""));
   const overdueSpecial = specialAlerts.filter((a) => Number(a?.overdue || 0) > 0).length;
   const dueSoonSpecial = specialAlerts.filter((a) => {
     const overdue = Number(a?.overdue || 0);
     const rawDaysLeft = a?.daysLeft;
     if (rawDaysLeft === null || rawDaysLeft === undefined || rawDaysLeft === "") return false;
     const daysLeft = Number(rawDaysLeft);
-    return overdue <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= 7;
+    const threshold = isVaccineAlertItem(a) ? 2 : 7;
+    return overdue <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= threshold;
   }).length;
 
   const doneTotal = Number(summary.completed?.visits || 0)
@@ -1320,7 +1336,8 @@ function protocolStatusInfo(summary) {
     const overdue = Number(item.overdueDays || 0);
     if (overdue > 0) return acc;
     if (!Number.isFinite(daysLeft)) return acc;
-    return acc + (daysLeft >= 0 && daysLeft <= 7 ? 1 : 0);
+    const threshold = key === "vaccines" ? 2 : 7;
+    return acc + (daysLeft >= 0 && daysLeft <= threshold ? 1 : 0);
   }, 0);
 
   const overdueCount = overdueSpecial + scheduleOverdue;
@@ -2130,10 +2147,16 @@ function renderProtocolSummary() {
     if (value === "medium") return "MÉDIO";
     return "BAIXO";
   };
+  const isVaccineAlertItem = (item = {}) => /vacina/i.test(String(item.activity || item.title || ""));
   const classifyVisitDeadline = (daysLeft, overdue) => {
     if (overdue > 0) return { severity: "lost", severityClass: "status lost" };
     if (daysLeft !== null && daysLeft <= 3) return { severity: "high", severityClass: "status alert" };
     if (daysLeft !== null && daysLeft <= 7) return { severity: "medium", severityClass: "status pending" };
+    return { severity: "low", severityClass: "status progress" };
+  };
+  const classifyVaccineDeadline = (daysLeft, overdue) => {
+    if (overdue > 0) return { severity: "high", severityClass: "status alert" };
+    if (daysLeft !== null && daysLeft <= 2) return { severity: "medium", severityClass: "status pending" };
     return { severity: "low", severityClass: "status progress" };
   };
   const pluralize = (count, singular, plural) => `${count} ${count === 1 ? singular : plural}`;
@@ -2179,6 +2202,10 @@ function renderProtocolSummary() {
         const visitState = classifyVisitDeadline(daysLeft, overdue);
         severity = visitState.severity;
         severityClass = visitState.severityClass;
+      } else if (key === "vaccines") {
+        const vaccineState = classifyVaccineDeadline(daysLeft, overdue);
+        severity = vaccineState.severity;
+        severityClass = vaccineState.severityClass;
       } else if (overdue > 0) {
         severity = "high";
         severityClass = "status alert";
@@ -2208,7 +2235,8 @@ function renderProtocolSummary() {
     const daysLeft = rawDaysLeft === null || rawDaysLeft === undefined || rawDaysLeft === ""
       ? null
       : Number(rawDaysLeft);
-    const dueSoon = overdue <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= 7;
+    const threshold = isVaccineAlertItem(item) ? 2 : 7;
+    const dueSoon = overdue <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= threshold;
     return { overdue, daysLeft, dueSoon };
   };
   allPatientAlerts.sort((a, b) => {
@@ -2224,7 +2252,8 @@ function renderProtocolSummary() {
     const rawDaysLeft = item?.daysLeft;
     if (rawDaysLeft === null || rawDaysLeft === undefined || rawDaysLeft === "") return false;
     const daysLeft = Number(rawDaysLeft);
-    return Number(item?.overdue || 0) <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= 7;
+    const threshold = isVaccineAlertItem(item) ? 2 : 7;
+    return Number(item?.overdue || 0) <= 0 && Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= threshold;
   });
   const priorityBox = (overdueItems.length || dueSoonItems.length)
     ? `<div class="${overdueItems.length ? "protocol-critical-box" : "protocol-ok-box"}">
