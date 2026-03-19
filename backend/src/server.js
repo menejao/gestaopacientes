@@ -157,6 +157,7 @@ function buildDefaultProtocolTemplates() {
 const ALLOWED_SELF_REGISTER_ROLES = ["acs", "doctor", "nurse_manager"];
 const PRIVACY_REQUEST_TYPES = new Set(["access", "correction", "deletion"]);
 const PRIVACY_REQUEST_STATUS = new Set(["pending", "in_review", "approved", "rejected", "completed"]);
+const TEST_ADMIN_EMAIL = "ana@clinica.local";
 const VALID_UF = new Set([
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
@@ -439,6 +440,11 @@ function isDoctor(user) {
 
 function isAcs(user) {
   return canonicalRole(user?.role) === "acs";
+}
+
+function isAnaAdminUser(user) {
+  const email = String(user?.email || "").trim().toLowerCase();
+  return isManager(user) && email === TEST_ADMIN_EMAIL;
 }
 
 function ensureArray(db, key) {
@@ -3731,6 +3737,9 @@ app.get("/users", async (req, res) => {
 });
 
 app.get("/users/activity-log", requireManager, async (req, res) => {
+  if (!isAnaAdminUser(req.user)) {
+    return res.status(403).json({ error: "Apenas a conta administrativa de teste pode acessar este painel" });
+  }
   const db = await readDb();
   ensureDbShape(db);
   const now = Date.now();

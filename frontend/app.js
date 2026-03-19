@@ -381,6 +381,8 @@ function setupInactivityWatcher() {
 const isManager = () => state.user?.role === "nurse_manager";
 const isDoctor  = () => state.user?.role === "doctor";
 const isAcs     = () => state.user?.role === "acs";
+const isAnaAdminAccount = () =>
+  isManager() && String(state.user?.email || "").trim().toLowerCase() === "ana@clinica.local";
 const canManageTaskStatus = () => isManager() || isDoctor();
 const acsNameById  = id => state.users.find(u => u.id === id)?.name || "Não atribuído";
 const catLabel     = cat => state.protocolTemplates.find(t => t.category === cat)?.label || "Geral";
@@ -1135,7 +1137,7 @@ function userRoleLabel(role) {
 
 function renderTeamActivityLog() {
   if (!el.teamActivityCard || !el.teamActivityList) return;
-  const canView = isManager();
+  const canView = isAnaAdminAccount();
   el.teamActivityCard.classList.toggle("hidden", !canView);
   if (!canView) return;
 
@@ -2668,7 +2670,7 @@ async function loadGlobalTasks() {
   renderWorkspaceHome();
 }
 async function loadTeamActivityLog() {
-  if (!isManager()) {
+  if (!isAnaAdminAccount()) {
     state.teamActivityLog = [];
     renderTeamActivityLog();
     return;
@@ -2697,7 +2699,7 @@ function startPresenceAndActivityTimers() {
     sendPresencePing();
   }, PRESENCE_PING_MS);
 
-  if (isManager()) {
+  if (isAnaAdminAccount()) {
     loadTeamActivityLog();
     _activityLogRefreshTimer = setInterval(() => {
       loadTeamActivityLog();
