@@ -1541,6 +1541,22 @@ function isDentalConsultationTitle(textValue = "") {
   return /(consulta|atendimento).*(odont|dent|bucal)|odontolog|dentista/.test(text);
 }
 
+function detectConsultationSpecialtyFromTitle(textValue = "") {
+  const text = normalizeText(textValue);
+  if (!text) return "general";
+  if (/(odont|dent|bucal|dentista)/.test(text)) return "dental";
+  if (/enferm/.test(text)) return "nursing";
+  if (/(medic|pre natal|prenatal)/.test(text)) return "medical";
+  return "general";
+}
+
+function normalizeConsultationTitle(title = "", specialty = "general") {
+  if (specialty === "medical") return "Consulta médica";
+  if (specialty === "nursing") return "Consulta de enfermagem";
+  if (specialty === "dental") return "Consulta odontológica";
+  return String(title || "").trim() || "Consulta";
+}
+
 function isDentalRecord(entry) {
   const type = String(entry?.type || "").toLowerCase();
   const title = String(entry?.title || "");
@@ -4247,17 +4263,28 @@ app.post("/patients/:id/records", async (req, res) => {
     return res.status(400).json({ error: integrityCheck.error });
   }
 
+  const incomingMetadata = payload.metadata && typeof payload.metadata === "object" ? payload.metadata : {};
+  const consultationSpecialty = type === "consultation"
+    ? detectConsultationSpecialtyFromTitle(payload.title)
+    : "";
+  const normalizedTitle = type === "consultation"
+    ? normalizeConsultationTitle(payload.title, consultationSpecialty)
+    : String(payload.title);
+
   const record = {
     id: uuidv4(),
     patientId: id,
     type,
-    title: String(payload.title),
+    title: normalizedTitle,
     details: payload.details ? String(payload.details) : "",
     date: String(payload.date),
     protocolTag: payload.protocolTag
       ? normalizeCategory(String(payload.protocolTag), getProtocolTemplateMap(db, req.user.teamId))
       : normalizeCategory(lookup.patient.careCategory, getProtocolTemplateMap(db, req.user.teamId)),
-    metadata: payload.metadata && typeof payload.metadata === "object" ? payload.metadata : {},
+    metadata: {
+      ...incomingMetadata,
+      ...(type === "consultation" ? { specialty: consultationSpecialty } : {})
+    },
     createdBy: req.user.id,
     createdAt: new Date().toISOString()
   };
