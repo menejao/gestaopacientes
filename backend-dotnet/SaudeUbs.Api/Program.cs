@@ -811,6 +811,48 @@ app.MapGet("/patients/{id}/history", async (
     return Results.Ok(history);
 }).RequireAuthorization();
 
+app.MapGet("/patients/{id}/records", async (
+    ClaimsPrincipal principal,
+    string id,
+    AppStateStore store,
+    AuthService auth) =>
+{
+    var authUser = await auth.GetAuthUserAsync(principal, store);
+    if (authUser is null) return Results.Unauthorized();
+    var state = await store.ReadAsync();
+    var patient = state.Patients.FirstOrDefault(p => p.Id == id);
+    if (patient is null) return Results.NotFound(new { error = "Paciente não encontrado" });
+    if (!auth.CanAccessPatient(authUser, patient)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+    var usersById = state.Users.ToDictionary(u => u.Id, u => u, StringComparer.Ordinal);
+    static DateTime? ParseDateSafe(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        return DateTime.TryParse(raw, out var parsed) ? parsed : null;
+    }
+
+    var records = state.ClinicalRecords
+        .Where(r => string.Equals(r.PatientId, id, StringComparison.Ordinal))
+        .OrderByDescending(r => ParseDateSafe(r.Date) ?? DateTime.MinValue)
+        .ThenByDescending(r => ParseDateSafe(r.CreatedAt) ?? DateTime.MinValue)
+        .Select(r => new
+        {
+            r.Id,
+            r.PatientId,
+            r.Type,
+            r.Title,
+            r.Details,
+            r.Date,
+            r.CreatedBy,
+            r.CreatedAt,
+            createdByName = (!string.IsNullOrWhiteSpace(r.CreatedBy) && usersById.TryGetValue(r.CreatedBy, out var u)) ? u.Name : "",
+            metadata = r.Metadata ?? new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
+        })
+        .ToList();
+
+    return Results.Ok(records);
+}).RequireAuthorization();
+
 app.MapGet("/patients/{id}/protocol-summary", async (
     ClaimsPrincipal principal,
     string id,
@@ -882,7 +924,7 @@ app.MapPost("/patients/{id}/records", async (
         return Results.BadRequest(new { error = "type, date e title sÃ£o obrigatÃ³rios" });
     }
 
-    var allowedTypes = new HashSet<string>(StringComparer.Ordinal) { "visit", "consultation", "vaccine", "procedure", "note" };
+    var allowedTypes = new HashSet<string>(StringComparer.Ordinal) { "visit", "consultation", "vaccine", "procedure", "note", "exam" };
     if (!allowedTypes.Contains(type)) return Results.BadRequest(new { error = "Tipo de registro invÃ¡lido" });
 
     if (auth.IsAcs(authUser))

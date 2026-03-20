@@ -974,6 +974,8 @@ body {
   color: var(--text-2);
 }
 .patient-side-panel { min-width: 0; }
+.chart-entry a { color: var(--teal-700); text-decoration: none; }
+.chart-entry a:hover { text-decoration: underline; }
 
 /* ── Buttons ─────────────────────────────────────────────────────── */
 button {
@@ -1084,12 +1086,12 @@ select {
 /* ── Tabs (patient) ──────────────────────────────────────────────── */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   padding: 0 1.25rem;
-  overflow-x: auto;
+  overflow: visible;
 }
-.tabs::-webkit-scrollbar { height: 0; }
 
 .tab {
   display: inline-flex;
@@ -1323,6 +1325,7 @@ select {
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .patients-layout { grid-template-columns: 1fr; }
+  .patients-layout.with-detail { grid-template-columns: 1fr; }
   .home-kpi-grid   { grid-template-columns: repeat(2, 1fr); }
   .grid            { grid-template-columns: 1fr; }
 }

@@ -5,7 +5,7 @@ import {
   createRecord, createTask, createUser, deleteAppointment, deletePatient,
   deleteProtocolTemplate, deleteRecord, deleteUser, getUserUsage,
   getPatientHistory, getPatientProtocolSummary, getProtocolSummaries,
-  listAppointments, listMessages, listPatients, listProtocolTemplates,
+  listAppointments, listMessages, listPatients, listProtocolTemplates, listRecords,
   listTasks, listUsers, login, listPublicTeams, register, sendMessage,
   updateProtocolTemplate, updatePatient, updateUser, updateTaskStatus,
 } from "./api";
@@ -28,6 +28,7 @@ const NAV_ICON = {
   acs:        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.4"/><path d="M1 13c0-2.761 2.239-5 5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 7v3M10.5 8.5l1.5 1.5 2-2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   doctors:    <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.4"/><path d="M3 13c0-2.761 2.239-5 5-5s5 2.239 5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M8 10v4M6 12h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   ai:         <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 3h3l-2.5 2 1 3L8 7.5 5 9l1-3L3.5 4h3L8 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M3 12h10M5 14h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  vaccines:   <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M10.8 2.2l3 3M9.8 3.2l3 3M3 13l6.5-6.5 2 2L5 15H3v-2z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
 };
 
 /* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -49,6 +50,37 @@ function parseDateSafe(t) { const d=new Date(t||""); return isNaN(d.getTime())?n
 function toBoundedInt(v,min,max) { if(v===undefined||v===null||v==="") return null; const n=parseInt(String(v),10); return isNaN(n)?null:Math.min(max,Math.max(min,n)); }
 function initials(name) { return String(name||"?").trim().split(" ").slice(0,2).map(w=>w[0]||"").join("").toUpperCase()||"?"; }
 function fmtDate(v) { if(!v) return "-"; try { return new Date(v).toLocaleDateString("pt-BR"); } catch { return v; } }
+function toIsoDay(v) {
+  const d = parseDateSafe(v);
+  if(!d) return "";
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0,10);
+}
+function formatGoogleDateTime(v) {
+  const d = parseDateSafe(v);
+  if(!d) return "";
+  return new Date(d.getTime()).toISOString().replace(/[-:]/g,"").split(".")[0] + "Z";
+}
+async function filesToAttachmentPayload(files) {
+  const selected = Array.from(files || []).slice(0, 4);
+  const results = [];
+  for (const file of selected) {
+    if (!file) continue;
+    const dataUrl = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ""));
+      fr.onerror = () => reject(new Error("Falha ao ler arquivo"));
+      fr.readAsDataURL(file);
+    });
+    results.push({
+      name: file.name || "anexo",
+      type: file.type || "application/octet-stream",
+      size: Number(file.size || 0),
+      dataUrl
+    });
+  }
+  return results;
+}
 
 function gestationalAgeInfo(patient) {
   if(!patient) return null;
@@ -229,6 +261,7 @@ function Sidebar({ tab, setTab, mobileOpen, setMobileOpen, query, setQuery, user
   const navItems = [
     { id: "dashboard", label: "Painel" },
     { id: "patients",  label: "Pacientes" },
+    { id: "vaccines",  label: "Vacinas" },
     ...(canManageUser ? [{ id: "protocols", label: "Protocolos" }] : []),
     { id: "acs",     label: "ACS" },
     { id: "doctors", label: "Médicos" },
@@ -463,7 +496,7 @@ function EmptyState({ message }) {
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    PATIENTS TABLE
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery,categoryFilter,setCategoryFilter,acsFilter,setAcsFilter,selectedPatientId,setSelectedPatientId,canManageUser,onEdit,onDelete,patientTab,setPatientTab,appointments,tasks,messages,history,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,appointmentForm,setAppointmentForm,taskForm,setTaskForm,messageText,setMessageText,onSubmitRecord,onSubmitAppointment,onSubmitTask,onSubmitMessage,onDeleteRecord,onDeleteAppointment,onStatusChange,selectedPatient,userObj }) {
+function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery,categoryFilter,setCategoryFilter,acsFilter,setAcsFilter,selectedPatientId,setSelectedPatientId,canManageUser,onEdit,onDelete,patientTab,setPatientTab,appointments,tasks,messages,history,records,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,appointmentForm,setAppointmentForm,taskForm,setTaskForm,messageText,setMessageText,examForm,setExamForm,onSubmitRecord,onSubmitExam,onSubmitAppointment,onSubmitTask,onSubmitMessage,onDeleteRecord,onDeleteAppointment,onStatusChange,selectedPatient,userObj }) {
   const [page, setPage] = useState(1);
   const acsUsers=users.filter(u=>u.role==="acs");
   const catOpts=templates.map(t=>({value:t.category,label:t.label}));
@@ -569,14 +602,16 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
           <PatientDetail
             patient={selectedPatient} users={users} templates={templates}
             patientTab={patientTab} setPatientTab={setPatientTab}
-            appointments={appointments} tasks={tasks} messages={messages} history={history}
-            patientProtocolSummary={patientProtocolSummary} sortedSpecialAlerts={sortedSpecialAlerts}
-            recordForm={recordForm} setRecordForm={setRecordForm} recordVaccines={recordVaccines} setRecordVaccines={setRecordVaccines}
-            appointmentForm={appointmentForm} setAppointmentForm={setAppointmentForm}
-            taskForm={taskForm} setTaskForm={setTaskForm}
-            messageText={messageText} setMessageText={setMessageText}
-            onSubmitRecord={onSubmitRecord} onSubmitAppointment={onSubmitAppointment}
-            onSubmitTask={onSubmitTask} onSubmitMessage={onSubmitMessage}
+              appointments={appointments} tasks={tasks} messages={messages} history={history}
+            records={records}
+              patientProtocolSummary={patientProtocolSummary} sortedSpecialAlerts={sortedSpecialAlerts}
+              recordForm={recordForm} setRecordForm={setRecordForm} recordVaccines={recordVaccines} setRecordVaccines={setRecordVaccines}
+              appointmentForm={appointmentForm} setAppointmentForm={setAppointmentForm}
+              taskForm={taskForm} setTaskForm={setTaskForm}
+              messageText={messageText} setMessageText={setMessageText}
+            examForm={examForm} setExamForm={setExamForm}
+              onSubmitRecord={onSubmitRecord} onSubmitExam={onSubmitExam} onSubmitAppointment={onSubmitAppointment}
+              onSubmitTask={onSubmitTask} onSubmitMessage={onSubmitMessage}
             onDeleteRecord={onDeleteRecord} onDeleteAppointment={onDeleteAppointment}
             onStatusChange={onStatusChange}
             acsUsers={users.filter(u=>u.role==="acs")} canManageUser={canManageUser} userObj={userObj}
@@ -587,17 +622,110 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
   );
 }
 
+function VaccinesTab({ patients, users, templates, query, setQuery, selectedPatientId, setSelectedPatientId, records }) {
+  const filtered = patients.filter((p)=>{
+    const q = query.trim().toLowerCase();
+    if(!q) return true;
+    return `${p.name||""} ${p.phone||""}`.toLowerCase().includes(q);
+  });
+  const selected = filtered.find((p)=>p.id===selectedPatientId) || null;
+  const patientRecords = (Array.isArray(records)?records:[]).filter((r)=>String(r.type||"").toLowerCase()==="vaccine");
+
+  return (
+    <div className={`patients-layout ${selected ? "with-detail" : "without-detail"}`}>
+      <div className="card">
+        <SectionHeader title="Carteira de vacinação" count={filtered.length}/>
+        <div className="filters">
+          <input placeholder="Buscar paciente..." value={query} onChange={e=>setQuery(e.target.value)}/>
+        </div>
+        <div className="patients-table-wrap">
+          <table className="patients-table">
+            <thead><tr><th>Paciente</th><th>Categoria</th><th>Ações</th></tr></thead>
+            <tbody>
+              {!filtered.length ? (
+                <tr><td className="empty" colSpan={3}>Nenhum paciente encontrado.</td></tr>
+              ) : filtered.map((p)=>(
+                <tr key={p.id} className={selectedPatientId===p.id?"selected":""}>
+                  <td>
+                    <strong>{p.name}</strong>
+                    <div className="muted small">{p.phone||"-"}</div>
+                  </td>
+                  <td>{catLabel(templates,p.careCategory)}</td>
+                  <td>
+                    <button className="secondary" onClick={()=>setSelectedPatientId((prev)=>prev===p.id?"":p.id)}>
+                      {selectedPatientId===p.id?"Fechar":"Abrir"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {selected && (
+        <div className="card patient-side-panel">
+          <div style={{padding:"1rem 1.1rem",borderBottom:"1px solid var(--border)"}}>
+            <h3 style={{fontSize:".95rem",marginBottom:".2rem"}}>{selected.name}</h3>
+            <p className="muted small">Vacinas registradas: {patientRecords.length}</p>
+          </div>
+          <div style={{padding:"1rem 1.1rem"}}>
+            {!patientRecords.length ? (
+              <EmptyState message="Sem vacinas lançadas para este paciente."/>
+            ) : (
+              <div className="chart-list">
+                {patientRecords.map((r)=>(
+                  <article key={r.id} className="chart-entry">
+                    <div className="chart-entry-head">
+                      <div className="chart-entry-main">
+                        <span className="chart-entry-title">{r.title||"Vacina"}</span>
+                      </div>
+                      <span className="chart-entry-date">{fmtDate(r.date)}</span>
+                    </div>
+                    {r.details&&<p className="chart-entry-details">{r.details}</p>}
+                    <div className="chart-entry-foot">
+                      <span>Aplicada por: {r.createdByName||"Não informado"}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    PATIENT DETAIL (right panel)
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appointments,tasks,messages,history,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,appointmentForm,setAppointmentForm,taskForm,setTaskForm,messageText,setMessageText,onSubmitRecord,onSubmitAppointment,onSubmitTask,onSubmitMessage,onDeleteRecord,onDeleteAppointment,onStatusChange,acsUsers,canManageUser,userObj }) {
+function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appointments,tasks,messages,history,records,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,appointmentForm,setAppointmentForm,taskForm,setTaskForm,messageText,setMessageText,examForm,setExamForm,onSubmitRecord,onSubmitExam,onSubmitAppointment,onSubmitTask,onSubmitMessage,onDeleteRecord,onDeleteAppointment,onStatusChange,acsUsers,canManageUser,userObj }) {
   const g = gestationalAgeInfo(patient);
   const acsName = users.find(u=>u.id===patient.assignedAcsId)?.name||"Não atribuído";
+  const [detailMode, setDetailMode] = useState("view");
+  useEffect(()=>{ setDetailMode("view"); },[patient?.id]);
+  const isEditMode = detailMode === "edit";
+  const canEditData = canManageUser || isAcs(userObj);
+  const visitCount = history.filter((h)=>String(h.type||"").toLowerCase()==="visit").length;
+  const pendingVisits = Math.max(Number(patientProtocolSummary?.targets?.visits||0) - visitCount, 0);
+  const acsSuggestions = Array.from({length: Math.min(pendingVisits, 3)}).map((_,idx)=>{
+    const base = new Date();
+    base.setDate(base.getDate() + (idx * 14) + 7);
+    const startIso = toIsoDay(base);
+    const startDt = `${startIso}T12:00:00Z`;
+    const endDt = `${startIso}T12:30:00Z`;
+    const text = `Visita domiciliar ACS - ${patient.name}`;
+    const details = `Sugestão automática do sistema para acompanhamento de ${catLabel(templates, patient.careCategory)}.`;
+    const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(text)}&dates=${formatGoogleDateTime(startDt)}/${formatGoogleDateTime(endDt)}&details=${encodeURIComponent(details)}`;
+    return { date: startIso, googleUrl };
+  });
+  const examRecords = (Array.isArray(records)?records:[]).filter((r)=>String(r.type||"").toLowerCase()==="exam");
 
   const TABS = [
     {id:"protocol",label:"Protocolo",icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4"/><path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4"/></svg>},
     {id:"followup",label:"Acompanhamento",icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>},
     {id:"chart",label:"Prontuário",icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2h10v12H3z" stroke="currentColor" strokeWidth="1.3"/><path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
+    {id:"exams",label:"Exames",icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 3h10v10H3z" stroke="currentColor" strokeWidth="1.3"/><path d="M6 6h4M6 9h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
     {id:"appointments",label:"Atendimentos",icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 2v3M11 2v3M2.5 6.5h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
     {id:"tasks",label:"Tarefas",icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>},
     {id:"messages",label:"Mensagens",icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v8H9l-3 2v-2H2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>},
@@ -616,6 +744,13 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
             <span>{acsName}</span>
           </div>
         </div>
+        {canEditData&&(
+          <div className="actions">
+            <button className={isEditMode?"secondary":""} type="button" onClick={()=>setDetailMode(isEditMode?"view":"edit")}>
+              {isEditMode?"Finalizar edição":"Modo edição"}
+            </button>
+          </div>
+        )}
       </div>
 
       {g && (
@@ -683,6 +818,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
         {patientTab==="followup"&&(
           <div className="panel-block">
             <h4>Acompanhamento clínico</h4>
+            {canEditData && isEditMode && (
             <form className="inline-form" onSubmit={onSubmitRecord}>
               {isAcs(userObj) ? <input value="Visita ACS" disabled/> : (
                 <select value={recordForm.type} onChange={e=>{ const t=e.target.value; setRecordForm(s=>({...s,type:t,title:t==="vaccine"?"":s.title})); if(t!=="vaccine") setRecordVaccines([]); }}>
@@ -703,6 +839,23 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
               <textarea placeholder="Detalhes (opcional)" value={recordForm.details} onChange={e=>setRecordForm(s=>({...s,details:e.target.value}))} style={{minHeight:56}}/>
               <button type="submit">Salvar acompanhamento</button>
             </form>
+            )}
+            <h4>Sugestão de visitas do ACS</h4>
+            {!acsSuggestions.length ? <p className="muted">Sem sugestão no momento.</p> : (
+              <div className="chart-list">
+                {acsSuggestions.map((s, idx)=>(
+                  <article key={`${s.date}-${idx}`} className="chart-entry">
+                    <div className="chart-entry-head">
+                      <span className="chart-entry-title">Visita sugerida #{idx+1}</span>
+                      <span className="chart-entry-date">{fmtDate(s.date)}</span>
+                    </div>
+                    <div className="chart-entry-foot">
+                      <a href={s.googleUrl} target="_blank" rel="noreferrer">Adicionar no Google Agenda</a>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -738,10 +891,53 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
           </div>
         )}
 
+        {/* â”€â”€ EXAMS â”€â”€ */}
+        {patientTab==="exams"&&(
+          <div className="panel-block">
+            {canEditData && isEditMode && (
+              <form className="inline-form" onSubmit={onSubmitExam}>
+                <input type="date" value={examForm.date} onChange={e=>setExamForm((s)=>({...s,date:e.target.value}))}/>
+                <input placeholder="Nome do exame" value={examForm.title} onChange={e=>setExamForm((s)=>({...s,title:e.target.value}))}/>
+                <textarea placeholder="Resultado/observações" value={examForm.details} onChange={e=>setExamForm((s)=>({...s,details:e.target.value}))}/>
+                <input type="file" accept="image/*,.pdf" multiple onChange={e=>setExamForm((s)=>({...s,files:e.target.files}))}/>
+                <button type="submit">Registrar exame</button>
+              </form>
+            )}
+            {!examRecords.length ? <EmptyState message="Sem exames registrados."/> : (
+              <div className="chart-list">
+                {examRecords.map((exam)=>(
+                  <article key={exam.id} className="chart-entry">
+                    <div className="chart-entry-head">
+                      <div className="chart-entry-main">
+                        <span className="chart-entry-title">{exam.title||"Exame"}</span>
+                      </div>
+                      <span className="chart-entry-date">{fmtDate(exam.date)}</span>
+                    </div>
+                    {exam.details&&<p className="chart-entry-details">{exam.details}</p>}
+                    <div className="chart-entry-foot">
+                      <span>Registrado por: {exam.createdByName||"Não informado"}</span>
+                    </div>
+                    {Array.isArray(exam?.metadata?.attachments) && exam.metadata.attachments.length>0 && (
+                      <div className="chart-entry-foot">
+                        {exam.metadata.attachments.map((att, idx)=>(
+                          <a key={`${exam.id}-a-${idx}`} href={att.dataUrl} target="_blank" rel="noreferrer">{att.name||`Anexo ${idx+1}`}</a>
+                        ))}
+                      </div>
+                    )}
+                    {canEditData && isEditMode && (
+                      <button className="danger-btn chart-delete-btn" onClick={()=>onDeleteRecord(exam.id)}>Excluir</button>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* â”€â”€ APPOINTMENTS â”€â”€ */}
         {patientTab==="appointments"&&(
           <div className="panel-block">
-            {canManageUser&&(
+            {canManageUser&&isEditMode&&(
               <form className="inline-form" onSubmit={onSubmitAppointment}>
                 <input type="date" value={appointmentForm.date} onChange={e=>setAppointmentForm(s=>({...s,date:e.target.value}))}/>
                 <select value={appointmentForm.demandType} onChange={e=>setAppointmentForm(s=>({...s,demandType:e.target.value}))}>
@@ -765,7 +961,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
                     <Chip tone={a.demandType==="scheduled"?"muted":"warn"}>{a.demandType==="scheduled"?"Programada":"Espontânea"}</Chip>
                     {a.conduct&&<p style={{fontSize:".78rem",color:"var(--text-2)",marginTop:".3rem"}}><strong>Conduta:</strong> {a.conduct}</p>}
                     {a.nextStep&&<p style={{fontSize:".78rem",color:"var(--text-2)"}}><strong>Próximo:</strong> {a.nextStep}</p>}
-                    {canManageUser&&<button className="danger-btn" style={{marginTop:".4rem",padding:".25rem .6rem",fontSize:".72rem"}} onClick={()=>onDeleteAppointment(a.id)}>Excluir</button>}
+                    {canManageUser&&isEditMode&&<button className="danger-btn" style={{marginTop:".4rem",padding:".25rem .6rem",fontSize:".72rem"}} onClick={()=>onDeleteAppointment(a.id)}>Excluir</button>}
                   </div>
                 ))
             }
@@ -775,7 +971,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
         {/* â”€â”€ TASKS â”€â”€ */}
         {patientTab==="tasks"&&(
           <div className="panel-block">
-            {canManageUser&&(
+            {canManageUser&&isEditMode&&(
               <form className="inline-form" onSubmit={onSubmitTask}>
                 <input placeholder="Título da tarefa" value={taskForm.title} onChange={e=>setTaskForm(s=>({...s,title:e.target.value}))}/>
                 <textarea placeholder="Observações" value={taskForm.notes} onChange={e=>setTaskForm(s=>({...s,notes:e.target.value}))} style={{minHeight:48}}/>
@@ -799,7 +995,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
                       </div>
                       {t.notes&&<p style={{fontSize:".78rem",color:"var(--text-2)",marginBottom:".3rem"}}>{t.notes}</p>}
                       {t.dueDate&&<p style={{fontSize:".72rem",color:"var(--text-3)"}}>Prazo: {fmtDate(t.dueDate)}</p>}
-                      {canManageUser&&(
+                      {canManageUser&&isEditMode&&(
                         <select style={{marginTop:".4rem",fontSize:".78rem",padding:".3rem .6rem",width:"auto"}} value={t.status||"pending"} onChange={e=>onStatusChange(t.id,e.target.value)}>
                           <option value="pending">Pendente</option>
                           <option value="in_progress">Em andamento</option>
@@ -816,10 +1012,12 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
         {/* â”€â”€ MESSAGES â”€â”€ */}
         {patientTab==="messages"&&(
           <div className="panel-block">
+            {isEditMode&&(
             <form className="inline-form" onSubmit={onSubmitMessage}>
               <textarea placeholder="Digite a mensagem para a equipe..." value={messageText} onChange={e=>setMessageText(e.target.value)} style={{minHeight:72}}/>
               <button type="submit">Enviar mensagem</button>
             </form>
+            )}
             {!messages.length
               ? <EmptyState message="Sem mensagens neste painel"/>
               : messages.map(m=>(
@@ -1076,6 +1274,7 @@ export function App() {
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [patientTab, setPatientTab] = useState(uiState?.patientTab==="history"?"chart":(uiState?.patientTab||"protocol"));
   const [appointments, setAppointments] = useState([]);
+  const [records, setRecords] = useState([]);
   const [tasks,    setTasks]    = useState([]);
   const [messages, setMessages] = useState([]);
   const [history,  setHistory]  = useState([]);
@@ -1090,6 +1289,7 @@ export function App() {
   const [showModal, setShowModal] = useState(false);
   const [form,     setForm]     = useState(emptyPatientForm);
   const [recordForm, setRecordForm] = useState({type:"consultation",title:"",date:"",details:""});
+  const [examForm, setExamForm] = useState({title:"",date:"",details:"",files:null});
   const [recordVaccines, setRecordVaccines] = useState([]);
   const [appointmentForm, setAppointmentForm] = useState({date:"",demandType:"scheduled",summary:"",conduct:"",nextStep:""});
   const [taskForm, setTaskForm] = useState({title:"",notes:"",dueDate:"",assigneeId:""});
@@ -1120,7 +1320,7 @@ export function App() {
   },[token]);
   useEffect(()=>{ localStorage.setItem(UI_STATE_KEY,JSON.stringify({tab,patientTab})); },[tab,patientTab]);
   useEffect(()=>{
-    if(!token||!selectedPatientId){setAppointments([]);setTasks([]);setMessages([]);setHistory([]);setPatientProtocolSummary(null);return;}
+    if(!token||!selectedPatientId){setAppointments([]);setRecords([]);setTasks([]);setMessages([]);setHistory([]);setPatientProtocolSummary(null);return;}
     loadSelectedPatientData(selectedPatientId);
   },[token,selectedPatientId]);
 
@@ -1163,15 +1363,17 @@ export function App() {
 
   async function loadSelectedPatientData(patientId) {
     try {
-      const[summary,hist,appts,taskItems,msgItems]=await Promise.all([
+      const[summary,hist,recs,appts,taskItems,msgItems]=await Promise.all([
         getPatientProtocolSummary(token,patientId),
         getPatientHistory(token,patientId),
+        listRecords(token,patientId),
         listAppointments(token,patientId),
         listTasks(token,patientId),
         listMessages(token,patientId),
       ]);
       setPatientProtocolSummary(summary||null);
       setHistory(Array.isArray(hist)?hist:[]);
+      setRecords(Array.isArray(recs)?recs:[]);
       setAppointments(Array.isArray(appts)?appts:[]);
       setTasks(Array.isArray(taskItems)?taskItems:[]);
       setMessages(Array.isArray(msgItems)?msgItems:[]);
@@ -1291,6 +1493,33 @@ export function App() {
     } catch(e){setError(e.message||"Erro ao criar registro");}
   }
 
+  async function submitExam(e) {
+    e.preventDefault();
+    if(!selectedPatientId) return;
+    if(!String(examForm.title||"").trim() || !String(examForm.date||"").trim()){
+      setError("Informe nome e data do exame.");
+      return;
+    }
+    setBusy(true); setError("");
+    try {
+      const attachments = await filesToAttachmentPayload(examForm.files);
+      await createRecord(token, selectedPatientId, {
+        type: "exam",
+        title: examForm.title.trim(),
+        date: examForm.date,
+        details: examForm.details || "",
+        metadata: { attachments }
+      });
+      setExamForm({title:"",date:"",details:"",files:null});
+      await loadSelectedPatientData(selectedPatientId);
+      await loadAll();
+    } catch (e2) {
+      setError(e2.message || "Erro ao registrar exame");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitAppointment(e) {
     e.preventDefault(); if(!selectedPatientId) return;
     if(!appointmentForm.date||!appointmentForm.summary){setError("Preencha data e resumo.");return;}
@@ -1372,18 +1601,33 @@ export function App() {
               selectedPatientId={selectedPatientId} setSelectedPatientId={setSelectedPatientId}
               canManageUser={canManage(user)} onEdit={openEditPatient} onDelete={removePatient}
               patientTab={patientTab} setPatientTab={setPatientTab}
-              appointments={appointments} tasks={tasks} messages={messages} history={history}
+              appointments={appointments} tasks={tasks} messages={messages} history={history} records={records}
               patientProtocolSummary={patientProtocolSummary} sortedSpecialAlerts={sortedSpecialAlerts}
               recordForm={recordForm} setRecordForm={setRecordForm}
               recordVaccines={recordVaccines} setRecordVaccines={setRecordVaccines}
               appointmentForm={appointmentForm} setAppointmentForm={setAppointmentForm}
               taskForm={taskForm} setTaskForm={setTaskForm}
               messageText={messageText} setMessageText={setMessageText}
+              examForm={examForm} setExamForm={setExamForm}
               onSubmitRecord={submitRecord} onSubmitAppointment={submitAppointment}
+              onSubmitExam={submitExam}
               onSubmitTask={submitTask} onSubmitMessage={submitMessage}
               onDeleteRecord={handleDeleteRecord} onDeleteAppointment={handleDeleteAppointment}
               onStatusChange={handleStatusChange}
               selectedPatient={selectedPatient} userObj={user}
+            />
+          )}
+
+          {tab==="vaccines"&&(
+            <VaccinesTab
+              patients={patients}
+              users={users}
+              templates={templates}
+              query={query}
+              setQuery={setQuery}
+              selectedPatientId={selectedPatientId}
+              setSelectedPatientId={setSelectedPatientId}
+              records={records}
             />
           )}
 
