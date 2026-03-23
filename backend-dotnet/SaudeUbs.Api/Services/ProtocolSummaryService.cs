@@ -5,6 +5,52 @@ namespace SaudeUbs.Api.Services;
 
 public sealed class ProtocolSummaryService
 {
+    private sealed class ChildVaccineRule
+    {
+        public string Id { get; init; } = "";
+        public string Label { get; init; } = "";
+        public int DueMonth { get; init; }
+        public string[] Aliases { get; init; } = Array.Empty<string>();
+    }
+
+    private sealed class VaccineAppliedItem
+    {
+        public int Index { get; init; }
+        public string Text { get; init; } = "";
+        public DateTime Date { get; init; }
+    }
+
+    private static readonly ChildVaccineRule[] ChildVaccineRules =
+    {
+        new() { Id = "child-birth-bcg", Label = "BCG ao nascer", DueMonth = 0, Aliases = new[] { "bcg" } },
+        new() { Id = "child-birth-hepb", Label = "Hepatite B ao nascer", DueMonth = 0, Aliases = new[] { "hepatite b", "hepb" } },
+        new() { Id = "child-2m-penta", Label = "Penta aos 2 meses", DueMonth = 2, Aliases = new[] { "penta", "pentavalente" } },
+        new() { Id = "child-2m-vip", Label = "VIP aos 2 meses", DueMonth = 2, Aliases = new[] { "vip", "polio inativada" } },
+        new() { Id = "child-2m-pneumo10", Label = "Pneumo 10 aos 2 meses", DueMonth = 2, Aliases = new[] { "pneumo 10", "pneumo10", "pneumococica 10" } },
+        new() { Id = "child-2m-rota", Label = "Rotavirus aos 2 meses", DueMonth = 2, Aliases = new[] { "rota", "rotavirus" } },
+        new() { Id = "child-3m-meningo", Label = "Meningococica aos 3 meses", DueMonth = 3, Aliases = new[] { "meningo", "meningococica" } },
+        new() { Id = "child-4m-penta", Label = "Penta aos 4 meses", DueMonth = 4, Aliases = new[] { "penta", "pentavalente" } },
+        new() { Id = "child-4m-vip", Label = "VIP aos 4 meses", DueMonth = 4, Aliases = new[] { "vip", "polio inativada" } },
+        new() { Id = "child-4m-pneumo10", Label = "Pneumo 10 aos 4 meses", DueMonth = 4, Aliases = new[] { "pneumo 10", "pneumo10", "pneumococica 10" } },
+        new() { Id = "child-4m-rota", Label = "Rotavirus aos 4 meses", DueMonth = 4, Aliases = new[] { "rota", "rotavirus" } },
+        new() { Id = "child-5m-meningo", Label = "Meningococica aos 5 meses", DueMonth = 5, Aliases = new[] { "meningo", "meningococica" } },
+        new() { Id = "child-6m-penta", Label = "Penta aos 6 meses", DueMonth = 6, Aliases = new[] { "penta", "pentavalente" } },
+        new() { Id = "child-6m-vip", Label = "VIP aos 6 meses", DueMonth = 6, Aliases = new[] { "vip", "polio inativada" } },
+        new() { Id = "child-6m-influenza", Label = "Influenza aos 6 meses", DueMonth = 6, Aliases = new[] { "influenza", "gripe" } },
+        new() { Id = "child-6m-covid", Label = "COVID-19 aos 6 meses", DueMonth = 6, Aliases = new[] { "covid", "covid-19" } },
+        new() { Id = "child-7m-covid", Label = "COVID-19 aos 7 meses", DueMonth = 7, Aliases = new[] { "covid", "covid-19" } },
+        new() { Id = "child-9m-covid", Label = "COVID-19 aos 9 meses", DueMonth = 9, Aliases = new[] { "covid", "covid-19" } },
+        new() { Id = "child-9m-fa", Label = "Febre amarela aos 9 meses", DueMonth = 9, Aliases = new[] { "febre amarela" } },
+        new() { Id = "child-12m-pneumo10", Label = "Pneumo 10 aos 12 meses", DueMonth = 12, Aliases = new[] { "pneumo 10", "pneumo10", "pneumococica 10" } },
+        new() { Id = "child-12m-acwy", Label = "ACWY aos 12 meses", DueMonth = 12, Aliases = new[] { "acwy", "meningococica acwy" } },
+        new() { Id = "child-12m-scr", Label = "Triplice viral aos 12 meses", DueMonth = 12, Aliases = new[] { "triplice viral", "sarampo caxumba rubeola", "scr" } },
+        new() { Id = "child-15m-dtp", Label = "DTP aos 15 meses", DueMonth = 15, Aliases = new[] { "dtp", "triple bacteriana" } },
+        new() { Id = "child-15m-vip", Label = "VIP aos 15 meses", DueMonth = 15, Aliases = new[] { "vip", "polio inativada" } },
+        new() { Id = "child-15m-scr", Label = "Triplice viral aos 15 meses", DueMonth = 15, Aliases = new[] { "triplice viral", "sarampo caxumba rubeola", "scr" } },
+        new() { Id = "child-15m-varicela", Label = "Varicela aos 15 meses", DueMonth = 15, Aliases = new[] { "varicela", "catapora" } },
+        new() { Id = "child-15m-hepa", Label = "Hepatite A aos 15 meses", DueMonth = 15, Aliases = new[] { "hepatite a", "hepa" } }
+    };
+
     private static readonly Dictionary<string, ProtocolTemplate> DefaultProtocols = new(StringComparer.OrdinalIgnoreCase)
     {
         ["general"] = new() { Category = "general", Label = "Geral", Targets = new ProtocolTargets { Visits = 2, Consultations = 2, Vaccines = 1 }, Deadlines = new ProtocolTargets(), Vaccines = new List<string> { "Influenza" } },
@@ -79,6 +125,10 @@ public sealed class ProtocolSummaryService
             specialAlerts.AddRange(EvaluateElderly(history));
             specialAlerts.AddRange(EvaluateChronic(patient, history));
         }
+        else if (category == "child_followup")
+        {
+            specialAlerts.AddRange(EvaluateChildVaccines(patient, history));
+        }
 
         var appliedVaccineNames = history
             .Where(h => string.Equals(h.Type, "vaccine", StringComparison.OrdinalIgnoreCase))
@@ -140,6 +190,15 @@ public sealed class ProtocolSummaryService
     {
         var map = BuildTemplateMap(db, teamId);
         return NormalizeCategory(inputCategory, map);
+    }
+
+    public List<ProtocolTemplate> GetTemplatesForTeam(AppDb db, string teamId)
+    {
+        return BuildTemplateMap(db, teamId)
+            .Values
+            .OrderBy(t => t.Label, StringComparer.OrdinalIgnoreCase)
+            .Select(CloneTemplate)
+            .ToList();
     }
 
     private static Dictionary<string, ProtocolTemplate> BuildTemplateMap(AppDb db, string teamId)
@@ -304,5 +363,74 @@ public sealed class ProtocolSummaryService
             }
         }
         return outAlerts;
+    }
+
+    private static IEnumerable<object> EvaluateChildVaccines(Patient patient, List<HistoryItem> history)
+    {
+        var birthDate = ParseDate(patient.BirthDate);
+        if (birthDate is null)
+        {
+            return new[]
+            {
+                (object)new
+                {
+                    id = "child-birthdate-missing",
+                    activity = "data de nascimento",
+                    title = "Data de nascimento nao informada",
+                    detail = "Sem a data de nascimento nao e possivel calcular os prazos de vacinacao infantil.",
+                    severity = "medium",
+                    categoryLabel = "Puericultura"
+                }
+            };
+        }
+
+        var applied = history
+            .Where(h => string.Equals(h.Type, "vaccine", StringComparison.OrdinalIgnoreCase))
+            .Select((h, idx) => new VaccineAppliedItem
+            {
+                Index = idx,
+                Date = ParseDate(h.Date) ?? DateTime.MinValue,
+                Text = NormalizeText($"{h.Title} {h.Details}")
+            })
+            .Where(v => v.Date != DateTime.MinValue)
+            .OrderBy(v => v.Date)
+            .ToList();
+
+        var used = new HashSet<int>();
+        var now = DateTime.UtcNow.Date;
+        var alerts = new List<object>();
+
+        foreach (var rule in ChildVaccineRules.OrderBy(r => r.DueMonth))
+        {
+            var normalizedAliases = rule.Aliases.Select(NormalizeText).ToList();
+            var match = applied.FirstOrDefault(v => !used.Contains(v.Index) && normalizedAliases.Any(a => v.Text.Contains(a, StringComparison.Ordinal)));
+            if (match is not null)
+            {
+                used.Add(match.Index);
+                continue;
+            }
+
+            var dueDate = birthDate.Value.Date.AddMonths(rule.DueMonth);
+            var daysLeft = (dueDate - now).Days;
+            var overdueDays = Math.Max((now - dueDate).Days, 0);
+            var severity = overdueDays >= 1 ? "high" : (daysLeft <= 30 ? "medium" : "low");
+
+            alerts.Add(new
+            {
+                id = rule.Id,
+                activity = "vacinacao infantil",
+                title = $"{rule.Label} pendente",
+                detail = overdueDays >= 1
+                    ? $"Dose prevista para {dueDate:dd/MM/yyyy} e em atraso ha {overdueDays} dia(s)."
+                    : $"Dose prevista para {dueDate:dd/MM/yyyy}. Restam {Math.Max(daysLeft, 0)} dia(s).",
+                severity,
+                dueDate = dueDate.ToString("yyyy-MM-dd"),
+                overdueDays,
+                daysLeft = Math.Max(daysLeft, 0),
+                categoryLabel = "Puericultura"
+            });
+        }
+
+        return alerts;
     }
 }

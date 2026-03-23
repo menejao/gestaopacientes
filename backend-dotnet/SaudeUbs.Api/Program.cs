@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +14,16 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
-var jwtSecret = (Environment.GetEnvironmentVariable("JWT_SECRET") ?? "dev-only-jwt-secret-change-me").Trim();
+var jwtSecret = (Environment.GetEnvironmentVariable("JWT_SECRET") ?? "").Trim();
+if (string.IsNullOrWhiteSpace(jwtSecret))
+{
+    // Em desenvolvimento, usa valor padrão com aviso. Em produção, deve sempre definir JWT_SECRET.
+    var isDevelopment = builder.Environment.IsDevelopment();
+    if (!isDevelopment)
+        throw new InvalidOperationException("JWT_SECRET não definido. Configure a variável de ambiente antes de iniciar em produção.");
+    jwtSecret = "dev-only-secret-nao-usar-em-producao-32chars!!";
+    Console.WriteLine("[AVISO] JWT_SECRET não configurado. Usando valor de desenvolvimento inseguro.");
+}
 var jwtIssuer = (Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "saudeubs-backend").Trim();
 var jwtAudience = (Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "saudeubs-client").Trim();
 var jwtExpiresHours = int.TryParse(Environment.GetEnvironmentVariable("JWT_EXPIRES_HOURS"), out var h) ? Math.Max(1, h) : 12;
@@ -57,8 +66,32 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+// CORS — permite o frontend (Cloudflare + localhost dev)
+var allowedOrigins = (Environment.GetEnvironmentVariable("ALLOWED_ORIGINS") ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AppPolicy", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost:4173",
+                "https://gestaopacientes.meneguccijao.workers.dev"
+            )
+            .WithOrigins(allowedOrigins)   // extras via env var
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 var loginChallenges = new ConcurrentDictionary<string, (string UserId, DateTime ExpiresAt)>(StringComparer.Ordinal);
+// Rate limiting: máx 10 tentativas de login por IP em 5 minutos
+var loginAttempts = new ConcurrentDictionary<string, (int Count, DateTime WindowStart)>(StringComparer.Ordinal);
 
 app.MapGet("/health", () => Results.Ok(new { ok = true, timestamp = DateTime.UtcNow }));
 app.MapGet("/health/persistence", async (AppStateStore store) =>
@@ -97,19 +130,30 @@ app.MapPost("/auth/register", async (Dictionary<string, JsonElement> req, AppSta
         return Results.BadRequest(new { error = "name, email e password são obrigatórios" });
     }
 
-    if (string.IsNullOrWhiteSpace(teamId))
+    if (password.Length < 8)
     {
-        return Results.BadRequest(new { error = "teamId é obrigatório" });
+        return Results.BadRequest(new { error = "A senha deve ter pelo menos 8 caracteres" });
     }
 
-    if (role is not ("nurse_manager" or "doctor" or "acs"))
+    var validRoles = new HashSet<string>(StringComparer.Ordinal)
+        { "nurse_manager", "doctor", "dentist", "acs", "nursing_tech", "pharmacist", "pharmacy_tech", "receptionist" };
+    if (!validRoles.Contains(role))
     {
         return Results.BadRequest(new { error = "Perfil inválido" });
     }
 
+    var requiresTeam = role is not "receptionist";
+    if (requiresTeam && string.IsNullOrWhiteSpace(teamId))
+    {
+        return Results.BadRequest(new { error = "teamId é obrigatório para este perfil" });
+    }
+
     var state = await store.ReadAsync();
-    var team = state.Teams.FirstOrDefault(t => string.Equals(t.Id, teamId, StringComparison.Ordinal));
-    if (team is null) return Results.BadRequest(new { error = "Equipe inválida" });
+    if (requiresTeam)
+    {
+        var team = state.Teams.FirstOrDefault(t => string.Equals(t.Id, teamId, StringComparison.Ordinal));
+        if (team is null) return Results.BadRequest(new { error = "Equipe inválida" });
+    }
 
     if (state.Users.Any(u => string.Equals((u.Email ?? "").Trim(), email, StringComparison.OrdinalIgnoreCase)))
     {
@@ -121,7 +165,7 @@ app.MapPost("/auth/register", async (Dictionary<string, JsonElement> req, AppSta
         Id = Guid.NewGuid().ToString("N"),
         Name = name,
         Email = email,
-        Password = password,
+        Password = auth.HashPassword(password),
         Role = role,
         TeamId = teamId
     };
@@ -153,23 +197,28 @@ app.MapPost("/auth/register/confirm", () =>
     return Results.BadRequest(new { error = "Fluxo de código desativado. Use /auth/register." });
 });
 
-app.MapPost("/auth/login", async (LoginRequest req, AppStateStore store, AuthService auth) =>
+app.MapPost("/auth/login", async (LoginRequest req, HttpContext ctx, AppStateStore store, AuthService auth) =>
 {
     if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
     {
-        return Results.BadRequest(new { error = "email e password sÃ£o obrigatÃ³rios" });
+        return Results.BadRequest(new { error = "email e password são obrigatórios" });
+    }
+
+    // Rate limiting: bloqueia após 10 tentativas em 5 minutos por IP
+    var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var now = DateTime.UtcNow;
+    loginAttempts.AddOrUpdate(clientIp,
+        _ => (1, now),
+        (_, old) => old.WindowStart.AddMinutes(5) < now ? (1, now) : (old.Count + 1, old.WindowStart));
+    if (loginAttempts.TryGetValue(clientIp, out var attempts) && attempts.Count > 10)
+    {
+        return Results.StatusCode(429); // Too Many Requests
     }
 
     var state = await store.ReadAsync();
     var user = state.Users.FirstOrDefault(u =>
         string.Equals((u.Email ?? "").Trim(), req.Email.Trim(), StringComparison.OrdinalIgnoreCase)
         && auth.VerifyPassword(req.Password, u.Password ?? ""));
-
-    if (user is null && auth.IsDemoAnaCredential(req.Email, req.Password))
-    {
-        user = state.Users.FirstOrDefault(u =>
-            string.Equals((u.Email ?? "").Trim(), "ana@clinica.local", StringComparison.OrdinalIgnoreCase));
-    }
 
     if (user is null)
     {
@@ -189,6 +238,7 @@ app.MapPost("/auth/login", async (LoginRequest req, AppStateStore store, AuthSer
 
     await store.WriteAsync(state);
 
+    loginAttempts.TryRemove(clientIp, out _); // reset após login bem-sucedido
     var safeUser = auth.SanitizeUser(state, user);
     var token = auth.CreateToken(user);
     return Results.Ok(new { user = safeUser, token });
@@ -230,6 +280,87 @@ app.MapPost("/auth/login/verify", async (Dictionary<string, JsonElement> payload
     var token = auth.CreateToken(user);
     return Results.Ok(new { user = safeUser, token });
 });
+
+// ── Reset de senha: o próprio usuário redefine com token temporário ──
+// Etapa 1: solicita reset (gera token e retorna ao caller — em prod, enviaria por email)
+var resetTokens = new ConcurrentDictionary<string, (string UserId, DateTime ExpiresAt)>(StringComparer.Ordinal);
+
+app.MapPost("/auth/password-reset/request", async (Dictionary<string, JsonElement> payload, AppStateStore store) =>
+{
+    var email = ReadJsonString(payload, "email").ToLowerInvariant().Trim();
+    if (string.IsNullOrWhiteSpace(email))
+        return Results.BadRequest(new { error = "email é obrigatório" });
+
+    var state = await store.ReadAsync();
+    var user = state.Users.FirstOrDefault(u =>
+        string.Equals((u.Email ?? "").Trim(), email, StringComparison.OrdinalIgnoreCase));
+
+    // Resposta igual independente de o usuário existir (evita user enumeration)
+    var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+    if (user is not null)
+    {
+        resetTokens[token] = (user.Id, DateTime.UtcNow.AddMinutes(30));
+    }
+
+    // Em produção: enviar token por email (SMTP/SendGrid)
+    // Aqui retornamos o token diretamente para o frontend exibir (modo demo sem SMTP)
+    return Results.Ok(new
+    {
+        ok = true,
+        message = "Se o e-mail existir no sistema, um link de redefinição será enviado.",
+        // Remover 'resetToken' em produção com SMTP configurado:
+        resetToken = user is not null ? token : (string?)null
+    });
+});
+
+// Etapa 2: define nova senha com o token
+app.MapPost("/auth/password-reset/confirm", async (
+    Dictionary<string, JsonElement> payload,
+    AppStateStore store,
+    AuthService auth) =>
+{
+    var token = ReadJsonString(payload, "token");
+    var newPassword = ReadJsonString(payload, "newPassword");
+
+    if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(newPassword))
+        return Results.BadRequest(new { error = "token e newPassword são obrigatórios" });
+
+    if (newPassword.Length < 8)
+        return Results.BadRequest(new { error = "A senha deve ter pelo menos 8 caracteres" });
+
+    if (!resetTokens.TryGetValue(token, out var entry))
+        return Results.BadRequest(new { error = "Token inválido ou expirado" });
+
+    if (entry.ExpiresAt < DateTime.UtcNow)
+    {
+        resetTokens.TryRemove(token, out _);
+        return Results.BadRequest(new { error = "Token expirado. Solicite um novo link." });
+    }
+
+    resetTokens.TryRemove(token, out _);
+
+    var state = await store.ReadAsync();
+    var user = state.Users.FirstOrDefault(u => u.Id == entry.UserId);
+    if (user is null) return Results.BadRequest(new { error = "Usuário não encontrado" });
+
+    user.Password = auth.HashPassword(newPassword);
+    user.UpdatedAt = DateTime.UtcNow.ToString("O");
+    await store.WriteAsync(state);
+
+    return Results.Ok(new { ok = true, message = "Senha redefinida com sucesso. Faça login com a nova senha." });
+});
+
+// CORS — deve vir antes de Authentication/Authorization
+app.UseCors("AppPolicy");
+
+// Serve static files (wwwroot/)
+app.UseStaticFiles();
+
+// Ensure uploads directory exists at startup
+var uploadsRoot = Path.Combine(
+    app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+    "uploads");
+Directory.CreateDirectory(uploadsRoot);
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -282,7 +413,12 @@ app.MapPatch("/me", async (
         }
         user.Email = normalized;
     }
-    if (!string.IsNullOrWhiteSpace(nextPassword)) user.Password = nextPassword;
+    if (!string.IsNullOrWhiteSpace(nextPassword))
+    {
+        if (nextPassword.Length < 8)
+            return Results.BadRequest(new { error = "A senha deve ter pelo menos 8 caracteres" });
+        user.Password = auth.HashPassword(nextPassword);
+    }
 
     user.Extra ??= new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
     if (!string.IsNullOrWhiteSpace(councilNumber))
@@ -440,7 +576,9 @@ app.MapPost("/users", async (
     if (!auth.IsManager(authUser)) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var role = auth.CanonicalRole(ReadJsonString(payload, "role"));
-    if (role is not ("acs" or "doctor" or "nurse_manager")) return Results.BadRequest(new { error = "Perfil inválido" });
+    var validRolesPost = new HashSet<string>(StringComparer.Ordinal)
+        { "nurse_manager", "doctor", "dentist", "acs", "nursing_tech", "pharmacist", "pharmacy_tech", "receptionist" };
+    if (!validRolesPost.Contains(role)) return Results.BadRequest(new { error = "Perfil inválido" });
 
     var name = ReadJsonString(payload, "name");
     var email = ReadJsonString(payload, "email").ToLowerInvariant();
@@ -456,6 +594,8 @@ app.MapPost("/users", async (
         return Results.BadRequest(new { error = "E-mail já cadastrado" });
     }
 
+    if (password.Length < 8) return Results.BadRequest(new { error = "A senha deve ter pelo menos 8 caracteres" });
+
     var councilNumber = ReadJsonString(payload, "councilNumber");
     var councilUf = ReadJsonString(payload, "councilUf").ToUpperInvariant();
     var created = new User
@@ -464,7 +604,7 @@ app.MapPost("/users", async (
         Name = name,
         Role = role,
         Email = email,
-        Password = password,
+        Password = auth.HashPassword(password),
         TeamId = authUser.TeamId ?? "",
         LastSeenAt = DateTime.UtcNow.ToString("O"),
         UpdatedAt = DateTime.UtcNow.ToString("O")
@@ -531,7 +671,9 @@ app.MapPut("/users/{id}", async (
     if (!string.IsNullOrWhiteSpace(role))
     {
         var canonical = auth.CanonicalRole(role);
-        if (canonical is not ("acs" or "doctor" or "nurse_manager")) return Results.BadRequest(new { error = "Perfil inválido" });
+        var validRolesPut = new HashSet<string>(StringComparer.Ordinal)
+            { "nurse_manager", "doctor", "dentist", "acs", "nursing_tech", "pharmacist", "pharmacy_tech", "receptionist" };
+        if (!validRolesPut.Contains(canonical)) return Results.BadRequest(new { error = "Perfil inválido" });
         target.Role = canonical;
     }
 
@@ -548,7 +690,11 @@ app.MapPut("/users/{id}", async (
         }
         target.Email = normalized;
     }
-    if (!string.IsNullOrWhiteSpace(password)) target.Password = password;
+    if (!string.IsNullOrWhiteSpace(password))
+    {
+        if (password.Length < 8) return Results.BadRequest(new { error = "A senha deve ter pelo menos 8 caracteres" });
+        target.Password = auth.HashPassword(password);
+    }
 
     var councilNumber = ReadJsonString(payload, "councilNumber");
     var councilUf = ReadJsonString(payload, "councilUf").ToUpperInvariant();
@@ -634,7 +780,7 @@ app.MapPost("/patients", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser)))
+    if (!(auth.IsFullClinical(authUser) || auth.IsDentist(authUser)))
     {
         return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
@@ -661,7 +807,7 @@ app.MapPut("/patients/{id}", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser)))
+    if (!(auth.IsFullClinical(authUser)))
     {
         return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
@@ -690,7 +836,7 @@ app.MapPut("/patients/{id}", async (
       "prenatalStartDate","postpartumStartDate"
     };
 
-    var effective = auth.IsDoctor(authUser)
+    var effective = (auth.IsDoctor(authUser) || auth.IsDentist(authUser))
         ? payload.Where(kv => doctorAllowed.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase)
         : new Dictionary<string, JsonElement>(payload, StringComparer.OrdinalIgnoreCase);
 
@@ -924,15 +1070,17 @@ app.MapPost("/patients/{id}/records", async (
         return Results.BadRequest(new { error = "type, date e title sÃ£o obrigatÃ³rios" });
     }
 
-    var allowedTypes = new HashSet<string>(StringComparer.Ordinal) { "visit", "consultation", "vaccine", "procedure", "note", "exam" };
+    // Tipos válidos — alinhados com ENTRY_TYPE do frontend e CFM 1638/2002
+    var allowedTypes = new HashSet<string>(StringComparer.Ordinal) { "visit", "consultation", "vaccine", "procedure", "note", "exam", "nursing", "evolution", "prescription", "referral", "home_visit" };
     if (!allowedTypes.Contains(type)) return Results.BadRequest(new { error = "Tipo de registro invÃ¡lido" });
 
     if (auth.IsAcs(authUser))
     {
         if (type != "visit") return Results.BadRequest(new { error = "ACS pode registrar apenas visita domiciliar" });
-        if (!string.Equals(AuthService.NormalizeText(title), "visita acs", StringComparison.Ordinal))
+        // Título livre mas deve conter "visita" para ACS
+        if (!AuthService.NormalizeText(title).Contains("visita"))
         {
-            return Results.BadRequest(new { error = "ACS deve registrar o tÃ­tulo padrÃ£o 'Visita ACS'" });
+            return Results.BadRequest(new { error = "ACS deve registrar visita domiciliar — inclua 'visita' no título" });
         }
     }
     if (auth.IsDoctor(authUser) && type == "visit")
@@ -949,6 +1097,31 @@ app.MapPost("/patients/{id}/records", async (
         req.Metadata["specialty"] = JsonDocument.Parse($"\"{specialty}\"").RootElement.Clone();
     }
 
+    // CFM 1638/2002: validar que hora foi informada
+    var timeText = (req.Time ?? "").Trim();
+    if (string.IsNullOrWhiteSpace(timeText))
+    {
+        return Results.BadRequest(new { error = "Hora do evento é obrigatória (CFM 1638/2002, art. 1º)" });
+    }
+    // CFM 1638/2002: validar número de conselho profissional
+    var council = (req.ProfessionalCouncil ?? "").Trim();
+    if (string.IsNullOrWhiteSpace(council) && !auth.IsAcs(authUser))
+    {
+        return Results.BadRequest(new { error = "Número do conselho profissional é obrigatório (CFM 1638/2002)" });
+    }
+
+    var meta = req.Metadata ?? new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+    // Armazena hora, conselho e flag de imutabilidade nos metadados
+    meta["time"] = JsonDocument.Parse($""{timeText}"").RootElement.Clone();
+    if (!string.IsNullOrWhiteSpace(council))
+        meta["professionalCouncil"] = JsonDocument.Parse($""{council}"").RootElement.Clone();
+    if (!string.IsNullOrWhiteSpace(req.ProfessionalName ?? ""))
+        meta["professionalName"] = JsonDocument.Parse($""{(req.ProfessionalName ?? "").Trim()}"").RootElement.Clone();
+    if (!string.IsNullOrWhiteSpace(req.Cid ?? ""))
+        meta["cid"] = JsonDocument.Parse($""{(req.Cid ?? "").Trim().ToUpperInvariant()}"").RootElement.Clone();
+    // Lei 13.787/2018: marcar como imutável
+    meta["immutable"] = JsonDocument.Parse("true").RootElement.Clone();
+
     var record = new ClinicalRecord
     {
         Id = Guid.NewGuid().ToString("N"),
@@ -959,7 +1132,7 @@ app.MapPost("/patients/{id}/records", async (
         Date = dateText,
         CreatedBy = authUser.Id,
         CreatedAt = DateTime.UtcNow.ToString("O"),
-        Metadata = req.Metadata ?? new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
+        Metadata = meta
     };
 
     state.ClinicalRecords.Add(record);
@@ -967,39 +1140,64 @@ app.MapPost("/patients/{id}/records", async (
     return Results.Created($"/patients/{id}/records/{record.Id}", record);
 }).RequireAuthorization();
 
+// Lei 13.787/2018 + CFM 1638/2002: prontuário eletrônico é IMUTÁVEL.
+// DELETE físico não é permitido. Mantemos o endpoint por compatibilidade
+// mas ele não remove — apenas inativa com registro de auditoria.
 app.MapDelete("/patients/{id}/records/{recordId}", async (
     ClaimsPrincipal principal,
-    string id,
-    string recordId,
-    AppStateStore store,
-    AuthService auth) =>
+    string id, string recordId,
+    AppStateStore store, AuthService auth) =>
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
+    if (!auth.IsFullClinical(authUser)) return Results.StatusCode(StatusCodes.Status403Forbidden);
     var state = await store.ReadAsync();
     var patient = state.Patients.FirstOrDefault(p => p.Id == id);
-    if (patient is null) return Results.NotFound(new { error = "Paciente nÃ£o encontrado" });
+    if (patient is null) return Results.NotFound(new { error = "Paciente não encontrado" });
     if (!auth.CanAccessPatient(authUser, patient)) return Results.StatusCode(StatusCodes.Status403Forbidden);
-
     var index = state.ClinicalRecords.FindIndex(r => r.Id == recordId && r.PatientId == id);
-    if (index < 0) return Results.NotFound(new { error = "Registro nÃ£o encontrado" });
-    var current = state.ClinicalRecords[index];
+    if (index < 0) return Results.NotFound(new { error = "Registro não encontrado" });
+    // Inativa em vez de deletar
+    var rec = state.ClinicalRecords[index];
+    rec.Metadata ??= new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+    rec.Metadata["inactive"] = JsonDocument.Parse("true").RootElement.Clone();
+    rec.Metadata["inactivatedBy"] = JsonDocument.Parse($""{authUser.Name ?? authUser.Id}"").RootElement.Clone();
+    rec.Metadata["inactivatedAt"] = JsonDocument.Parse($""{DateTime.UtcNow:O}"").RootElement.Clone();
+    state.ClinicalRecords[index] = rec;
+    await store.WriteAsync(state);
+    return Results.Ok(new { ok = true, inactivated = true, message = "Registro inativado (Lei 13.787/2018 — exclusão física não permitida)" });
+}).RequireAuthorization();
 
-    if (auth.IsAcs(authUser))
+// PATCH /patients/{id}/records/{recordId} — inativação com justificativa
+app.MapPatch("/patients/{id}/records/{recordId}", async (
+    ClaimsPrincipal principal,
+    string id, string recordId,
+    Dictionary<string, JsonElement> payload,
+    AppStateStore store, AuthService auth) =>
+{
+    var authUser = await auth.GetAuthUserAsync(principal, store);
+    if (authUser is null) return Results.Unauthorized();
+    if (!auth.IsFullClinical(authUser)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    var state = await store.ReadAsync();
+    var patient = state.Patients.FirstOrDefault(p => p.Id == id);
+    if (patient is null) return Results.NotFound(new { error = "Paciente não encontrado" });
+    if (!auth.CanAccessPatient(authUser, patient)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    var index = state.ClinicalRecords.FindIndex(r => r.Id == recordId && r.PatientId == id);
+    if (index < 0) return Results.NotFound(new { error = "Registro não encontrado" });
+    var rec = state.ClinicalRecords[index];
+    rec.Metadata ??= new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+    // Aplicar inativação com justificativa obrigatória
+    if (payload.TryGetValue("inactive", out var inactiveEl) && inactiveEl.ValueKind == JsonValueKind.True)
     {
-        var canDeleteOwnVisit = string.Equals(current.Type, "visit", StringComparison.OrdinalIgnoreCase)
-            && string.Equals(current.CreatedBy ?? "", authUser.Id, StringComparison.Ordinal);
-        if (!canDeleteOwnVisit)
-        {
-            return Results.StatusCode(StatusCodes.Status403Forbidden);
-        }
+        var reason = ReadJsonString(payload, "inactivationReason");
+        if (string.IsNullOrWhiteSpace(reason))
+            return Results.BadRequest(new { error = "Justificativa de inativação obrigatória (Lei 13.787/2018)" });
+        rec.Metadata["inactive"] = JsonDocument.Parse("true").RootElement.Clone();
+        rec.Metadata["inactivationReason"] = JsonDocument.Parse($""{reason}"").RootElement.Clone();
+        rec.Metadata["inactivatedBy"] = JsonDocument.Parse($""{authUser.Name ?? authUser.Id}"").RootElement.Clone();
+        rec.Metadata["inactivatedAt"] = JsonDocument.Parse($""{DateTime.UtcNow:O}"").RootElement.Clone();
     }
-    else if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser)))
-    {
-        return Results.StatusCode(StatusCodes.Status403Forbidden);
-    }
-
-    state.ClinicalRecords.RemoveAt(index);
+    state.ClinicalRecords[index] = rec;
     await store.WriteAsync(state);
     return Results.Ok(new { ok = true });
 }).RequireAuthorization();
@@ -1012,7 +1210,7 @@ app.MapDelete("/patients/{id}", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var state = await store.ReadAsync();
     var patient = state.Patients.FirstOrDefault(p => p.Id == id);
@@ -1058,7 +1256,7 @@ app.MapPost("/patients/{id}/appointments", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var state = await store.ReadAsync();
     var patient = state.Patients.FirstOrDefault(p => p.Id == id);
@@ -1098,7 +1296,7 @@ app.MapDelete("/patients/{id}/appointments/{appointmentId}", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var state = await store.ReadAsync();
     var patient = state.Patients.FirstOrDefault(p => p.Id == id);
@@ -1139,7 +1337,7 @@ app.MapPost("/tasks", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var patientId = ReadJsonString(payload, "patientId");
     var title = ReadJsonString(payload, "title");
@@ -1179,7 +1377,7 @@ app.MapPatch("/tasks/{id}", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var state = await store.ReadAsync();
     var task = state.Tasks.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.Ordinal));
@@ -1258,7 +1456,7 @@ app.MapGet("/audit-logs", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var patientId = (request.Query["patientId"].ToString() ?? "").Trim();
     var state = await store.ReadAsync();
@@ -1276,7 +1474,7 @@ app.MapGet("/metrics/demand/monthly", async (ClaimsPrincipal principal, AppState
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var state = await store.ReadAsync();
     var visiblePatientIds = state.Patients.Where(p => auth.CanAccessPatient(authUser, p)).Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
@@ -1287,7 +1485,7 @@ app.MapGet("/metrics/data-quality", async (ClaimsPrincipal principal, AppStateSt
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var state = await store.ReadAsync();
     var visiblePatientIds = state.Patients.Where(p => auth.CanAccessPatient(authUser, p)).Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
@@ -1310,7 +1508,7 @@ app.MapGet("/protocol/templates/{category}/usage", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var state = await store.ReadAsync();
     var cat = (category ?? "").Trim().ToLowerInvariant();
@@ -1332,7 +1530,7 @@ app.MapGet("/protocol/templates/{category}/history", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var state = await store.ReadAsync();
     var cat = (category ?? "").Trim().ToLowerInvariant();
@@ -1363,7 +1561,7 @@ app.MapPost("/protocol/templates", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var cat = (template.Category ?? "").Trim().ToLowerInvariant();
     if (string.IsNullOrWhiteSpace(cat)) return Results.BadRequest(new { error = "Categoria obrigatória" });
@@ -1404,7 +1602,7 @@ app.MapPut("/protocol/templates/{category}", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var cat = (category ?? "").Trim().ToLowerInvariant();
     var state = await store.ReadAsync();
@@ -1442,7 +1640,7 @@ app.MapDelete("/protocol/templates/{category}", async (
 {
     var authUser = await auth.GetAuthUserAsync(principal, store);
     if (authUser is null) return Results.Unauthorized();
-    if (!(auth.IsManager(authUser) || auth.IsDoctor(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!(auth.IsFullClinical(authUser))) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     var cat = (category ?? "").Trim().ToLowerInvariant();
     var state = await store.ReadAsync();
@@ -1690,6 +1888,187 @@ app.MapPost("/ai/chat", async (ClaimsPrincipal principal, Dictionary<string, Jso
     });
 }).RequireAuthorization();
 
+// ── EXAMS ────────────────────────────────────────────────────────────────────
+
+// GET /patients/{id}/exams
+app.MapGet("/patients/{id}/exams", async (
+    ClaimsPrincipal principal, string id,
+    AppStateStore store, AuthService auth) =>
+{
+    var authUser = await auth.GetAuthUserAsync(principal, store);
+    if (authUser is null) return Results.Unauthorized();
+    var state = await store.ReadAsync();
+    var patient = state.Patients.FirstOrDefault(p => p.Id == id);
+    if (patient is null) return Results.NotFound(new { error = "Paciente não encontrado" });
+    if (!auth.CanAccessPatient(authUser, patient)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+    var exams = state.ClinicalRecords
+        .Where(r => r.PatientId == id && string.Equals(r.Type, "exam", StringComparison.OrdinalIgnoreCase))
+        .OrderByDescending(r => r.Date)
+        .Select(r =>
+        {
+            object attachments = Array.Empty<object>();
+            if (r.Metadata is not null && r.Metadata.TryGetValue("attachments", out var attEl))
+                attachments = attEl;
+            return new { r.Id, r.Title, r.Date, r.Details, r.CreatedAt, attachments };
+        })
+        .ToList();
+
+    return Results.Ok(exams);
+}).RequireAuthorization();
+
+// POST /patients/{id}/exams — create exam record (no file)
+app.MapPost("/patients/{id}/exams", async (
+    ClaimsPrincipal principal, string id,
+    Dictionary<string, JsonElement> payload,
+    AppStateStore store, AuthService auth) =>
+{
+    var authUser = await auth.GetAuthUserAsync(principal, store);
+    if (authUser is null) return Results.Unauthorized();
+    if (auth.IsAcs(authUser)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    var state = await store.ReadAsync();
+    var patient = state.Patients.FirstOrDefault(p => p.Id == id);
+    if (patient is null) return Results.NotFound(new { error = "Paciente não encontrado" });
+    if (!auth.CanAccessPatient(authUser, patient)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+    var title = ReadJsonString(payload, "title");
+    var date  = ReadJsonString(payload, "date");
+    var notes = ReadJsonString(payload, "notes");
+    if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(date))
+        return Results.BadRequest(new { error = "title e date são obrigatórios" });
+
+    var record = new ClinicalRecord
+    {
+        Id        = Guid.NewGuid().ToString("N"),
+        PatientId = id,
+        Type      = "exam",
+        Title     = title,
+        Details   = notes,
+        Date      = date,
+        CreatedBy = authUser.Id,
+        CreatedAt = DateTime.UtcNow.ToString("O"),
+        Metadata  = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["attachments"] = JsonDocument.Parse("[]").RootElement.Clone()
+        }
+    };
+
+    state.ClinicalRecords.Add(record);
+    await store.WriteAsync(state);
+    return Results.Created($"/patients/{id}/exams/{record.Id}",
+        new { record.Id, record.Title, record.Date, record.Details, record.CreatedAt,
+              attachments = Array.Empty<object>() });
+}).RequireAuthorization();
+
+// POST /patients/{id}/exams/{examId}/attachments — upload file
+app.MapPost("/patients/{id}/exams/{examId}/attachments", async (
+    ClaimsPrincipal principal, string id, string examId,
+    HttpRequest request,
+    AppStateStore store, AuthService auth,
+    IWebHostEnvironment env) =>
+{
+    var authUser = await auth.GetAuthUserAsync(principal, store);
+    if (authUser is null) return Results.Unauthorized();
+    if (auth.IsAcs(authUser)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    var state = await store.ReadAsync();
+    var patient = state.Patients.FirstOrDefault(p => p.Id == id);
+    if (patient is null) return Results.NotFound(new { error = "Paciente não encontrado" });
+    if (!auth.CanAccessPatient(authUser, patient)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+    var record = state.ClinicalRecords.FirstOrDefault(r =>
+        r.Id == examId && r.PatientId == id &&
+        string.Equals(r.Type, "exam", StringComparison.OrdinalIgnoreCase));
+    if (record is null) return Results.NotFound(new { error = "Exame não encontrado" });
+
+    if (!request.HasFormContentType)
+        return Results.BadRequest(new { error = "Envie multipart/form-data" });
+
+    var form = await request.ReadFormAsync();
+    var file = form.Files.GetFile("file");
+    if (file is null || file.Length == 0)
+        return Results.BadRequest(new { error = "Nenhum arquivo enviado" });
+    if (file.Length > 15 * 1024 * 1024)
+        return Results.BadRequest(new { error = "Arquivo muito grande (máx 15MB)" });
+
+    var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf" };
+    if (!allowed.Contains(file.ContentType))
+        return Results.BadRequest(new { error = "Tipo não permitido (JPG, PNG, GIF, WEBP, PDF)" });
+
+    var webRoot = env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+    var dir = Path.Combine(webRoot, "uploads", id);
+    Directory.CreateDirectory(dir);
+
+    var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+    var storedName = $"{Guid.NewGuid():N}{ext}";
+    using (var stream = File.Create(Path.Combine(dir, storedName)))
+        await file.CopyToAsync(stream);
+
+    var url = $"/uploads/{id}/{storedName}";
+    var attObj = new { url, name = file.FileName, contentType = file.ContentType, size = file.Length };
+
+    record.Metadata ??= new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+    var existingJson = record.Metadata.TryGetValue("attachments", out var existingEl)
+        ? existingEl.GetRawText() : "[]";
+    var list = System.Text.Json.JsonSerializer.Deserialize<List<JsonElement>>(existingJson) ?? new();
+    list.Add(JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(attObj)).RootElement.Clone());
+    record.Metadata["attachments"] = JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(list)).RootElement.Clone();
+
+    await store.WriteAsync(state);
+    return Results.Ok(attObj);
+}).RequireAuthorization();
+
+// DELETE /patients/{id}/exams/{examId}
+app.MapDelete("/patients/{id}/exams/{examId}", async (
+    ClaimsPrincipal principal, string id, string examId,
+    AppStateStore store, AuthService auth,
+    IWebHostEnvironment env) =>
+{
+    var authUser = await auth.GetAuthUserAsync(principal, store);
+    if (authUser is null) return Results.Unauthorized();
+    if (!(auth.IsFullClinical(authUser)))
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    var state = await store.ReadAsync();
+    var patient = state.Patients.FirstOrDefault(p => p.Id == id);
+    if (patient is null) return Results.NotFound(new { error = "Paciente não encontrado" });
+    if (!auth.CanAccessPatient(authUser, patient)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+    var idx = state.ClinicalRecords.FindIndex(r =>
+        r.Id == examId && r.PatientId == id &&
+        string.Equals(r.Type, "exam", StringComparison.OrdinalIgnoreCase));
+    if (idx < 0) return Results.NotFound(new { error = "Exame não encontrado" });
+
+    var record = state.ClinicalRecords[idx];
+    // Delete physical files
+    if (record.Metadata is not null && record.Metadata.TryGetValue("attachments", out var attEl))
+    {
+        var webRoot = env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        try
+        {
+            var atts = System.Text.Json.JsonSerializer.Deserialize<List<JsonElement>>(attEl.GetRawText()) ?? new();
+            foreach (var att in atts)
+            {
+                if (att.TryGetProperty("url", out var urlEl))
+                {
+                    var physical = Path.Combine(webRoot,
+                        (urlEl.GetString() ?? "").TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                    if (File.Exists(physical)) File.Delete(physical);
+                }
+            }
+        }
+        catch { /* ignore file deletion errors */ }
+    }
+
+    state.ClinicalRecords.RemoveAt(idx);
+    await store.WriteAsync(state);
+    return Results.Ok(new { ok = true });
+}).RequireAuthorization();
+
+
+// SPA fallback: qualquer rota não encontrada devolve index.html
+// Isso permite que o React Router funcione corretamente
+app.MapFallbackToFile("index.html");
+
 app.Run();
 
 static string DetectConsultationSpecialty(string title)
@@ -1769,7 +2148,10 @@ static object BuildDemandMonthly(AppDb state, User authUser, HashSet<string> vis
         })
         .ToList();
 
-    var scheduled = monthAppointments.Count(a => string.Equals((a.DemandType ?? "").Trim(), "scheduled", StringComparison.OrdinalIgnoreCase));
+    var scheduled = monthAppointments.Count(a => {
+        var dt = (a.DemandType ?? "").Trim().ToLowerInvariant();
+        return dt == "scheduled" || dt == "retroactive";
+    });
     var spontaneous = monthAppointments.Count(a => string.Equals((a.DemandType ?? "").Trim(), "spontaneous", StringComparison.OrdinalIgnoreCase));
     var total = scheduled + spontaneous;
     var ratio = total > 0 ? (scheduled * 100.0 / total) : 0;

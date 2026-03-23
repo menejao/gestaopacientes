@@ -26,6 +26,15 @@ public sealed class AppDb
     [JsonPropertyName("appointments")]
     public List<Appointment> Appointments { get; set; } = new();
 
+    [JsonPropertyName("tasks")]
+    public List<TaskItem> Tasks { get; set; } = new();
+
+    [JsonPropertyName("messages")]
+    public List<MessageItem> Messages { get; set; } = new();
+
+    [JsonPropertyName("auditLogs")]
+    public List<AuditLogItem> AuditLogs { get; set; } = new();
+
     [JsonPropertyName("clinicalRecords")]
     public List<ClinicalRecord> ClinicalRecords { get; set; } = new();
 
@@ -38,6 +47,9 @@ public sealed class Team
     [JsonPropertyName("id")] public string Id { get; set; } = "";
     [JsonPropertyName("name")] public string Name { get; set; } = "";
     [JsonPropertyName("managerUserId")] public string? ManagerUserId { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 public sealed class User
@@ -53,6 +65,9 @@ public sealed class User
     [JsonPropertyName("updatedAt")] public string? UpdatedAt { get; set; }
     [JsonPropertyName("twoFactorEnabled")] public bool TwoFactorEnabled { get; set; }
     [JsonPropertyName("twoFactorSecret")] public string? TwoFactorSecret { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 public sealed class Patient
@@ -91,6 +106,52 @@ public sealed class Appointment
     [JsonPropertyName("demandType")] public string? DemandType { get; set; }
     [JsonPropertyName("createdBy")] public string? CreatedBy { get; set; }
     [JsonPropertyName("createdAt")] public string? CreatedAt { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public sealed class TaskItem
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("patientId")] public string PatientId { get; set; } = "";
+    [JsonPropertyName("title")] public string Title { get; set; } = "";
+    [JsonPropertyName("notes")] public string? Notes { get; set; }
+    [JsonPropertyName("dueDate")] public string? DueDate { get; set; }
+    [JsonPropertyName("assigneeId")] public string? AssigneeId { get; set; }
+    [JsonPropertyName("status")] public string Status { get; set; } = "pending";
+    [JsonPropertyName("createdBy")] public string? CreatedBy { get; set; }
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public sealed class MessageItem
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("patientId")] public string PatientId { get; set; } = "";
+    [JsonPropertyName("authorId")] public string? AuthorId { get; set; }
+    [JsonPropertyName("authorName")] public string? AuthorName { get; set; }
+    [JsonPropertyName("text")] public string Text { get; set; } = "";
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public sealed class AuditLogItem
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("patientId")] public string? PatientId { get; set; }
+    [JsonPropertyName("userId")] public string? UserId { get; set; }
+    [JsonPropertyName("userName")] public string? UserName { get; set; }
+    [JsonPropertyName("userRole")] public string? UserRole { get; set; }
+    [JsonPropertyName("action")] public string Action { get; set; } = "";
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 public sealed class ClinicalRecord
@@ -125,6 +186,9 @@ public sealed class ProtocolTemplate
     [JsonPropertyName("targets")] public ProtocolTargets Targets { get; set; } = new();
     [JsonPropertyName("deadlines")] public ProtocolTargets Deadlines { get; set; } = new();
     [JsonPropertyName("vaccines")] public List<string> Vaccines { get; set; } = new();
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 public sealed class ProtocolTargets

@@ -68,6 +68,9 @@ public sealed class JsonDbStore
         state.Users ??= new();
         state.Patients ??= new();
         state.Appointments ??= new();
+        state.Tasks ??= new();
+        state.Messages ??= new();
+        state.AuditLogs ??= new();
         state.ClinicalRecords ??= new();
         state.ProtocolTemplates ??= new();
         return state;
