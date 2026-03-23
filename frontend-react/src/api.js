@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "https://saude-backend-gkj7.onrender.com";
 
 export async function api(path, options = {}, token = "") {
   const headers = {
@@ -121,10 +121,6 @@ export async function createRecord(token, patientId, payload) {
   return api(`/patients/${patientId}/records`, { method: "POST", body: JSON.stringify(payload) }, token);
 }
 
-export async function listRecords(token, patientId) {
-  return api(`/patients/${patientId}/records`, { method: "GET" }, token);
-}
-
 export async function deleteRecord(token, patientId, recordId) {
   return api(`/patients/${patientId}/records/${recordId}`, { method: "DELETE" }, token);
 }
@@ -163,4 +159,15 @@ export async function aiTeamReport(token) {
 
 export async function aiTeamAsk(token, question) {
   return api("/ai/chat", { method: "POST", body: JSON.stringify({ question }) }, token);
+}
+
+export async function pingPresence(token) {
+  try {
+    const res = await fetch(`${API_URL}/me/presence`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    // 404 = endpoint não disponível neste deploy, ignora silenciosamente
+    if (!res.ok && res.status !== 404) throw new Error("presence failed");
+  } catch {}
 }
