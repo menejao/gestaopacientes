@@ -1,0 +1,5 @@
+name = "gestaopacientes"
+compatibility_date = "2026-03-19"
+
+[assets]
+directory = "./frontend-react/dist"

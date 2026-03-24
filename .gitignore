@@ -14,3 +14,28 @@ backend-dotnet/**/obj/
 .appdata/
 .tmp/
 NuGet/
+
+# Node / Frontend
+node_modules/
+frontend-react/node_modules/
+frontend-react/dist/
+frontend-react/.npm-cache/
+.npm-cache/
+
+# Deploy / local tooling
+.wrangler/
+frontend-react/.wrangler/
+
+# Environment files (keep only examples in git)
+.env
+.env.*
+!.env.example
+frontend-react/.env
+frontend-react/.env.*
+!frontend-react/.env.example
+
+# Local archives and temp artifacts
+*.zip
+*.rar
+.tmp-dotnet-out.log
+.tmp-dotnet-err.log

@@ -247,6 +247,7 @@ body {
   color: var(--slate-500);
   text-transform: uppercase;
   letter-spacing: .07em;
+  white-space: nowrap;
 }
 
 /* Auth right */
@@ -871,7 +872,7 @@ body {
   gap: 1.25rem;
   align-items: start;
 }
-.patients-layout.with-detail { grid-template-columns: minmax(0,1fr) 430px; }
+.patients-layout.with-detail { grid-template-columns: minmax(0,1fr) 620px; }
 .patients-layout.without-detail { grid-template-columns: minmax(0,1fr); }
 
 .patients-head {
@@ -1086,12 +1087,13 @@ select {
 /* ── Tabs (patient) ──────────────────────────────────────────────── */
 .tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   padding: 0 1.25rem;
-  overflow: visible;
+  overflow-x: auto;
 }
+.tabs::-webkit-scrollbar { height: 0; }
 
 .tab {
   display: inline-flex;

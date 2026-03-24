@@ -57,7 +57,7 @@ function OfflineBanner() {
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1 1l14 14M10.5 5A5 5 0 0114 9M6 3a7 7 0 018 8M3 6a5 5 0 011 7" stroke="#f59e0b" strokeWidth="1.4" strokeLinecap="round"/><circle cx="8" cy="13" r="1" fill="#f59e0b"/></svg>
         <span>Modo offline — dados locais disponíveis. Alterações serão sincronizadas ao reconectar.</span>
       </div>
-      <span style={{fontSize:".7rem",color:"#94a3b8",flexShrink:0}}>SaudeUBS · Offline</span>
+      <span style={{fontSize:".7rem",color:"#94a3b8",flexShrink:0}}>SIGUS · Offline</span>
     </div>
   );
 }
@@ -181,7 +181,7 @@ function readUiState() {
   try { const r = localStorage.getItem(UI_STATE_KEY); return r ? JSON.parse(r) : {}; } catch { return {}; }
 }
 function roleLabel(role) {
-  return { nurse_manager: "Enfermeira", doctor: "Médico(a)", acs: "ACS", pharmacist: "Farmacêutico(a)", pharmacy_tech: "Téc. de Farmácia", nursing_tech: "Téc. Enfermagem", receptionist: "Recepcionista", dentist: "Dentista" }[String(role||"").toLowerCase()] || role || "-";
+  return { nurse_manager: "Enfermeira", doctor: "Médico(a)", acs: "ACS", pharmacist: "Farmacêutico(a)", pharmacy_tech: "Téc. de Farmácia", nursing_tech: "Téc. Enfermagem", receptionist: "Recepcionista", dentist: "Dentista", gestor: "Gestor(a) UBS" }[String(role||"").toLowerCase()] || role || "-";
 }
 function onlyDigits(v) { return String(v||"").replace(/\D/g,""); }
 function formatCpf(v)  { const d=onlyDigits(v).slice(0,11); return d.replace(/^(\d{3})(\d)/,"$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1-$2"); }
@@ -311,27 +311,70 @@ function protocolChip(summary) {
   const targets=summary.targets||{},completed=summary.completed||{};
   const doneTotal=Number(completed.visits||0)+Number(completed.consultations||0)+Number(completed.vaccines||0);
   const targetTotal=Number(targets.visits||0)+Number(targets.consultations||0)+Number(targets.vaccines||0);
-  // Usar apenas alertas de schedule (visitas/consultas) para determinar severidade —
-  // alertas de vacina do backend podem conter vacinas fora do indicador e distorcem o chip.
   const schedule=summary.schedule||{};
+  const special=Array.isArray(summary.specialAlerts)?summary.specialAlerts:[];
   let overdueCount=0, nearCount=0;
-  for(const key of["visits","consultations","vaccines"]){
+
+  // Visitas e consultas: somente overdueDays >= 1 conta como crítico.
+  // daysLeft <= 7 sem overdue NÃO gera nearCount — evita "Atenção" fantasma
+  // em gestantes e outros casos onde o backend reporta daysLeft próximo sem alerta real.
+  for(const key of["visits","consultations"]){
     const s=schedule?.[key];
     if(!s||Number(s.pending||0)<=0) continue;
-    const overdue=Number(s.overdueDays||0),daysLeft=typeof s.daysLeft==="number"?Number(s.daysLeft):null;
-    if(overdue>=1) overdueCount++;
-    else if(daysLeft!==null&&daysLeft<=7) nearCount++;
+    if(Number(s.overdueDays||0)>=1) overdueCount++;
+    // nearCount só de schedule se há specialAlert não-vacina de medium correspondente
   }
-  // Se não há schedule, usar specialAlerts mas só para visitas/consultas (não vacinas)
+
+  // Vacinas atrasadas: contar cada dose individualmente.
+  // 1) Se há specialAlerts de vacina com severity=high → cada um conta como 1 vencido.
+  const vacAlerts=special.filter(a=>{
+    const act=String(a?.activity||"").toLowerCase();
+    const tit=String(a?.title||"").toLowerCase();
+    return act.includes("vacinacao")||act.includes("vacina")||tit.includes("vacina");
+  });
+  const vacOverdue=vacAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="high").length;
+  const vacNear=vacAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="medium").length;
+
+  if(vacOverdue>0||vacNear>0){
+    overdueCount+=vacOverdue;
+    nearCount+=vacNear;
+  } else {
+    // 2) Fallback: backend não gerou specialAlerts de vacina (crônico, gestante, idoso).
+    // Usa schedule.vaccines: se overdueDays >= 1, conta o número real de doses pendentes.
+    const sv=schedule?.vaccines;
+    if(sv&&Number(sv.overdueDays||0)>=1&&Number(sv.pending||0)>0){
+      overdueCount+=Number(sv.pending);
+    }
+    // nearCount de vacinas via schedule SOMENTE se overdueDays=0 e daysLeft<=7
+    // e não há nenhum specialAlert não-vacina de medium (evita double-count)
+    if(sv&&Number(sv.overdueDays||0)===0&&Number(sv.pending||0)>0){
+      const dl=typeof sv.daysLeft==="number"?Number(sv.daysLeft):null;
+      if(dl!==null&&dl<=7) nearCount+=Number(sv.pending);
+    }
+  }
+
+  // specialAlerts não-vacina (ex: alertas clínicos do backend):
+  // só somam se não há schedule (backend antigo sem schedule)
   if(!Object.keys(schedule).length){
-    const special=Array.isArray(summary.specialAlerts)?summary.specialAlerts:[];
-    const nonVaccineAlerts=special.filter(a=>{
+    const nonVacAlerts=special.filter(a=>{
       const t=String(a?.title||"").toLowerCase();
       return !(t.includes("vacina")||t.includes("vaccine")||t.includes("pendente:"));
     });
-    overdueCount=nonVaccineAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="high").length;
-    nearCount=nonVaccineAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="medium").length;
+    overdueCount+=nonVacAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="high").length;
+    nearCount+=nonVacAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="medium").length;
   }
+
+  // "Atenção" via specialAlerts não-vacina com medium (ex: consulta próxima do prazo),
+  // mas SOMENTE se há overdueDays=0 — evita conflito com overdueCount já contado.
+  if(overdueCount===0){
+    const nonVacMedium=special.filter(a=>{
+      const t=String(a?.title||"").toLowerCase();
+      const isVac=t.includes("vacina")||t.includes("vaccine")||t.includes("pendente:");
+      return !isVac&&String(a?.severity||"").toLowerCase()==="medium";
+    });
+    if(nonVacMedium.length>0) nearCount+=nonVacMedium.length;
+  }
+
   if(overdueCount>0) return{text:`Crítico (${overdueCount} vencido${overdueCount>1?"s":""})`,tone:"danger"};
   if(nearCount>0) return{text:`Atenção (${nearCount} próximo${nearCount>1?"s":""})`,tone:"warn"};
   if(total<=0) return{text:`Em dia`,tone:"ok"};
@@ -344,6 +387,7 @@ function catLabel(templates,category) {
 
 function canManage(user) { return["nurse_manager","doctor","dentist"].includes(String(user?.role||"")); }
 function isManager(user) { return String(user?.role||"")==="nurse_manager"; }
+function isGestor(user)  { return String(user?.role||"")==="gestor"; }
 function suggestNextVisitDate(history, template) {
   const visits = (history||[])
     .filter(h => String(h.type||"").toLowerCase() === "visit")
@@ -487,6 +531,16 @@ function buildNavItems(user, canManageUser) {
   const admin = isAdmin(user);
   const role = String(user?.role||"");
   const items = [];
+
+  // Gestor: menu exclusivo de gestão
+  if (isGestor(user) && !admin) {
+    items.push({ id:"gestor",   label:"Gestão à Vista",  section:"" });
+    items.push({ id:"reports",  label:"Relatórios",       section:"" });
+    items.push({ id:"patients", label:"Pacientes",        section:"Visualização" });
+    items.push({ id:"ai",       label:"IA Assistida",     section:"" });
+    return items;
+  }
+
   // Recepcionistas têm app próprio — não aparecem no nav geral
   if (isReceptionist(user) && !admin) return items;
 
@@ -517,7 +571,8 @@ function buildNavItems(user, canManageUser) {
   if (canManageUser && !isNursingTech(user)) { items.push({ id:"acs", label:"ACS", section:"Equipe" }); items.push({ id:"doctors", label:"Médicos", section:"" }); }
 
   // 6. Gestão & IA
-  if (canManageUser || admin) items.push({ id:"reports", label:"Relatórios", section:"Gestão" });
+  if (canManageUser || admin) items.push({ id:"gestor", label:"Gestão à Vista", section:"Gestão" });
+  if (canManageUser || admin) items.push({ id:"reports", label:"Relatórios", section:"" });
   if (canAccessAI(user)) items.push({ id:"ai", label:"IA Assistida", section:"" });
 
   return items;
@@ -581,9 +636,144 @@ const IconSignOut = () => (
 
 function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
   const [authTab, setAuthTab] = useState("login");
+  const [loginMode, setLoginMode] = useState("saude"); // "saude" | "gestor"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [reg, setReg] = useState({ name:"",email:"",password:"",role:"nurse_manager",teamId:"",councilNumber:"",councilUf:"SP" });
+
+  // Tela de login do Gestor — visual executivo distinto
+  const [gestorTab, setGestorTab] = useState("login");
+  const [gestorReg, setGestorReg] = useState({name:"",email:"",password:"",confirmPassword:""});
+
+  if (loginMode === "gestor") {
+    const inputStyle = {width:"100%",padding:".65rem .85rem",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".88rem",fontFamily:"inherit",outline:"none",background:"#fff",color:"#1e293b",boxSizing:"border-box"};
+    const focusStyle = (e)=>e.target.style.borderColor="#6366f1";
+    const blurStyle  = (e)=>e.target.style.borderColor="#e2e8f0";
+
+    return (
+      <main style={{minHeight:"100vh",display:"flex",background:"#0f172a"}}>
+        {/* Painel esquerdo */}
+        <section style={{flex:1,background:"linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"3rem",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:-80,right:-80,width:320,height:320,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,.15) 0%,transparent 70%)",pointerEvents:"none"}}/>
+          <div style={{position:"absolute",bottom:-60,left:-60,width:240,height:240,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,.1) 0%,transparent 70%)",pointerEvents:"none"}}/>
+          <div style={{display:"flex",alignItems:"center",gap:".6rem",position:"relative",zIndex:1}}>
+            <div style={{width:32,height:32,background:"#6366f1",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+            </div>
+            <span style={{fontSize:"1rem",fontWeight:700,color:"#fff",letterSpacing:"-.01em"}}>SIGUS</span>
+            <span style={{fontSize:".7rem",background:"rgba(99,102,241,.25)",color:"#a5b4fc",border:"1px solid rgba(99,102,241,.4)",padding:".15em .5em",borderRadius:99,fontFamily:"monospace",marginLeft:".25rem"}}>GESTÃO</span>
+          </div>
+          <div style={{position:"relative",zIndex:1}}>
+            <div style={{display:"inline-flex",alignItems:"center",gap:".4rem",background:"rgba(99,102,241,.15)",border:"1px solid rgba(99,102,241,.3)",color:"#a5b4fc",fontSize:".72rem",fontWeight:600,letterSpacing:".08em",textTransform:"uppercase",padding:".3rem .75rem",borderRadius:99,marginBottom:"1.25rem"}}>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor"><circle cx="4.5" cy="4.5" r="4.5"/></svg>
+              Painel Executivo
+            </div>
+            <h1 style={{fontSize:"2.4rem",fontWeight:700,color:"#fff",lineHeight:1.15,letterSpacing:"-.04em",marginBottom:"1rem"}}>
+              Indicadores de<br/><span style={{color:"#818cf8"}}>Gestão à Vista</span>
+            </h1>
+            <p style={{fontSize:".9rem",color:"#94a3b8",lineHeight:1.7,maxWidth:380}}>
+              Visão executiva completa da UBS — produção, protocolos, equipe e farmácia em um único painel.
+            </p>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:"rgba(255,255,255,.07)",border:"1px solid rgba(255,255,255,.07)",borderRadius:12,overflow:"hidden",position:"relative",zIndex:1}}>
+            {[["KPIs","Tempo real"],["Produção","Por período"],["Equipe","Performance"]].map(([v,l])=>(
+              <div key={v} style={{background:"rgba(255,255,255,.03)",padding:"1rem"}}>
+                <div style={{fontSize:"1rem",fontWeight:700,color:"#fff",marginBottom:".2rem"}}>{v}</div>
+                <div style={{fontSize:".68rem",color:"#64748b",textTransform:"uppercase",letterSpacing:".07em"}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Painel direito */}
+        <section style={{width:520,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",padding:"2rem",overflowY:"auto"}}>
+          <div style={{width:"100%",maxWidth:390}}>
+            <button onClick={()=>setLoginMode("saude")} style={{display:"flex",alignItems:"center",gap:".4rem",background:"none",border:"none",color:"#64748b",fontSize:".78rem",cursor:"pointer",padding:"0 0 1.25rem",fontFamily:"inherit"}}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Voltar ao login clínico
+            </button>
+
+            {/* Tabs */}
+            <div style={{display:"flex",borderBottom:"1.5px solid #e2e8f0",marginBottom:"1.75rem",gap:0}}>
+              {[["login","Entrar"],["register","Criar conta"]].map(([k,l])=>(
+                <button key={k} onClick={()=>setGestorTab(k)} style={{flex:1,padding:".5rem 0",background:"none",border:"none",borderBottom:gestorTab===k?"2.5px solid #6366f1":"2.5px solid transparent",marginBottom:-1.5,fontSize:".82rem",fontWeight:gestorTab===k?700:500,color:gestorTab===k?"#6366f1":"#64748b",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
+                  {l}
+                </button>
+              ))}
+            </div>
+
+            {gestorTab === "login" ? (
+              <>
+                <div style={{marginBottom:"1.5rem"}}>
+                  <h2 style={{fontSize:"1.3rem",fontWeight:700,color:"#1e293b",letterSpacing:"-.02em",marginBottom:".25rem"}}>Bem-vindo de volta</h2>
+                  <p style={{fontSize:".82rem",color:"#64748b"}}>Entre com suas credenciais de gestão.</p>
+                </div>
+                <form onSubmit={e=>{e.preventDefault();onLogin(email,password);}}>
+                  <div style={{marginBottom:"1rem"}}>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>E-mail</label>
+                    <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="gestor@prefeitura.gov.br" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="email"/>
+                  </div>
+                  <div style={{marginBottom:"1.5rem"}}>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Senha</label>
+                    <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="current-password"/>
+                  </div>
+                  {error && <p style={{background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:6,padding:".6rem .85rem",fontSize:".82rem",marginBottom:"1rem"}}>{error}</p>}
+                  <button type="submit" disabled={busy} style={{width:"100%",padding:".6rem",background:"#6366f1",color:"#fff",border:"none",borderRadius:8,fontSize:".85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:busy?0.6:1}}>
+                    {busy ? "Entrando..." : "Acessar painel de gestão →"}
+                  </button>
+                  <p style={{textAlign:"center",fontSize:".75rem",color:"#94a3b8",marginTop:".85rem"}}>
+                    Não tem conta?{" "}
+                    <button type="button" onClick={()=>setGestorTab("register")} style={{background:"none",border:"none",color:"#6366f1",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem"}}>Criar cadastro</button>
+                  </p>
+                </form>
+              </>
+            ) : (
+              <>
+                <div style={{marginBottom:"1.5rem"}}>
+                  <h2 style={{fontSize:"1.3rem",fontWeight:700,color:"#1e293b",letterSpacing:"-.02em",marginBottom:".25rem"}}>Criar conta de gestor</h2>
+                  <p style={{fontSize:".82rem",color:"#64748b"}}>Acesso exclusivo ao painel executivo da UBS.</p>
+                </div>
+                <form onSubmit={e=>{
+                  e.preventDefault();
+                  if(gestorReg.password !== gestorReg.confirmPassword){ return; }
+                  onRegister({...gestorReg, role:"gestor", teamId:"", councilNumber:"", councilUf:""});
+                }}>
+                  <div style={{marginBottom:"1rem"}}>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Nome completo</label>
+                    <input value={gestorReg.name} onChange={e=>setGestorReg(s=>({...s,name:e.target.value}))} placeholder="João da Silva" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
+                  </div>
+                  <div style={{marginBottom:"1rem"}}>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>E-mail</label>
+                    <input type="email" value={gestorReg.email} onChange={e=>setGestorReg(s=>({...s,email:e.target.value}))} placeholder="gestor@prefeitura.gov.br" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="email"/>
+                  </div>
+                  <div style={{marginBottom:"1rem"}}>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Senha</label>
+                    <input type="password" value={gestorReg.password} onChange={e=>setGestorReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
+                  </div>
+                  <div style={{marginBottom:"1.5rem"}}>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Confirmar senha</label>
+                    <input type="password" value={gestorReg.confirmPassword} onChange={e=>setGestorReg(s=>({...s,confirmPassword:e.target.value}))} placeholder="Repita a senha" style={{...inputStyle, borderColor: gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword ? "#dc2626" : "#e2e8f0"}} onFocus={focusStyle} onBlur={blurStyle}/>
+                    {gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword && (
+                      <p style={{fontSize:".73rem",color:"#dc2626",marginTop:".3rem"}}>As senhas não coincidem</p>
+                    )}
+                  </div>
+                  {error && <p style={{background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:6,padding:".6rem .85rem",fontSize:".82rem",marginBottom:"1rem"}}>{error}</p>}
+                  <button type="submit" disabled={busy||!gestorReg.name||!gestorReg.email||!gestorReg.password||gestorReg.password!==gestorReg.confirmPassword}
+                    style={{width:"100%",padding:".6rem",background:"#6366f1",color:"#fff",border:"none",borderRadius:8,fontSize:".85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:(busy||!gestorReg.name||!gestorReg.email||!gestorReg.password||gestorReg.password!==gestorReg.confirmPassword)?0.5:1}}>
+                    {busy ? "Criando..." : "Criar conta de gestor →"}
+                  </button>
+                  <p style={{textAlign:"center",fontSize:".75rem",color:"#94a3b8",marginTop:".85rem"}}>
+                    Já tem conta?{" "}
+                    <button type="button" onClick={()=>setGestorTab("login")} style={{background:"none",border:"none",color:"#6366f1",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem"}}>Fazer login</button>
+                  </p>
+                </form>
+              </>
+            )}
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="auth-screen">
@@ -591,7 +781,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
       <section className="auth-left">
         <div className="auth-brand">
           <div className="auth-brand-icon"><IconLogo/></div>
-          <span className="brand-name">SaudeUBS</span>
+          <span className="brand-name">SIGUS</span>
         </div>
 
         <div className="auth-hero">
@@ -600,7 +790,133 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
             Plataforma clínica
           </div>
           <h1>Gestão clínica<br/><em>para atenção básica</em></h1>
-          <p>Prontuários, protocolos e comunicação entre enfermagem, ACS e médicos - em tempo real.</p>
+          <p>Uma plataforma completa para conectar todos os profissionais da unidade e garantir o cuidado contínuo ao paciente.</p>
+        </div>
+
+        {/* Botão de acesso gestor */}
+        <button onClick={()=>setLoginMode("gestor")} style={{
+          display:"flex",alignItems:"center",gap:".6rem",
+          background:"rgba(99,102,241,.12)",border:"1px solid rgba(99,102,241,.3)",
+          borderRadius:10,padding:".75rem 1rem",cursor:"pointer",textAlign:"left",
+          transition:"background .15s",
+        }}
+          onMouseEnter={e=>e.currentTarget.style.background="rgba(99,102,241,.2)"}
+          onMouseLeave={e=>e.currentTarget.style.background="rgba(99,102,241,.12)"}
+        >
+          <div style={{width:32,height:32,background:"#6366f1",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" rx="1" fill="white"/><rect x="6.5" y="5" width="3" height="9" rx="1" fill="white"/><rect x="11" y="2" width="3" height="12" rx="1" fill="white"/></svg>
+          </div>
+          <div>
+            <div style={{fontSize:".8rem",fontWeight:700,color:"#a5b4fc"}}>Acesso do Gestor</div>
+            <div style={{fontSize:".7rem",color:"#64748b"}}>Painel executivo com indicadores à vista</div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{marginLeft:"auto",color:"#6366f1"}}>
+            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        <div className="auth-stats">
+          <div className="auth-stat"><div className="auth-stat-value">100%</div><div className="auth-stat-label">Integrado</div></div>
+          <div className="auth-stat"><div className="auth-stat-value">UBS</div><div className="auth-stat-label">Atenção básica</div></div>
+          <div className="auth-stat"><div className="auth-stat-value">LGPD</div><div className="auth-stat-label">Conformidade</div></div>
+        </div>
+      </section>
+
+      {/* Right panel */}
+      <section className="auth-right">
+        <div className="auth-card">
+          <div className="auth-card-header">
+            <h2>{authTab === "login" ? "Bem-vindo de volta" : "Criar conta"}</h2>
+            <p>{authTab === "login" ? "Entre com suas credenciais institucionais" : "Preencha os dados para criar sua conta"}</p>
+          </div>
+
+          <div className="auth-tabs">
+            <button className={`auth-tab${authTab==="login"?" active":""}`} type="button" onClick={()=>setAuthTab("login")}>Entrar</button>
+            <button className={`auth-tab${authTab==="register"?" active":""}`} type="button" onClick={()=>setAuthTab("register")}>Novo cadastro</button>
+            <button className={`auth-tab${authTab==="reset"?" active":""}`} type="button" onClick={()=>setAuthTab("reset")}>Esqueci a senha</button>
+          </div>
+
+          {authTab === "login" ? (
+            <form className="auth-form" onSubmit={e=>{e.preventDefault();onLogin(email,password);}}>
+              <label>
+                E-mail institucional
+                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@unidade.local" autoComplete="email"/>
+              </label>
+              <label>
+                Senha
+                <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="********" autoComplete="current-password"/>
+              </label>
+              {error && <p className="error">{error}</p>}
+              <button type="submit" disabled={busy}>
+                {busy ? "Entrando..." : <>Acessar sistema <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></>}
+              </button>
+            </form>
+          ) : authTab === "register" ? (
+            <form className="auth-form" onSubmit={e=>{e.preventDefault();onRegister(reg);}}>
+              <label>Nome completo<input value={reg.name} onChange={e=>setReg(s=>({...s,name:e.target.value}))} placeholder="Maria da Silva"/></label>
+              <label>E-mail<input type="email" value={reg.email} onChange={e=>setReg(s=>({...s,email:e.target.value}))} placeholder="você@unidade.local"/></label>
+              <label>Senha<input type="password" value={reg.password} onChange={e=>setReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres"/></label>
+              <label>Perfil
+                <select value={reg.role} onChange={e=>setReg(s=>({...s,role:e.target.value,councilNumber:"",councilUf:"SP",teamId:""}))}>
+                  <option value="nurse_manager">Enfermeira</option>
+                  <option value="doctor">Médico(a)</option>
+                  <option value="dentist">Dentista</option>
+                  <option value="nursing_tech">Téc. de Enfermagem</option>
+                  <option value="pharmacist">Farmacêutico(a)</option>
+                  <option value="pharmacy_tech">Téc. de Farmácia</option>
+                  <option value="acs">ACS</option>
+                  <option value="receptionist">Recepcionista</option>
+                  <option value="gestor">Gestor(a) UBS</option>
+                </select>
+              </label>
+              {reg.role !== "receptionist" && reg.role !== "gestor" && (
+                <label>Equipe
+                  <select value={reg.teamId} onChange={e=>setReg(s=>({...s,teamId:e.target.value}))}>
+                    <option value="">Selecione a equipe</option>
+                    {[
+                      {id:"equipe-amarela", name:"Equipe Amarela"},
+                      {id:"equipe-azul",    name:"Equipe Azul"},
+                      {id:"equipe-cinza",   name:"Equipe Cinza"},
+                      {id:"equipe-marrom",  name:"Equipe Marrom"},
+                      {id:"equipe-rosa",    name:"Equipe Rosa"},
+                    ].map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </label>
+              )}
+              {["doctor","dentist","nurse_manager","nursing_tech","pharmacist","pharmacy_tech"].includes(reg.role) && <>
+                <label>
+                  {reg.role==="doctor"?"CRM":reg.role==="dentist"?"CRO":["pharmacist","pharmacy_tech"].includes(reg.role)?"CFF":"COREN"} — Número do conselho
+                  <input value={reg.councilNumber} onChange={e=>setReg(s=>({...s,councilNumber:onlyDigits(e.target.value).slice(0,12)}))} placeholder="000000"/>
+                </label>
+                <label>UF do conselho<input maxLength={2} value={reg.councilUf} onChange={e=>setReg(s=>({...s,councilUf:e.target.value.toUpperCase()}))} placeholder="SP"/></label>
+              </>}
+              {error && <p className="error">{error}</p>}
+              <button type="submit" disabled={busy}>{busy?"Criando...":"Criar cadastro"}</button>
+            </form>
+          ) : authTab === "reset" ? (
+            <ResetPasswordForm/>
+          ) : null}
+        </div>
+      </section>
+    </main>
+  );
+
+  return (
+    <main className="auth-screen">
+      {/* Left panel */}
+      <section className="auth-left">
+        <div className="auth-brand">
+          <div className="auth-brand-icon"><IconLogo/></div>
+          <span className="brand-name">SIGUS</span>
+        </div>
+
+        <div className="auth-hero">
+          <div className="auth-eyebrow">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M5 3v2l1.5 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            Plataforma clínica
+          </div>
+          <h1>Gestão clínica<br/><em>para atenção básica</em></h1>
+          <p>Uma plataforma completa para conectar todos os profissionais da unidade e garantir o cuidado contínuo ao paciente.</p>
         </div>
 
         <div className="auth-stats">
@@ -848,12 +1164,18 @@ function Topbar({ user, selectedPatient, templates, mobileOpen, setMobileOpen, o
             <path d={mobileOpen?"M2 2l12 12M2 14L14 2":"M2 4h12M2 8h12M2 12h12"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </button>
-        <div className="topbar-brand-icon">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 2v12M2 8h12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+        {/* Ícone de saúde — cruz no quadrado arredondado */}
+        <div className="topbar-brand-icon" style={{width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#14b8a6,#0d9488)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <rect x="7.5" y="2.5" width="3" height="13" rx="1.5" fill="white" opacity="0.95"/>
+            <rect x="2.5" y="7.5" width="13" height="3" rx="1.5" fill="white" opacity="0.95"/>
           </svg>
         </div>
-        <h2>SaudeUBS</h2>
+        {/* Wordmark: sigla grande + nome discreto */}
+        <div style={{display:"flex",flexDirection:"column",lineHeight:1.1,gap:0}}>
+          <span style={{fontSize:"1.15rem",fontWeight:800,color:"var(--teal-600)",letterSpacing:"0.08em",fontFamily:"Georgia,serif"}}>SIGUS</span>
+          <span style={{fontSize:"0.52rem",fontWeight:400,color:"var(--text-3)",letterSpacing:"0.04em",textTransform:"uppercase",whiteSpace:"nowrap"}}>Gest. Única de Saúde</span>
+        </div>
       </div>
 
       <div className="topbar-center"/>
@@ -2597,6 +2919,14 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
                     // Perdida se: criança tem > 180 dias E fez menos de 2 visitas no total
                     if (agedays >= 181 && visits < 2)
                       lost.push("2ª visita ACS — do 2º ao 6º mês de vida (prazo encerrado)");
+                    // Consultas perdidas: mesmas janelas das visitas (consulta inicial é
+                    // dependente da 1ª visita; janelas seguem o mesmo calendário)
+                    const consultsDone = Number(patientProtocolSummary.completed?.consultations ?? 0);
+                    const consultsTarget = Number(patientProtocolSummary.targets?.consultations ?? 0);
+                    if (consultsTarget >= 1 && consultsDone === 0 && agedays >= 31)
+                      lost.push("1ª consulta de puericultura — até o 1º mês de vida (prazo encerrado)");
+                    if (consultsTarget >= 2 && consultsDone < 2 && agedays >= 181)
+                      lost.push("2ª consulta de puericultura — do 2º ao 6º mês de vida (prazo encerrado)");
                     if (!lost.length) return null;
                     return (
                       <div style={{marginBottom:".75rem",display:"flex",flexDirection:"column",gap:".35rem"}}>
@@ -3064,21 +3394,61 @@ function buildProactiveAlerts(patients, protocolByPatient, pharmacyStock, agenda
   return alerts.slice(0, 20);
 }
 
+const NOTIF_SEEN_KEY = "saudeubs_notif_seen_v1";
+
 function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, onNavigate }) {
   const [open, setOpen] = useState(false);
+  const [seenIds, setSeenIds] = useState(() => new Set(readLS(NOTIF_SEEN_KEY, [])));
   const ref = useRef(null);
+
   useEffect(() => {
     function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const alerts = useMemo(() =>
+  const allAlerts = useMemo(() =>
     buildProactiveAlerts(patients, protocolByPatient, pharmacyStock, agenda),
     [patients, protocolByPatient, pharmacyStock, agenda]
   );
-  const dangerCount = alerts.filter(a => a.type === "danger").length;
-  const total = alerts.length;
+
+  // Purge seenIds that no longer correspond to any active alert
+  // (means the alert was fulfilled — auto-remove from seen list)
+  useEffect(() => {
+    const activeIds = new Set(allAlerts.map(a => a.id));
+    setSeenIds(prev => {
+      const pruned = new Set([...prev].filter(id => activeIds.has(id)));
+      if (pruned.size !== prev.size) {
+        writeLS(NOTIF_SEEN_KEY, [...pruned]);
+        return pruned;
+      }
+      return prev;
+    });
+  }, [allAlerts]);
+
+  const unseenAlerts = useMemo(() =>
+    allAlerts.filter(a => !seenIds.has(a.id)),
+    [allAlerts, seenIds]
+  );
+
+  function markSeen(id, e) {
+    e.stopPropagation();
+    setSeenIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      writeLS(NOTIF_SEEN_KEY, [...next]);
+      return next;
+    });
+  }
+
+  function clearAllSeen() {
+    const allIds = new Set(allAlerts.map(a => a.id));
+    setSeenIds(allIds);
+    writeLS(NOTIF_SEEN_KEY, [...allIds]);
+  }
+
+  const unseenCount = unseenAlerts.length;
+  const hasDanger = unseenAlerts.some(a => a.type === "danger");
 
   return (
     <div ref={ref} style={{position:"relative",flexShrink:0,overflow:"visible"}}>
@@ -3088,31 +3458,58 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
           <path d="M10 2a6 6 0 00-6 6v3.5L2.5 14h15L16 11.5V8a6 6 0 00-6-6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
           <path d="M8 14.5a2 2 0 004 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
         </svg>
-        {total > 0 && (
-          <span style={{position:"absolute",top:-4,right:-4,minWidth:16,height:16,borderRadius:999,background:dangerCount>0?"#dc2626":"var(--amber-500)",color:"#fff",fontSize:".6rem",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",lineHeight:1}}>
-            {total > 9 ? "9+" : total}
+        {unseenCount > 0 && (
+          <span style={{position:"absolute",top:-4,right:-4,minWidth:16,height:16,borderRadius:999,background:hasDanger?"#dc2626":"var(--amber-500)",color:"#fff",fontSize:".6rem",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",lineHeight:1}}>
+            {unseenCount > 9 ? "9+" : unseenCount}
           </span>
         )}
       </button>
       {open && (
-        <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,width:320,maxHeight:420,overflowY:"auto",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--r-lg)",boxShadow:"0 8px 30px rgba(0,0,0,.12)",zIndex:600}}>
-          <div style={{padding:".7rem 1rem",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,width:330,maxHeight:440,overflowY:"auto",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--r-lg)",boxShadow:"0 8px 30px rgba(0,0,0,.12)",zIndex:600}}>
+          <div style={{padding:".7rem 1rem",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",position:"sticky",top:0,background:"var(--surface)",zIndex:1}}>
             <span style={{fontWeight:700,fontSize:".82rem",color:"var(--ink)"}}>Alertas do sistema</span>
-            <span style={{fontSize:".72rem",color:"var(--text-3)"}}>{total} aviso{total!==1?"s":""}</span>
+            <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+              {unseenCount > 0 && (
+                <span style={{fontSize:".7rem",color:"var(--text-3)"}}>{unseenCount} não visto{unseenCount!==1?"s":""}</span>
+              )}
+              {unseenCount > 1 && (
+                <button onClick={clearAllSeen}
+                  style={{fontSize:".68rem",color:"var(--teal-600)",background:"none",border:"none",cursor:"pointer",padding:"0 .25rem",fontWeight:600,whiteSpace:"nowrap"}}
+                  title="Marcar todos como vistos">
+                  Limpar todos
+                </button>
+              )}
+            </div>
           </div>
-          {!total && <p style={{padding:"1.5rem",textAlign:"center",color:"var(--text-3)",fontSize:".82rem"}}>Nenhum alerta no momento ✓</p>}
-          {alerts.map(a => (
-            <div key={a.id} onClick={()=>{ if(a.patientId&&onNavigate) onNavigate(a.patientId); setOpen(false); }}
+          {!unseenCount && (
+            <p style={{padding:"1.5rem",textAlign:"center",color:"var(--text-3)",fontSize:".82rem"}}>
+              {allAlerts.length > 0 ? "Todos os alertas foram vistos ✓" : "Nenhum alerta no momento ✓"}
+            </p>
+          )}
+          {unseenAlerts.map(a => (
+            <div key={a.id}
               style={{padding:".65rem 1rem",borderBottom:"1px solid var(--border-soft)",display:"flex",gap:".65rem",alignItems:"flex-start",
                 background:a.type==="danger"?"#fff5f5":a.type==="warn"?"#fffbeb":"var(--surface)",
                 cursor:a.patientId?"pointer":"default",transition:"filter .1s"}}
               onMouseEnter={e=>{ if(a.patientId) e.currentTarget.style.filter="brightness(.97)"; }}
               onMouseLeave={e=>{ e.currentTarget.style.filter="none"; }}>
-              <span style={{fontSize:"1rem",flexShrink:0,marginTop:".1rem"}}>{a.icon}</span>
-              <div style={{minWidth:0}}>
-                <div style={{fontWeight:700,fontSize:".76rem",color:a.type==="danger"?"#be123c":a.type==="warn"?"var(--amber-700)":"var(--teal-700)"}}>{a.title}</div>
-                <div style={{fontSize:".73rem",color:"var(--text-2)",marginTop:".1rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{a.detail}</div>
-              </div>
+              <span
+                style={{flex:1,display:"flex",gap:".65rem",alignItems:"flex-start",minWidth:0}}
+                onClick={()=>{ if(a.patientId&&onNavigate) onNavigate(a.patientId); setOpen(false); }}>
+                <span style={{fontSize:"1rem",flexShrink:0,marginTop:".1rem"}}>{a.icon}</span>
+                <div style={{minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:".76rem",color:a.type==="danger"?"#be123c":a.type==="warn"?"var(--amber-700)":"var(--teal-700)"}}>{a.title}</div>
+                  <div style={{fontSize:".73rem",color:"var(--text-2)",marginTop:".1rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{a.detail}</div>
+                </div>
+              </span>
+              <button
+                onClick={e => markSeen(a.id, e)}
+                title="Marcar como visto"
+                style={{flexShrink:0,width:20,height:20,borderRadius:4,background:"none",border:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",marginTop:".05rem",color:"var(--text-3)",lineHeight:1,padding:0}}>
+                <svg viewBox="0 0 12 12" fill="none" width="9" height="9">
+                  <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                </svg>
+              </button>
             </div>
           ))}
         </div>
@@ -3329,7 +3726,7 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
           <div style={{width:30,height:30,borderRadius:8,background:"var(--teal-600)",display:"flex",alignItems:"center",justifyContent:"center"}}>
             <IconLogo/>
           </div>
-          <span style={{fontWeight:800,fontSize:".9rem",color:"var(--ink)"}}>SaudeUBS</span>
+          <span style={{fontWeight:800,fontSize:".9rem",color:"var(--ink)"}}>SIGUS</span>
           <span style={{fontSize:".72rem",padding:".15rem .55rem",borderRadius:999,background:"var(--teal-50)",color:"var(--teal-700)",border:"1px solid var(--teal-200)",fontWeight:700,marginLeft:".25rem"}}>Recepção</span>
         </div>
 
@@ -5976,6 +6373,391 @@ function ReferralsPage({ patients, users, user }) {
 /* ══════════════════════════════════════════════════════════════════
    RELATÓRIOS
 ══════════════════════════════════════════════════════════════════ */
+// ═══════════════════════════════════════════════════════════════
+//  GESTOR PAGE — Painel de Indicadores de Gestão à Vista
+// ═══════════════════════════════════════════════════════════════
+function GestorPage({ patients, users, templates, protocolByPatient }) {
+  const now = new Date();
+  const agenda    = readLS(AGENDA_KEY, []);
+  const referrals = readLS(REFERRALS_KEY, []);
+  const pharmaLog = readLS("saudeubs_pharmalog_v1", []);
+  const stock     = readLS("saudeubs_pharmacy_v1", []);
+  const auditLog  = readLS(AUDIT_KEY, []);
+
+  // ── Período ──────────────────────────────────────────────────
+  const [period, setPeriod] = useState("month");
+  function inPeriod(dateStr) {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    if (period === "month")   return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    if (period === "quarter") { const q=Math.floor(now.getMonth()/3); return Math.floor(d.getMonth()/3)===q && d.getFullYear()===now.getFullYear(); }
+    return d.getFullYear()===now.getFullYear();
+  }
+  const periodLabel = { month:"Mês atual", quarter:"Trimestre atual", year:"Ano atual" }[period];
+
+  // ── Pacientes ─────────────────────────────────────────────────
+  const totalPacientes   = patients.length;
+  const comAcs           = patients.filter(p=>p.assignedAcsId).length;
+  const semAcs           = totalPacientes - comAcs;
+  const gestantes        = patients.filter(p=>String(p.careCategory||"").toLowerCase()==="pregnant").length;
+  const criancas         = patients.filter(p=>{ const am=ageInMonths(p.birthDate); return am!==null&&am<120; }).length;
+  const cronicos         = patients.filter(p=>["chronic","hypertension","diabetes"].includes(String(p.careCategory||"").toLowerCase())).length;
+  const idosos           = patients.filter(p=>{ const am=ageInMonths(p.birthDate); return am!==null&&am>=720; }).length;
+
+  // ── Protocolo ────────────────────────────────────────────────
+  const criticos  = patients.filter(p=>protocolChip(protocolByPatient[p.id]).tone==="danger").length;
+  const atencao   = patients.filter(p=>protocolChip(protocolByPatient[p.id]).tone==="warn").length;
+  const emDia     = patients.filter(p=>protocolChip(protocolByPatient[p.id]).tone==="ok").length;
+  const cobertura = totalPacientes>0 ? Math.round(emDia/totalPacientes*100) : 0;
+
+  // ── Produção ─────────────────────────────────────────────────
+  const agendaPeriod  = agenda.filter(a=>inPeriod(a.date));
+  const consultDone   = agendaPeriod.filter(a=>a.status==="done").length;
+  const consultAbsent = agendaPeriod.filter(a=>a.status==="absent").length;
+  const consultTotal  = agendaPeriod.length;
+  const taxaComp      = consultTotal>0 ? Math.round(consultDone/consultTotal*100) : null;
+
+  // ── Encaminhamentos ───────────────────────────────────────────
+  const refPeriod     = referrals.filter(r=>inPeriod(r.createdAt));
+  const refPendentes  = refPeriod.filter(r=>r.status==="pending").length;
+  const refConcluidos = refPeriod.filter(r=>r.status==="done").length;
+
+  // ── Farmácia ──────────────────────────────────────────────────
+  const dispensas  = pharmaLog.filter(l=>l.type==="dispensa"&&inPeriod(l.ts)).length;
+  const lowStock   = (stock||[]).filter(s=>Number(s.qty||0)<=Number(s.minQty||0)).length;
+  const estoqueCrit= (stock||[]).filter(s=>Number(s.qty||0)===0).length;
+
+  // ── Equipe ───────────────────────────────────────────────────
+  const acsCount   = users.filter(u=>u.role==="acs").length;
+  const docCount   = users.filter(u=>["doctor","nurse_manager"].includes(u.role)).length;
+  const dentCount  = users.filter(u=>u.role==="dentist").length;
+  const techCount  = users.filter(u=>["nursing_tech","pharmacy_tech"].includes(u.role)).length;
+
+  // ── ACS performance ──────────────────────────────────────────
+  const acsPerf = users.filter(u=>u.role==="acs").map(u=>{
+    const mine = patients.filter(p=>p.assignedAcsId===u.id);
+    const crit = mine.filter(p=>protocolChip(protocolByPatient[p.id]).tone==="danger").length;
+    const ok   = mine.filter(p=>protocolChip(protocolByPatient[p.id]).tone==="ok").length;
+    return { name:u.name, total:mine.length, criticos:crit, emDia:ok };
+  }).sort((a,b)=>b.criticos-a.criticos);
+
+  // ── Categoria breakdown ───────────────────────────────────────
+  const catBreak = {};
+  patients.forEach(p=>{ const c=p.careCategory||"general"; catBreak[c]=(catBreak[c]||0)+1; });
+  const catEntries = Object.entries(catBreak).sort((a,b)=>b[1]-a[1]);
+
+  // ── Auditoria recente ─────────────────────────────────────────
+  const auditRecent = [...(auditLog||[])].reverse().slice(0,8);
+
+  // ── Helpers visuais ──────────────────────────────────────────
+  const TEAL="#0d9488", RED="#dc2626", AMBER="#d97706", GREEN="#16a34a", BLUE="#1d4ed8", VIOLET="#7c3aed";
+
+  function KPI({ label, value, sub, color=TEAL, icon, trend }) {
+    return (
+      <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--r-lg)",padding:"1.1rem 1.25rem",boxShadow:"var(--sh-xs)",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:color,borderRadius:"var(--r-lg) var(--r-lg) 0 0"}}/>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".5rem"}}>
+          <div>
+            <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"var(--text-3)",marginBottom:".5rem"}}>{label}</div>
+            <div style={{fontSize:"2rem",fontWeight:800,color,lineHeight:1,fontFamily:"IBM Plex Mono,monospace",letterSpacing:"-.02em"}}>{value}</div>
+            {sub&&<div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".3rem"}}>{sub}</div>}
+          </div>
+          {icon&&<div style={{fontSize:"1.4rem",opacity:.18,flexShrink:0}}>{icon}</div>}
+        </div>
+        {trend!=null&&(
+          <div style={{marginTop:".6rem",display:"flex",alignItems:"center",gap:".3rem",fontSize:".72rem",color:trend>=0?GREEN:RED,fontWeight:600}}>
+            {trend>=0?"↑":"↓"} {Math.abs(trend)}% vs período anterior
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function SectionTitle({ children, icon }) {
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:".5rem",margin:"1.5rem 0 .75rem"}}>
+        {icon&&<span style={{fontSize:"1rem"}}>{icon}</span>}
+        <h3 style={{fontSize:".82rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:"var(--text-3)"}}>{children}</h3>
+        <div style={{flex:1,height:1,background:"var(--border)"}}/>
+      </div>
+    );
+  }
+
+  function Bar({ value, max, color=TEAL }) {
+    const pct = max>0 ? Math.min(100,Math.round(value/max*100)) : 0;
+    return (
+      <div style={{height:6,background:"var(--surface-2)",borderRadius:99,overflow:"hidden",flex:1}}>
+        <div style={{height:"100%",width:pct+"%",background:color,borderRadius:99,transition:"width .4s ease"}}/>
+      </div>
+    );
+  }
+
+  function GaugePie({ value, max, color=TEAL, label, size=80 }) {
+    const pct = max>0?Math.min(1,value/max):0;
+    const r=30, circ=2*Math.PI*r;
+    const dash=circ*pct, gap=circ-dash;
+    return (
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:".3rem"}}>
+        <svg width={size} height={size} viewBox="0 0 72 72">
+          <circle cx="36" cy="36" r={r} fill="none" stroke="var(--surface-2)" strokeWidth="8"/>
+          <circle cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="8"
+            strokeDasharray={`${dash} ${gap}`} strokeLinecap="round"
+            transform="rotate(-90 36 36)" style={{transition:"stroke-dasharray .5s ease"}}/>
+          <text x="36" y="40" textAnchor="middle" style={{fontSize:13,fontWeight:800,fill:color,fontFamily:"IBM Plex Mono,monospace"}}>{Math.round(pct*100)}%</text>
+        </svg>
+        <div style={{fontSize:".72rem",fontWeight:600,color:"var(--text-2)",textAlign:"center"}}>{label}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{padding:"1.5rem 2rem",display:"flex",flexDirection:"column",gap:"1.25rem",maxWidth:1200}}>
+
+      {/* ── Cabeçalho ── */}
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:"1rem"}}>
+        <div>
+          <p style={{fontSize:".7rem",fontWeight:700,letterSpacing:".12em",textTransform:"uppercase",color:TEAL,marginBottom:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}>
+            <span style={{display:"inline-block",width:6,height:6,background:TEAL,borderRadius:"50%"}}/>
+            Painel de Gestão
+          </p>
+          <h1 style={{fontSize:"1.6rem",fontWeight:800,color:"var(--ink)",letterSpacing:"-.03em",lineHeight:1.15}}>Indicadores à Vista</h1>
+          <p style={{fontSize:".85rem",color:"var(--text-2)",marginTop:".3rem"}}>Visão executiva da UBS — atualizado em tempo real com os dados da equipe.</p>
+        </div>
+        <div style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
+          {[["month","Mês"],["quarter","Trimestre"],["year","Ano"]].map(([k,l])=>(
+            <button key={k} onClick={()=>setPeriod(k)} style={{fontSize:".75rem",padding:".35rem .8rem",background:period===k?TEAL:"var(--surface-2)",color:period===k?"#fff":"var(--text-2)",border:period===k?"none":"1px solid var(--border)",borderRadius:"var(--r-md)",fontWeight:600,cursor:"pointer"}}>
+              {l}
+            </button>
+          ))}
+          <button onClick={()=>window.print()} style={{fontSize:".75rem",padding:".35rem .8rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",color:"var(--text-2)",cursor:"pointer"}}>
+            🖨️ Exportar
+          </button>
+        </div>
+      </div>
+
+      {/* ── KPIs principais ── */}
+      <SectionTitle icon="📊">Visão Geral — {periodLabel}</SectionTitle>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:".85rem"}}>
+        <KPI label="Pacientes cadastrados" value={totalPacientes} sub={`Com ACS: ${comAcs} · Sem ACS: ${semAcs}`} icon="👥" color={TEAL}/>
+        <KPI label="Protocolos críticos" value={criticos} sub={`Atenção: ${atencao} · Em dia: ${emDia}`} icon="🚨" color={criticos>0?RED:GREEN}/>
+        <KPI label="Cobertura protocolar" value={cobertura+"%"} sub={`${emDia} de ${totalPacientes} pacientes em dia`} icon="✅" color={cobertura>=80?GREEN:cobertura>=50?AMBER:RED}/>
+        <KPI label="Consultas realizadas" value={consultDone} sub={`Faltas: ${consultAbsent} · Taxa: ${taxaComp!=null?taxaComp+"%":"—"}`} icon="🩺" color={BLUE}/>
+        <KPI label="Encaminhamentos" value={refPeriod.length} sub={`Pendentes: ${refPendentes} · Concluídos: ${refConcluidos}`} icon="📋" color={VIOLET}/>
+        <KPI label="Estoque crítico" value={lowStock} sub={`${estoqueCrit} item(s) zerado(s)`} icon="💊" color={lowStock>0?RED:GREEN}/>
+      </div>
+
+      {/* ── Gauges protocolo ── */}
+      <div className="card">
+        <div className="card-header"><span className="card-title">📈 Desempenho Protocolar</span></div>
+        <div className="card-body" style={{display:"flex",alignItems:"center",gap:"2rem",flexWrap:"wrap"}}>
+          <GaugePie value={emDia} max={totalPacientes} color={GREEN} label="Em dia"/>
+          <GaugePie value={atencao} max={totalPacientes} color={AMBER} label="Atenção"/>
+          <GaugePie value={criticos} max={totalPacientes} color={RED} label="Crítico"/>
+          {taxaComp!=null&&<GaugePie value={consultDone} max={consultTotal} color={BLUE} label="Comparecimento"/>}
+          <div style={{flex:1,minWidth:200}}>
+            <div style={{display:"flex",flexDirection:"column",gap:".65rem"}}>
+              {[
+                {label:"Gestantes",count:gestantes,color:"#ec4899"},
+                {label:"Crianças (puericultura)",count:criancas,color:TEAL},
+                {label:"Crônicos",count:cronicos,color:AMBER},
+                {label:"Idosos",count:idosos,color:VIOLET},
+              ].map(({label,count,color})=>(
+                <div key={label}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:".75rem",marginBottom:".2rem"}}>
+                    <span style={{color:"var(--text-2)",fontWeight:500}}>{label}</span>
+                    <span style={{fontFamily:"IBM Plex Mono,monospace",fontWeight:700,color}}>{count}</span>
+                  </div>
+                  <Bar value={count} max={totalPacientes} color={color}/>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Equipe e ACS ── */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
+
+        {/* Composição da equipe */}
+        <div className="card">
+          <div className="card-header"><span className="card-title">👩‍⚕️ Composição da Equipe</span><span style={{fontSize:".75rem",color:"var(--text-3)"}}>{users.length} membros</span></div>
+          <div className="card-body">
+            {[
+              {label:"ACS",count:acsCount,color:AMBER,icon:"🏘️"},
+              {label:"Médicos / Enfermeiros",count:docCount,color:BLUE,icon:"🩺"},
+              {label:"Dentistas",count:dentCount,color:VIOLET,icon:"🦷"},
+              {label:"Técnicos",count:techCount,color:TEAL,icon:"⚕️"},
+            ].map(({label,count,color,icon})=>(
+              <div key={label} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".55rem 0",borderBottom:"1px solid var(--border-soft)"}}>
+                <span style={{fontSize:"1rem"}}>{icon}</span>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",marginBottom:".2rem"}}>
+                    <span style={{fontWeight:500,color:"var(--text-1)"}}>{label}</span>
+                    <span style={{fontFamily:"IBM Plex Mono,monospace",fontWeight:700,color}}>{count}</span>
+                  </div>
+                  <Bar value={count} max={users.length} color={color}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Performance ACS */}
+        <div className="card">
+          <div className="card-header"><span className="card-title">🏘️ Performance por ACS</span></div>
+          <div className="card-body">
+            {!acsPerf.length
+              ? <p className="muted" style={{fontSize:".84rem"}}>Nenhum ACS cadastrado.</p>
+              : <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
+                  {acsPerf.map(a=>(
+                    <div key={a.name} style={{padding:".6rem .75rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".35rem"}}>
+                        <span style={{fontWeight:600,fontSize:".83rem",color:"var(--text-1)"}}>{a.name}</span>
+                        <div style={{display:"flex",gap:".35rem"}}>
+                          <span style={{fontSize:".68rem",fontWeight:700,padding:".1em .45em",borderRadius:99,background:a.criticos>0?"#fef2f2":"#f0fdf4",color:a.criticos>0?RED:GREEN,border:`1px solid ${a.criticos>0?"#fecaca":"#bbf7d0"}`}}>
+                            {a.criticos} crítico{a.criticos!==1?"s":""}
+                          </span>
+                          <span style={{fontSize:".68rem",fontWeight:700,padding:".1em .45em",borderRadius:99,background:"var(--surface)",color:"var(--text-3)",border:"1px solid var(--border)"}}>
+                            {a.total} pac.
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+                        <Bar value={a.emDia} max={a.total} color={GREEN}/>
+                        <span style={{fontSize:".7rem",color:"var(--text-3)",flexShrink:0,minWidth:32}}>{a.total>0?Math.round(a.emDia/a.total*100):0}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      {/* ── Produção ── */}
+      <SectionTitle icon="📅">Produção — {periodLabel}</SectionTitle>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:".85rem"}}>
+        <KPI label="Consultas agendadas" value={consultTotal} icon="📅" color={BLUE}/>
+        <KPI label="Consultas realizadas" value={consultDone} icon="✔️" color={GREEN}/>
+        <KPI label="Faltas / ausências" value={consultAbsent} icon="❌" color={consultAbsent>0?AMBER:"var(--text-3)"}/>
+        <KPI label="Taxa de comparecimento" value={taxaComp!=null?taxaComp+"%":"—"} icon="📊" color={taxaComp!=null?(taxaComp>=80?GREEN:taxaComp>=60?AMBER:RED):TEAL}/>
+        <KPI label="Encaminhamentos emitidos" value={refPeriod.length} icon="📤" color={VIOLET}/>
+        <KPI label="Dispensações farmácia" value={dispensas} icon="💊" color={TEAL}/>
+      </div>
+
+      {/* ── Farmácia ── */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
+        <div className="card">
+          <div className="card-header"><span className="card-title">💊 Estoque — Situação Atual</span></div>
+          <div className="card-body">
+            {!stock?.length
+              ? <p className="muted" style={{fontSize:".84rem"}}>Sem itens cadastrados.</p>
+              : <>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".5rem",marginBottom:"1rem"}}>
+                    {[
+                      {label:"Total de itens",v:stock.length,color:TEAL},
+                      {label:"Estoque baixo",v:lowStock,color:AMBER},
+                      {label:"Zerados",v:estoqueCrit,color:RED},
+                    ].map(({label,v,color})=>(
+                      <div key={label} style={{textAlign:"center",background:"var(--surface-2)",borderRadius:"var(--r-md)",padding:".65rem .5rem",border:"1px solid var(--border)"}}>
+                        <div style={{fontSize:"1.4rem",fontWeight:800,color,fontFamily:"IBM Plex Mono,monospace"}}>{v}</div>
+                        <div style={{fontSize:".68rem",color:"var(--text-3)",marginTop:".15rem"}}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {stock.filter(s=>Number(s.qty||0)<=Number(s.minQty||0)).slice(0,5).map(s=>(
+                    <div key={s.id||s.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:".4rem 0",borderBottom:"1px solid var(--border-soft)",fontSize:".8rem"}}>
+                      <span style={{color:"var(--text-1)",fontWeight:500}}>{s.name}</span>
+                      <span style={{fontWeight:700,color:Number(s.qty||0)===0?RED:AMBER,fontFamily:"IBM Plex Mono,monospace"}}>{s.qty||0} un.</span>
+                    </div>
+                  ))}
+                  {lowStock>5&&<p style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".5rem"}}>+{lowStock-5} itens abaixo do mínimo</p>}
+                </>
+            }
+          </div>
+        </div>
+
+        {/* Encaminhamentos por especialidade */}
+        <div className="card">
+          <div className="card-header"><span className="card-title">📋 Encaminhamentos por Especialidade</span><span style={{fontSize:".75rem",color:"var(--text-3)"}}>{refPeriod.length} total</span></div>
+          <div className="card-body">
+            {!refPeriod.length
+              ? <p className="muted" style={{fontSize:".84rem"}}>Nenhum encaminhamento no período.</p>
+              : (() => {
+                  const specMap = {};
+                  refPeriod.forEach(r=>{ specMap[r.specialty||"Outros"]=(specMap[r.specialty||"Outros"]||0)+1; });
+                  return Object.entries(specMap).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([s,c])=>(
+                    <div key={s} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".4rem 0",borderBottom:"1px solid var(--border-soft)"}}>
+                      <span style={{flex:1,fontSize:".8rem",color:"var(--text-1)",fontWeight:500}}>{s}</span>
+                      <Bar value={c} max={refPeriod.length} color={VIOLET}/>
+                      <span style={{fontFamily:"IBM Plex Mono,monospace",fontWeight:700,color:VIOLET,fontSize:".78rem",minWidth:24,textAlign:"right"}}>{c}</span>
+                    </div>
+                  ));
+                })()
+            }
+          </div>
+        </div>
+      </div>
+
+      {/* ── Distribuição de pacientes ── */}
+      <div className="card">
+        <div className="card-header"><span className="card-title">👥 Distribuição de Pacientes por Categoria</span></div>
+        <div className="card-body">
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:".6rem"}}>
+            {catEntries.map(([cat,count])=>{
+              const label=templates.find(t=>t.category===cat)?.label||cat;
+              const pct=totalPacientes>0?Math.round(count/totalPacientes*100):0;
+              const chip=protocolChip;
+              const catCrit=patients.filter(p=>p.careCategory===cat&&chip(protocolByPatient[p.id]).tone==="danger").length;
+              return (
+                <div key={cat} style={{background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",padding:".75rem"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:".4rem"}}>
+                    <span style={{fontWeight:600,fontSize:".83rem",color:"var(--text-1)"}}>{label}</span>
+                    <span style={{fontFamily:"IBM Plex Mono,monospace",fontWeight:800,fontSize:".95rem",color:TEAL}}>{count}</span>
+                  </div>
+                  <Bar value={count} max={totalPacientes} color={TEAL}/>
+                  <div style={{display:"flex",justifyContent:"space-between",marginTop:".3rem",fontSize:".7rem",color:"var(--text-3)"}}>
+                    <span>{pct}% do total</span>
+                    {catCrit>0&&<span style={{color:RED,fontWeight:700}}>{catCrit} crítico{catCrit!==1?"s":""}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Auditoria recente ── */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">🔍 Trilha de Auditoria — Ações Recentes</span>
+          <span style={{fontSize:".72rem",color:"var(--text-3)"}}>{auditLog?.length||0} registros totais</span>
+        </div>
+        <div className="card-body">
+          {!auditRecent.length
+            ? <p className="muted" style={{fontSize:".84rem"}}>Nenhuma ação registrada ainda.</p>
+            : <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
+                {auditRecent.map((a,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"flex-start",gap:".75rem",padding:".55rem .65rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",fontSize:".78rem"}}>
+                    <span style={{flexShrink:0,width:8,height:8,borderRadius:"50%",background:TEAL,marginTop:4,display:"block"}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <span style={{fontWeight:600,color:"var(--text-1)"}}>{a.action||a.event||"Ação"}</span>
+                      {a.user&&<span style={{color:"var(--text-3)",marginLeft:".4rem"}}>por {a.user}</span>}
+                    </div>
+                    <span style={{flexShrink:0,color:"var(--text-3)",fontFamily:"IBM Plex Mono,monospace",fontSize:".7rem"}}>
+                      {a.ts||a.createdAt ? new Date(a.ts||a.createdAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+          }
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
 function ReportsPage({ patients, users, templates, protocolByPatient }) {
   const [period, setPeriod] = useState("month"); // month | quarter | year
   const [tab, setTab]       = useState("overview");
@@ -9256,7 +10038,7 @@ function AppInner() {
   const [users,     setUsers]     = useState([]);
   const [templates, setTemplates] = useState([]);
   const [protocolByPatient, setProtocolByPatient] = useState({});
-  const [tab,  setTab]  = useState(uiState?.tab||"dashboard");
+  const [tab,  setTab]  = useState(()=>{ const t=uiState?.tab; if(t) return t; return "dashboard"; });
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [patientTab, setPatientTab] = useState(uiState?.patientTab==="history"?"chart":(uiState?.patientTab||"protocol"));
   const [appointments, setAppointments] = useState([]);
@@ -9364,27 +10146,58 @@ function AppInner() {
     const rank={high:0,medium:1,low:2};
     let alerts = deriveProtocolAlerts(rosaAdjustedSummary);
 
-    // Para crianças de puericultura: suprimir alertas de visita quando o prazo já passou.
-    // Regras:
-    //   1ª visita: 1 visita até 30 dias de vida
-    //   2ª visita: 1 visita entre 31 e 180 dias de vida (2º ao 6º mês)
-    // Quando o prazo encerrou e a visita não foi feita, o alerta some daqui
-    // e aparece como "indicador perdido" no painel do paciente.
+    // Para crianças de puericultura: gerenciar alertas de visita por janela específica.
+    // 1ª visita ACS: realizar até os 30 dias de vida.
+    // 2ª visita ACS: realizar do 2º ao 6º mês (31–180 dias de vida).
+    // Quando a janela passa sem registro → prazo perdido (sem recuperação), sem gerar alerta.
     if (selectedPatient &&
         String(selectedPatient.careCategory||"").toLowerCase() === "child_followup" &&
         selectedPatient.birthDate) {
       const agedays = Math.floor((Date.now() - (parseLocalDate(selectedPatient.birthDate)||new Date()).getTime()) / 86400000);
       const visitsCompleted = Number(rosaAdjustedSummary?.completed?.visits ?? 0);
-      // 1ª visita perdida: > 30 dias e 0 visitas feitas
       const lost1st = agedays >= 31 && visitsCompleted === 0;
-      // 2ª visita perdida: > 180 dias e menos de 2 visitas feitas no total
-      // (se fez a 1ª mas não a 2ª, visitsCompleted === 1; se não fez nenhuma, visitsCompleted === 0)
       const lost2nd = agedays >= 181 && visitsCompleted < 2;
-      if (lost1st || lost2nd) {
+
+      // Remover todos os alertas genéricos de visita (substituídos por alertas específicos por janela)
+      alerts = alerts.filter(a => {
+        const t = String(a.title||"").toLowerCase();
+        return !t.includes("visit") && !t.includes("visita");
+      });
+
+      // 1ª visita: gerar alerta somente enquanto a janela (0–30 dias) ainda está ativa
+      if (!lost1st && visitsCompleted === 0) {
+        const daysLeft = Math.max(30 - agedays, 0);
+        alerts.push({
+          id: "puer-1a-visita",
+          title: "1ª visita ACS pendente",
+          detail: `Realizar até os 30 dias de vida. Restam ${daysLeft} dia(s).`,
+          severity: daysLeft <= 5 ? "high" : "medium",
+        });
+      }
+
+      // 2ª visita: gerar alerta somente enquanto a janela (31–180 dias) ainda está ativa
+      if (!lost2nd && visitsCompleted < 2 && agedays >= 31) {
+        const daysLeft = Math.max(180 - agedays, 0);
+        alerts.push({
+          id: "puer-2a-visita",
+          title: "2ª visita ACS pendente",
+          detail: `Realizar do 2º ao 6º mês de vida. Restam ${daysLeft} dia(s).`,
+          severity: daysLeft <= 15 ? "high" : "medium",
+        });
+      }
+
+      // Suprimir alertas de consulta cujas janelas já expiraram (não recuperáveis):
+      // — 1ª consulta: janela 0–30 dias. Perdida se criança tem > 30 dias e 0 consultas.
+      // — 2ª consulta: janela 31–180 dias. Perdida se criança tem > 180 dias e < 2 consultas.
+      // Não faz sentido cobrar algo que não pode mais ser feito dentro do prazo correto.
+      const _consultsDone   = Number(rosaAdjustedSummary?.completed?.consultations ?? 0);
+      const _consultsTarget = Number(rosaAdjustedSummary?.targets?.consultations ?? 0);
+      const lostConsult1st  = _consultsTarget >= 1 && _consultsDone === 0 && agedays >= 31;
+      const lostConsult2nd  = _consultsTarget >= 2 && _consultsDone < 2  && agedays >= 181;
+      if (lostConsult1st || lostConsult2nd) {
         alerts = alerts.filter(a => {
           const t = String(a.title||"").toLowerCase();
-          if (!t.includes("visit") && !t.includes("visita")) return true;
-          return false; // remove qualquer alerta de visita quando algum prazo foi perdido
+          return !t.includes("consult") && !t.includes("consulta");
         });
       }
     }
@@ -9508,6 +10321,8 @@ function AppInner() {
       setToken(payload.token); setUser(payload.user);
       sessionStorage.setItem(SESSION_KEY,JSON.stringify({token:payload.token,user:payload.user}));
       auditLog("LOGIN", { email: email.trim().toLowerCase(), success: true }, payload.user);
+      // Gestor vai direto para o painel de gestão
+      if(String(payload.user?.role||"")==="gestor") setTab("gestor");
     } catch(_backendErr) {
       auditLog("LOGIN_FAILED", { email: email.trim().toLowerCase(), success: false });
       setError("E-mail ou senha incorretos.");
@@ -10058,6 +10873,7 @@ function AppInner() {
           {tab==="chart"&&<ChartPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
 
           {tab==="exams_page"&&<ExamsPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
+          {tab==="gestor"&&<GestorPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
           {tab==="reports"&&<ReportsPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
 
           {tab==="patients"&&(
