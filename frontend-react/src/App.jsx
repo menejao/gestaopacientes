@@ -373,8 +373,27 @@ function deriveProtocolAlerts(summary) {
     const s=schedule?.[key];
     if(!s||Number(s.pending||0)<=0) continue;
     const overdue=Number(s.overdueDays||0),daysLeft=typeof s.daysLeft==="number"?Number(s.daysLeft):null;
-    const severity=overdue>=1?"high":(daysLeft!==null&&daysLeft<=7?"medium":"low");
-    out.push({id:`sch-${key}`,title:`${label}: ${Number(s.pending||0)} pendente(s)`,detail:overdue>=1?`Atrasado ${overdue} dia(s)`:(daysLeft!==null?`${Math.max(daysLeft,0)} dia(s) para o prazo`:"Sem prazo"),severity});
+    let computedDaysLeft = daysLeft;
+    let detail = "";
+    let severity = "low";
+    if (overdue >= 1) {
+      severity = "high";
+      detail = `Atrasado ${overdue} dia(s)`;
+    } else if (computedDaysLeft !== null) {
+      severity = computedDaysLeft <= 7 ? "medium" : "low";
+      detail = `${Math.max(computedDaysLeft,0)} dia(s) para o prazo`;
+    } else if (key === "visits" || key === "consultations") {
+      const now = new Date();
+      const endOfYear = new Date(now.getFullYear(), 11, 31);
+      endOfYear.setHours(23, 59, 59, 999);
+      computedDaysLeft = Math.max(0, Math.ceil((endOfYear.getTime() - now.getTime()) / 86400000));
+      severity = computedDaysLeft <= 7 ? "high" : (computedDaysLeft <= 30 ? "medium" : "low");
+      const limitDate = endOfYear.toLocaleDateString("pt-BR");
+      detail = `Prazo anual até ${limitDate} (${computedDaysLeft} dia(s) restantes)`;
+    } else {
+      detail = "Sem prazo";
+    }
+    out.push({id:`sch-${key}`,title:`${label}: ${Number(s.pending||0)} pendente(s)`,detail,severity});
   }
   return out;
 }
@@ -2916,19 +2935,19 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
           <div style={{fontWeight:700,fontSize:".95rem",color:"var(--text-1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:".5rem"}}>
             {patient.name}
             {(()=>{ const age=calcAge(patient.birthDate); return age&&<span style={{fontSize:".72rem",fontWeight:600,color:"var(--text-3)",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:999,padding:".1rem .45rem",flexShrink:0}}>{age}</span>; })()}
-            {isProfileIncomplete(patient)&&<span style={{fontSize:".65rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"#fef3c7",color:"#92400e",border:"1px solid #fde68a",flexShrink:0}}>âš ï¸ Cadastro incompleto</span>}
+            {isProfileIncomplete(patient)&&<span style={{fontSize:".65rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"#fef3c7",color:"#92400e",border:"1px solid #fde68a",flexShrink:0}}>⚠️ Cadastro incompleto</span>}
           </div>
           <div style={{fontSize:".75rem",color:"var(--text-2)",display:"flex",gap:".5rem",flexWrap:"wrap",marginTop:".15rem"}}>
             <span>{catLabel(templates,patient.careCategory)}</span>
-            <span>â€¢</span>
+            <span>•</span>
             <span>{acsName}</span>
           </div>
         </div>
         {canManageUser&&(
           <div style={{display:"flex",gap:".35rem",flexShrink:0}}>
-            <button onClick={()=>setShowPatientCard(true)} title="CartÃ£o do paciente" style={{fontSize:".7rem",padding:".25rem .55rem",background:"var(--teal-600)",border:"1px solid var(--teal-700)",borderRadius:"var(--r-md)",color:"#fff",fontWeight:600,cursor:"pointer"}}>ðŸªª CartÃ£o</button>
-            <button onClick={()=>setDocType("comparecimento")} title="DeclaraÃ§Ã£o de comparecimento" style={{fontSize:".7rem",padding:".25rem .55rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",color:"#1d4ed8",fontWeight:600,cursor:"pointer"}}>ðŸ“„ Decl.</button>
-            <button onClick={()=>setDocType("atestado")} title="Atestado mÃ©dico" style={{fontSize:".7rem",padding:".25rem .55rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",color:"#15803d",fontWeight:600,cursor:"pointer"}}>ðŸ“‹ Atestado</button>
+            <button onClick={()=>setShowPatientCard(true)} title="Cartão do paciente" style={{fontSize:".7rem",padding:".25rem .55rem",background:"var(--teal-600)",border:"1px solid var(--teal-700)",borderRadius:"var(--r-md)",color:"#fff",fontWeight:600,cursor:"pointer"}}>Cartão</button>
+            <button onClick={()=>setDocType("comparecimento")} title="Declaração de comparecimento" style={{fontSize:".7rem",padding:".25rem .55rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",color:"#1d4ed8",fontWeight:600,cursor:"pointer"}}>Decl.</button>
+            <button onClick={()=>setDocType("atestado")} title="Atestado médico" style={{fontSize:".7rem",padding:".25rem .55rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",color:"#15803d",fontWeight:600,cursor:"pointer"}}>Atestado</button>
           </div>
         )}
       </div>
@@ -11168,7 +11187,7 @@ function AppInner() {
                 {/* CondiÃ§Ãµes â€” checkbox antes do texto */}
                 <div className="field-span-2" style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap"}}>
                   <span style={{fontSize:".78rem",fontWeight:600,color:"var(--text-2)",flexShrink:0}}>CondiÃ§Ãµes</span>
-                  {[["hypertension","ðŸ«€ HipertensÃ£o"],["diabetes","ðŸ©¸ Diabetes"]].map(([val,lbl])=>(
+                  {[["diabetes","Diabetes"],["hypertension","Hipertensão"]].map(([val,lbl])=>(
                     <label key={val} style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:500,cursor:"pointer",margin:0}}>
                       <input type="checkbox" checked={(form.chronicConditions||[]).includes(val)}
                         onChange={e=>setForm(s=>({...s,chronicConditions:e.target.checked?[...(s.chronicConditions||[]),val]:(s.chronicConditions||[]).filter(c=>c!==val)}))}
@@ -11178,7 +11197,7 @@ function AppInner() {
                   ))}
                   {(form.chronicConditions||[]).length>0&&(
                     <span style={{fontSize:".71rem",color:"var(--teal-600)",fontWeight:600,marginLeft:"auto"}}>
-                      {String(form.careCategory||"").toLowerCase()==="elderly" ? "âœ“ Somadas ao grupo Idoso" : "âœ“ Regras de doenÃ§a crÃ´nica ativas"}
+                      {String(form.careCategory||"").toLowerCase()==="elderly" ? "✓ Somadas ao grupo Idoso" : "✓ Regras de doença crônica ativas"}
                     </span>
                   )}
                 </div>
@@ -11443,9 +11462,9 @@ function AppInner() {
             <label>Grupo / Categoria<input value={catLabel(templates,viewPatient.careCategory)} disabled/></label>
             <label>ACS responsÃ¡vel<input value={users.find(u=>u.id===viewPatient.assignedAcsId)?.name||"NÃ£o atribuÃ­do"} disabled/></label>
             <label style={{display:"flex",flexDirection:"column",gap:".3rem"}} className="field-span-2">
-              CondiÃ§Ã£o crÃ´nica
+              Condição crônica
               <div style={{display:"flex",gap:"1.25rem",padding:".5rem .75rem",background:"var(--surface-2)",borderRadius:"var(--r-md)",border:"1px solid var(--border)",flexWrap:"wrap",opacity:.7}}>
-                {[["hypertension","ðŸ«€ HipertensÃ£o"],["diabetes","ðŸ©¸ Diabetes"]].map(([val,lbl])=>(
+                {[["diabetes","Diabetes"],["hypertension","Hipertensão"]].map(([val,lbl])=>(
                   <label key={val} style={{display:"flex",alignItems:"center",gap:".35rem",fontSize:".82rem",fontWeight:500,margin:0}}>
                     <input type="checkbox" checked={(viewPatient.chronicConditions||[]).includes(val)} disabled style={{width:15,height:15}}/>
                     {lbl}
@@ -11458,6 +11477,9 @@ function AppInner() {
             {isChildCategory(viewPatient.careCategory)&&<label className="field-span-2">Nome do responsÃ¡vel<input value={String(viewPatient.motherName||"-")} disabled/></label>}
             <label>Data de nascimento<input value={viewPatient.birthDate ? `${fmtDate(viewPatient.birthDate)}${calcAge(viewPatient.birthDate) ? " Â· " + calcAge(viewPatient.birthDate) : ""}` : "-"} disabled/></label>
             <label>Sexo<input value={String(viewPatient.sex||"-")} disabled/></label>
+            <label>Município de nascimento<input value={String(viewPatient.birthCity||"-")} disabled/></label>
+            <label>UF de nascimento<input value={String(viewPatient.birthState||"-")} disabled/></label>
+            <label>Raça / Cor<input value={String(viewPatient.raceColor||"-")} disabled/></label>
             {!isChildCategory(viewPatient.careCategory)&&(
               <label>Estado civil
                 <select value={viewPatient.maritalStatus||""} disabled>
@@ -11484,6 +11506,13 @@ function AppInner() {
             <label>Bairro<input value={String(viewPatient.neighborhood||"-")} disabled/></label>
             <label>Cidade<input value={String(viewPatient.city||"-")} disabled/></label>
             <label>Estado (UF)<input value={String(viewPatient.state||"-")} disabled/></label>
+            <label>Código familiar<input value={String(viewPatient.familyCode||"-")} disabled/></label>
+            <label>Frequência de visita domiciliar<input value={String(viewPatient.homeVisitFreq||"-")} disabled/></label>
+            <label>Tipo de moradia<input value={String(viewPatient.housingType||"-")} disabled/></label>
+            <label>Abastecimento de água<input value={String(viewPatient.waterSupply||"-")} disabled/></label>
+            <label>Esgotamento sanitário<input value={String(viewPatient.sewage||"-")} disabled/></label>
+            <label>Coleta de lixo<input value={String(viewPatient.garbage||"-")} disabled/></label>
+            <label>Energia elétrica<input value={String(viewPatient.electricity||"-")} disabled/></label>
             {/* SeÃ§Ã£o 5: GestaÃ§Ã£o */}
             {String(viewPatient.careCategory||"").toLowerCase()==="pregnant"&&<>
               <label>DUM<input value={fmtDate(viewPatient.pregnancyStartDate)} disabled/></label>
