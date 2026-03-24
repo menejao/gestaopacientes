@@ -56,6 +56,12 @@ function normalizeMojibakeText(value) {
   let out = value;
   for (const [from, to] of MOJIBAKE_REPLACEMENTS) out = out.split(from).join(to);
   out = out.replace(/NÃƒO/g, "NÃO").replace(/nÃƒo/g, "não");
+  if (/[ÃÂâð]/.test(out)) {
+    try {
+      const decoded = decodeURIComponent(escape(out));
+      if (decoded && decoded.length >= out.length * 0.6) out = decoded;
+    } catch {}
+  }
   return out;
 }
 
@@ -63,8 +69,9 @@ function useUiTextSanitizer() {
   useEffect(() => {
     const root = document.getElementById("root");
     if (!root) return;
-    const raf = requestAnimationFrame(() => {
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const sanitizeNodeTree = (scope) => {
+      const target = scope || root;
+      const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
       let node = walker.nextNode();
       while (node) {
         const before = node.nodeValue || "";
@@ -73,7 +80,7 @@ function useUiTextSanitizer() {
         node = walker.nextNode();
       }
       const attrs = ["placeholder", "title", "aria-label"];
-      const els = root.querySelectorAll("[placeholder],[title],[aria-label]");
+      const els = target.querySelectorAll ? target.querySelectorAll("[placeholder],[title],[aria-label]") : [];
       els.forEach((el) => {
         attrs.forEach((attr) => {
           const before = el.getAttribute(attr);
@@ -82,8 +89,25 @@ function useUiTextSanitizer() {
           if (after !== before) el.setAttribute(attr, after);
         });
       });
+    };
+    const raf = requestAnimationFrame(() => {
+      sanitizeNodeTree(root);
     });
-    return () => cancelAnimationFrame(raf);
+    const obs = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        m.addedNodes.forEach((n) => {
+          if (n.nodeType === Node.TEXT_NODE) {
+            const before = n.nodeValue || "";
+            const after = normalizeMojibakeText(before);
+            if (after !== before) n.nodeValue = after;
+            return;
+          }
+          if (n.nodeType === Node.ELEMENT_NODE) sanitizeNodeTree(n);
+        });
+      });
+    });
+    obs.observe(root, { childList: true, subtree: true });
+    return () => { cancelAnimationFrame(raf); obs.disconnect(); };
   });
 }
 
@@ -357,6 +381,7 @@ function deriveProtocolAlerts(summary) {
 
 function protocolChip(summary) {
   if(!summary) return{text:"Sem status",tone:"muted"};
+  if(summary.alertsRestricted) return{text:"Sem alertas (outra equipe)",tone:"muted"};
   const pending=summary.pending||{};
   const total=Number(pending.visits||0)+Number(pending.consultations||0)+Number(pending.vaccines||0);
   const targets=summary.targets||{},completed=summary.completed||{};
@@ -426,10 +451,10 @@ function protocolChip(summary) {
     if(nonVacMedium.length>0) nearCount+=nonVacMedium.length;
   }
 
-  if(overdueCount>0) return{text:`CrÃ­tico (${overdueCount} vencido${overdueCount>1?"s":""})`,tone:"danger"};
-  if(nearCount>0) return{text:`AtenÃ§Ã£o (${nearCount} prÃ³ximo${nearCount>1?"s":""})`,tone:"warn"};
+  if(overdueCount>0) return{text:`Crítico (${overdueCount} vencido${overdueCount>1?"s":""})`,tone:"danger"};
+  if(nearCount>0) return{text:`Atenção (${nearCount} próximo${nearCount>1?"s":""})`,tone:"warn"};
   if(total<=0) return{text:`Em dia`,tone:"ok"};
-  return{text:`Em andamento (${doneTotal}/${targetTotal})`,tone:"warn"};
+  return{text:`No prazo (${doneTotal}/${targetTotal})`,tone:"muted"};
 }
 
 function catLabel(templates,category) {
@@ -1670,10 +1695,10 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
             {catOpts.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
           <select value={conditionFilter} onChange={e=>setConditionFilter(e.target.value)}>
-            <option value="">Todas as condiÃ§Ãµes</option>
-            <option value="hypertension">ðŸ«€ HipertensÃ£o</option>
-            <option value="diabetes">ðŸ©¸ Diabetes</option>
-            <option value="both">ðŸ«€ðŸ©¸ HipertensÃ£o + Diabetes</option>
+            <option value="">Todas as condições</option>
+            <option value="hypertension">Hipertensão</option>
+            <option value="diabetes">Diabetes</option>
+            <option value="both">Hipertensão + Diabetes</option>
           </select>
           <select value={acsFilter} onChange={e=>setAcsFilter(e.target.value)}>
             <option value="">Todos os ACS</option>
@@ -1712,7 +1737,7 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
                               <div style={{display:"flex",alignItems:"center",gap:".4rem",flexWrap:"wrap"}}>
                                 <strong style={{color:"var(--ink)"}}>{p.name}</strong>
                                 {isProfileIncomplete(p)&&(
-                                  <span style={{fontSize:".6rem",fontWeight:600,padding:".08rem .35rem",borderRadius:3,background:"#fef9c3",color:"#854d0e",border:"1px solid #fde047",whiteSpace:"nowrap",letterSpacing:".02em"}}>incompleto</span>
+                                  <span style={{fontSize:".6rem",fontWeight:700,padding:".08rem .35rem",borderRadius:3,background:"#fef9c3",color:"#854d0e",border:"1px solid #fde047",whiteSpace:"nowrap",letterSpacing:".02em"}}>Cadastro incompleto</span>
                                 )}
                               </div>
                               <div className="muted small" style={{display:"flex",gap:".4rem",alignItems:"center"}}>
@@ -3029,6 +3054,11 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
                       </div>
                     </>
                   )}
+                  {sortedSpecialAlerts.length===0 && patientProtocolSummary?.alertsRestricted && (
+                    <div style={{padding:".55rem .75rem",borderRadius:"var(--r-md)",background:"var(--slate-50)",border:"1px solid var(--border)",fontSize:".78rem",color:"var(--text-2)"}}>
+                      Alertas e avisos deste paciente ficam visíveis apenas para a equipe responsável.
+                    </div>
+                  )}
                 </>
             }
           </div>
@@ -3407,6 +3437,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
 function buildProactiveAlerts(patients, protocolByPatient, pharmacyStock, agenda) {
   const alerts = [];
   const today = new Date(); today.setHours(0,0,0,0);
+  const nowIso = new Date().toISOString();
 
   // Gestantes passadas da DPP
   patients.forEach(p => {
@@ -3415,7 +3446,7 @@ function buildProactiveAlerts(patients, protocolByPatient, pharmacyStock, agenda
     const dppPlusOne = dpp ? new Date(dpp.getTime() + 86400000) : null;
     if (dppPlusOne && dppPlusOne <= today) { // atraso: DPP+1 dia
       const days = Math.floor((today - dpp) / 86400000);
-      alerts.push({ id:"dpp-"+p.id, type:"danger", icon:"ðŸ¤°", title:"DPP ultrapassada", detail:`${p.name} â€” ${days}d alÃ©m da DPP`, patientId:p.id });
+      alerts.push({ id:"dpp-"+p.id, type:"danger", title:"DPP ultrapassada", detail:`${p.name} — ${days}d além da DPP`, patientId:p.id, createdAt:nowIso });
     }
   });
 
@@ -3426,30 +3457,32 @@ function buildProactiveAlerts(patients, protocolByPatient, pharmacyStock, agenda
   patients.forEach(p => {
     const chip = protocolChip(protocolByPatient[p.id]);
     if (chip.tone === "danger") {
-      alerts.push({ id:"prot-"+p.id, type:"warn", icon:"âš ï¸", title:"Protocolo crÃ­tico", detail:p.name+" â€” "+chip.text, patientId:p.id });
+      alerts.push({ id:"prot-"+p.id, type:"warn", title:"Protocolo crítico", detail:p.name+" — "+chip.text, patientId:p.id, createdAt:nowIso });
     }
   });
 
   // Estoque zerado ou abaixo do mÃ­nimo
   (pharmacyStock||[]).forEach(s => {
-    if (s.qty === 0) alerts.push({ id:"stock0-"+s.id, type:"danger", icon:"ðŸ’Š", title:"Medicamento zerado", detail:s.name });
-    else if (s.qty <= s.minQty) alerts.push({ id:"stocklow-"+s.id, type:"warn", icon:"ðŸ“¦", title:"Estoque baixo", detail:`${s.name} â€” ${s.qty} restante(s)` });
+    if (s.qty === 0) alerts.push({ id:"stock0-"+s.id, type:"danger", title:"Medicamento zerado", detail:s.name, createdAt:nowIso });
+    else if (s.qty <= s.minQty) alerts.push({ id:"stocklow-"+s.id, type:"warn", title:"Estoque baixo", detail:`${s.name} — ${s.qty} restante(s)`, createdAt:nowIso });
   });
 
   // Consultas de hoje sem confirmaÃ§Ã£o
   const todayStr = today.toISOString().slice(0,10);
   (agenda||[]).filter(a => a.date === todayStr && a.status === "scheduled").forEach(a => {
-    alerts.push({ id:"agenda-"+a.id, type:"info", icon:"ðŸ“…", title:"Consulta hoje", detail:`${a.patientName} â€” ${a.time||"sem horÃ¡rio"} com ${a.doctorName||"profissional"}` });
+    alerts.push({ id:"agenda-"+a.id, type:"info", title:"Consulta hoje", detail:`${a.patientName} — ${a.time||"sem horário"} com ${a.doctorName||"profissional"}`, createdAt:nowIso });
   });
 
   return alerts.slice(0, 20);
 }
 
 const NOTIF_SEEN_KEY = "saudeubs_notif_seen_v1";
+const NOTIF_CLEARED_AT_KEY = "saudeubs_notif_cleared_at_v1";
 
 function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, onNavigate }) {
   const [open, setOpen] = useState(false);
   const [seenIds, setSeenIds] = useState(() => new Set(readLS(NOTIF_SEEN_KEY, [])));
+  const [clearedAt, setClearedAt] = useState(() => String(readLS(NOTIF_CLEARED_AT_KEY, "")));
   const ref = useRef(null);
 
   useEffect(() => {
@@ -3466,6 +3499,7 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
   // Purge seenIds that no longer correspond to any active alert
   // (means the alert was fulfilled â€” auto-remove from seen list)
   useEffect(() => {
+    if (!allAlerts.length) return;
     const activeIds = new Set(allAlerts.map(a => a.id));
     setSeenIds(prev => {
       const pruned = new Set([...prev].filter(id => activeIds.has(id)));
@@ -3477,10 +3511,16 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
     });
   }, [allAlerts]);
 
-  const unseenAlerts = useMemo(() =>
-    allAlerts.filter(a => !seenIds.has(a.id)),
-    [allAlerts, seenIds]
-  );
+  const unseenAlerts = useMemo(() => {
+    const watermark = Date.parse(clearedAt || "");
+    return allAlerts.filter((a) => {
+      if (seenIds.has(a.id)) return false;
+      if (!Number.isFinite(watermark)) return true;
+      const createdAt = Date.parse(String(a.createdAt || ""));
+      if (!Number.isFinite(createdAt)) return true;
+      return createdAt > watermark;
+    });
+  }, [allAlerts, seenIds, clearedAt]);
 
   function markSeen(id, e) {
     e.stopPropagation();
@@ -3496,6 +3536,9 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
     const allIds = new Set(allAlerts.map(a => a.id));
     setSeenIds(allIds);
     writeLS(NOTIF_SEEN_KEY, [...allIds]);
+    const nowIso = new Date().toISOString();
+    setClearedAt(nowIso);
+    writeLS(NOTIF_CLEARED_AT_KEY, nowIso);
   }
 
   const unseenCount = unseenAlerts.length;
@@ -3547,7 +3590,9 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
               <span
                 style={{flex:1,display:"flex",gap:".65rem",alignItems:"flex-start",minWidth:0}}
                 onClick={()=>{ if(a.patientId&&onNavigate) onNavigate(a.patientId); setOpen(false); }}>
-                <span style={{fontSize:"1rem",flexShrink:0,marginTop:".1rem"}}>{a.icon}</span>
+                <span style={{fontSize:"1rem",flexShrink:0,marginTop:".1rem"}}>
+                  {a.type==="danger"?"⛔":a.type==="warn"?"⚠️":"ℹ️"}
+                </span>
                 <div style={{minWidth:0}}>
                   <div style={{fontWeight:700,fontSize:".76rem",color:a.type==="danger"?"#be123c":a.type==="warn"?"var(--amber-700)":"var(--teal-700)"}}>{a.title}</div>
                   <div style={{fontSize:".73rem",color:"var(--text-2)",marginTop:".1rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{a.detail}</div>
@@ -4205,7 +4250,7 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const AGENDA_HOURS = ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00"];
 
-function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreated, onNavigatePatient }) {
+function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreated, onNavigatePatient, teams = [] }) {
   const [agenda, setAgenda]         = useState(()=>readLS(AGENDA_KEY,[]));
   const [selectedDate, setSelectedDate] = useState(()=>new Date().toISOString().slice(0,10));
   const [showForm, setShowForm]     = useState(false);
@@ -4216,7 +4261,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
   const [patSearch, setPatSearch]   = useState("");
   const [patSelected, setPatSelected] = useState(null);
   const [showNewPat, setShowNewPat] = useState(false);
-  const [newPatForm, setNewPatForm] = useState({name:"",cpf:"",phone:"",careCategory:"general",birthDate:""});
+  const [newPatForm, setNewPatForm] = useState({name:"",cpf:"",phone:"",careCategory:"general",birthDate:"",teamId:String(user?.teamId||"")});
   const [newPatErr, setNewPatErr]   = useState("");
 
   const patResults = useMemo(() => {
@@ -4254,6 +4299,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
         phone: patSelected.phone||"",
         birthDate: patSelected.birthDate||"",
         careCategory: patSelected.careCategory||"general",
+        teamId: String(patSelected.teamId || user?.teamId || "").trim(),
         incompleteProfile: true,
         // Campos mÃ­nimos obrigatÃ³rios vazios â€” serÃ£o completados depois
         motherName:"", cns:"", phoneAlt:"", zipCode:"", address:"", number:"",
@@ -4475,7 +4521,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                       {patResults.length===0?(
                         <div style={{padding:".65rem .9rem",fontSize:".8rem"}}>
                           <div style={{color:"var(--text-3)",marginBottom:".5rem"}}>Nenhum paciente encontrado.</div>
-                          <button type="button" onClick={()=>{ const n=patSearch; setPatSearch(""); setNewPatForm({name:n,cpf:"",phone:"",careCategory:"general",birthDate:""}); setNewPatErr(""); setShowNewPat(true); }}
+                          <button type="button" onClick={()=>{ const n=patSearch; setPatSearch(""); setNewPatForm({name:n,cpf:"",phone:"",careCategory:"general",birthDate:"",teamId:String(user?.teamId||"")}); setNewPatErr(""); setShowNewPat(true); }}
                             style={{fontSize:".78rem",padding:".3rem .65rem",background:"var(--teal-50)",color:"var(--teal-700)",border:"1px solid var(--teal-200)",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:600}}>
                             + Cadastrar novo paciente
                           </button>
@@ -4506,7 +4552,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                       })}
                       {patResults.length>0&&(
                         <div style={{padding:".4rem .9rem",borderTop:"1px solid var(--border)"}}>
-                          <button type="button" onClick={()=>{ const n=patSearch; setPatSearch(""); setNewPatForm({name:n,cpf:"",phone:"",careCategory:"general",birthDate:""}); setNewPatErr(""); setShowNewPat(true); }}
+                          <button type="button" onClick={()=>{ const n=patSearch; setPatSearch(""); setNewPatForm({name:n,cpf:"",phone:"",careCategory:"general",birthDate:"",teamId:String(user?.teamId||"")}); setNewPatErr(""); setShowNewPat(true); }}
                             style={{fontSize:".75rem",padding:".25rem .55rem",background:"none",color:"var(--teal-600)",border:"1px dashed var(--teal-300)",borderRadius:"var(--r-md)",cursor:"pointer"}}>
                             + Cadastrar novo paciente
                           </button>
@@ -4552,12 +4598,20 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                         <option value="child_followup">Puericultura</option>
                       </select>
                     </label>
+                    <label style={{gridColumn:"span 2",display:"flex",flexDirection:"column",gap:".2rem",fontSize:".75rem",fontWeight:600}}>
+                      Equipe responsável
+                      <select value={newPatForm.teamId} onChange={e=>setNewPatForm(s=>({...s,teamId:e.target.value}))} style={{fontSize:".8rem"}}>
+                        <option value="">Selecione...</option>
+                        {(teams||[]).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    </label>
                   </div>
                   {newPatErr&&<div style={{fontSize:".75rem",color:"#be123c"}}>{newPatErr}</div>}
                   <button type="button"
                     onClick={()=>{
                       if(!newPatForm.name.trim()){setNewPatErr("Nome obrigatÃ³rio.");return;}
-                      const np={...emptyPatientForm(),name:newPatForm.name.trim(),cpf:newPatForm.cpf,phone:newPatForm.phone,birthDate:newPatForm.birthDate,careCategory:newPatForm.careCategory,id:"local_"+Date.now(),incompleteProfile:true};
+                      if(!String(newPatForm.teamId||"").trim()){setNewPatErr("Selecione a equipe responsável.");return;}
+                      const np={...emptyPatientForm(),name:newPatForm.name.trim(),cpf:newPatForm.cpf,phone:newPatForm.phone,birthDate:newPatForm.birthDate,careCategory:newPatForm.careCategory,teamId:newPatForm.teamId,id:"local_"+Date.now(),incompleteProfile:true};
                       setPatSelected(np); setPatSearch(np.name); setForm(s=>({...s,patientId:np.id}));
                       setShowNewPat(false); setNewPatErr("");
                     }}
@@ -10295,6 +10349,7 @@ function AppInner() {
 
   const sortedSpecialAlerts = useMemo(()=>{
     try {
+    if (rosaAdjustedSummary?.alertsRestricted) return [];
     const rank={high:0,medium:1,low:2};
     let alerts = deriveProtocolAlerts(rosaAdjustedSummary);
 
@@ -10934,19 +10989,8 @@ function AppInner() {
 
   const catOpts=templates.map(t=>({value:t.category,label:t.label}));
 
-  // ACS vÃª apenas pacientes da prÃ³pria equipe. Demais perfis veem todos.
-  const visiblePatients = isAcs(user) ? (() => {
-    const myTeamId   = String(user?.teamId  ||"").trim().toLowerCase();
-    const myTeamName = String(user?.teamName||"").trim().toLowerCase();
-    const teamAcsIds = new Set(
-      users.filter(u => u.role==="acs" && (
-        (myTeamId   && String(u.teamId  ||"").trim().toLowerCase()===myTeamId) ||
-        (myTeamName && String(u.teamName||"").trim().toLowerCase()===myTeamName) ||
-        u.id===user?.id
-      )).map(u=>u.id)
-    );
-    return patients.filter(p => teamAcsIds.has(p.assignedAcsId));
-  })() : patients;
+  // Todos os perfis com acesso ao módulo visualizam todos os pacientes.
+  const visiblePatients = patients;
 
   function openProfile() {
     setProfileError("");
@@ -11019,7 +11063,7 @@ function AppInner() {
 
           {tab==="queue"&&<QueuePage patients={patients} users={users} user={user} token={token} onNewPatient={p=>setPatients(prev=>[...prev,p])}/>}
           {tab==="triage"&&<TriagePage patients={patients} users={users} user={user}/>}
-          {tab==="agenda"&&<AgendaPage patients={patients} users={users} user={user} token={token} onNewPatient={p=>setPatients(prev=>[...prev,p])} onPatientCreated={loadAll} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
+          {tab==="agenda"&&<AgendaPage patients={patients} users={users} user={user} token={token} teams={publicTeams} onNewPatient={p=>setPatients(prev=>[...prev,p])} onPatientCreated={loadAll} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
           {tab==="referrals"&&<ReferralsPage patients={patients} users={users} user={user}/>}
           {tab==="acs_tasks"&&<AcsTasksPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
           {tab==="chart"&&<ChartPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}

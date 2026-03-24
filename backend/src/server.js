@@ -3112,6 +3112,20 @@ function buildProtocolSummary(patient, history, templateMap) {
   };
 }
 
+function restrictSummaryAlertsForForeignTeam(summary) {
+  const safe = summary && typeof summary === "object" ? summary : {};
+  return {
+    ...safe,
+    alertsRestricted: true,
+    specialAlerts: [],
+    schedule: {
+      visits: null,
+      consultations: null,
+      vaccines: null
+    }
+  };
+}
+
 
 function buildAiPatientContext(db, user, patient) {
   const history = buildPatientHistory(db, patient.id);
@@ -4452,7 +4466,10 @@ app.get("/patients/protocol-summaries", async (req, res) => {
   const summaries = {};
   for (const patient of allowedPatients) {
     const history = buildPatientHistory(db, patient.id);
-    summaries[patient.id] = buildProtocolSummary(patient, history, protocolMap);
+    const summary = buildProtocolSummary(patient, history, protocolMap);
+    summaries[patient.id] = patient.teamId && patient.teamId !== req.user.teamId
+      ? restrictSummaryAlertsForForeignTeam(summary)
+      : summary;
   }
 
   return res.json({
@@ -4471,9 +4488,19 @@ app.post("/patients", requireManagerOrDoctor, async (req, res) => {
     return res.status(400).json({ error: "Nome e telefone são obrigatórios" });
   }
 
+  const requestedTeamId = String(payload.teamId || "").trim();
+  const patientTeamId = requestedTeamId || req.user.teamId;
+  if (!patientTeamId) {
+    return res.status(400).json({ error: "Equipe responsável é obrigatória" });
+  }
+  const teamExists = db.teams.some((t) => t.id === patientTeamId);
+  if (!teamExists) {
+    return res.status(400).json({ error: "Equipe responsável inválida" });
+  }
+
   const patient = {
     id: uuidv4(),
-    teamId: req.user.teamId,
+    teamId: patientTeamId,
     name: String(payload.name).trim(),
     motherName: payload.motherName ? String(payload.motherName).trim() : "",
     cpf: payload.cpf ? String(payload.cpf).trim() : "",
@@ -4939,7 +4966,11 @@ app.get("/patients/:id/protocol-summary", async (req, res) => {
   if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
 
   const history = buildPatientHistory(db, id);
-  return res.json(buildProtocolSummary(lookup.patient, history, getProtocolTemplateMap(db, req.user.teamId)));
+  const summary = buildProtocolSummary(lookup.patient, history, getProtocolTemplateMap(db, req.user.teamId));
+  if (lookup.patient.teamId && lookup.patient.teamId !== req.user.teamId) {
+    return res.json(restrictSummaryAlertsForForeignTeam(summary));
+  }
+  return res.json(summary);
 });
 
 app.get("/metrics/demand/monthly", async (req, res) => {
