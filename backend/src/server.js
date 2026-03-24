@@ -169,6 +169,266 @@ const DEFAULT_TEAM_COLORS = [
   "Marrom",
   "Amarela"
 ];
+const DEMO_POPULATE_SIZE_COMPLETE = 50;
+const DEMO_POPULATE_SIZE_INCOMPLETE = 10;
+
+function randomInt(min, max) {
+  const low = Math.ceil(Number(min));
+  const high = Math.floor(Number(max));
+  return Math.floor(Math.random() * (high - low + 1)) + low;
+}
+
+function pickRandom(items = []) {
+  if (!Array.isArray(items) || !items.length) return null;
+  return items[randomInt(0, items.length - 1)];
+}
+
+function chance(percent = 50) {
+  return Math.random() * 100 < Number(percent);
+}
+
+function isoDateOffset(daysOffset = 0) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + Number(daysOffset));
+  return d.toISOString().slice(0, 10);
+}
+
+function makeDigits(size = 11) {
+  let out = "";
+  for (let i = 0; i < size; i += 1) out += String(randomInt(0, 9));
+  return out;
+}
+
+function makePhone() {
+  return `(${randomInt(11, 99)}) 9${makeDigits(4)}-${makeDigits(4)}`;
+}
+
+function normalizeSeedCategory(category) {
+  return normalizeCategory(category, Object.fromEntries(Object.keys(DEFAULT_CARE_PROTOCOLS).map((k) => [k, DEFAULT_CARE_PROTOCOLS[k]])));
+}
+
+function buildSeedPatient({
+  index,
+  teamIds,
+  acsIds,
+  incomplete = false
+}) {
+  const firstNames = [
+    "Ana", "Bruna", "Carla", "Daniela", "Eduarda", "Fernanda", "Gabriela", "Helena", "Isabela", "Juliana",
+    "Karen", "Larissa", "Marina", "Nathalia", "Paula", "Quezia", "Renata", "Sabrina", "Talita", "Vanessa",
+    "Wesley", "Yasmin", "Zilda", "Amanda", "Bianca", "Camila", "Debora", "Eliane", "Fabiana", "Giovana",
+    "Heloisa", "Iris", "Joana", "Karina", "Livia", "Michele", "Noemi", "Priscila", "Raquel", "Simone",
+    "Tiago", "Ursula", "Vitoria", "William", "Yuri", "Zuleica", "Aline", "Beatriz", "Cecilia", "Diego",
+    "Elaine", "Felipe", "Gustavo", "Hugo", "Icaro", "Janaina", "Katia", "Leandro", "Marta", "Nicolas"
+  ];
+  const lastNames = [
+    "Silva", "Souza", "Santos", "Oliveira", "Pereira", "Costa", "Rodrigues", "Almeida", "Nascimento",
+    "Lima", "Carvalho", "Araujo", "Fernandes", "Ribeiro", "Gomes", "Martins", "Rocha", "Melo", "Barbosa"
+  ];
+  const streets = ["Rua das Flores", "Rua Sete de Setembro", "Avenida Central", "Rua do Sol", "Travessa Esperança", "Rua Boa Vista"];
+  const districts = ["Centro", "Jardim Primavera", "Vila Nova", "Bela Vista", "Alvorada", "São José"];
+  const cities = ["São Paulo", "Guarulhos", "Campinas", "Santo André", "Osasco", "Sorocaba"];
+  const ufs = ["SP", "RJ", "MG", "BA", "PE", "PR"];
+  const categories = ["pregnant", "puerperal", "child_followup", "chronic", "elderly", "pap_only", "general"];
+  const category = normalizeSeedCategory(categories[index % categories.length]);
+  const teamId = pickRandom(teamIds) || "team-ana";
+  const acsId = chance(82) ? (pickRandom(acsIds) || "") : "";
+
+  const first = pickRandom(firstNames) || `Paciente${index + 1}`;
+  const middle = pickRandom(lastNames) || "Silva";
+  const last = pickRandom(lastNames) || "Souza";
+  const name = `${first} ${middle} ${last}`;
+
+  let birthDate = isoDateOffset(-randomInt(18 * 365, 65 * 365));
+  if (category === "child_followup") birthDate = isoDateOffset(-randomInt(3, 700));
+  if (category === "elderly") birthDate = isoDateOffset(-randomInt(60 * 365, 90 * 365));
+
+  const pregStart = isoDateOffset(-randomInt(35, 230));
+  const usgWeeks = randomInt(6, 24);
+  const usgDays = randomInt(0, 6);
+  const usgDate1 = isoDateOffset(-randomInt(10, 80));
+  const expectedDelivery = isoDateOffset(randomInt(15, 120));
+
+  return {
+    id: uuidv4(),
+    teamId,
+    name,
+    motherName: category === "child_followup" ? `${pickRandom(firstNames)} ${pickRandom(lastNames)}` : "",
+    cpf: incomplete && chance(65) ? "" : makeDigits(11),
+    cns: incomplete && chance(60) ? "" : makeDigits(15),
+    cnsCpf: "",
+    address: incomplete && chance(55)
+      ? ""
+      : `${pickRandom(streets)}, ${randomInt(10, 999)} - ${pickRandom(districts)}, ${pickRandom(cities)} - ${pickRandom(ufs)}`,
+    phone: incomplete && chance(35) ? "" : makePhone(),
+    phoneAlt: chance(30) ? makePhone() : "",
+    microArea: "",
+    assignedAcsId: acsId,
+    careCategory: category,
+    chronicConditions: category === "chronic"
+      ? (chance(35) ? ["hypertension"] : (chance(55) ? ["diabetes"] : ["diabetes", "hypertension"]))
+      : (category === "elderly" && chance(45)
+        ? (chance(50) ? ["hypertension"] : ["diabetes", "hypertension"])
+        : []),
+    maritalStatus: category === "child_followup" ? "" : pickRandom(["solteiro", "casado", "divorciado", "viuvo", "uniao_estavel"]),
+    sexAtBirth: pickRandom(["female", "male"]),
+    genderIdentity: "",
+    birthDate,
+    pregnancyStartDate: category === "pregnant" ? pregStart : "",
+    expectedDeliveryDate: category === "pregnant" ? expectedDelivery : "",
+    gestationalAgeDumWeeks: category === "pregnant" ? randomInt(8, 38) : "",
+    gestationalAgeDumDays: category === "pregnant" ? randomInt(0, 6) : "",
+    gestationalAgeUsgWeeks: category === "pregnant" ? usgWeeks : "",
+    gestationalAgeUsgDays: category === "pregnant" ? usgDays : "",
+    usgDate1: category === "pregnant" ? usgDate1 : "",
+    usgDate2: category === "pregnant" && chance(50) ? isoDateOffset(-randomInt(5, 35)) : "",
+    usgDate3: category === "pregnant" && chance(25) ? isoDateOffset(-randomInt(1, 12)) : "",
+    prenatalStartDate: category === "pregnant" ? isoDateOffset(-randomInt(20, 150)) : "",
+    postpartumStartDate: category === "puerperal" ? isoDateOffset(-randomInt(1, 38)) : "",
+    comorbidities: category === "chronic" ? "Acompanhamento de condição crônica." : "",
+    medications: chance(38) ? "Uso contínuo conforme prescrição." : "",
+    allergies: chance(15) ? "Alergia relatada a dipirona." : "",
+    createdAt: new Date().toISOString(),
+    createdBy: "seed-system"
+  };
+}
+
+function buildSeedClinicalRecords(patient, template, bucket = "progress", staffUsers = []) {
+  const items = [];
+  const staff = pickRandom(staffUsers);
+  const createdBy = staff?.id || "seed-system";
+  const protocolTag = patient.careCategory;
+  const targets = template?.targets || { visits: 0, consultations: 0, vaccines: 0 };
+  const vaccines = Array.isArray(template?.vaccines) ? template.vaccines : [];
+
+  const visitDone = bucket === "ok"
+    ? targets.visits
+    : (bucket === "critical" ? Math.min(1, targets.visits) : Math.max(1, Math.floor(targets.visits * 0.5)));
+  const consultDone = bucket === "ok"
+    ? targets.consultations
+    : (bucket === "critical" ? Math.min(1, targets.consultations) : Math.max(1, Math.floor(targets.consultations * 0.45)));
+  const vaccineDone = bucket === "ok"
+    ? Math.min(targets.vaccines, Math.max(1, vaccines.length))
+    : (bucket === "critical" ? 0 : Math.max(0, Math.floor(targets.vaccines * 0.35)));
+
+  for (let i = 0; i < visitDone; i += 1) {
+    items.push({
+      id: uuidv4(),
+      patientId: patient.id,
+      type: "visit",
+      title: "Visita ACS",
+      details: "Visita domiciliar de rotina registrada no território.",
+      date: isoDateOffset(-randomInt(2, bucket === "critical" ? 160 : 70)),
+      protocolTag,
+      metadata: {},
+      createdBy,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  for (let i = 0; i < consultDone; i += 1) {
+    const specialty = chance(20) ? "dental" : (chance(45) ? "medical" : "nursing");
+    const title = specialty === "medical"
+      ? "Consulta médica"
+      : (specialty === "nursing" ? "Consulta de enfermagem" : "Consulta odontológica");
+    items.push({
+      id: uuidv4(),
+      patientId: patient.id,
+      type: "consultation",
+      title,
+      details: "Consulta registrada para acompanhamento clínico.",
+      date: isoDateOffset(-randomInt(1, bucket === "critical" ? 180 : 80)),
+      protocolTag,
+      metadata: { specialty },
+      createdBy,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  for (let i = 0; i < vaccineDone; i += 1) {
+    const vacName = vaccines[i % Math.max(vaccines.length, 1)] || "Influenza";
+    items.push({
+      id: uuidv4(),
+      patientId: patient.id,
+      type: "vaccine",
+      title: vacName,
+      details: `Aplicação de ${vacName}.`,
+      date: isoDateOffset(-randomInt(1, 200)),
+      protocolTag,
+      metadata: {},
+      createdBy,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  if (chance(30)) {
+    items.push({
+      id: uuidv4(),
+      patientId: patient.id,
+      type: "procedure",
+      title: "Procedimento registrado",
+      details: "Procedimento clínico com evolução favorável.",
+      date: isoDateOffset(-randomInt(1, 120)),
+      protocolTag,
+      metadata: {},
+      createdBy,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  return items;
+}
+
+function buildSeedAppointments(patient, createdBy = "seed-system") {
+  const total = randomInt(0, 4);
+  const list = [];
+  for (let i = 0; i < total; i += 1) {
+    list.push({
+      id: uuidv4(),
+      patientId: patient.id,
+      date: isoDateOffset(-randomInt(0, 120)),
+      summary: "Atendimento ambulatorial",
+      demandType: chance(65) ? "scheduled" : "spontaneous",
+      conduct: "Conduta registrada no atendimento.",
+      nextStep: chance(55) ? "Retorno agendado." : "",
+      createdBy,
+      createdAt: new Date().toISOString()
+    });
+  }
+  return list;
+}
+
+function buildSeedMessages(patient, users = []) {
+  if (!chance(35)) return [];
+  const author = pickRandom(users);
+  return [{
+    id: uuidv4(),
+    patientId: patient.id,
+    text: "Orientação de acompanhamento registrada para a equipe.",
+    createdBy: author?.id || "seed-system",
+    createdByName: author?.name || "Sistema",
+    createdAt: new Date().toISOString()
+  }];
+}
+
+function buildSeedTasks(patient, acsIds = [], createdBy = "seed-system") {
+  const assigneeId = pickRandom(acsIds);
+  if (!assigneeId || !chance(45)) return [];
+  const status = pickRandom(["pending", "pending", "in_progress", "done"]) || "pending";
+  return [{
+    id: uuidv4(),
+    patientId: patient.id,
+    assigneeId,
+    title: "Contato ativo com paciente",
+    notes: "Registrar retorno no sistema.",
+    status,
+    dueDate: status === "done" ? isoDateOffset(-randomInt(1, 15)) : isoDateOffset(randomInt(-5, 15)),
+    createdBy,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }];
+}
 
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
@@ -440,6 +700,11 @@ function isDoctor(user) {
 
 function isAcs(user) {
   return canonicalRole(user?.role) === "acs";
+}
+
+function canAccessAllPatients(user) {
+  const role = canonicalRole(user?.role);
+  return role === "gestor" || role === "nurse_manager" || role === "doctor" || role === "acs";
 }
 
 function isAnaAdminUser(user) {
@@ -1502,10 +1767,7 @@ function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
 
 function canAccessPatient(user, patient) {
   if (!patient) return false;
-  if (canonicalRole(user?.role) === "gestor") return true;
-  if (patient.teamId !== user.teamId) return false;
-  if (isManager(user) || isDoctor(user)) return true;
-  if (isAcs(user)) return patient.assignedAcsId === user.id;
+  if (canAccessAllPatients(user)) return true;
   return false;
 }
 
@@ -4058,6 +4320,101 @@ app.get("/patients", async (req, res) => {
   res.json(patients);
 });
 
+app.post("/admin/patients/reset-populate", requireAuth, async (req, res) => {
+  const role = canonicalRole(req.user?.role);
+  if (!["gestor", "nurse_manager"].includes(role)) {
+    return res.status(403).json({ error: "Somente gestor ou enfermeira podem executar esta rotina" });
+  }
+
+  const requiredKey = String(process.env.ADMIN_SEED_KEY || "").trim();
+  const sentKey = String(req.headers["x-admin-seed-key"] || "").trim();
+  if (requiredKey && sentKey !== requiredKey) {
+    return res.status(401).json({ error: "Chave administrativa inválida para população da base" });
+  }
+
+  const counts = {
+    complete: DEMO_POPULATE_SIZE_COMPLETE,
+    incomplete: DEMO_POPULATE_SIZE_INCOMPLETE
+  };
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+
+    const users = Array.isArray(db.users) ? db.users : [];
+    const teams = Array.isArray(db.teams) ? db.teams : [];
+    const teamIds = teams.map((t) => String(t.id || "").trim()).filter(Boolean);
+    const acsUsers = users.filter((u) => canonicalRole(u?.role) === "acs");
+    const staffUsers = users.filter((u) => ["nurse_manager", "doctor", "gestor"].includes(canonicalRole(u?.role)));
+    const acsIds = acsUsers.map((u) => u.id);
+
+    const templateMapByTeam = new Map();
+    const getTemplateMap = (teamId) => {
+      const key = String(teamId || "");
+      if (!templateMapByTeam.has(key)) {
+        templateMapByTeam.set(key, getProtocolTemplateMap(db, teamId));
+      }
+      return templateMapByTeam.get(key);
+    };
+
+    db.patients = [];
+    db.appointments = [];
+    db.tasks = [];
+    db.messages = [];
+    db.clinicalRecords = [];
+    db.privacyRequests = [];
+
+    const allPatients = [];
+    const total = counts.complete + counts.incomplete;
+    for (let i = 0; i < total; i += 1) {
+      allPatients.push(buildSeedPatient({
+        index: i,
+        teamIds: teamIds.length ? teamIds : [req.user.teamId],
+        acsIds,
+        incomplete: i >= counts.complete
+      }));
+    }
+
+    allPatients.forEach((patient, index) => {
+      patient.cnsCpf = patient.cpf || patient.cns || "";
+      db.patients.push(patient);
+
+      const bucket = index < 20 ? "ok" : (index < 45 ? "progress" : "critical");
+      const protocolMap = getTemplateMap(patient.teamId || req.user.teamId);
+      const template = protocolMap[patient.careCategory] || DEFAULT_CARE_PROTOCOLS[patient.careCategory] || DEFAULT_CARE_PROTOCOLS.general;
+
+      const records = buildSeedClinicalRecords(patient, template, bucket, staffUsers);
+      db.clinicalRecords.push(...records);
+      db.appointments.push(...buildSeedAppointments(patient, pickRandom(staffUsers)?.id || req.user.id));
+      db.messages.push(...buildSeedMessages(patient, staffUsers));
+      db.tasks.push(...buildSeedTasks(patient, acsIds, pickRandom(staffUsers)?.id || req.user.id));
+    });
+
+    const removedCount = allPatients.length;
+    addAuditLog(db, req.user, "admin.patients.reset_populate", "patient", "bulk", {
+      totalPatients: db.patients.length,
+      completePatients: counts.complete,
+      incompletePatients: counts.incomplete,
+      clinicalRecords: db.clinicalRecords.length,
+      appointments: db.appointments.length,
+      tasks: db.tasks.length,
+      messages: db.messages.length,
+      note: `Substituição completa de base clínica anterior por ${removedCount} pacientes demo`
+    });
+
+    return {
+      totalPatients: db.patients.length,
+      completePatients: counts.complete,
+      incompletePatients: counts.incomplete,
+      clinicalRecords: db.clinicalRecords.length,
+      appointments: db.appointments.length,
+      tasks: db.tasks.length,
+      messages: db.messages.length
+    };
+  });
+
+  return res.json({ ok: true, ...result });
+});
+
 app.get("/patients/protocol-summaries", async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
@@ -4165,10 +4522,11 @@ app.put("/patients/:id", async (req, res) => {
 
   const updated = await withDb((db) => {
     ensureDbShape(db);
-    const index = db.patients.findIndex((p) => p.id === id && p.teamId === req.user.teamId);
+    const index = db.patients.findIndex((p) => p.id === id);
     if (index < 0) return null;
 
     const current = db.patients[index];
+    if (!canAccessPatient(req.user, current)) return "forbidden";
     const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
     const doctorAllowed = new Set([
       "phone",
@@ -4272,6 +4630,9 @@ app.put("/patients/:id", async (req, res) => {
   if (!updated) {
     return res.status(404).json({ error: "Paciente não encontrado" });
   }
+  if (updated === "forbidden") {
+    return res.status(403).json({ error: "Sem permissão para editar paciente" });
+  }
 
   return res.json(updated);
 });
@@ -4281,10 +4642,11 @@ app.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
 
   const result = await withDb((db) => {
     ensureDbShape(db);
-    const patientIndex = db.patients.findIndex((p) => p.id === id && p.teamId === req.user.teamId);
+    const patientIndex = db.patients.findIndex((p) => p.id === id);
     if (patientIndex < 0) return { error: "Paciente não encontrado" };
 
     const patient = db.patients[patientIndex];
+    if (!canAccessPatient(req.user, patient)) return { error: "Sem permissão para excluir paciente" };
     const teamPatientIds = new Set([patient.id]);
 
     const appointmentsBefore = db.appointments.length;
@@ -4324,7 +4686,10 @@ app.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
     };
   });
 
-  if (result?.error) return res.status(404).json({ error: result.error });
+  if (result?.error) {
+    const status = String(result.error).toLowerCase().includes("permissão") ? 403 : 404;
+    return res.status(status).json({ error: result.error });
+  }
   return res.json(result);
 });
 
