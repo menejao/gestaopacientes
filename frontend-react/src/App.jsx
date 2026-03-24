@@ -8620,7 +8620,7 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
       <div className="modal" style={{maxWidth:620,maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
         {/* Toolbar */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
-          <h3 style={{margin:0}}>CartÃ£o do Paciente</h3>
+          <h3 style={{margin:0}}>Cartão do Paciente</h3>
           <div style={{display:"flex",gap:".5rem"}}>
             <button onClick={()=>window.print()} style={{fontSize:".78rem",padding:".3rem .65rem",display:"flex",alignItems:"center",gap:".35rem"}}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 5V2h8v3M2 5h12v7H2z" stroke="currentColor" strokeWidth="1.3"/><path d="M4 10h8M4 12h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M4 5h8" stroke="currentColor" strokeWidth="1.2"/></svg>
@@ -8641,7 +8641,7 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
             <div style={{flex:1}}>
               <div style={{fontWeight:800,fontSize:"1.1rem",color:"var(--ink)"}}>{patient.name}</div>
               <div style={{fontSize:".78rem",color:"var(--text-2)",marginTop:".2rem",display:"flex",gap:"1rem",flexWrap:"wrap"}}>
-                {patient.birthDate&&<span>Nasc.: {fmtDate(patient.birthDate)}{calcAge(patient.birthDate)?" Â· "+calcAge(patient.birthDate):""}</span>}
+                {patient.birthDate&&<span>Nasc.: {fmtDate(patient.birthDate)}{calcAge(patient.birthDate)?" · "+calcAge(patient.birthDate):""}</span>}
                 {patient.cpf&&<span>CPF: {patient.cpf}</span>}
                 {patient.cns&&<span>CNS: {patient.cns}</span>}
                 {patient.sex&&<span>Sexo: {patient.sex}</span>}
@@ -8661,20 +8661,20 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
             <div>
               <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".4rem"}}>Contato</div>
               <div style={{fontSize:".8rem",color:"var(--text-2)",display:"flex",flexDirection:"column",gap:".2rem"}}>
-                {patient.phone&&<span>ðŸ“± {patient.phone}</span>}
-                {patient.phoneAlt&&<span>ðŸ“ž {patient.phoneAlt}</span>}
-                {(patient.address||patient.city)&&<span>ðŸ“ {[patient.address,patient.number,patient.neighborhood,patient.city,patient.state].filter(Boolean).join(", ")}</span>}
+                {patient.phone&&<span>📱 {patient.phone}</span>}
+                {patient.phoneAlt&&<span>☎️ {patient.phoneAlt}</span>}
+                {(patient.address||patient.city)&&<span>📍 {[patient.address,patient.number,patient.neighborhood,patient.city,patient.state].filter(Boolean).join(", ")}</span>}
               </div>
             </div>
 
-            {/* ClÃ­nico */}
+            {/* Clínico */}
             <div>
-              <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".4rem"}}>Dados ClÃ­nicos</div>
+              <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".4rem"}}>Dados Clínicos</div>
               <div style={{fontSize:".8rem",color:"var(--text-2)",display:"flex",flexDirection:"column",gap:".2rem"}}>
                 {allergies
-                  ? <span style={{color:"#be123c",fontWeight:600}}>âš ï¸ Alergias: {allergies}</span>
+                  ? <span style={{color:"#be123c",fontWeight:600}}>⚠️ Alergias: {allergies}</span>
                   : <span style={{color:"var(--text-3)"}}>Sem alergias registradas</span>}
-                {comorbid&&<span>ðŸ¥ {comorbid}</span>}
+                {comorbid&&<span>🏥 {comorbid}</span>}
               </div>
             </div>
           </div>
@@ -8682,7 +8682,7 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
           {/* Medicamentos */}
           {meds&&(
             <div style={{marginBottom:"1rem",padding:".65rem .85rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)"}}>
-              <div style={{fontWeight:700,fontSize:".75rem",color:"#92400e",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".35rem"}}>ðŸ’Š Medicamentos em uso</div>
+              <div style={{fontWeight:700,fontSize:".75rem",color:"#92400e",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".35rem"}}>💊 Medicamentos em uso</div>
               <div style={{fontSize:".8rem",color:"#78350f",whiteSpace:"pre-wrap"}}>{meds}</div>
             </div>
           )}
@@ -8690,7 +8690,7 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
           {/* Vacinas aplicadas */}
           {vaccines.length>0&&(
             <div style={{marginBottom:"1rem"}}>
-              <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".5rem"}}>ðŸ’‰ Vacinas registradas</div>
+              <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".5rem"}}>💉 Vacinas registradas</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:".3rem"}}>
                 {vaccines.slice(0,12).map((v,i)=>(
                   <span key={i} style={{fontSize:".72rem",padding:".15rem .5rem",borderRadius:999,background:"#f0fdf4",color:"#15803d",border:"1px solid #bbf7d0",fontWeight:600}}>
@@ -8701,10 +8701,10 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
             </div>
           )}
 
-          {/* GestaÃ§Ã£o */}
+          {/* Gestação */}
           {String(patient.careCategory||"").toLowerCase()==="pregnant"&&(
             <div style={{padding:".65rem .85rem",background:"var(--teal-50)",border:"1px solid var(--teal-100)",borderRadius:"var(--r-md)",marginBottom:"1rem"}}>
-              <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".35rem"}}>ðŸ¤° GestaÃ§Ã£o</div>
+              <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".35rem"}}>🤰 Gestação</div>
               <div style={{display:"flex",gap:"1.5rem",fontSize:".8rem",color:"var(--teal-800)",flexWrap:"wrap"}}>
                 {patient.pregnancyStartDate&&<span>DUM: {fmtDate(patient.pregnancyStartDate)}</span>}
                 {patient.expectedDeliveryDate&&<span>DPP: {fmtDate(patient.expectedDeliveryDate)}</span>}
@@ -8713,9 +8713,9 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
             </div>
           )}
 
-          {/* RodapÃ© */}
+          {/* Rodapé */}
           <div style={{borderTop:"1px solid var(--border)",paddingTop:".75rem",display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"var(--text-3)"}}>
-            <span>Unidade BÃ¡sica de SaÃºde</span>
+            <span>Unidade Básica de Saúde</span>
             <span>Emitido em {today}</span>
           </div>
         </div>
