@@ -66,6 +66,13 @@ function normalizeMojibakeText(value) {
       const decoded = decodeURIComponent(escape(out));
       if (decoded && decoded.length >= out.length * 0.6) out = decoded;
     } catch {}
+    try {
+      const bytes = new Uint8Array(Array.from(out, (ch) => ch.charCodeAt(0) & 0xff));
+      const decodedUtf8 = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      const badBefore = (out.match(/[ÃÂâð\uFFFD]/g) || []).length;
+      const badAfter = (decodedUtf8.match(/[ÃÂâð\uFFFD]/g) || []).length;
+      if (decodedUtf8 && badAfter < badBefore) out = decodedUtf8;
+    } catch {}
   }
   out = out.replace(/\uFFFD/g, "");
   return out;
@@ -109,6 +116,23 @@ function useUiTextSanitizer() {
     });
     const obs = new MutationObserver((mutations) => {
       mutations.forEach((m) => {
+        if (m.type === "characterData" && m.target?.nodeType === Node.TEXT_NODE) {
+          const before = m.target.nodeValue || "";
+          const after = normalizeMojibakeText(before);
+          if (after !== before) m.target.nodeValue = after;
+          return;
+        }
+        if (m.type === "attributes" && m.target?.nodeType === Node.ELEMENT_NODE) {
+          const el = m.target;
+          const attr = m.attributeName;
+          if (attr && ["placeholder", "title", "aria-label", "value"].includes(attr)) {
+            const before = el.getAttribute(attr);
+            if (!before) return;
+            const after = normalizeMojibakeText(before);
+            if (after !== before) el.setAttribute(attr, after);
+          }
+          return;
+        }
         m.addedNodes.forEach((n) => {
           if (n.nodeType === Node.TEXT_NODE) {
             const before = n.nodeValue || "";
@@ -120,7 +144,13 @@ function useUiTextSanitizer() {
         });
       });
     });
-    obs.observe(root, { childList: true, subtree: true });
+    obs.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["placeholder", "title", "aria-label", "value"],
+    });
     return () => { cancelAnimationFrame(raf); obs.disconnect(); };
   }, []);
 }
