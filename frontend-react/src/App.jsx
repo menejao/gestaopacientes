@@ -6380,8 +6380,6 @@ function ReferralsPage({ patients, users, user }) {
 function GestorPage({ patients, users, templates, protocolByPatient }) {
   const now = new Date();
   const ONLINE_WINDOW_MS = 2 * 60 * 1000;
-  const [globalPatientSearch, setGlobalPatientSearch] = useState("");
-  const [globalPatientTeamFilter, setGlobalPatientTeamFilter] = useState("all");
   const [globalUserSearch, setGlobalUserSearch] = useState("");
   const [globalUserRoleFilter, setGlobalUserRoleFilter] = useState("all");
   const [globalUserStatusFilter, setGlobalUserStatusFilter] = useState("all");
@@ -6401,7 +6399,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
     if (period === "quarter") { const q=Math.floor(now.getMonth()/3); return Math.floor(d.getMonth()/3)===q && d.getFullYear()===now.getFullYear(); }
     return d.getFullYear()===now.getFullYear();
   }
-  const periodLabel = { month:"MÃªs atual", quarter:"Trimestre atual", year:"Ano atual" }[period];
+  const periodLabel = { month:"Mes atual", quarter:"Trimestre atual", year:"Ano atual" }[period];
 
   // â”€â”€ Pacientes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const totalPacientes   = patients.length;
@@ -6462,27 +6460,8 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
     })
     .sort((a, b) => Number(b.online) - Number(a.online) || String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
 
-  const patientsSorted = [...patients]
-    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
-
-  const getAcsName = (patient) => {
-    const acs = users.find((u) => u.id === patient.assignedAcsId);
-    return acs?.name || "NÃ£o atribuÃ­do";
-  };
-
-  const patientTeamOptions = [...new Set(patientsSorted.map((p) => String(p.teamId || "")).filter(Boolean))];
   const userRoleOptions = [...new Set(userPresence.map((u) => String(u.role || "")).filter(Boolean))];
   const userTeamOptions = [...new Set(userPresence.map((u) => String(u.teamName || "")).filter(Boolean))];
-
-  const filteredPatientsGlobal = patientsSorted.filter((p) => {
-    const q = String(globalPatientSearch || "").trim().toLowerCase();
-    const matchesText = !q
-      || String(p.name || "").toLowerCase().includes(q)
-      || String(p.cpf || "").toLowerCase().includes(q)
-      || String(p.phone || "").toLowerCase().includes(q);
-    const matchesTeam = globalPatientTeamFilter === "all" || String(p.teamId || "") === globalPatientTeamFilter;
-    return matchesText && matchesTeam;
-  });
 
   const filteredUsersGlobal = userPresence.filter((u) => {
     const q = String(globalUserSearch || "").trim().toLowerCase();
@@ -6569,76 +6548,28 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
         <div>
           <p style={{fontSize:".7rem",fontWeight:700,letterSpacing:".12em",textTransform:"uppercase",color:TEAL,marginBottom:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}>
             <span style={{display:"inline-block",width:6,height:6,background:TEAL,borderRadius:"50%"}}/>
-            Painel de GestÃ£o
+            Painel de Gestão
           </p>
-          <h1 style={{fontSize:"1.6rem",fontWeight:800,color:"var(--ink)",letterSpacing:"-.03em",lineHeight:1.15}}>Indicadores Ã  Vista</h1>
-          <p style={{fontSize:".85rem",color:"var(--text-2)",marginTop:".3rem"}}>VisÃ£o executiva da UBS â€” atualizado em tempo real com os dados da equipe.</p>
+          <h1 style={{fontSize:"1.6rem",fontWeight:800,color:"var(--ink)",letterSpacing:"-.03em",lineHeight:1.15}}>Indicadores à Vista</h1>
+          <p style={{fontSize:".85rem",color:"var(--text-2)",marginTop:".3rem"}}>Visão executiva da UBS, atualizada em tempo real com os dados da equipe.</p>
         </div>
         <div style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
-          {[["month","MÃªs"],["quarter","Trimestre"],["year","Ano"]].map(([k,l])=>(
+          {[["month","Mês"],["quarter","Trimestre"],["year","Ano"]].map(([k,l])=>(
             <button key={k} onClick={()=>setPeriod(k)} style={{fontSize:".75rem",padding:".35rem .8rem",background:period===k?TEAL:"var(--surface-2)",color:period===k?"#fff":"var(--text-2)",border:period===k?"none":"1px solid var(--border)",borderRadius:"var(--r-md)",fontWeight:600,cursor:"pointer"}}>
               {l}
             </button>
           ))}
           <button onClick={()=>window.print()} style={{fontSize:".75rem",padding:".35rem .8rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",color:"var(--text-2)",cursor:"pointer"}}>
-            ðŸ–¨ï¸ Exportar
+            Exportar
           </button>
         </div>
       </div>
 
-      {/* â”€â”€ KPIs principais â”€â”€ */}
-      <SectionTitle icon="ðŸ“Š">VisÃ£o Geral â€” {periodLabel}</SectionTitle>
-      <SectionTitle icon="ðŸŒ">VisÃ£o Global do Sistema</SectionTitle>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
+      {/* KPIs principais */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr",gap:"1rem"}}>
         <div className="card">
           <div className="card-header">
-            <span className="card-title">Pacientes cadastrados (todas as equipes)</span>
-            <span style={{fontSize:".75rem",color:"var(--text-3)"}}>{filteredPatientsGlobal.length} de {patientsSorted.length}</span>
-          </div>
-          <div className="card-body" style={{paddingBottom:".55rem"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 160px",gap:".5rem"}}>
-              <input
-                value={globalPatientSearch}
-                onChange={(e)=>setGlobalPatientSearch(e.target.value)}
-                placeholder="Buscar por nome, CPF ou telefone..."
-                style={{height:34,border:"1px solid var(--border)",borderRadius:"var(--r-sm)",padding:"0 .6rem",fontSize:".78rem",fontFamily:"inherit"}}
-              />
-              <select
-                value={globalPatientTeamFilter}
-                onChange={(e)=>setGlobalPatientTeamFilter(e.target.value)}
-                style={{height:34,border:"1px solid var(--border)",borderRadius:"var(--r-sm)",padding:"0 .5rem",fontSize:".78rem",fontFamily:"inherit"}}
-              >
-                <option value="all">Todas equipes</option>
-                {patientTeamOptions.map((teamId)=><option key={teamId} value={teamId}>{teamId}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="card-body" style={{maxHeight:320,overflow:"auto"}}>
-            {!filteredPatientsGlobal.length ? (
-              <p className="muted" style={{fontSize:".84rem"}}>Nenhum paciente cadastrado.</p>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
-                {filteredPatientsGlobal.map((p) => (
-                  <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:".5rem",padding:".5rem .6rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
-                    <div style={{minWidth:0}}>
-                      <div style={{fontSize:".8rem",fontWeight:600,color:"var(--text-1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
-                      <div style={{fontSize:".72rem",color:"var(--text-3)"}}>
-                        {templates.find((t)=>t.category===p.careCategory)?.label || p.careCategory || "Geral"} Â· ACS: {getAcsName(p)}
-                      </div>
-                    </div>
-                    <span style={{alignSelf:"center",fontSize:".68rem",padding:".15rem .45rem",borderRadius:999,background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-3)"}}>
-                      {p.teamId ? `Equipe ${p.teamId}` : "Sem equipe"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Logins cadastrados (todas as funÃ§Ãµes)</span>
+            <span className="card-title">Logins cadastrados (todas as funções)</span>
             <span style={{fontSize:".75rem",color:"var(--text-3)"}}>
               {filteredUsersGlobal.filter((u)=>u.online).length} online · {filteredUsersGlobal.length} visíveis
             </span>
@@ -6656,7 +6587,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
                 onChange={(e)=>setGlobalUserRoleFilter(e.target.value)}
                 style={{height:34,border:"1px solid var(--border)",borderRadius:"var(--r-sm)",padding:"0 .5rem",fontSize:".78rem",fontFamily:"inherit"}}
               >
-                <option value="all">Todas funções</option>
+                <option value="all">Todas as funções</option>
                 {userRoleOptions.map((role)=><option key={role} value={role}>{roleLabel(role)}</option>)}
               </select>
               <select
@@ -6688,7 +6619,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
                     <div style={{minWidth:0}}>
                       <div style={{fontSize:".8rem",fontWeight:600,color:"var(--text-1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name}</div>
                       <div style={{fontSize:".72rem",color:"var(--text-3)"}}>
-                        {u.email} Â· {roleLabel(u.role)} Â· {u.teamName || "Sem equipe"}
+                        {u.email} · {roleLabel(u.role)} · {u.teamName || "Sem equipe"}
                       </div>
                     </div>
                     <span style={{alignSelf:"center",fontSize:".68rem",fontWeight:700,padding:".15rem .45rem",borderRadius:999,background:u.online?"#dcfce7":"#f1f5f9",border:`1px solid ${u.online?"#bbf7d0":"#cbd5e1"}`,color:u.online?"#166534":"#475569"}}>
@@ -6703,12 +6634,12 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:".85rem"}}>
-        <KPI label="Pacientes cadastrados" value={totalPacientes} sub={`Com ACS: ${comAcs} Â· Sem ACS: ${semAcs}`} icon="ðŸ‘¥" color={TEAL}/>
-        <KPI label="Protocolos crÃ­ticos" value={criticos} sub={`AtenÃ§Ã£o: ${atencao} Â· Em dia: ${emDia}`} icon="ðŸš¨" color={criticos>0?RED:GREEN}/>
-        <KPI label="Cobertura protocolar" value={cobertura+"%"} sub={`${emDia} de ${totalPacientes} pacientes em dia`} icon="âœ…" color={cobertura>=80?GREEN:cobertura>=50?AMBER:RED}/>
-        <KPI label="Consultas realizadas" value={consultDone} sub={`Faltas: ${consultAbsent} Â· Taxa: ${taxaComp!=null?taxaComp+"%":"â€”"}`} icon="ðŸ©º" color={BLUE}/>
-        <KPI label="Encaminhamentos" value={refPeriod.length} sub={`Pendentes: ${refPendentes} Â· ConcluÃ­dos: ${refConcluidos}`} icon="ðŸ“‹" color={VIOLET}/>
-        <KPI label="Estoque crÃ­tico" value={lowStock} sub={`${estoqueCrit} item(s) zerado(s)`} icon="ðŸ’Š" color={lowStock>0?RED:GREEN}/>
+        <KPI label="Pacientes cadastrados" value={totalPacientes} sub={`Com ACS: ${comAcs} · Sem ACS: ${semAcs}`} icon="P" color={TEAL}/>
+        <KPI label="Protocolos criticos" value={criticos} sub={`Atencao: ${atencao} · Em dia: ${emDia}`} icon="!" color={criticos>0?RED:GREEN}/>
+        <KPI label="Cobertura protocolar" value={cobertura+"%"} sub={`${emDia} de ${totalPacientes} pacientes em dia`} icon="OK" color={cobertura>=80?GREEN:cobertura>=50?AMBER:RED}/>
+        <KPI label="Consultas realizadas" value={consultDone} sub={`Faltas: ${consultAbsent} · Taxa: ${taxaComp!=null?taxaComp+"%":"-"}`} icon="C" color={BLUE}/>
+        <KPI label="Encaminhamentos" value={refPeriod.length} sub={`Pendentes: ${refPendentes} · Concluidos: ${refConcluidos}`} icon="E" color={VIOLET}/>
+        <KPI label="Estoque critico" value={lowStock} sub={`${estoqueCrit} item(s) zerado(s)`} icon="S" color={lowStock>0?RED:GREEN}/>
       </div>
 
       {/* â”€â”€ Gauges protocolo â”€â”€ */}
@@ -6716,15 +6647,15 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
         <div className="card-header"><span className="card-title">ðŸ“ˆ Desempenho Protocolar</span></div>
         <div className="card-body" style={{display:"flex",alignItems:"center",gap:"2rem",flexWrap:"wrap"}}>
           <GaugePie value={emDia} max={totalPacientes} color={GREEN} label="Em dia"/>
-          <GaugePie value={atencao} max={totalPacientes} color={AMBER} label="AtenÃ§Ã£o"/>
-          <GaugePie value={criticos} max={totalPacientes} color={RED} label="CrÃ­tico"/>
+          <GaugePie value={atencao} max={totalPacientes} color={AMBER} label="Atencao"/>
+          <GaugePie value={criticos} max={totalPacientes} color={RED} label="Critico"/>
           {taxaComp!=null&&<GaugePie value={consultDone} max={consultTotal} color={BLUE} label="Comparecimento"/>}
           <div style={{flex:1,minWidth:200}}>
             <div style={{display:"flex",flexDirection:"column",gap:".65rem"}}>
               {[
                 {label:"Gestantes",count:gestantes,color:"#ec4899"},
-                {label:"CrianÃ§as (puericultura)",count:criancas,color:TEAL},
-                {label:"CrÃ´nicos",count:cronicos,color:AMBER},
+                {label:"Criancas (puericultura)",count:criancas,color:TEAL},
+                {label:"Cronicos",count:cronicos,color:AMBER},
                 {label:"Idosos",count:idosos,color:VIOLET},
               ].map(({label,count,color})=>(
                 <div key={label}>
@@ -6745,13 +6676,13 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
 
         {/* ComposiÃ§Ã£o da equipe */}
         <div className="card">
-          <div className="card-header"><span className="card-title">ðŸ‘©â€âš•ï¸ ComposiÃ§Ã£o da Equipe</span><span style={{fontSize:".75rem",color:"var(--text-3)"}}>{users.length} membros</span></div>
+          <div className="card-header"><span className="card-title">Composicao da equipe</span><span style={{fontSize:".75rem",color:"var(--text-3)"}}>{users.length} membros</span></div>
           <div className="card-body">
             {[
               {label:"ACS",count:acsCount,color:AMBER,icon:"ðŸ˜ï¸"},
-              {label:"MÃ©dicos / Enfermeiros",count:docCount,color:BLUE,icon:"ðŸ©º"},
-              {label:"Dentistas",count:dentCount,color:VIOLET,icon:"ðŸ¦·"},
-              {label:"TÃ©cnicos",count:techCount,color:TEAL,icon:"âš•ï¸"},
+              {label:"Medicos / Enfermeiros",count:docCount,color:BLUE,icon:"M"},
+              {label:"Dentistas",count:dentCount,color:VIOLET,icon:"D"},
+              {label:"Tecnicos",count:techCount,color:TEAL,icon:"T"},
             ].map(({label,count,color,icon})=>(
               <div key={label} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".55rem 0",borderBottom:"1px solid var(--border-soft)"}}>
                 <span style={{fontSize:"1rem"}}>{icon}</span>
@@ -6780,7 +6711,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
                         <span style={{fontWeight:600,fontSize:".83rem",color:"var(--text-1)"}}>{a.name}</span>
                         <div style={{display:"flex",gap:".35rem"}}>
                           <span style={{fontSize:".68rem",fontWeight:700,padding:".1em .45em",borderRadius:99,background:a.criticos>0?"#fef2f2":"#f0fdf4",color:a.criticos>0?RED:GREEN,border:`1px solid ${a.criticos>0?"#fecaca":"#bbf7d0"}`}}>
-                            {a.criticos} crÃ­tico{a.criticos!==1?"s":""}
+                            {a.criticos} critico{a.criticos!==1?"s":""}
                           </span>
                           <span style={{fontSize:".68rem",fontWeight:700,padding:".1em .45em",borderRadius:99,background:"var(--surface)",color:"var(--text-3)",border:"1px solid var(--border)"}}>
                             {a.total} pac.
