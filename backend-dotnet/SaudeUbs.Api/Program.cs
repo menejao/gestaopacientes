@@ -26,8 +26,83 @@ if (string.IsNullOrWhiteSpace(jwtSecret))
 }
 var jwtIssuer = (Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "saudeubs-backend").Trim();
 var jwtAudience = (Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "saudeubs-client").Trim();
-var jwtExpiresHours = int.TryParse(Environment.GetEnvironmentVariable("JWT_EXPIRES_HOURS"), out var h) ? Math.Max(1, h) : 12;
+var jwtExpiresHours = int.TryParse(Environment.GetEnvironmentVariable("JWT_EXPIRES_HOURS"), out var h) ? Math.Max(1, h) : 8; // 8h padrão — desloga automaticamente
 var databaseUrl = (Environment.GetEnvironmentVariable("DATABASE_URL") ?? "").Trim();
+
+// ── Criptografia de dados sensíveis (LGPD) ────────────────────────────────
+// ENCRYPT_KEY: base64 de 32 bytes aleatórios. Gere com:
+//   python3 -c "import os,base64; print(base64.b64encode(os.urandom(32)).decode())"
+// Guarde em 3 lugares seguros. Sem a chave, dados cifrados são ilegíveis.
+var encryptKeyB64 = (Environment.GetEnvironmentVariable("ENCRYPT_KEY") ?? "").Trim();
+byte[]? encryptKey = null;
+if (!string.IsNullOrWhiteSpace(encryptKeyB64))
+{
+    try
+    {
+        encryptKey = Convert.FromBase64String(encryptKeyB64);
+        if (encryptKey.Length != 32)
+        {
+            Console.WriteLine("[AVISO] ENCRYPT_KEY deve ter exatamente 32 bytes (256 bits). Criptografia desativada.");
+            encryptKey = null;
+        }
+        else
+        {
+            Console.WriteLine("[INFO] Criptografia de dados sensíveis: ATIVADA (AES-256-GCM)");
+        }
+    }
+    catch
+    {
+        Console.WriteLine("[AVISO] ENCRYPT_KEY inválida (não é base64 válido). Criptografia desativada.");
+        encryptKey = null;
+    }
+}
+else
+{
+    Console.WriteLine("[AVISO] ENCRYPT_KEY não definida. Dados sensíveis (CPF, CNS) serão armazenados sem criptografia.");
+}
+
+// Funções de criptografia AES-256-GCM
+string EncryptField(string? value)
+{
+    if (encryptKey is null || string.IsNullOrWhiteSpace(value)) return value ?? "";
+    try
+    {
+        using var aes = System.Security.Cryptography.AesGcm.Create(encryptKey, 16);
+        var nonce = new byte[System.Security.Cryptography.AesGcm.NonceByteSizes.MaxSize];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(nonce);
+        var plaintext = System.Text.Encoding.UTF8.GetBytes(value);
+        var ciphertext = new byte[plaintext.Length];
+        var tag = new byte[16];
+        aes.Encrypt(nonce, plaintext, ciphertext, tag);
+        // Formato: "ENC:" + base64(nonce + ciphertext + tag)
+        var combined = new byte[nonce.Length + ciphertext.Length + tag.Length];
+        nonce.CopyTo(combined, 0);
+        ciphertext.CopyTo(combined, nonce.Length);
+        tag.CopyTo(combined, nonce.Length + ciphertext.Length);
+        return "ENC:" + Convert.ToBase64String(combined);
+    }
+    catch { return value; }
+}
+
+string DecryptField(string? value)
+{
+    if (encryptKey is null || string.IsNullOrWhiteSpace(value)) return value ?? "";
+    if (!value.StartsWith("ENC:")) return value; // dado não cifrado (migração)
+    try
+    {
+        var combined = Convert.FromBase64String(value[4..]);
+        var nonceSize = System.Security.Cryptography.AesGcm.NonceByteSizes.MaxSize;
+        var tagSize = 16;
+        var nonce      = combined[..nonceSize];
+        var ciphertext = combined[nonceSize..(combined.Length - tagSize)];
+        var tag        = combined[(combined.Length - tagSize)..];
+        using var aes  = System.Security.Cryptography.AesGcm.Create(encryptKey, tagSize);
+        var plaintext  = new byte[ciphertext.Length];
+        aes.Decrypt(nonce, ciphertext, tag, plaintext);
+        return System.Text.Encoding.UTF8.GetString(plaintext);
+    }
+    catch { return value; } // retorna cifrado se falhar (nunca perde dado)
+}
 
 builder.Services.AddSingleton(new AppConfig
 {
@@ -93,6 +168,32 @@ var loginChallenges = new ConcurrentDictionary<string, (string UserId, DateTime 
 // Rate limiting: máx 10 tentativas de login por IP em 5 minutos
 var loginAttempts = new ConcurrentDictionary<string, (int Count, DateTime WindowStart)>(StringComparer.Ordinal);
 
+// ── Audit Log ─────────────────────────────────────────────────────────────
+// Registra todas as ações sensíveis: quem, o quê, quando, IP
+var auditLog = new System.Collections.Generic.List<AuditEntry>();
+var auditLock = new object();
+
+void WriteAudit(string userId, string userName, string action, string entity, string entityId, string detail, HttpContext? ctx = null)
+{
+    var entry = new AuditEntry(
+        Id:        Guid.NewGuid().ToString("N"),
+        Timestamp: DateTime.UtcNow.ToString("O"),
+        UserId:    userId,
+        UserName:  userName,
+        Action:    action,       // "create" | "update" | "delete" | "login" | "login_failed" | "dispense"
+        Entity:    entity,       // "patient" | "record" | "user" | "stock"
+        EntityId:  entityId,
+        Detail:    detail,
+        Ip:        ctx?.Connection.RemoteIpAddress?.ToString() ?? "unknown"
+    );
+    lock (auditLock)
+    {
+        auditLog.Add(entry);
+        // Mantém no máximo 10.000 entradas em memória (evita crescimento ilimitado)
+        if (auditLog.Count > 10_000) auditLog.RemoveAt(0);
+    }
+}
+
 app.MapGet("/health", () => Results.Ok(new { ok = true, timestamp = DateTime.UtcNow }));
 app.MapGet("/health/persistence", async (AppStateStore store) =>
 {
@@ -136,13 +237,13 @@ app.MapPost("/auth/register", async (Dictionary<string, JsonElement> req, AppSta
     }
 
     var validRoles = new HashSet<string>(StringComparer.Ordinal)
-        { "nurse_manager", "doctor", "dentist", "acs", "nursing_tech", "pharmacist", "pharmacy_tech", "receptionist" };
+        { "nurse_manager", "doctor", "dentist", "acs", "nursing_tech", "pharmacist", "pharmacy_tech", "receptionist", "gestor" };
     if (!validRoles.Contains(role))
     {
         return Results.BadRequest(new { error = "Perfil inválido" });
     }
 
-    var requiresTeam = role is not "receptionist";
+    var requiresTeam = role is not "receptionist" && role is not "gestor";
     if (requiresTeam && string.IsNullOrWhiteSpace(teamId))
     {
         return Results.BadRequest(new { error = "teamId é obrigatório para este perfil" });
@@ -212,6 +313,7 @@ app.MapPost("/auth/login", async (LoginRequest req, HttpContext ctx, AppStateSto
         (_, old) => old.WindowStart.AddMinutes(5) < now ? (1, now) : (old.Count + 1, old.WindowStart));
     if (loginAttempts.TryGetValue(clientIp, out var attempts) && attempts.Count > 10)
     {
+        WriteAudit("", req.Email ?? "", "login_blocked", "session", "", $"Bloqueado por rate limit (IP: {clientIp})", ctx);
         return Results.StatusCode(429); // Too Many Requests
     }
 
@@ -222,7 +324,17 @@ app.MapPost("/auth/login", async (LoginRequest req, HttpContext ctx, AppStateSto
 
     if (user is null)
     {
+        WriteAudit("", req.Email ?? "", "login_failed", "session", "", $"Credenciais inválidas (IP: {clientIp})", ctx);
         return Results.Unauthorized();
+    }
+
+    // MFA obrigatório para perfis sensíveis: farmacêutico e enfermeira-chefe
+    var mfaRequiredRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "pharmacist", "nurse_manager" };
+    if (mfaRequiredRoles.Contains(user.Role ?? "") && !user.TwoFactorEnabled)
+    {
+        // Avisa que precisa ativar MFA mas não bloqueia (permite ativar no primeiro acesso)
+        Console.WriteLine($"[SEGURANÇA] Usuário {user.Email} ({user.Role}) ainda não ativou MFA.");
     }
 
     if (user.TwoFactorEnabled)
@@ -239,6 +351,7 @@ app.MapPost("/auth/login", async (LoginRequest req, HttpContext ctx, AppStateSto
     await store.WriteAsync(state);
 
     loginAttempts.TryRemove(clientIp, out _); // reset após login bem-sucedido
+    WriteAudit(user.Id, user.Name ?? "", "login", "session", user.Id, "Login realizado com sucesso", ctx);
     var safeUser = auth.SanitizeUser(state, user);
     var token = auth.CreateToken(user);
     return Results.Ok(new { user = safeUser, token });
@@ -350,6 +463,12 @@ app.MapPost("/auth/password-reset/confirm", async (
     return Results.Ok(new { ok = true, message = "Senha redefinida com sucesso. Faça login com a nova senha." });
 });
 
+// HTTPS redirect em produção
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
 // CORS — deve vir antes de Authentication/Authorization
 app.UseCors("AppPolicy");
 
@@ -361,6 +480,20 @@ var uploadsRoot = Path.Combine(
     app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
     "uploads");
 Directory.CreateDirectory(uploadsRoot);
+
+// Security headers — proteção contra XSS, clickjacking, MIME sniffing
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    ctx.Response.Headers["X-Frame-Options"] = "DENY";
+    ctx.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+    ctx.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    if (!app.Environment.IsDevelopment())
+    {
+        ctx.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    }
+    await next();
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -515,6 +648,15 @@ app.MapGet("/bootstrap", async (ClaimsPrincipal principal, AppStateStore store, 
         .Where(p => auth.CanAccessPatient(authUser, p))
         .ToList();
 
+    // Descriptografar campos sensíveis
+    foreach (var p in patients)
+    {
+        p.Cpf = DecryptField(p.Cpf);
+        p.Cns = DecryptField(p.Cns);
+        p.Phone = DecryptField(p.Phone);
+        p.PhoneAlt = DecryptField(p.PhoneAlt);
+    }
+
     var visiblePatientIds = patients.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
     var tasks = state.Tasks
         .Where(t => visiblePatientIds.Contains(t.PatientId))
@@ -577,7 +719,7 @@ app.MapPost("/users", async (
 
     var role = auth.CanonicalRole(ReadJsonString(payload, "role"));
     var validRolesPost = new HashSet<string>(StringComparer.Ordinal)
-        { "nurse_manager", "doctor", "dentist", "acs", "nursing_tech", "pharmacist", "pharmacy_tech", "receptionist" };
+        { "nurse_manager", "doctor", "dentist", "acs", "nursing_tech", "pharmacist", "pharmacy_tech", "receptionist", "gestor" };
     if (!validRolesPost.Contains(role)) return Results.BadRequest(new { error = "Perfil inválido" });
 
     var name = ReadJsonString(payload, "name");
@@ -672,7 +814,7 @@ app.MapPut("/users/{id}", async (
     {
         var canonical = auth.CanonicalRole(role);
         var validRolesPut = new HashSet<string>(StringComparer.Ordinal)
-            { "nurse_manager", "doctor", "dentist", "acs", "nursing_tech", "pharmacist", "pharmacy_tech", "receptionist" };
+            { "nurse_manager", "doctor", "dentist", "acs", "nursing_tech", "pharmacist", "pharmacy_tech", "receptionist", "gestor" };
         if (!validRolesPut.Contains(canonical)) return Results.BadRequest(new { error = "Perfil inválido" });
         target.Role = canonical;
     }
@@ -743,6 +885,7 @@ app.MapDelete("/users/{id}", async (
         return Results.BadRequest(new { error = "Ação bloqueada: usuário possui vínculos ativos no sistema." });
     }
 
+    WriteAudit(authUser.Id, authUser.Name ?? "", "delete", "user", target.Id, $"Usuário excluído: {target.Name} ({target.Role})", null);
     state.Users.Remove(target);
     await store.WriteAsync(state);
     return Results.Ok(new { ok = true });
@@ -769,6 +912,15 @@ app.MapGet("/patients", async (
         .Where(p => string.IsNullOrWhiteSpace(careCategory) || string.Equals((p.CareCategory ?? "").Trim(), careCategory, StringComparison.OrdinalIgnoreCase))
         .ToList();
 
+    // Descriptografar campos sensíveis antes de retornar ao frontend
+    foreach (var p in list)
+    {
+        p.Cpf = DecryptField(p.Cpf);
+        p.Cns = DecryptField(p.Cns);
+        p.Phone = DecryptField(p.Phone);
+        p.PhoneAlt = DecryptField(p.PhoneAlt);
+    }
+
     return Results.Ok(list);
 }).RequireAuthorization();
 
@@ -792,8 +944,14 @@ app.MapPost("/patients", async (
 
     var state = await store.ReadAsync();
     var patient = req.ToPatient(authUser.TeamId ?? "");
+    // Criptografar campos sensíveis antes de persistir
+    patient.Cpf = EncryptField(patient.Cpf);
+    patient.Cns = EncryptField(patient.Cns);
+    patient.Phone = EncryptField(patient.Phone);
+    patient.PhoneAlt = EncryptField(patient.PhoneAlt);
     state.Patients.Add(patient);
     await store.WriteAsync(state);
+    WriteAudit(authUser.Id, authUser.Name ?? "", "create", "patient", patient.Id, $"Paciente cadastrado: {patient.Name}", null);
     return Results.Created($"/patients/{patient.Id}", patient);
 }).RequireAuthorization();
 
@@ -824,8 +982,11 @@ app.MapPut("/patients/{id}", async (
     payload ??= new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
 
     var state = await store.ReadAsync();
-    var index = state.Patients.FindIndex(p => p.Id == id && p.TeamId == authUser.TeamId);
-    if (index < 0) return Results.NotFound(new { error = "Paciente nÃ£o encontrado" });
+    // Isolamento por equipe (equivalente ao RLS do PostgreSQL na camada de aplicação)
+    var index = state.Patients.FindIndex(p =>
+        p.Id == id &&
+        string.Equals(p.TeamId, authUser.TeamId, StringComparison.Ordinal));
+    if (index < 0) return Results.NotFound(new { error = "Paciente não encontrado ou sem permissão" });
     var current = state.Patients[index];
 
     var doctorAllowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -2059,17 +2220,60 @@ app.MapDelete("/patients/{id}/exams/{examId}", async (
         catch { /* ignore file deletion errors */ }
     }
 
+    WriteAudit(authUser.Id, authUser.Name ?? "", "delete", "exam", examId, $"Exame excluído (paciente {id})", null);
     state.ClinicalRecords.RemoveAt(idx);
     await store.WriteAsync(state);
     return Results.Ok(new { ok = true });
 }).RequireAuthorization();
 
 
+// ── Audit log endpoint ──────────────────────────────────────────────────────
+app.MapGet("/audit/logs", (
+    ClaimsPrincipal principal,
+    HttpContext ctx,
+    AppStateStore store,
+    AuthService auth,
+    int? limit,
+    string? entity,
+    string? action,
+    string? userId) =>
+{
+    var authUserId = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+    // Somente managers e admins veem os logs
+    var state = store.ReadAsync().GetAwaiter().GetResult();
+    var authUser = state.Users.FirstOrDefault(u => u.Id == authUserId);
+    if (authUser is null) return Results.Unauthorized();
+    if (!auth.IsManager(authUser)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+    IEnumerable<AuditEntry> logs;
+    lock (auditLock) { logs = auditLog.ToList(); }
+
+    if (!string.IsNullOrWhiteSpace(entity))  logs = logs.Where(l => string.Equals(l.Entity, entity, StringComparison.OrdinalIgnoreCase));
+    if (!string.IsNullOrWhiteSpace(action))  logs = logs.Where(l => string.Equals(l.Action, action, StringComparison.OrdinalIgnoreCase));
+    if (!string.IsNullOrWhiteSpace(userId))  logs = logs.Where(l => l.UserId == userId);
+
+    var result = logs.OrderByDescending(l => l.Timestamp).Take(Math.Min(limit ?? 200, 1000)).ToList();
+    return Results.Ok(result);
+}).RequireAuthorization();
+
 // SPA fallback: qualquer rota não encontrada devolve index.html
 // Isso permite que o React Router funcione corretamente
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+// ── Tipos de suporte ──────────────────────────────────────────────────────
+record AuditEntry(
+    string Id,
+    string Timestamp,
+    string UserId,
+    string UserName,
+    string Action,
+    string Entity,
+    string EntityId,
+    string Detail,
+    string Ip
+);
 
 static string DetectConsultationSpecialty(string title)
 {
