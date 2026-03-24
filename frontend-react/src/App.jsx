@@ -48,13 +48,18 @@ const MOJIBAKE_REPLACEMENTS = [
   ["â†’", "→"], ["â†", "←"], ["âœ“", "✓"], ["âœ…", "✅"], ["âœ•", "✕"], ["âš ï¸", "⚠️"], ["âš™ï¸", "⚙️"],
   ["âš–ï¸", "⚖️"], ["â¬‡ï¸", "⬇️"], ["â€¹", "‹"], ["â€º", "›"], ["â‰¥", "≥"], ["â‰¤", "≤"],
   ["ðŸ‘¥", "👥"], ["ðŸ””", "🔔"], ["ðŸŒ¸", "🌸"], ["ðŸŽ‰", "🎉"], ["ðŸ’‰", "💉"], ["ðŸ’Š", "💊"],
-  ["ðŸ“¦", "📦"], ["ðŸ—‚ï¸", "🗂️"], ["ðŸš«", "🚫"], ["ðŸ¤°", "🤰"], ["ðŸ”", "🔐"]
+  ["ðŸ“¦", "📦"], ["ðŸ—‚ï¸", "🗂️"], ["ðŸš«", "🚫"], ["ðŸ¤°", "🤰"], ["ðŸ”", "🔐"],
+  ["â³", "⏳"], ["ðŸ©º", "🩺"], ["ðŸ“‹", "📋"], ["ðŸ“…", "📅"], ["ðŸ”¬", "🔬"], ["ðŸ“Ž", "📎"], ["ðŸ¥", "🏥"], ["ðŸ”", "🔁"], ["ðŸ“", "📝"],
+  ["RecepÃ§Ã£o", "Recepção"], ["GestÃ£o", "Gestão"], ["VisÃ£o", "Visão"], ["ProduÃ§Ã£o", "Produção"], ["clÃ­nicos", "clínicos"],
+  ["espontÃ¢neos", "espontâneos"], ["ConcluÃ­do", "Concluído"], ["PrÃ³ximo", "Próximo"], ["NÃ£o", "Não"], ["MÃ©dico", "Médico"], ["MÃ©dica", "Médica"]
 ];
 
 function normalizeMojibakeText(value) {
   if (typeof value !== "string" || !value) return value;
   let out = value;
-  for (const [from, to] of MOJIBAKE_REPLACEMENTS) out = out.split(from).join(to);
+  for (let i = 0; i < 2; i += 1) {
+    for (const [from, to] of MOJIBAKE_REPLACEMENTS) out = out.split(from).join(to);
+  }
   out = out.replace(/NÃƒO/g, "NÃO").replace(/nÃƒo/g, "não");
   if (/[ÃÂâð]/.test(out)) {
     try {
@@ -62,6 +67,7 @@ function normalizeMojibakeText(value) {
       if (decoded && decoded.length >= out.length * 0.6) out = decoded;
     } catch {}
   }
+  out = out.replace(/\uFFFD/g, "");
   return out;
 }
 
@@ -89,6 +95,14 @@ function useUiTextSanitizer() {
           if (after !== before) el.setAttribute(attr, after);
         });
       });
+      const valueEls = target.querySelectorAll ? target.querySelectorAll("input, textarea, select") : [];
+      valueEls.forEach((el) => {
+        if (el.type === "password") return;
+        const before = el.value;
+        if (typeof before !== "string" || !before) return;
+        const after = normalizeMojibakeText(before);
+        if (after !== before) el.value = after;
+      });
     };
     const raf = requestAnimationFrame(() => {
       sanitizeNodeTree(root);
@@ -108,7 +122,7 @@ function useUiTextSanitizer() {
     });
     obs.observe(root, { childList: true, subtree: true });
     return () => { cancelAnimationFrame(raf); obs.disconnect(); };
-  });
+  }, []);
 }
 
 /* â”€â”€ Online/Offline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -3856,7 +3870,7 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
           <div style={{maxWidth:820,margin:"0 auto"}}>
             {/* KPIs */}
             <div style={{display:"flex",gap:".75rem",marginBottom:"1.25rem",flexWrap:"wrap"}}>
-              {[["â³","Aguardando",waiting,"#1d4ed8","#eff6ff"],["ðŸ©º","Em atendimento",attending,"#c2410c","#fff7ed"],["ðŸ“‹","Total hoje",sortedQueue.length,"var(--text-2)","var(--surface-2)"]].map(([ic,l,v,color,bg])=>(
+              {[["⏳","Aguardando",waiting,"#1d4ed8","#eff6ff"],["🩺","Em atendimento",attending,"#c2410c","#fff7ed"],["📋","Total hoje",sortedQueue.length,"var(--text-2)","var(--surface-2)"]].map(([ic,l,v,color,bg])=>(
                 <div key={l} style={{flex:"1 1 140px",background:bg,border:`1px solid ${bg==="var(--surface-2)"?"var(--border)":bg.replace("ff","cc")}`,borderRadius:"var(--r-md)",padding:".85rem 1rem",display:"flex",alignItems:"center",gap:".75rem"}}>
                   <span style={{fontSize:"1.6rem"}}>{ic}</span>
                   <div>
@@ -5018,7 +5032,7 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
       <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div><p className="home-kicker">RecepÃ§Ã£o</p><h1 className="home-title">Fila de Atendimento</h1><p className="home-sub">Triagem, prioridade e fluxo de pacientes no dia.</p></div>
+        <div><p className="home-kicker">Recepção</p><h1 className="home-title">Fila de Atendimento</h1><p className="home-sub">Triagem, prioridade e fluxo de pacientes no dia.</p></div>
         <button onClick={()=>{resetForm();setShowForm(true);}} style={{flexShrink:0,display:"flex",alignItems:"center",gap:".4rem"}}>
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
           Dar entrada
@@ -5027,7 +5041,7 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
 
       {/* KPIs */}
       <div style={{display:"flex",gap:".75rem",padding:"0 1.5rem .75rem"}}>
-        {[["Aguardando","â³",waiting,"#1d4ed8","#eff6ff"],["Em atendimento","ðŸ©º",attending,"#c2410c","#fff7ed"],["Total hoje","ðŸ“‹",sorted.length,"var(--text-2)","var(--surface-2)"]].map(([l,ic,v,color,bg])=>(
+        {[["Aguardando","⏳",waiting,"#1d4ed8","#eff6ff"],["Em atendimento","🩺",attending,"#c2410c","#fff7ed"],["Total hoje","📋",sorted.length,"var(--text-2)","var(--surface-2)"]].map(([l,ic,v,color,bg])=>(
           <div key={l} className="card" style={{flex:"1 1 120px",padding:".75rem 1rem",background:bg,border:`1px solid ${bg==="var(--surface-2)"?"var(--border)":bg.replace("ff)","dd)")}`}}>
             <div style={{fontSize:"1.2rem"}}>{ic}</div>
             <div style={{fontSize:"1.5rem",fontWeight:800,color,lineHeight:1.1,marginTop:".25rem"}}>{v}</div>
