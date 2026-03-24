@@ -154,7 +154,7 @@ function buildDefaultProtocolTemplates() {
   }));
 }
 
-const ALLOWED_SELF_REGISTER_ROLES = ["acs", "doctor", "nurse_manager"];
+const ALLOWED_SELF_REGISTER_ROLES = ["nurse_manager", "doctor", "gestor"];
 const PRIVACY_REQUEST_TYPES = new Set(["access", "correction", "deletion"]);
 const PRIVACY_REQUEST_STATUS = new Set(["pending", "in_review", "approved", "rejected", "completed"]);
 const TEST_ADMIN_EMAIL = "ana@clinica.local";
@@ -3101,8 +3101,8 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
   if (!isStrongPassword(password)) {
     return res.status(400).json({ error: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial" });
   }
-  if (!ALLOWED_SELF_REGISTER_ROLES.includes(role) || !["nurse_manager", "doctor"].includes(role)) {
-    return res.status(400).json({ error: "Cadastro público permitido apenas para enfermeira e médica" });
+  if (!ALLOWED_SELF_REGISTER_ROLES.includes(role)) {
+    return res.status(400).json({ error: "Cadastro público permitido apenas para enfermeira, médica e gestor" });
   }
 
   const councilValidation = validateCouncilData(role, payload.councilNumber, payload.councilUf);
@@ -3110,14 +3110,21 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
     return res.status(400).json({ error: councilValidation.message });
   }
 
-  const externalCheck = await verifyCouncilExternally({
-    role,
-    councilType,
-    councilNumber: councilValidation.councilNumber || "",
-    councilUf: councilValidation.councilUf || "",
-    name,
-    email
-  });
+  const externalCheck = roleNeedsCouncil(role)
+    ? await verifyCouncilExternally({
+      role,
+      councilType,
+      councilNumber: councilValidation.councilNumber || "",
+      councilUf: councilValidation.councilUf || "",
+      name,
+      email
+    })
+    : {
+      checked: false,
+      valid: true,
+      provider: "not-required",
+      status: "skipped"
+    };
   if (!externalCheck.valid) {
     return res.status(400).json({
       error: externalCheck.error || "Conselho não validado no provedor externo"
@@ -3141,12 +3148,13 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
       return { error: `${councilType} já cadastrado para outro usuário`, status: 409 };
     }
 
+    const requiresTeam = role !== "gestor";
     const teamId = String(payload.teamId || "").trim();
-    if (!teamId) {
+    const team = requiresTeam ? db.teams.find((t) => t.id === teamId) : null;
+    if (requiresTeam && !teamId) {
       return { error: "teamId é obrigatório para cadastro", status: 400 };
     }
-    const team = db.teams.find((t) => t.id === teamId);
-    if (!team) {
+    if (requiresTeam && !team) {
       return { error: "Equipe informada não existe", status: 400 };
     }
 
@@ -3156,7 +3164,7 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
       role,
       email,
       password: hashPassword(password),
-      teamId,
+      teamId: requiresTeam ? teamId : "",
       councilType,
       councilNumber: councilValidation.councilNumber || "",
       councilUf: councilValidation.councilUf || "",
