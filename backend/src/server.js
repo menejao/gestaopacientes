@@ -230,7 +230,7 @@ function buildSeedPatient({
   const districts = ["Centro", "Jardim Primavera", "Vila Nova", "Bela Vista", "Alvorada", "São José"];
   const cities = ["São Paulo", "Guarulhos", "Campinas", "Santo André", "Osasco", "Sorocaba"];
   const ufs = ["SP", "RJ", "MG", "BA", "PE", "PR"];
-  const categories = ["pregnant", "puerperal", "child_followup", "chronic", "elderly", "pap_only", "general"];
+  const categories = ["pregnant", "puerperal", "child_followup", "elderly", "pap_only", "general"];
   const category = normalizeSeedCategory(categories[index % categories.length]);
   const teamId = pickRandom(teamIds) || "team-ana";
   const acsId = chance(82) ? (pickRandom(acsIds) || "") : "";
@@ -253,6 +253,7 @@ function buildSeedPatient({
   return {
     id: uuidv4(),
     teamId,
+    incompleteProfile: Boolean(incomplete),
     name,
     motherName: category === "child_followup" ? `${pickRandom(firstNames)} ${pickRandom(lastNames)}` : "",
     cpf: incomplete && chance(65) ? "" : makeDigits(11),
@@ -266,11 +267,9 @@ function buildSeedPatient({
     microArea: "",
     assignedAcsId: acsId,
     careCategory: category,
-    chronicConditions: category === "chronic"
+    chronicConditions: chance(28)
       ? (chance(35) ? ["hypertension"] : (chance(55) ? ["diabetes"] : ["diabetes", "hypertension"]))
-      : (category === "elderly" && chance(45)
-        ? (chance(50) ? ["hypertension"] : ["diabetes", "hypertension"])
-        : []),
+      : [],
     maritalStatus: category === "child_followup" ? "" : pickRandom(["solteiro", "casado", "divorciado", "viuvo", "uniao_estavel"]),
     sexAtBirth: pickRandom(["female", "male"]),
     genderIdentity: "",
@@ -286,7 +285,7 @@ function buildSeedPatient({
     usgDate3: category === "pregnant" && chance(25) ? isoDateOffset(-randomInt(1, 12)) : "",
     prenatalStartDate: category === "pregnant" ? isoDateOffset(-randomInt(20, 150)) : "",
     postpartumStartDate: category === "puerperal" ? isoDateOffset(-randomInt(1, 38)) : "",
-    comorbidities: category === "chronic" ? "Acompanhamento de condição crônica." : "",
+    comorbidities: chance(22) ? "Acompanhamento de condição crônica." : "",
     medications: chance(38) ? "Uso contínuo conforme prescrição." : "",
     allergies: chance(15) ? "Alergia relatada a dipirona." : "",
     createdAt: new Date().toISOString(),
@@ -812,7 +811,8 @@ function ensureDbShape(db) {
     cpf: p.cpf ? String(p.cpf) : "",
     cns: p.cns ? String(p.cns) : "",
     cnsCpf: p.cnsCpf ? String(p.cnsCpf) : (p.cpf ? String(p.cpf) : ""),
-    careCategory: String(p.careCategory || "general"),
+    careCategory: normalizeCategory(String(p.careCategory || "general")),
+    incompleteProfile: Boolean(p.incompleteProfile),
     chronicConditions: normalizeChronicConditions(p.chronicConditions),
     motherName: p.motherName ? String(p.motherName) : "",
     phoneAlt: p.phoneAlt ? String(p.phoneAlt) : "",
@@ -1396,6 +1396,8 @@ function getProtocolTemplateMap(db, teamId = "") {
 function normalizeCategory(value, templateMap = DEFAULT_CARE_PROTOCOLS) {
   if (!value) return "general";
   const next = String(value).trim();
+  // "Condição crônica" não é mais categoria principal; as regras são complementares por checkbox.
+  if (next === "chronic") return "general";
   return templateMap[next] ? next : "general";
 }
 
@@ -1903,6 +1905,13 @@ function homeVisitSeverityByDaysLeft(daysLeft) {
   if (value <= 3) return "high";
   if (value <= 7) return "medium";
   return "low";
+}
+
+function monitorWindowDaysLeft(patient, windowDays) {
+  const now = toDateOnlySafe(new Date());
+  const anchor = toDateOnlySafe(patient?.createdAt || patient?.updatedAt || now);
+  const elapsed = Math.max(Number(daysDiff(anchor, now) || 0), 0);
+  return Number(windowDays || 0) - elapsed;
 }
 
 function normalizeText(value) {
@@ -2853,6 +2862,8 @@ function evaluateChronicProtocol(patient, history) {
   const now = toDateOnlySafe(new Date());
   const period6Start = addDays(now, -183);
   const period12Start = addDays(now, -365);
+  const daysLeft6m = monitorWindowDaysLeft(patient, 183);
+  const daysLeft12m = monitorWindowDaysLeft(patient, 365);
   const history6 = filterHistoryByPeriod(history, period6Start, now);
   const history12 = filterHistoryByPeriod(history, period12Start, now);
   const consultations6 = history6.filter((h) => isClinicalConsultation(h));
@@ -2881,7 +2892,9 @@ function evaluateChronicProtocol(patient, history) {
         activity: "consulta em 6 meses",
         title: `${label}: consulta semestral pendente`,
         detail: "Necessária pelo menos 1 consulta médica ou de enfermagem nos últimos 6 meses.",
-        severity: "high",
+        severity: deadlineSeverity(daysLeft6m),
+        daysLeft: daysLeft6m,
+        overdueDays: Math.max(-daysLeft6m, 0),
         categoryLabel
       }));
     }
@@ -2891,7 +2904,9 @@ function evaluateChronicProtocol(patient, history) {
         activity: "visitas ACS em 12 meses",
         title: `${label}: visitas domiciliares pendentes`,
         detail: "Necessárias pelo menos 2 visitas do ACS com intervalo mínimo de 30 dias, dentro de 12 meses.",
-        severity: "high",
+        severity: deadlineSeverity(daysLeft12m),
+        daysLeft: daysLeft12m,
+        overdueDays: Math.max(-daysLeft12m, 0),
         categoryLabel
       }));
     }
@@ -2913,7 +2928,9 @@ function evaluateChronicProtocol(patient, history) {
           activity: "hemoglobina glicada",
           title: "Diabetes: registro de hemoglobina glicada pendente",
           detail: "Registrar solicitação/realização/avaliação de hemoglobina glicada ao menos 1 vez em 12 meses.",
-          severity: "high",
+          severity: deadlineSeverity(daysLeft12m),
+          daysLeft: daysLeft12m,
+          overdueDays: Math.max(-daysLeft12m, 0),
           categoryLabel
         }));
       }
@@ -2923,7 +2940,9 @@ function evaluateChronicProtocol(patient, history) {
           activity: "avaliação dos pés",
           title: "Diabetes: avaliação dos pés pendente",
           detail: "Registrar pelo menos 1 avaliação dos pés em 12 meses.",
-          severity: "medium",
+          severity: deadlineSeverity(daysLeft12m),
+          daysLeft: daysLeft12m,
+          overdueDays: Math.max(-daysLeft12m, 0),
           categoryLabel
         }));
       }
@@ -3024,6 +3043,7 @@ function buildProtocolSummary(patient, history, templateMap) {
 
   let specialMonitoring = null;
   let specialAlerts = [];
+  const chronicConditions = normalizeChronicConditions(patient?.chronicConditions);
   if (template.category === "pregnant") {
     specialMonitoring = evaluatePregnantProtocol(patient, history);
     specialAlerts = specialMonitoring.alerts || [];
@@ -3036,22 +3056,23 @@ function buildProtocolSummary(patient, history, templateMap) {
   } else if (template.category === "child_followup") {
     specialMonitoring = evaluateChildProtocol(patient, history, template);
     specialAlerts = specialMonitoring.alerts || [];
-  } else if (template.category === "chronic") {
-    specialMonitoring = evaluateChronicProtocol(patient, history);
-    specialAlerts = specialMonitoring.alerts || [];
   } else if (template.category === "elderly") {
-    const elderlyMonitoring = evaluateElderlyProtocol(patient, history);
+    specialMonitoring = evaluateElderlyProtocol(patient, history);
+    specialAlerts = specialMonitoring.alerts || [];
+  }
+
+  if (chronicConditions.length > 0) {
     const chronicMonitoring = evaluateChronicProtocol(patient, history);
     specialMonitoring = {
-      ...elderlyMonitoring,
+      ...(specialMonitoring || {}),
       chronic: chronicMonitoring,
       checklist: {
-        ...(elderlyMonitoring?.checklist || {}),
+        ...((specialMonitoring && specialMonitoring.checklist) || {}),
         chronicConditions: chronicMonitoring?.checklist?.conditions || []
       }
     };
     specialAlerts = [
-      ...(elderlyMonitoring?.alerts || []),
+      ...(specialAlerts || []),
       ...(chronicMonitoring?.alerts || [])
     ];
   }
@@ -4468,6 +4489,7 @@ app.post("/patients", requireManagerOrDoctor, async (req, res) => {
     careCategory: normalizeCategory(payload.careCategory, protocolMap),
     chronicConditions: normalizeChronicConditions(payload.chronicConditions),
     maritalStatus: payload.maritalStatus ? String(payload.maritalStatus).trim().toLowerCase() : "",
+    incompleteProfile: Boolean(payload.incompleteProfile),
     sexAtBirth: payload.sexAtBirth ? String(payload.sexAtBirth).trim().toLowerCase() : "",
     genderIdentity: payload.genderIdentity ? String(payload.genderIdentity).trim().toLowerCase() : "",
     birthDate: payload.birthDate ? String(payload.birthDate).trim() : "",
@@ -4547,6 +4569,8 @@ app.put("/patients/:id", async (req, res) => {
       "usgDate3",
       "prenatalStartDate",
       "postpartumStartDate"
+      ,
+      "incompleteProfile"
     ]);
     const safePayload = isDoctor(req.user)
       ? Object.fromEntries(Object.entries(payload || {}).filter(([k]) => doctorAllowed.has(k)))
@@ -4573,6 +4597,9 @@ app.put("/patients/:id", async (req, res) => {
           ? String(safePayload.cpf || "").trim()
           : String(current.cnsCpf || current.cpf || current.cns || "")),
       careCategory: safePayload?.careCategory ? normalizeCategory(safePayload.careCategory, protocolMap) : current.careCategory,
+      incompleteProfile: safePayload?.incompleteProfile !== undefined
+        ? Boolean(safePayload.incompleteProfile)
+        : Boolean(current.incompleteProfile),
       chronicConditions: safePayload?.chronicConditions !== undefined
         ? normalizeChronicConditions(safePayload.chronicConditions)
         : normalizeChronicConditions(current.chronicConditions),

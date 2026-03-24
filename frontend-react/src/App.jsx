@@ -5229,7 +5229,7 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
                     <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:600}}>CNS<input value={newPat.cns} onChange={e=>setNewPat(s=>({...s,cns:formatCns(e.target.value)}))} placeholder="000 0000 0000 0000" inputMode="numeric"/></label>
                     <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:600}}>Telefone<input value={newPat.phone} onChange={e=>setNewPat(s=>({...s,phone:formatPhone(e.target.value)}))} placeholder="(00) 00000-0000" inputMode="numeric" maxLength={15}/></label>
                     <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:600}}>Telefone 2<input value={newPat.phoneAlt} onChange={e=>setNewPat(s=>({...s,phoneAlt:formatPhone(e.target.value)}))} placeholder="(00) 00000-0000" inputMode="numeric" maxLength={15}/></label>
-                    <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:600}}>Categoria<select value={newPat.careCategory} onChange={e=>setNewPat(s=>({...s,careCategory:e.target.value}))}><option value="general">Geral</option><option value="pregnant">Gestante</option><option value="child_followup">Puericultura</option><option value="elderly">Pessoa Idosa</option><option value="chronic">CondiÃ§Ã£o CrÃ´nica</option><option value="puerperal">PuÃ©rpera</option></select></label>
+                    <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:600}}>Categoria<select value={newPat.careCategory} onChange={e=>setNewPat(s=>({...s,careCategory:e.target.value}))}><option value="general">Geral</option><option value="pregnant">Gestante</option><option value="child_followup">Puericultura</option><option value="elderly">Pessoa Idosa</option><option value="puerperal">Puérpera</option></select></label>
                   </div>
                 </div>
                 {/* EndereÃ§o */}
@@ -6457,7 +6457,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
   const semAcs           = totalPacientes - comAcs;
   const gestantes        = patients.filter(p=>String(p.careCategory||"").toLowerCase()==="pregnant").length;
   const criancas         = patients.filter(p=>{ const am=ageInMonths(p.birthDate); return am!==null&&am<120; }).length;
-  const cronicos         = patients.filter(p=>["chronic","hypertension","diabetes"].includes(String(p.careCategory||"").toLowerCase())).length;
+  const cronicos         = patients.filter(p=>Array.isArray(p.chronicConditions) && p.chronicConditions.length>0).length;
   const idosos           = patients.filter(p=>{ const am=ageInMonths(p.birthDate); return am!==null&&am>=720; }).length;
 
   // â”€â”€ Protocolo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
