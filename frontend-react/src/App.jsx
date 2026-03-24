@@ -6379,6 +6379,7 @@ function ReferralsPage({ patients, users, user }) {
 // ═══════════════════════════════════════════════════════════════
 function GestorPage({ patients, users, templates, protocolByPatient }) {
   const now = new Date();
+  const ONLINE_WINDOW_MS = 2 * 60 * 1000;
   const agenda    = readLS(AGENDA_KEY, []);
   const referrals = readLS(REFERRALS_KEY, []);
   const pharmaLog = readLS("saudeubs_pharmalog_v1", []);
@@ -6446,6 +6447,22 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
   const catBreak = {};
   patients.forEach(p=>{ const c=p.careCategory||"general"; catBreak[c]=(catBreak[c]||0)+1; });
   const catEntries = Object.entries(catBreak).sort((a,b)=>b[1]-a[1]);
+  const userPresence = [...users]
+    .map((u) => {
+      const lastSeenAt = String(u?.lastSeenAt || u?.lastLoginAt || "");
+      const lastSeenTs = Date.parse(lastSeenAt);
+      const online = Number.isFinite(lastSeenTs) ? (Date.now() - lastSeenTs <= ONLINE_WINDOW_MS) : false;
+      return { ...u, online, lastSeenAt };
+    })
+    .sort((a, b) => Number(b.online) - Number(a.online) || String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
+
+  const patientsSorted = [...patients]
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
+
+  const getAcsName = (patient) => {
+    const acs = users.find((u) => u.id === patient.assignedAcsId);
+    return acs?.name || "Não atribuído";
+  };
 
   // ── Auditoria recente ─────────────────────────────────────────
   const auditRecent = [...(auditLog||[])].reverse().slice(0,8);
@@ -6538,6 +6555,67 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
 
       {/* ── KPIs principais ── */}
       <SectionTitle icon="📊">Visão Geral — {periodLabel}</SectionTitle>
+      <SectionTitle icon="🌐">Visão Global do Sistema</SectionTitle>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Pacientes cadastrados (todas as equipes)</span>
+            <span style={{fontSize:".75rem",color:"var(--text-3)"}}>{patientsSorted.length} total</span>
+          </div>
+          <div className="card-body" style={{maxHeight:320,overflow:"auto"}}>
+            {!patientsSorted.length ? (
+              <p className="muted" style={{fontSize:".84rem"}}>Nenhum paciente cadastrado.</p>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
+                {patientsSorted.map((p) => (
+                  <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:".5rem",padding:".5rem .6rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:".8rem",fontWeight:600,color:"var(--text-1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
+                      <div style={{fontSize:".72rem",color:"var(--text-3)"}}>
+                        {templates.find((t)=>t.category===p.careCategory)?.label || p.careCategory || "Geral"} · ACS: {getAcsName(p)}
+                      </div>
+                    </div>
+                    <span style={{alignSelf:"center",fontSize:".68rem",padding:".15rem .45rem",borderRadius:999,background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-3)"}}>
+                      {p.teamId ? `Equipe ${p.teamId}` : "Sem equipe"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Logins cadastrados (todas as funções)</span>
+            <span style={{fontSize:".75rem",color:"var(--text-3)"}}>
+              {userPresence.filter((u)=>u.online).length} online · {userPresence.length} total
+            </span>
+          </div>
+          <div className="card-body" style={{maxHeight:320,overflow:"auto"}}>
+            {!userPresence.length ? (
+              <p className="muted" style={{fontSize:".84rem"}}>Nenhum login cadastrado.</p>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
+                {userPresence.map((u) => (
+                  <div key={u.id} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:".5rem",padding:".5rem .6rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:".8rem",fontWeight:600,color:"var(--text-1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name}</div>
+                      <div style={{fontSize:".72rem",color:"var(--text-3)"}}>
+                        {u.email} · {roleLabel(u.role)} · {u.teamName || "Sem equipe"}
+                      </div>
+                    </div>
+                    <span style={{alignSelf:"center",fontSize:".68rem",fontWeight:700,padding:".15rem .45rem",borderRadius:999,background:u.online?"#dcfce7":"#f1f5f9",border:`1px solid ${u.online?"#bbf7d0":"#cbd5e1"}`,color:u.online?"#166534":"#475569"}}>
+                      {u.online ? "Online" : "Offline"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:".85rem"}}>
         <KPI label="Pacientes cadastrados" value={totalPacientes} sub={`Com ACS: ${comAcs} · Sem ACS: ${semAcs}`} icon="👥" color={TEAL}/>
         <KPI label="Protocolos críticos" value={criticos} sub={`Atenção: ${atencao} · Em dia: ${emDia}`} icon="🚨" color={criticos>0?RED:GREEN}/>

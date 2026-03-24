@@ -1502,6 +1502,7 @@ function sanitizeProtocolTemplatePayload(payload, fallbackCategory = "") {
 
 function canAccessPatient(user, patient) {
   if (!patient) return false;
+  if (canonicalRole(user?.role) === "gestor") return true;
   if (patient.teamId !== user.teamId) return false;
   if (isManager(user) || isDoctor(user)) return true;
   if (isAcs(user)) return patient.assignedAcsId === user.id;
@@ -3030,9 +3031,10 @@ app.get("/bootstrap", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
 
+  const isGestorUser = canonicalRole(req.user?.role) === "gestor";
   const patients = getAllowedPatients(db, req.user, {});
   const users = db.users
-    .filter((u) => u.teamId === req.user.teamId)
+    .filter((u) => isGestorUser || u.teamId === req.user.teamId)
     .map((u) => sanitizeUser(u, db));
   const protocolTemplates = Object.values(getProtocolTemplateMap(db, req.user.teamId));
   const teamPatientIds = new Set(patients.map((p) => p.id));
@@ -3748,9 +3750,10 @@ app.delete("/protocol/templates/:category", requireManagerOrDoctor, async (req, 
 app.get("/users", async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
+  const isGestorUser = canonicalRole(req.user?.role) === "gestor";
 
   const safeUsers = db.users
-    .filter((u) => u.teamId === req.user.teamId)
+    .filter((u) => isGestorUser || u.teamId === req.user.teamId)
     .map((u) => sanitizeUser(u, db));
 
   return res.json(safeUsers.map(({ password, ...u }) => u));
