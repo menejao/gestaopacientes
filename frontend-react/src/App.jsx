@@ -37,6 +37,56 @@ self.addEventListener("fetch", e => {
 }
 registerServiceWorker();
 
+// Corrige textos com encoding quebrado (mojibake) exibidos na UI.
+const MOJIBAKE_REPLACEMENTS = [
+  ["Ã¡", "á"], ["Ã ", "à"], ["Ã¢", "â"], ["Ã£", "ã"], ["Ã¤", "ä"], ["Ã©", "é"], ["Ãª", "ê"], ["Ã­", "í"],
+  ["Ã³", "ó"], ["Ã´", "ô"], ["Ãµ", "õ"], ["Ãº", "ú"], ["Ã§", "ç"], ["Ã", "Á"], ["Ã€", "À"], ["Ã‚", "Â"],
+  ["Ãƒ", "Ã"], ["Ã‰", "É"], ["ÃŠ", "Ê"], ["Ã", "Í"], ["Ã“", "Ó"], ["Ã”", "Ô"], ["Ã•", "Õ"], ["Ãš", "Ú"],
+  ["Ã‡", "Ç"], ["Ã¼", "ü"], ["Ãœ", "Ü"], ["Ã¶", "ö"], ["Ã–", "Ö"],
+  ["Â·", "·"], ["Âº", "º"], ["Âª", "ª"], ["Â°", "°"], ["Â ", " "], ["Â", ""],
+  ["â€”", "—"], ["â€“", "–"], ["â€¢", "•"], ["â€¦", "…"], ["â€œ", "“"], ["â€", "”"], ["â€˜", "‘"], ["â€™", "’"],
+  ["â†’", "→"], ["â†", "←"], ["âœ“", "✓"], ["âœ…", "✅"], ["âœ•", "✕"], ["âš ï¸", "⚠️"], ["âš™ï¸", "⚙️"],
+  ["âš–ï¸", "⚖️"], ["â¬‡ï¸", "⬇️"], ["â€¹", "‹"], ["â€º", "›"], ["â‰¥", "≥"], ["â‰¤", "≤"],
+  ["ðŸ‘¥", "👥"], ["ðŸ””", "🔔"], ["ðŸŒ¸", "🌸"], ["ðŸŽ‰", "🎉"], ["ðŸ’‰", "💉"], ["ðŸ’Š", "💊"],
+  ["ðŸ“¦", "📦"], ["ðŸ—‚ï¸", "🗂️"], ["ðŸš«", "🚫"], ["ðŸ¤°", "🤰"], ["ðŸ”", "🔐"]
+];
+
+function normalizeMojibakeText(value) {
+  if (typeof value !== "string" || !value) return value;
+  let out = value;
+  for (const [from, to] of MOJIBAKE_REPLACEMENTS) out = out.split(from).join(to);
+  out = out.replace(/NÃƒO/g, "NÃO").replace(/nÃƒo/g, "não");
+  return out;
+}
+
+function useUiTextSanitizer() {
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const raf = requestAnimationFrame(() => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      while (node) {
+        const before = node.nodeValue || "";
+        const after = normalizeMojibakeText(before);
+        if (after !== before) node.nodeValue = after;
+        node = walker.nextNode();
+      }
+      const attrs = ["placeholder", "title", "aria-label"];
+      const els = root.querySelectorAll("[placeholder],[title],[aria-label]");
+      els.forEach((el) => {
+        attrs.forEach((attr) => {
+          const before = el.getAttribute(attr);
+          if (!before) return;
+          const after = normalizeMojibakeText(before);
+          if (after !== before) el.setAttribute(attr, after);
+        });
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  });
+}
+
 /* â”€â”€ Online/Offline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function useOnlineStatus() {
   const [online, setOnline] = useState(navigator.onLine);
@@ -10115,6 +10165,8 @@ class AppErrorBoundary extends Component {
 }
 
 function AppInner() {
+  useUiTextSanitizer();
+
   const session = useMemo(()=>{
     try { return readSession(); } catch { return null; }
   },[]);
