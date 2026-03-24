@@ -353,6 +353,11 @@ function fmtDate(v) {
   } catch { return String(v); }
 }
 
+function displayText(value, fallback = "-") {
+  const raw = value === null || value === undefined || value === "" ? fallback : String(value);
+  return normalizeMojibakeText(raw);
+}
+
 function gestationalAgeInfo(patient) {
   if(!patient) return null;
   const today=new Date(), usgRef=parseDateSafe(patient.usgDate1), usgW=toBoundedInt(patient.gestationalAgeUsgWeeks,0,45), usgD=toBoundedInt(patient.gestationalAgeUsgDays,0,6)??0;
@@ -398,6 +403,20 @@ function deriveProtocolAlerts(summary) {
   return out;
 }
 
+function normalizeSeverity(value) {
+  const v = String(value || "").toLowerCase();
+  if (["high", "alto", "crítico", "critico", "vencido", "atrasado"].includes(v)) return "high";
+  if (["medium", "médio", "medio", "atenção", "atencao"].includes(v)) return "medium";
+  return "low";
+}
+
+function alertWeight(alert) {
+  const title = String(alert?.title || "").toLowerCase();
+  const match = title.match(/(\d+)\s+pendente/);
+  if (match) return Math.max(1, Number(match[1] || 1));
+  return 1;
+}
+
 function protocolChip(summary) {
   if(!summary) return{text:"Sem status",tone:"muted"};
   if(summary.alertsRestricted) return{text:"Sem alertas (outra equipe)",tone:"muted"};
@@ -406,71 +425,27 @@ function protocolChip(summary) {
   const targets=summary.targets||{},completed=summary.completed||{};
   const doneTotal=Number(completed.visits||0)+Number(completed.consultations||0)+Number(completed.vaccines||0);
   const targetTotal=Number(targets.visits||0)+Number(targets.consultations||0)+Number(targets.vaccines||0);
-  const schedule=summary.schedule||{};
-  const special=Array.isArray(summary.specialAlerts)?summary.specialAlerts:[];
-  let overdueCount=0, nearCount=0;
 
-  // Visitas e consultas: somente overdueDays >= 1 conta como crÃ­tico.
-  // daysLeft <= 7 sem overdue NÃƒO gera nearCount â€” evita "AtenÃ§Ã£o" fantasma
-  // em gestantes e outros casos onde o backend reporta daysLeft prÃ³ximo sem alerta real.
-  for(const key of["visits","consultations"]){
-    const s=schedule?.[key];
-    if(!s||Number(s.pending||0)<=0) continue;
-    if(Number(s.overdueDays||0)>=1) overdueCount++;
-    // nearCount sÃ³ de schedule se hÃ¡ specialAlert nÃ£o-vacina de medium correspondente
-  }
+  // Usa os alertas derivados (inclui especial + agenda) para manter o chip
+  // consistente com o painel lateral do paciente.
+  const allAlerts = deriveProtocolAlerts(summary);
+  let criticalCount=0, nearCount=0;
 
-  // Vacinas atrasadas: contar cada dose individualmente.
-  // 1) Se hÃ¡ specialAlerts de vacina com severity=high â†’ cada um conta como 1 vencido.
-  const vacAlerts=special.filter(a=>{
-    const act=String(a?.activity||"").toLowerCase();
-    const tit=String(a?.title||"").toLowerCase();
-    return act.includes("vacinacao")||act.includes("vacina")||tit.includes("vacina");
-  });
-  const vacOverdue=vacAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="high").length;
-  const vacNear=vacAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="medium").length;
+  for(const a of allAlerts){
+    const sev=normalizeSeverity(a?.severity);
+    const overdue=Number.isFinite(Number(a?.overdueDays)) ? Number(a.overdueDays) : 0;
+    const daysLeft=Number.isFinite(Number(a?.daysLeft))?Number(a.daysLeft):null;
+    const weight = alertWeight(a);
 
-  if(vacOverdue>0||vacNear>0){
-    overdueCount+=vacOverdue;
-    nearCount+=vacNear;
-  } else {
-    // 2) Fallback: backend nÃ£o gerou specialAlerts de vacina (crÃ´nico, gestante, idoso).
-    // Usa schedule.vaccines: se overdueDays >= 1, conta o nÃºmero real de doses pendentes.
-    const sv=schedule?.vaccines;
-    if(sv&&Number(sv.overdueDays||0)>=1&&Number(sv.pending||0)>0){
-      overdueCount+=Number(sv.pending);
-    }
-    // nearCount de vacinas via schedule SOMENTE se overdueDays=0 e daysLeft<=7
-    // e nÃ£o hÃ¡ nenhum specialAlert nÃ£o-vacina de medium (evita double-count)
-    if(sv&&Number(sv.overdueDays||0)===0&&Number(sv.pending||0)>0){
-      const dl=typeof sv.daysLeft==="number"?Number(sv.daysLeft):null;
-      if(dl!==null&&dl<=7) nearCount+=Number(sv.pending);
+    // Regra de negócio: 1 item atrasado ou com até 2 dias para vencer já é crítico.
+    if (overdue >= 1 || (daysLeft !== null && daysLeft <= 2) || sev === "high") {
+      criticalCount += weight;
+    } else if (sev === "medium") {
+      nearCount += weight;
     }
   }
 
-  // specialAlerts nÃ£o-vacina (ex: alertas clÃ­nicos do backend):
-  // sÃ³ somam se nÃ£o hÃ¡ schedule (backend antigo sem schedule)
-  if(!Object.keys(schedule).length){
-    const nonVacAlerts=special.filter(a=>{
-      const t=String(a?.title||"").toLowerCase();
-      return !(t.includes("vacina")||t.includes("vaccine")||t.includes("pendente:"));
-    });
-    overdueCount+=nonVacAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="high").length;
-    nearCount+=nonVacAlerts.filter(a=>String(a?.severity||"").toLowerCase()==="medium").length;
-  }
-
-  // "AtenÃ§Ã£o" via specialAlerts nÃ£o-vacina com medium (ex: consulta prÃ³xima do prazo),
-  // mas SOMENTE se hÃ¡ overdueDays=0 â€” evita conflito com overdueCount jÃ¡ contado.
-  if(overdueCount===0){
-    const nonVacMedium=special.filter(a=>{
-      const t=String(a?.title||"").toLowerCase();
-      const isVac=t.includes("vacina")||t.includes("vaccine")||t.includes("pendente:");
-      return !isVac&&String(a?.severity||"").toLowerCase()==="medium";
-    });
-    if(nonVacMedium.length>0) nearCount+=nonVacMedium.length;
-  }
-
-  if(overdueCount>0) return{text:`Crítico (${overdueCount} vencido${overdueCount>1?"s":""})`,tone:"danger"};
+  if(criticalCount>0) return{text:`Crítico (${criticalCount} item${criticalCount>1?"s":""} crítico${criticalCount>1?"s":""})`,tone:"danger"};
   if(nearCount>0) return{text:`Atenção (${nearCount} próximo${nearCount>1?"s":""})`,tone:"warn"};
   if(total<=0) return{text:`Em dia`,tone:"ok"};
   return{text:`No prazo (${doneTotal}/${targetTotal})`,tone:"muted"};
@@ -1209,12 +1184,6 @@ function Sidebar({ tab, setTab, mobileOpen, setMobileOpen, query, setQuery, user
   return (
     <aside className={`sidebar${mobileOpen?" mobile-open":""}`}>
       <div className="sidebar-inner">
-        {/* Search */}
-        <div className="sidebar-search-wrap">
-          <span className="sidebar-search-ico"><IconSearch/></span>
-          <input className="sidebar-search-input" placeholder="Buscar..." value={query} onChange={e=>setQuery(e.target.value)}/>
-        </div>
-
         <div className="sidebar-section-label">Menu</div>
 
         <nav className="nav-links">
@@ -1269,7 +1238,7 @@ function Topbar({ user, selectedPatient, templates, mobileOpen, setMobileOpen, o
         {/* Wordmark: sigla grande + nome discreto */}
         <div style={{display:"flex",flexDirection:"column",lineHeight:1.1,gap:0}}>
           <span style={{fontSize:"1.15rem",fontWeight:800,color:"var(--teal-600)",letterSpacing:"0.08em",fontFamily:"Georgia,serif"}}>SIGUS</span>
-          <span style={{fontSize:"0.52rem",fontWeight:400,color:"var(--text-3)",letterSpacing:"0.04em",textTransform:"uppercase",whiteSpace:"nowrap"}}>Gest. Ãšnica de SaÃºde</span>
+          <span style={{fontSize:"0.52rem",fontWeight:400,color:"var(--text-3)",letterSpacing:"0.04em",textTransform:"uppercase",whiteSpace:"nowrap"}}>Gestão Única de Saúde</span>
         </div>
       </div>
 
@@ -1294,7 +1263,7 @@ function Topbar({ user, selectedPatient, templates, mobileOpen, setMobileOpen, o
               {selectedPatient.name}
             </span>
             <span style={{fontSize:".72rem",color:"var(--text-3)",flexShrink:0}}>
-              Â· {catLabel(templates,selectedPatient.careCategory)}
+              · {catLabel(templates,selectedPatient.careCategory)}
             </span>
           </div>
         )}
@@ -1320,7 +1289,7 @@ function Topbar({ user, selectedPatient, templates, mobileOpen, setMobileOpen, o
                 {user?.name||"-"}
               </span>
               <span style={{fontSize:".71rem",color:"var(--text-3)",whiteSpace:"nowrap"}}>
-                {roleLabel(user?.role)}{user?.teamName ? ` Â· ${user.teamName}` : ""}
+                {roleLabel(user?.role)}{user?.teamName ? ` · ${user.teamName}` : ""}
               </span>
             </div>
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{color:"var(--text-3)",flexShrink:0}}>
@@ -1738,7 +1707,7 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
                 : pagedPatients.map(p=>{
                     const summary=protocolByPatient[p.id];
                     const chip=protocolChip(summary);
-                    const acsName=users.find(u=>u.id===p.assignedAcsId)?.name||"NÃ£o atribuÃ­do";
+                    const acsName=users.find(u=>u.id===p.assignedAcsId)?.name||"Não atribuído";
                     const isOpen = selectedPatientId===p.id;
                     return(
                       <tr key={p.id} onClick={()=>togglePatientDetail(p.id)} className={isOpen?"selected":""}>
@@ -2912,7 +2881,7 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
 
 function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appointments,tasks,messages,history,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,appointmentForm,setAppointmentForm,taskForm,setTaskForm,messageText,setMessageText,onSubmitRecord,onSubmitAppointment,onSubmitTask,onSubmitMessage,onDeleteRecord,onDeleteAppointment,onStatusChange,acsUsers,canManageUser,canWriteRecords,userObj,token }) {
   const g = gestationalAgeInfo(patient);
-  const acsName = users.find(u=>u.id===patient.assignedAcsId)?.name||"NÃ£o atribuÃ­do";
+  const acsName = users.find(u=>u.id===patient.assignedAcsId)?.name||"Não atribuído";
   const [docType, setDocType] = useState(null);
   const [showPatientCard, setShowPatientCard] = useState(false);
 
@@ -5416,7 +5385,7 @@ function ChartAuthGate({ patient, users, user, onUnlock }) {
   const [pw, setPw]     = useState("");
   const [err, setErr]   = useState("");
   const [busy, setBusy] = useState(false);
-  const acsName = users.find(u => u.id === patient.assignedAcsId)?.name || "NÃ£o atribuÃ­do";
+  const acsName = users.find(u => u.id === patient.assignedAcsId)?.name || "Não atribuído";
 
   function attempt(e) {
     e.preventDefault();
@@ -5971,7 +5940,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
               ["EndereÃ§o", patSelected.address?[patSelected.address,patSelected.number,patSelected.neighborhood].filter(Boolean).join(", "):"â€”"],
               ["CEP", patSelected.zipCode||"â€”"],
               ["Telefone", patSelected.phone||"â€”"],
-              ["ACS resp.", users.find(u=>u.id===patSelected.assignedAcsId)?.name||"NÃ£o atribuÃ­do"],
+              ["ACS resp.", users.find(u=>u.id===patSelected.assignedAcsId)?.name||"Não atribuído"],
               ["Estado civil", patSelected.maritalStatus||"â€”"],
             ].map(([lbl,val])=>(
               <div key={lbl} style={{marginBottom:".45rem"}}>
@@ -7550,15 +7519,15 @@ function GlobalSearch({ patients, templates, onNavigate }) {
   return (
     <>
       <button onClick={()=>setOpen(true)} style={{display:"flex",alignItems:"center",gap:".5rem",padding:".35rem .75rem",borderRadius:"var(--r-md)",background:"var(--surface-2)",border:"1px solid var(--border)",cursor:"pointer",color:"var(--text-3)",fontSize:".78rem",minWidth:160}}>
-        <IconSearch/> Buscar pacienteâ€¦
-        <span style={{marginLeft:"auto",fontSize:".65rem",background:"var(--surface-3)",padding:".1rem .3rem",borderRadius:4,color:"var(--text-3)"}}>âŒ˜K</span>
+        <IconSearch/> Buscar paciente...
+        <span style={{marginLeft:"auto",fontSize:".65rem",background:"var(--surface-3)",padding:".1rem .3rem",borderRadius:4,color:"var(--text-3)"}}>Ctrl+K</span>
       </button>
       {open&&(
         <div style={{position:"fixed",inset:0,zIndex:900,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:"10vh",background:"rgba(15,23,42,.45)",backdropFilter:"blur(3px)"}} onClick={()=>setOpen(false)}>
           <div ref={ref} style={{width:"100%",maxWidth:520,background:"var(--surface)",borderRadius:"var(--r-lg)",boxShadow:"0 20px 60px rgba(0,0,0,.2)",border:"1px solid var(--border)",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".85rem 1rem",borderBottom:"1px solid var(--border)"}}>
               <IconSearch/>
-              <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)} placeholder="Nome, CPF, CNS ou telefoneâ€¦" style={{flex:1,border:"none",outline:"none",background:"transparent",fontSize:".92rem",color:"var(--ink)"}}/>
+              <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)} placeholder="Nome, CPF, CNS ou telefone..." style={{flex:1,border:"none",outline:"none",background:"transparent",fontSize:".92rem",color:"var(--ink)"}}/>
               <button className="icon-btn" onClick={()=>setOpen(false)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
             </div>
             {q.length>=2&&!results.length&&<p style={{padding:"1.5rem",textAlign:"center",color:"var(--text-3)",fontSize:".84rem"}}>Nenhum paciente encontrado.</p>}
@@ -7572,9 +7541,9 @@ function GlobalSearch({ patients, templates, onNavigate }) {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:700,fontSize:".88rem",color:"var(--ink)"}}>{p.name}</div>
                     <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".1rem"}}>
-                      {p.cpf&&<span>CPF {p.cpf} Â· </span>}
+                      {p.cpf&&<span>CPF {p.cpf} · </span>}
                       <span>{templates.find(t=>t.category===p.careCategory)?.label||p.careCategory||"Geral"}</span>
-                      {g&&String(p.careCategory||"").toLowerCase()==="pregnant"&&<span> Â· IG {g.weeks}s{g.days}d</span>}
+                      {g&&String(p.careCategory||"").toLowerCase()==="pregnant"&&<span> · IG {g.weeks}s{g.days}d</span>}
                     </div>
                   </div>
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{color:"var(--text-3)",flexShrink:0}}><path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -8623,7 +8592,7 @@ const PHARMA_CATEGORIES = [
    CARTÃƒO DO PACIENTE â€” Resumo imprimÃ­vel
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function PatientCardModal({ patient, users, templates, history, onClose }) {
-  const acsName  = users.find(u=>u.id===patient.assignedAcsId)?.name||"NÃ£o atribuÃ­do";
+  const acsName  = users.find(u=>u.id===patient.assignedAcsId)?.name||"Não atribuído";
   const g        = gestationalAgeInfo(patient);
   const vaccines = (history||[]).filter(h=>String(h.type||"").toLowerCase()==="vaccine");
   const meds     = String(patient.medications||"").trim();
@@ -10829,6 +10798,13 @@ function AppInner() {
     const title = isAcs(user)?"Visita ACS":recordForm.title;
     if(!type||!recordForm.date||(type!=="vaccine"&&!title)){setError("Preencha tipo, data e tÃ­tulo.");return;}
     if(type==="vaccine"&&!recordVaccines.length){setError("Selecione ao menos uma vacina.");return;}
+    if(type==="visit"){
+      const patient = patients.find(p => p.id === selectedPatientId);
+      if(!String(patient?.assignedAcsId||"").trim()){
+        setError("Não é possível registrar visita sem ACS responsável vinculado ao paciente.");
+        return;
+      }
+    }
     const now = new Date();
     const timeStr = now.toTimeString().slice(0,5);
     // Monta detalhes ricos para o prontuÃ¡rio
@@ -11167,7 +11143,7 @@ function AppInner() {
             <div style={{marginBottom:"1.1rem"}}>
               <div style={{fontSize:".68rem",fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".6rem",display:"flex",alignItems:"center",gap:".4rem"}}>
                 <span style={{width:16,height:16,borderRadius:4,background:"var(--teal-600)",color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:".6rem",fontWeight:800,flexShrink:0}}>1</span>
-                Grupo e vÃ­nculo
+                Grupo e vínculo
               </div>
               <div className="field-grid">
                 <label>Grupo / Categoria *
@@ -11178,15 +11154,15 @@ function AppInner() {
                     ).map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </label>
-                <label>ACS responsÃ¡vel
+                <label>ACS responsável
                   <select value={form.assignedAcsId} onChange={e=>setForm(s=>({...s,assignedAcsId:e.target.value}))}>
-                    <option value="">NÃ£o atribuÃ­do</option>
+                    <option value="">Não atribuído</option>
                     {users.filter(u=>u.role==="acs").map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
                   </select>
                 </label>
-                {/* CondiÃ§Ãµes â€” checkbox antes do texto */}
+                {/* Condições — checkbox antes do texto */}
                 <div className="field-span-2" style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap"}}>
-                  <span style={{fontSize:".78rem",fontWeight:600,color:"var(--text-2)",flexShrink:0}}>CondiÃ§Ãµes</span>
+                  <span style={{fontSize:".78rem",fontWeight:600,color:"var(--text-2)",flexShrink:0}}>Condições</span>
                   {[["diabetes","Diabetes"],["hypertension","Hipertensão"]].map(([val,lbl])=>(
                     <label key={val} style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".82rem",fontWeight:500,cursor:"pointer",margin:0}}>
                       <input type="checkbox" checked={(form.chronicConditions||[]).includes(val)}
@@ -11208,79 +11184,79 @@ function AppInner() {
             <div style={{marginBottom:"1.1rem"}}>
               <div style={{fontSize:".68rem",fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".6rem",display:"flex",alignItems:"center",gap:".4rem"}}>
                 <span style={{width:16,height:16,borderRadius:4,background:"var(--teal-600)",color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:".6rem",fontWeight:800,flexShrink:0}}>2</span>
-                IdentificaÃ§Ã£o pessoal
+                Identificação pessoal
               </div>
               <div className="field-grid">
                 <label className="field-span-2">Nome completo *
                   <input value={form.name} onChange={e=>setForm(s=>({...s,name:e.target.value}))} placeholder="Nome completo do paciente"/>
                 </label>
-                {/* Nome da mÃ£e + checkbox "desconhecida" na mesma linha do input */}
+                {/* Nome da mãe + checkbox "desconhecida" na mesma linha do input */}
                 <div className="field-span-2" style={{display:"flex",flexDirection:"column",gap:".25rem"}}>
-                  <span style={{fontSize:".78rem",fontWeight:600}}>Nome da mÃ£e</span>
+                  <span style={{fontSize:".78rem",fontWeight:600}}>Nome da mãe</span>
                   <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
                     <input value={form.motherName} onChange={e=>setForm(s=>({...s,motherName:e.target.value}))}
-                      placeholder="Nome completo da mÃ£e"
+                      placeholder="Nome completo da mãe"
                       disabled={form.motherUnknown||false}
                       style={{flex:1,opacity:form.motherUnknown?.5:1}}/>
                     <label style={{display:"flex",alignItems:"center",gap:".35rem",fontSize:".76rem",color:"var(--text-3)",cursor:"pointer",margin:0,whiteSpace:"nowrap",flexShrink:0}}>
                       <input type="checkbox" checked={form.motherUnknown||false}
                         onChange={e=>setForm(s=>({...s,motherUnknown:e.target.checked,motherName:e.target.checked?"Desconhecida":s.motherName==="Desconhecida"?"":s.motherName}))}
                         style={{width:13,height:13,accentColor:"var(--teal-600)",cursor:"pointer"}}/>
-                      MÃ£e desconhecida
+                      Mãe desconhecida
                     </label>
                   </div>
                 </div>
-                {/* Nome do responsÃ¡vel â€” aparece para crianÃ§as, mas sem asterisco de obrigatoriedade */}
+                {/* Nome do responsável — aparece para crianças, mas sem asterisco de obrigatoriedade */}
                 {isChildCategory(form.careCategory)&&(
-                  <label className="field-span-2">Nome do responsÃ¡vel
-                    <input value={form.guardianName||""} onChange={e=>setForm(s=>({...s,guardianName:e.target.value}))} placeholder="Nome do responsÃ¡vel legal (pode ser diferente da mÃ£e)"/>
+                  <label className="field-span-2">Nome do responsável
+                    <input value={form.guardianName||""} onChange={e=>setForm(s=>({...s,guardianName:e.target.value}))} placeholder="Nome do responsável legal (pode ser diferente da mãe)"/>
                   </label>
                 )}
                 <label>Data de nascimento
                   <input type="date" value={form.birthDate} onChange={e=>setForm(s=>({...s,birthDate:e.target.value}))}/>
                 </label>
-                <label>Sexo biolÃ³gico
+                <label>Sexo biológico
                   <select value={form.sex} onChange={e=>setForm(s=>({...s,sex:e.target.value}))}>
-                    <option value="">NÃ£o informado</option>
+                    <option value="">Não informado</option>
                     <option value="feminino">Feminino</option>
                     <option value="masculino">Masculino</option>
                     <option value="intersexo">Intersexo</option>
                   </select>
                 </label>
-                <label>MunicÃ­pio de nascimento
+                <label>Município de nascimento
                   <input value={form.birthCity} onChange={e=>setForm(s=>({...s,birthCity:e.target.value}))} placeholder="Cidade natal"/>
                 </label>
                 <label>UF de nascimento
                   <input value={form.birthState} maxLength={2} onChange={e=>setForm(s=>({...s,birthState:e.target.value.toUpperCase().slice(0,2)}))} placeholder="SP"/>
                 </label>
-                <label>RaÃ§a / Cor
+                <label>Raça / Cor
                   <select value={form.raceColor} onChange={e=>setForm(s=>({...s,raceColor:e.target.value}))}>
-                    <option value="">NÃ£o informado</option>
+                    <option value="">Não informado</option>
                     <option value="branca">Branca</option>
                     <option value="preta">Preta</option>
                     <option value="parda">Parda</option>
                     <option value="amarela">Amarela</option>
-                    <option value="indigena">IndÃ­gena</option>
-                    <option value="nao_declarado">NÃ£o declarado</option>
+                    <option value="indigena">Indígena</option>
+                    <option value="nao_declarado">Não declarado</option>
                   </select>
                 </label>
                 {!isChildCategory(form.careCategory)&&(
                   <label>Estado civil
                     <select value={form.maritalStatus} onChange={e=>setForm(s=>({...s,maritalStatus:e.target.value}))}>
-                      <option value="">NÃ£o informado</option>
+                      <option value="">Não informado</option>
                       <option value="solteiro">Solteiro(a)</option>
                       <option value="casado">Casado(a)</option>
-                      <option value="uniao_estavel">UniÃ£o estÃ¡vel</option>
+                      <option value="uniao_estavel">União estável</option>
                       <option value="divorciado">Divorciado(a)</option>
                       <option value="separado">Separado(a)</option>
-                      <option value="viuvo">ViÃºvo(a)</option>
+                      <option value="viuvo">Viúvo(a)</option>
                     </select>
                   </label>
                 )}
                 <label>CPF
                   <input value={form.cpf} onChange={e=>setForm(s=>({...s,cpf:formatCpf(e.target.value)}))} placeholder="000.000.000-00"/>
                 </label>
-                <label>CNS â€” CartÃ£o Nacional de SaÃºde
+                <label>CNS — Cartão Nacional de Saúde
                   <input value={form.cns} onChange={e=>setForm(s=>({...s,cns:formatCns(e.target.value)}))} placeholder="000 0000 0000 0000"/>
                 </label>
               </div>
@@ -11302,11 +11278,11 @@ function AppInner() {
               </div>
             </div>
 
-            {/* â”€â”€ SeÃ§Ã£o 4: EndereÃ§o â”€â”€ */}
+            {/* Seção 4: Endereço */}
             <div style={{marginBottom:"1.1rem"}}>
               <div style={{fontSize:".68rem",fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".6rem",display:"flex",alignItems:"center",gap:".4rem"}}>
                 <span style={{width:16,height:16,borderRadius:4,background:"var(--teal-600)",color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:".6rem",fontWeight:800,flexShrink:0}}>4</span>
-                EndereÃ§o
+                Endereço
               </div>
               <div className="field-grid">
                 <label>CEP
@@ -11315,7 +11291,7 @@ function AppInner() {
                 <label className="field-span-2" style={{gridColumn:"span 1"}}>Rua / Logradouro
                   <input value={form.address} onChange={e=>setForm(s=>({...s,address:e.target.value}))} placeholder="Nome da rua, avenida..."/>
                 </label>
-                <label>NÃºmero
+                <label>Número
                   <input value={form.number} onChange={e=>setForm(s=>({...s,number:e.target.value}))} placeholder="00"/>
                 </label>
                 <label>Complemento
@@ -11333,7 +11309,7 @@ function AppInner() {
               </div>
             </div>
 
-            {/* â”€â”€ SeÃ§Ã£o 5: GestaÃ§Ã£o (condicional) â”€â”€ */}
+            {/* Seção 5: Gestação (condicional) */}
             {String(form.careCategory||"").toLowerCase()==="pregnant"&&(
               <div style={{marginBottom:"1.1rem"}}>
                 <div style={{fontSize:".68rem",fontWeight:700,color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".6rem",display:"flex",alignItems:"center",gap:".4rem"}}>
@@ -11342,31 +11318,31 @@ function AppInner() {
                 </div>
                 <div style={{background:"var(--teal-50)",border:"1px solid var(--teal-200)",borderRadius:"var(--r-md)",padding:".85rem"}}>
                   <div className="field-grid">
-                    <label>DUM â€” Data da Ãšltima MenstruaÃ§Ã£o
+                    <label>DUM — Data da Última Menstruação
                       <input type="date" value={form.pregnancyStartDate} onChange={e=>setForm(s=>({...s,pregnancyStartDate:e.target.value}))}/>
                     </label>
-                    <label>DPP â€” Data ProvÃ¡vel do Parto
+                    <label>DPP — Data Provável do Parto
                       <input type="date" value={form.expectedDeliveryDate} onChange={e=>setForm(s=>({...s,expectedDeliveryDate:e.target.value}))}/>
                     </label>
-                    <label>IG pela DUM â€” Semanas
+                    <label>IG pela DUM — Semanas
                       <input type="number" min="0" max="45" value={form.gestationalAgeDumWeeks} placeholder="0" onChange={e=>setForm(s=>({...s,gestationalAgeDumWeeks:e.target.value}))}/>
                     </label>
-                    <label>IG pela DUM â€” Dias
+                    <label>IG pela DUM — Dias
                       <input type="number" min="0" max="6" value={form.gestationalAgeDumDays} placeholder="0" onChange={e=>setForm(s=>({...s,gestationalAgeDumDays:e.target.value}))}/>
                     </label>
-                    <label>Data 1Âª USG
+                    <label>Data 1ª USG
                       <input type="date" value={form.usgDate1} onChange={e=>setForm(s=>({...s,usgDate1:e.target.value}))}/>
                     </label>
-                    <label>IG pela USG â€” Semanas
+                    <label>IG pela USG — Semanas
                       <input type="number" min="0" max="45" value={form.gestationalAgeUsgWeeks} placeholder="0" onChange={e=>setForm(s=>({...s,gestationalAgeUsgWeeks:e.target.value}))}/>
                     </label>
-                    <label>IG pela USG â€” Dias
+                    <label>IG pela USG — Dias
                       <input type="number" min="0" max="6" value={form.gestationalAgeUsgDays} placeholder="0" onChange={e=>setForm(s=>({...s,gestationalAgeUsgDays:e.target.value}))}/>
                     </label>
-                    <label>Data 2Âª USG
+                    <label>Data 2ª USG
                       <input type="date" value={form.usgDate2} onChange={e=>setForm(s=>({...s,usgDate2:e.target.value}))}/>
                     </label>
-                    <label>Data 3Âª USG
+                    <label>Data 3ª USG
                       <input type="date" value={form.usgDate3} onChange={e=>setForm(s=>({...s,usgDate3:e.target.value}))}/>
                     </label>
                   </div>
@@ -11374,23 +11350,23 @@ function AppInner() {
               </div>
             )}
 
-            {/* â”€â”€ SeÃ§Ã£o: ClÃ­nico (nÂº fixo segue gestaÃ§Ã£o) â”€â”€ */}
+            {/* Seção: Clínico (nº fixo segue gestação) */}
             <div style={{marginBottom:"1.1rem"}}>
               <div style={{fontSize:".68rem",fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".6rem",display:"flex",alignItems:"center",gap:".4rem"}}>
                 <span style={{width:16,height:16,borderRadius:4,background:"var(--teal-600)",color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:".6rem",fontWeight:800,flexShrink:0}}>
                   {String(form.careCategory||"").toLowerCase()==="pregnant"?"6":"5"}
                 </span>
-                Dados clÃ­nicos
+                Dados clínicos
               </div>
               <div className="field-grid">
                 <label className="field-span-2">Alergias conhecidas
                   <textarea value={form.allergies} onChange={e=>setForm(s=>({...s,allergies:e.target.value}))} placeholder="Descreva alergias medicamentosas, alimentares ou outras..." style={{minHeight:60}}/>
                 </label>
                 <label className="field-span-2">Comorbidades
-                  <textarea value={form.comorbidities} onChange={e=>setForm(s=>({...s,comorbidities:e.target.value}))} placeholder="DiagnÃ³sticos e condiÃ§Ãµes crÃ´nicas conhecidas..." style={{minHeight:60}}/>
+                  <textarea value={form.comorbidities} onChange={e=>setForm(s=>({...s,comorbidities:e.target.value}))} placeholder="Diagnósticos e condições crônicas conhecidas..." style={{minHeight:60}}/>
                 </label>
-                <label className="field-span-2">Medicamentos em uso contÃ­nuo
-                  <textarea value={form.medications} onChange={e=>setForm(s=>({...s,medications:e.target.value}))} placeholder="Liste os medicamentos com dose e frequÃªncia..." style={{minHeight:60}}/>
+                <label className="field-span-2">Medicamentos em uso contínuo
+                  <textarea value={form.medications} onChange={e=>setForm(s=>({...s,medications:e.target.value}))} placeholder="Liste os medicamentos com dose e frequência..." style={{minHeight:60}}/>
                 </label>
               </div>
             </div>
@@ -11404,43 +11380,43 @@ function AppInner() {
                 Cadastro territorial
               </div>
               <div className="field-grid">
-                <label>MicroÃ¡rea
+                <label>Microárea
                   <input value={form.microArea||""} onChange={e=>setForm(s=>({...s,microArea:e.target.value}))} placeholder="Ex: 01"/>
                 </label>
-                <label>CÃ³digo de famÃ­lia
+                <label>Código de família
                   <input value={form.familyCode||""} onChange={e=>setForm(s=>({...s,familyCode:e.target.value}))} placeholder="Ex: 0010001"/>
                 </label>
-                <label>FrequÃªncia de visita ACS
+                <label>Frequência de visita ACS
                   <input value={form.homeVisitFreq||""} onChange={e=>setForm(s=>({...s,homeVisitFreq:e.target.value}))} placeholder="Mensal, quinzenal..."/>
                 </label>
                 <label>Tipo de moradia
                   <select value={form.housingType||""} onChange={e=>setForm(s=>({...s,housingType:e.target.value}))}>
-                    <option value="">NÃ£o informado</option>
+                    <option value="">Não informado</option>
                     {["Alvenaria","Madeira","Taipa","Improvisada","Outro"].map(o=><option key={o} value={o}>{o}</option>)}
                   </select>
                 </label>
-                <label>Abastecimento de Ã¡gua
+                <label>Abastecimento de água
                   <select value={form.waterSupply||""} onChange={e=>setForm(s=>({...s,waterSupply:e.target.value}))}>
-                    <option value="">NÃ£o informado</option>
-                    {["Rede pÃºblica","PoÃ§o/nascente","Outros"].map(o=><option key={o} value={o}>{o}</option>)}
+                    <option value="">Não informado</option>
+                    {["Rede pública","Poço/nascente","Outros"].map(o=><option key={o} value={o}>{o}</option>)}
                   </select>
                 </label>
-                <label>Esgotamento sanitÃ¡rio
+                <label>Esgotamento sanitário
                   <select value={form.sewage||""} onChange={e=>setForm(s=>({...s,sewage:e.target.value}))}>
-                    <option value="">NÃ£o informado</option>
-                    {["Rede pÃºblica","Fossa sÃ©ptica","Fossa rudimentar","CÃ©u aberto","Outro"].map(o=><option key={o} value={o}>{o}</option>)}
+                    <option value="">Não informado</option>
+                    {["Rede pública","Fossa séptica","Fossa rudimentar","Céu aberto","Outro"].map(o=><option key={o} value={o}>{o}</option>)}
                   </select>
                 </label>
                 <label>Destino do lixo
                   <select value={form.garbage||""} onChange={e=>setForm(s=>({...s,garbage:e.target.value}))}>
-                    <option value="">NÃ£o informado</option>
-                    {["Coletado","Queimado","Enterrado","CÃ©u aberto","Outro"].map(o=><option key={o} value={o}>{o}</option>)}
+                    <option value="">Não informado</option>
+                    {["Coletado","Queimado","Enterrado","Céu aberto","Outro"].map(o=><option key={o} value={o}>{o}</option>)}
                   </select>
                 </label>
-                <label>Energia elÃ©trica
+                <label>Energia elétrica
                   <select value={form.electricity||""} onChange={e=>setForm(s=>({...s,electricity:e.target.value}))}>
-                    <option value="">NÃ£o informado</option>
-                    {["Sim","NÃ£o","Irregular"].map(o=><option key={o} value={o}>{o}</option>)}
+                    <option value="">Não informado</option>
+                    {["Sim","Não","Irregular"].map(o=><option key={o} value={o}>{o}</option>)}
                   </select>
                 </label>
               </div>
@@ -11458,9 +11434,9 @@ function AppInner() {
       {showViewModal&&viewPatient&&(
         <Modal title="Visualizar paciente" onClose={()=>{setShowViewModal(false);setViewPatient(null);}}>
           <div className="field-grid">
-            {/* SeÃ§Ã£o 1: Grupo */}
+            {/* Seção 1: Grupo */}
             <label>Grupo / Categoria<input value={catLabel(templates,viewPatient.careCategory)} disabled/></label>
-            <label>ACS responsÃ¡vel<input value={users.find(u=>u.id===viewPatient.assignedAcsId)?.name||"NÃ£o atribuÃ­do"} disabled/></label>
+            <label>ACS responsável<input value={users.find(u=>u.id===viewPatient.assignedAcsId)?.name||"Não atribuído"} disabled/></label>
             <label style={{display:"flex",flexDirection:"column",gap:".3rem"}} className="field-span-2">
               Condição crônica
               <div style={{display:"flex",gap:"1.25rem",padding:".5rem .75rem",background:"var(--surface-2)",borderRadius:"var(--r-md)",border:"1px solid var(--border)",flexWrap:"wrap",opacity:.7}}>
@@ -11472,63 +11448,63 @@ function AppInner() {
                 ))}
               </div>
             </label>
-            {/* SeÃ§Ã£o 2: IdentificaÃ§Ã£o */}
-            <label className="field-span-2">Nome completo<input value={String(viewPatient.name||"-")} disabled/></label>
-            {isChildCategory(viewPatient.careCategory)&&<label className="field-span-2">Nome do responsÃ¡vel<input value={String(viewPatient.motherName||"-")} disabled/></label>}
-            <label>Data de nascimento<input value={viewPatient.birthDate ? `${fmtDate(viewPatient.birthDate)}${calcAge(viewPatient.birthDate) ? " Â· " + calcAge(viewPatient.birthDate) : ""}` : "-"} disabled/></label>
-            <label>Sexo<input value={String(viewPatient.sex||"-")} disabled/></label>
-            <label>Município de nascimento<input value={String(viewPatient.birthCity||"-")} disabled/></label>
-            <label>UF de nascimento<input value={String(viewPatient.birthState||"-")} disabled/></label>
-            <label>Raça / Cor<input value={String(viewPatient.raceColor||"-")} disabled/></label>
+            {/* Seção 2: Identificação */}
+            <label className="field-span-2">Nome completo<input value={displayText(viewPatient.name)} disabled/></label>
+            {isChildCategory(viewPatient.careCategory)&&<label className="field-span-2">Nome do responsável<input value={displayText(viewPatient.guardianName||viewPatient.motherName)} disabled/></label>}
+            <label>Data de nascimento<input value={viewPatient.birthDate ? `${fmtDate(viewPatient.birthDate)}${calcAge(viewPatient.birthDate) ? " · " + calcAge(viewPatient.birthDate) : ""}` : "-"} disabled/></label>
+            <label>Sexo<input value={displayText(viewPatient.sex)} disabled/></label>
+            <label>Município de nascimento<input value={displayText(viewPatient.birthCity)} disabled/></label>
+            <label>UF de nascimento<input value={displayText(viewPatient.birthState)} disabled/></label>
+            <label>Raça / Cor<input value={displayText(viewPatient.raceColor)} disabled/></label>
             {!isChildCategory(viewPatient.careCategory)&&(
               <label>Estado civil
                 <select value={viewPatient.maritalStatus||""} disabled>
-                  <option value="">NÃ£o informado</option>
+                  <option value="">Não informado</option>
                   <option value="solteiro">Solteiro(a)</option>
                   <option value="casado">Casado(a)</option>
-                  <option value="uniao_estavel">UniÃ£o estÃ¡vel</option>
+                  <option value="uniao_estavel">União estável</option>
                   <option value="divorciado">Divorciado(a)</option>
                   <option value="separado">Separado(a)</option>
-                  <option value="viuvo">ViÃºvo(a)</option>
+                  <option value="viuvo">Viúvo(a)</option>
                 </select>
               </label>
             )}
-            <label>CPF<input value={String(viewPatient.cpf||"-")} disabled/></label>
-            <label>CNS<input value={String(viewPatient.cns||"-")} disabled/></label>
-            {/* SeÃ§Ã£o 3: Contato */}
-            <label>Telefone<input value={String(viewPatient.phone||"-")} disabled/></label>
-            <label>Telefone 2<input value={String(viewPatient.phoneAlt||"-")} disabled/></label>
-            {/* SeÃ§Ã£o 4: EndereÃ§o */}
-            <label>CEP<input value={String(viewPatient.zipCode||"-")} disabled/></label>
-            <label>Rua<input value={String(viewPatient.address||"-")} disabled/></label>
-            <label>NÃºmero<input value={String(viewPatient.number||"-")} disabled/></label>
-            <label>Complemento<input value={String(viewPatient.complement||"-")} disabled/></label>
-            <label>Bairro<input value={String(viewPatient.neighborhood||"-")} disabled/></label>
-            <label>Cidade<input value={String(viewPatient.city||"-")} disabled/></label>
-            <label>Estado (UF)<input value={String(viewPatient.state||"-")} disabled/></label>
-            <label>Código familiar<input value={String(viewPatient.familyCode||"-")} disabled/></label>
-            <label>Frequência de visita domiciliar<input value={String(viewPatient.homeVisitFreq||"-")} disabled/></label>
-            <label>Tipo de moradia<input value={String(viewPatient.housingType||"-")} disabled/></label>
-            <label>Abastecimento de água<input value={String(viewPatient.waterSupply||"-")} disabled/></label>
-            <label>Esgotamento sanitário<input value={String(viewPatient.sewage||"-")} disabled/></label>
-            <label>Coleta de lixo<input value={String(viewPatient.garbage||"-")} disabled/></label>
-            <label>Energia elétrica<input value={String(viewPatient.electricity||"-")} disabled/></label>
-            {/* SeÃ§Ã£o 5: GestaÃ§Ã£o */}
+            <label>CPF<input value={displayText(viewPatient.cpf)} disabled/></label>
+            <label>CNS<input value={displayText(viewPatient.cns)} disabled/></label>
+            {/* Seção 3: Contato */}
+            <label>Telefone<input value={displayText(viewPatient.phone)} disabled/></label>
+            <label>Telefone 2<input value={displayText(viewPatient.phoneAlt)} disabled/></label>
+            {/* Seção 4: Endereço */}
+            <label>CEP<input value={displayText(viewPatient.zipCode)} disabled/></label>
+            <label>Rua<input value={displayText(viewPatient.address)} disabled/></label>
+            <label>Número<input value={displayText(viewPatient.number)} disabled/></label>
+            <label>Complemento<input value={displayText(viewPatient.complement)} disabled/></label>
+            <label>Bairro<input value={displayText(viewPatient.neighborhood)} disabled/></label>
+            <label>Cidade<input value={displayText(viewPatient.city)} disabled/></label>
+            <label>Estado (UF)<input value={displayText(viewPatient.state)} disabled/></label>
+            <label>Código familiar<input value={displayText(viewPatient.familyCode)} disabled/></label>
+            <label>Frequência de visita domiciliar<input value={displayText(viewPatient.homeVisitFreq)} disabled/></label>
+            <label>Tipo de moradia<input value={displayText(viewPatient.housingType)} disabled/></label>
+            <label>Abastecimento de água<input value={displayText(viewPatient.waterSupply)} disabled/></label>
+            <label>Esgotamento sanitário<input value={displayText(viewPatient.sewage)} disabled/></label>
+            <label>Coleta de lixo<input value={displayText(viewPatient.garbage)} disabled/></label>
+            <label>Energia elétrica<input value={displayText(viewPatient.electricity)} disabled/></label>
+            {/* Seção 5: Gestação */}
             {String(viewPatient.careCategory||"").toLowerCase()==="pregnant"&&<>
               <label>DUM<input value={fmtDate(viewPatient.pregnancyStartDate)} disabled/></label>
               <label>DPP<input value={fmtDate(viewPatient.expectedDeliveryDate)} disabled/></label>
-              <label>IG DUM (sem)<input value={String(viewPatient.gestationalAgeDumWeeks??"-")} disabled/></label>
-              <label>IG DUM (dias)<input value={String(viewPatient.gestationalAgeDumDays??"-")} disabled/></label>
-              <label>Data 1Âª USG<input value={fmtDate(viewPatient.usgDate1)} disabled/></label>
-              <label>IG USG (sem)<input value={String(viewPatient.gestationalAgeUsgWeeks??"-")} disabled/></label>
-              <label>IG USG (dias)<input value={String(viewPatient.gestationalAgeUsgDays??"-")} disabled/></label>
-              <label>Data 2Âª USG<input value={fmtDate(viewPatient.usgDate2)} disabled/></label>
-              <label>Data 3Âª USG<input value={fmtDate(viewPatient.usgDate3)} disabled/></label>
+              <label>IG DUM (sem)<input value={displayText(viewPatient.gestationalAgeDumWeeks)} disabled/></label>
+              <label>IG DUM (dias)<input value={displayText(viewPatient.gestationalAgeDumDays)} disabled/></label>
+              <label>Data 1ª USG<input value={fmtDate(viewPatient.usgDate1)} disabled/></label>
+              <label>IG USG (sem)<input value={displayText(viewPatient.gestationalAgeUsgWeeks)} disabled/></label>
+              <label>IG USG (dias)<input value={displayText(viewPatient.gestationalAgeUsgDays)} disabled/></label>
+              <label>Data 2ª USG<input value={fmtDate(viewPatient.usgDate2)} disabled/></label>
+              <label>Data 3ª USG<input value={fmtDate(viewPatient.usgDate3)} disabled/></label>
             </>}
-            {/* SeÃ§Ã£o 6: ClÃ­nico */}
-            <label className="field-span-2">Alergias conhecidas<textarea value={String(viewPatient.allergies||"-")} disabled style={{minHeight:56}}/></label>
-            <label className="field-span-2">Comorbidades<textarea value={String(viewPatient.comorbidities||"-")} disabled style={{minHeight:56}}/></label>
-            <label className="field-span-2">Medicamentos em uso contÃ­nuo<textarea value={String(viewPatient.medications||"-")} disabled style={{minHeight:56}}/></label>
+            {/* Seção 6: Clínico */}
+            <label className="field-span-2">Alergias conhecidas<textarea value={displayText(viewPatient.allergies)} disabled style={{minHeight:56}}/></label>
+            <label className="field-span-2">Comorbidades<textarea value={displayText(viewPatient.comorbidities)} disabled style={{minHeight:56}}/></label>
+            <label className="field-span-2">Medicamentos em uso contínuo<textarea value={displayText(viewPatient.medications)} disabled style={{minHeight:56}}/></label>
           </div>
         </Modal>
       )}

@@ -2765,12 +2765,13 @@ function evaluateChildProtocol(patient, history, template = null) {
   };
 }
 
-function evaluateElderlyProtocol(_patient, history) {
+function evaluateElderlyProtocol(patient, history) {
   const alerts = [];
   const categoryLabel = "Pessoa Idosa";
   const now = toDateOnlySafe(new Date());
   const periodStart = addDays(now, -365);
   const periodHistory = filterHistoryByPeriod(history, periodStart, now);
+  const hasAssignedAcs = Boolean(String(patient?.assignedAcsId || "").trim());
 
   const consultations = periodHistory.filter((h) => isClinicalConsultation(h));
   const visits = periodHistory
@@ -2806,7 +2807,16 @@ function evaluateElderlyProtocol(_patient, history) {
       }
     }
   }
-  if (!visitsWithMinInterval) {
+  if (!hasAssignedAcs) {
+    alerts.push(makeClinicalAlert({
+      id: "elderly-acs-missing",
+      activity: "vínculo ACS",
+      title: "Paciente sem ACS vinculado",
+      detail: "Atribua um ACS para habilitar e contabilizar visitas domiciliares no protocolo.",
+      severity: "medium",
+      categoryLabel
+    }));
+  } else if (!visitsWithMinInterval) {
     alerts.push(makeClinicalAlert({
       id: "elderly-visits-12m",
       activity: "visitas ACS em 12 meses",
@@ -2864,6 +2874,7 @@ function evaluateChronicProtocol(patient, history) {
   const period12Start = addDays(now, -365);
   const daysLeft6m = monitorWindowDaysLeft(patient, 183);
   const daysLeft12m = monitorWindowDaysLeft(patient, 365);
+  const hasAssignedAcs = Boolean(String(patient?.assignedAcsId || "").trim());
   const history6 = filterHistoryByPeriod(history, period6Start, now);
   const history12 = filterHistoryByPeriod(history, period12Start, now);
   const consultations6 = history6.filter((h) => isClinicalConsultation(h));
@@ -2884,6 +2895,7 @@ function evaluateChronicProtocol(patient, history) {
     }
   }
 
+  let missingAcsAlertAdded = false;
   for (const condition of conditions) {
     const label = condition === "diabetes" ? "Diabetes" : "Hipertensão";
     if (consultations6.length < 1) {
@@ -2898,7 +2910,19 @@ function evaluateChronicProtocol(patient, history) {
         categoryLabel
       }));
     }
-    if (!visitsWithMinInterval) {
+    if (!hasAssignedAcs) {
+      if (!missingAcsAlertAdded) {
+        alerts.push(makeClinicalAlert({
+          id: "chronic-acs-missing",
+          activity: "vínculo ACS",
+          title: "Paciente sem ACS vinculado",
+          detail: "Atribua um ACS para habilitar e contabilizar visitas domiciliares no monitoramento crônico.",
+          severity: "medium",
+          categoryLabel
+        }));
+        missingAcsAlertAdded = true;
+      }
+    } else if (!visitsWithMinInterval) {
       alerts.push(makeClinicalAlert({
         id: `chronic-${condition}-visits-12m`,
         activity: "visitas ACS em 12 meses",
@@ -3286,6 +3310,9 @@ function validateClinicalRecordPayload({ user, patient, type, title, date, detai
 
   if (isDoctor(user) && type === "visit") {
     return { ok: false, error: "Médica não registra visita domiciliar" };
+  }
+  if (type === "visit" && !String(patient?.assignedAcsId || "").trim()) {
+    return { ok: false, error: "Não é possível registrar visita sem ACS responsável vinculado ao paciente" };
   }
 
   if (type === "vaccine") {
