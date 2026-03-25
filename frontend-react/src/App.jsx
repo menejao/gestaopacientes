@@ -14,26 +14,13 @@ import {
 /* â”€â”€ Service Worker â€” Offline Support â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const swCode = `
-const CACHE = "saudeubs-v2";
-const ASSETS = ["/", "/index.html"];
-self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{})); self.skipWaiting(); });
-self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))); self.clients.claim(); });
-self.addEventListener("fetch", e => {
-  const url = new URL(e.request.url);
-  if (["/api","/patients","/me","/users","/bootstrap","/auth"].some(p=>url.pathname.startsWith(p))) {
-    e.respondWith(fetch(e.request).catch(()=>new Response(JSON.stringify({error:"offline",offline:true}),{status:503,headers:{"Content-Type":"application/json"}})));
-    return;
+  // Evita servir bundle antigo em produção (stale cache).
+  navigator.serviceWorker.getRegistrations()
+    .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+    .catch(() => {});
+  if ("caches" in window) {
+    caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {});
   }
-  e.respondWith(caches.match(e.request).then(cached=>{
-    if(cached) return cached;
-    return fetch(e.request).then(r=>{
-      if(r&&r.status===200){const c=r.clone();caches.open(CACHE).then(cache=>cache.put(e.request,c));}
-      return r;
-    }).catch(()=>caches.match("/index.html"));
-  }));
-});`;
-  try { const blob=new Blob([swCode],{type:"application/javascript"}); navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{}); } catch {}
 }
 registerServiceWorker();
 
