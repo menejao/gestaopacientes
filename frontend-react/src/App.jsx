@@ -5,7 +5,7 @@ import {
   createRecord, createTask, createUser, deleteAppointment, deletePatient,
   deleteProtocolTemplate, deleteRecord, deleteUser, getUserUsage,
   getPatientHistory, getPatientProtocolSummary, getProtocolSummaries,
-  listAppointments, listMessages, listPatients, listProtocolTemplates,
+  getApiHealth, listAppointments, listMessages, listPatients, listProtocolTemplates,
   listTasks, listUsers, login, listPublicTeams, pingPresence, register, sendMessage,
   updateProtocolTemplate, updatePatient, updateUser, updateTaskStatus,
 } from "./api";
@@ -278,6 +278,7 @@ const NAV_ICON = {
   gestor:     <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 4.5h11v8h-11z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M2.5 7.5h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M5 11h2M9 11h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M6 2.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   ai:         <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 3h3l-2.5 2 1 3L8 7.5 5 9l1-3L3.5 4h3L8 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M3 12h10M5 14h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
   exams_page: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4"/><path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="11.5" cy="11.5" r="2.8" fill="var(--surface)" stroke="currentColor" strokeWidth="1.3"/><path d="M10.5 11.5h2M11.5 10.5v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+  diagnostics:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 2h12v12H2z" stroke="currentColor" strokeWidth="1.4"/><path d="M4.5 11V8.5M8 11V5M11.5 11V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M4 4h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
 };
 
 /* Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
@@ -638,6 +639,7 @@ function buildNavItems(user, canManageUser) {
   if (isGestor(user) && !admin) {
     items.push({ id:"gestor",   label:"GestÃ£o Ã  Vista",  section:"" });
     items.push({ id:"reports",  label:"RelatÃ³rios",       section:"" });
+    items.push({ id:"diagnostics", label:"DiagnÃ³sticos",   section:"" });
     items.push({ id:"patients", label:"Pacientes",        section:"VisualizaÃ§Ã£o" });
     items.push({ id:"ai",       label:"IA Assistida",     section:"" });
     return items;
@@ -675,6 +677,7 @@ function buildNavItems(user, canManageUser) {
   // 6. GestÃ£o & IA
   if (canManageUser || admin) items.push({ id:"gestor", label:"GestÃ£o Ã  Vista", section:"GestÃ£o" });
   if (canManageUser || admin) items.push({ id:"reports", label:"RelatÃ³rios", section:"" });
+  if (canManageUser || admin || isGestor(user)) items.push({ id:"diagnostics", label:"DiagnÃ³sticos", section:"" });
   if (canAccessAI(user)) items.push({ id:"ai", label:"IA Assistida", section:"" });
 
   return items;
@@ -1241,7 +1244,7 @@ function Sidebar({ tab, setTab, mobileOpen, setMobileOpen, query, setQuery, user
 /* Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
    TOPBAR
 Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â */
-function Topbar({ user, selectedPatient, templates, mobileOpen, setMobileOpen, onLogout, onOpenProfile, patients, protocolByPatient, onNavigatePatient }) {
+function Topbar({ user, selectedPatient, templates, mobileOpen, setMobileOpen, onLogout, onOpenProfile, patients, protocolByPatient, onNavigatePatient, apiHealth }) {
   const [dropOpen, setDropOpen] = useState(false);
 
   // close on outside click
@@ -1277,6 +1280,19 @@ function Topbar({ user, selectedPatient, templates, mobileOpen, setMobileOpen, o
       <div className="topbar-center"/>
 
       <div className="topbar-right">
+        <div style={{
+          display:"flex",alignItems:"center",gap:".35rem",
+          padding:".22rem .5rem",borderRadius:999,
+          border:"1px solid var(--border)",background:"var(--surface-2)"
+        }}>
+          <span style={{
+            width:7,height:7,borderRadius:"50%",
+            background: apiHealth?.status==="ok" ? "var(--green-600)" : apiHealth?.status==="checking" ? "var(--amber-600)" : "var(--red-600,#dc2626)"
+          }}/>
+          <span style={{fontSize:".72rem",color:"var(--text-2)",fontWeight:600}}>
+            API {apiHealth?.label || "Verificando..."}
+          </span>
+        </div>
         <GlobalSearch patients={patients||[]} templates={templates||[]} onNavigate={onNavigatePatient||(_=>{})}/>
         <NotificationBell patients={patients||[]} protocolByPatient={protocolByPatient||{}} pharmacyStock={readLS("saudeubs_pharmacy_v1",[])} agenda={readLS(AGENDA_KEY,[])} onNavigate={onNavigatePatient||(_=>{})}/>
         {/* Paciente selecionado â€” discreto, prÃ³ximo ao perfil */}
@@ -10195,6 +10211,71 @@ function Modal({ title, onClose, children }) {
   );
 }
 
+function DiagnosticsPage({ apiHealth, token, user, patients, users, templates, lastLoadAt, demandMonthly }) {
+  const sessionAgeMin = useMemo(() => {
+    const issuedAt = Number(user?.iat || 0) * 1000;
+    if (!issuedAt) return null;
+    return Math.max(0, Math.round((Date.now() - issuedAt) / 60000));
+  }, [user?.iat]);
+
+  const updatedAt = apiHealth?.checkedAt
+    ? new Date(apiHealth.checkedAt).toLocaleString("pt-BR")
+    : "-";
+
+  const healthColor = apiHealth?.status === "ok"
+    ? "var(--green-600)"
+    : apiHealth?.status === "degraded"
+      ? "var(--amber-600)"
+      : "var(--red-600,#dc2626)";
+
+  const latency = Number(apiHealth?.latencyMs || 0);
+  const totalRecords = useMemo(() => {
+    try {
+      return (patients || []).reduce((sum, p) => sum + Number(p?.historyCount || 0), 0);
+    } catch {
+      return 0;
+    }
+  }, [patients]);
+
+  return (
+    <div style={{padding:"1.15rem 1.2rem",display:"grid",gap:"1rem"}}>
+      <section className="panel-card">
+        <div className="panel-card-hd">Diagnósticos do sistema</div>
+        <p className="home-task-meta">Visão técnica para suporte: conectividade, sessão, carga e consistência básica.</p>
+      </section>
+
+      <section className="grid-cards" style={{gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))"}}>
+        <div className="panel-card">
+          <div className="muted tiny" style={{textTransform:"uppercase",letterSpacing:".08em"}}>API</div>
+          <div style={{fontSize:"1.2rem",fontWeight:800,color:healthColor}}>
+            {apiHealth?.label || "Indefinido"}
+          </div>
+          <div className="muted small">Última verificação: {updatedAt}</div>
+          <div className="muted small">Latência: {latency ? `${latency} ms` : "-"}</div>
+        </div>
+        <div className="panel-card">
+          <div className="muted tiny" style={{textTransform:"uppercase",letterSpacing:".08em"}}>Sessão</div>
+          <div style={{fontSize:"1.2rem",fontWeight:800}}>{token ? "Ativa" : "Inativa"}</div>
+          <div className="muted small">Perfil: {roleLabel(user?.role)}</div>
+          <div className="muted small">Tempo de sessão: {sessionAgeMin === null ? "-" : `${sessionAgeMin} min`}</div>
+        </div>
+        <div className="panel-card">
+          <div className="muted tiny" style={{textTransform:"uppercase",letterSpacing:".08em"}}>Carga local</div>
+          <div style={{fontSize:"1.2rem",fontWeight:800}}>{patients?.length || 0} pacientes</div>
+          <div className="muted small">{users?.length || 0} usuários · {templates?.length || 0} protocolos</div>
+          <div className="muted small">Histórico agregado: {totalRecords}</div>
+        </div>
+        <div className="panel-card">
+          <div className="muted tiny" style={{textTransform:"uppercase",letterSpacing:".08em"}}>Última carga</div>
+          <div style={{fontSize:"1.2rem",fontWeight:800}}>{lastLoadAt ? new Date(lastLoadAt).toLocaleTimeString("pt-BR") : "-"}</div>
+          <div className="muted small">Demanda total: {Number(demandMonthly?.totals?.total ?? 0)}</div>
+          <div className="muted small">Agendados: {Number(demandMonthly?.totals?.scheduled ?? 0)} · Espontâneos: {Number(demandMonthly?.totals?.walkin ?? 0)}</div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 /* Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
    MAIN APP
 Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â */
@@ -10274,6 +10355,8 @@ function AppInner() {
   const [patientProtocolSummary, setPatientProtocolSummary] = useState(null);
   const [busy,  setBusy]  = useState(false);
   const [error, setError] = useState("");
+  const [apiHealth, setApiHealth] = useState({ status:"checking", label:"Verificando...", latencyMs:0, checkedAt:null });
+  const [lastLoadAt, setLastLoadAt] = useState(null);
   const [demandMonthly, setDemandMonthly] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [publicTeams,  setPublicTeams]  = useState([]);
@@ -10512,7 +10595,35 @@ function AppInner() {
     } catch(e) { console.error("sortedSpecialAlerts error:", e); return []; }
   },[rosaAdjustedSummary, selectedPatient, isEquipeRosaUser, history]);
 
+  async function refreshApiHealth() {
+    const startedAt = Date.now();
+    try {
+      const payload = await getApiHealth();
+      const latencyMs = Date.now() - startedAt;
+      setApiHealth({
+        status: "ok",
+        label: payload?.ok ? "Online" : "Instável",
+        latencyMs,
+        checkedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      const latencyMs = Date.now() - startedAt;
+      setApiHealth({
+        status: "down",
+        label: "Offline",
+        latencyMs,
+        checkedAt: new Date().toISOString(),
+      });
+    }
+  }
+
   useEffect(()=>{ if(token) loadAll(); },[token]);
+
+  useEffect(() => {
+    refreshApiHealth();
+    const intervalId = setInterval(refreshApiHealth, 45000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   useEffect(()=>{
     if(!token||String(token).startsWith("local_")) return;
@@ -10616,6 +10727,7 @@ function AppInner() {
         const sums=await getProtocolSummaries(token,pts.map(p=>p.id).filter(Boolean));
         setProtocolByPatient(sums?.summaries||{});
       } else setProtocolByPatient({});
+      setLastLoadAt(new Date().toISOString());
     } catch(e){ if(!handleApiError(e)) setError(e.message||"Falha ao carregar dados"); } finally{ setBusy(false); }
   }
 
@@ -11069,6 +11181,7 @@ function AppInner() {
         mobileOpen={mobileNavOpen} setMobileOpen={setMobileNavOpen}
         onLogout={logout} onOpenProfile={openProfile}
         patients={patients} protocolByPatient={protocolByPatient}
+        apiHealth={apiHealth}
         onNavigatePatient={(id)=>{ setTab("patients"); setSelectedPatientId(id); }}
       />
       <div className="app-body">
@@ -11098,6 +11211,18 @@ function AppInner() {
           {tab==="exams_page"&&<ExamsPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
           {tab==="gestor"&&<GestorPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
           {tab==="reports"&&<ReportsPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
+          {tab==="diagnostics"&&(
+            <DiagnosticsPage
+              apiHealth={apiHealth}
+              token={token}
+              user={user}
+              patients={patients}
+              users={users}
+              templates={templates}
+              lastLoadAt={lastLoadAt}
+              demandMonthly={demandMonthly}
+            />
+          )}
 
           {tab==="patients"&&(
             <PatientsTab

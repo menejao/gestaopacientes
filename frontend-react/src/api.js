@@ -1,30 +1,68 @@
-const API_URL = import.meta.env.VITE_API_URL || "https://saude-backend-gkj7.onrender.com";
+﻿export const API_URL = import.meta.env.VITE_API_URL || "https://saude-backend-gkj7.onrender.com";
+
+const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetryStatus(status, customStatuses) {
+  if (Array.isArray(customStatuses) && customStatuses.length > 0) {
+    return customStatuses.includes(status);
+  }
+  return RETRYABLE_STATUSES.has(status);
+}
 
 export async function api(path, options = {}, token = "") {
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers || {})
-  };
+  const {
+    retryCount = 0,
+    retryDelayMs = 350,
+    retryStatuses,
+    ...fetchOptions
+  } = options || {};
+
+  const headers = { ...(fetchOptions.headers || {}) };
+  const isFormData = typeof FormData !== "undefined" && fetchOptions.body instanceof FormData;
+  if (!isFormData && !headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "application/json";
+  }
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  let response;
-  try {
-    response = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers
-    });
-  } catch (err) {
-    const message = String(err?.message || "");
-    if (message.toLowerCase().includes("failed to fetch")) {
-      throw new Error("Falha de conexão com o servidor");
+  for (let attempt = 0; attempt <= retryCount; attempt += 1) {
+    let response;
+
+    try {
+      response = await fetch(`${API_URL}${path}`, {
+        ...fetchOptions,
+        headers
+      });
+    } catch (err) {
+      const message = String(err?.message || "");
+      if (attempt < retryCount) {
+        const waitMs = retryDelayMs * (attempt + 1) + Math.floor(Math.random() * 120);
+        await sleep(waitMs);
+        continue;
+      }
+      if (message.toLowerCase().includes("failed to fetch")) {
+        throw new Error("Falha de conexão com o servidor");
+      }
+      throw err;
     }
-    throw err;
+
+    if (!response.ok) {
+      if (attempt < retryCount && shouldRetryStatus(response.status, retryStatuses)) {
+        const waitMs = retryDelayMs * (attempt + 1) + Math.floor(Math.random() * 120);
+        await sleep(waitMs);
+        continue;
+      }
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body?.error || "Erro na API");
+    }
+
+    return response.json();
   }
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body?.error || "Erro na API");
-  }
-  return response.json();
+
+  throw new Error("Erro na API");
 }
 
 export async function login(email, password) {
@@ -42,15 +80,15 @@ export async function register(payload) {
 }
 
 export async function listPublicTeams() {
-  return api("/teams/public", { method: "GET" });
+  return api("/teams/public", { method: "GET", retryCount: 2 });
 }
 
 export async function bootstrap(token) {
-  return api("/bootstrap", { method: "GET" }, token);
+  return api("/bootstrap", { method: "GET", retryCount: 2 }, token);
 }
 
 export async function listPatients(token) {
-  return api("/patients", { method: "GET" }, token);
+  return api("/patients", { method: "GET", retryCount: 2 }, token);
 }
 
 export async function createPatient(token, payload) {
@@ -66,7 +104,7 @@ export async function deletePatient(token, id) {
 }
 
 export async function listProtocolTemplates(token) {
-  return api("/protocol/templates", { method: "GET" }, token);
+  return api("/protocol/templates", { method: "GET", retryCount: 2 }, token);
 }
 
 export async function createProtocolTemplate(token, payload) {
@@ -83,19 +121,19 @@ export async function deleteProtocolTemplate(token, category) {
 
 export async function getProtocolSummaries(token, ids) {
   const query = encodeURIComponent(ids.join(","));
-  return api(`/patients/protocol-summaries?ids=${query}`, { method: "GET" }, token);
+  return api(`/patients/protocol-summaries?ids=${query}`, { method: "GET", retryCount: 2 }, token);
 }
 
 export async function getPatientProtocolSummary(token, patientId) {
-  return api(`/patients/${patientId}/protocol-summary`, { method: "GET" }, token);
+  return api(`/patients/${patientId}/protocol-summary`, { method: "GET", retryCount: 2 }, token);
 }
 
 export async function getPatientHistory(token, patientId) {
-  return api(`/patients/${patientId}/history`, { method: "GET" }, token);
+  return api(`/patients/${patientId}/history`, { method: "GET", retryCount: 2 }, token);
 }
 
 export async function listAppointments(token, patientId) {
-  return api(`/patients/${patientId}/appointments`, { method: "GET" }, token);
+  return api(`/patients/${patientId}/appointments`, { method: "GET", retryCount: 2 }, token);
 }
 
 export async function createAppointment(token, patientId, payload) {
@@ -107,7 +145,7 @@ export async function deleteAppointment(token, patientId, appointmentId) {
 }
 
 export async function listTasks(token, patientId) {
-  return api(`/tasks?patientId=${encodeURIComponent(patientId)}`, { method: "GET" }, token);
+  return api(`/tasks?patientId=${encodeURIComponent(patientId)}`, { method: "GET", retryCount: 2 }, token);
 }
 
 export async function createTask(token, payload) {
@@ -119,7 +157,7 @@ export async function updateTaskStatus(token, taskId, status) {
 }
 
 export async function listMessages(token, patientId) {
-  return api(`/patients/${patientId}/messages`, { method: "GET" }, token);
+  return api(`/patients/${patientId}/messages`, { method: "GET", retryCount: 2 }, token);
 }
 
 export async function sendMessage(token, patientId, text) {
@@ -135,7 +173,7 @@ export async function deleteRecord(token, patientId, recordId) {
 }
 
 export async function listUsers(token) {
-  return api("/users", { method: "GET" }, token);
+  return api("/users", { method: "GET", retryCount: 2 }, token);
 }
 
 export async function createUser(token, payload) {
@@ -155,19 +193,23 @@ export async function deleteUser(token, userId) {
 }
 
 export async function aiTeamPriorities(token) {
-  return api("/ai/team/priorities", { method: "POST", body: JSON.stringify({}) }, token);
+  return api("/ai/team/priorities", { method: "POST", body: JSON.stringify({}), retryCount: 1 }, token);
 }
 
 export async function aiTeamDataQuality(token) {
-  return api("/ai/team/data-quality", { method: "POST", body: JSON.stringify({}) }, token);
+  return api("/ai/team/data-quality", { method: "POST", body: JSON.stringify({}), retryCount: 1 }, token);
 }
 
 export async function aiTeamReport(token) {
-  return api("/ai/team/report", { method: "POST", body: JSON.stringify({}) }, token);
+  return api("/ai/team/report", { method: "POST", body: JSON.stringify({}), retryCount: 1 }, token);
 }
 
 export async function aiTeamAsk(token, question) {
-  return api("/ai/chat", { method: "POST", body: JSON.stringify({ question }) }, token);
+  return api("/ai/chat", { method: "POST", body: JSON.stringify({ question }), retryCount: 1 }, token);
+}
+
+export async function getApiHealth() {
+  return api("/health", { method: "GET", retryCount: 1, retryDelayMs: 250 });
 }
 
 export async function pingPresence(token) {
