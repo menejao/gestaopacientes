@@ -221,8 +221,20 @@ async function readDbFromPostgres() {
   const data = deserializeStateFromStorage(result.rows[0]?.data || {});
 
   // Self-heal previously empty state created by earlier deployments.
-  if (!Array.isArray(data.users) || data.users.length === 0) {
-    const seeded = buildDefaultState();
+  const usersEmpty = !Array.isArray(data.users) || data.users.length === 0;
+  const patientsEmpty = !Array.isArray(data.patients) || data.patients.length === 0;
+  if (usersEmpty || patientsEmpty) {
+    let seeded = buildDefaultState();
+    try {
+      const fileSnapshot = await readDbFromFile();
+      const hasUsersInFile = Array.isArray(fileSnapshot?.users) && fileSnapshot.users.length > 0;
+      const hasPatientsInFile = Array.isArray(fileSnapshot?.patients) && fileSnapshot.patients.length > 0;
+      if (hasUsersInFile || hasPatientsInFile) {
+        seeded = fileSnapshot;
+      }
+    } catch {
+      // Se não conseguir ler o arquivo local, segue com estado padrão.
+    }
     await pool.query(
       "UPDATE app_state SET data = $1::jsonb, updated_at = NOW() WHERE id = 1",
       [JSON.stringify(seeded)]
