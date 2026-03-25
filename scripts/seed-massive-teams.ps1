@@ -1,6 +1,7 @@
 param(
   [string]$ApiUrl = "https://saude-backend-gkj7.onrender.com",
   [int]$PatientsPerTeam = 250,
+  [int]$FocusPregChildPerTeam = 40,
   [string]$DefaultPassword = "SaudeUbs@2026!",
   [switch]$SkipUserCreation
 )
@@ -269,6 +270,61 @@ function Build-ChildPatientPayload {
   }
 }
 
+function Build-OtherPatientPayload {
+  param(
+    [string]$TeamName,
+    [string]$AssignedAcsId
+  )
+
+  $first = @("Carlos","Marina","Eliane","Fernando","Joana","Ricardo","Paula","Renata","Tiago","Luciana","Bruno","Camila","Eduardo","Sonia","Jorge")
+  $last  = @("Silva","Souza","Oliveira","Santos","Pereira","Lima","Costa","Almeida","Rocha","Carvalho","Melo","Martins","Araujo","Nunes","Barbosa")
+  $city  = @("SÃ£o Paulo","Guarulhos","Campinas","Santos","Sorocaba","SÃ£o Bernardo do Campo")
+  $neigh = @("Centro","Jardim AmÃ©rica","Vila Nova","Parque das Flores","Jardim SÃ£o JosÃ©","Nova EsperanÃ§a")
+  $street = @("Rua das AcÃ¡cias","Rua SÃ£o JoÃ£o","Avenida Brasil","Rua do ComÃ©rcio","Rua Boa Vista","Avenida Paulista")
+
+  $categories = @("general","puerperal","elderly","pap_only","chronic")
+  $cat = Random-From $categories
+  $ageMin = 20
+  $ageMax = 75
+  if ($cat -eq "elderly") { $ageMin = 60; $ageMax = 90 }
+  if ($cat -eq "pap_only") { $ageMin = 25; $ageMax = 64 }
+  if ($cat -eq "puerperal") { $ageMin = 16; $ageMax = 42 }
+
+  $name = "$(Random-From $first) $(Random-From $last) $(Random-From $last)"
+  $birth = [datetime]::UtcNow.AddYears(-1 * (Get-Random -Minimum $ageMin -Maximum ($ageMax + 1))).AddDays(-1 * (Get-Random -Minimum 0 -Maximum 365))
+  $conditions = @()
+  if ($cat -eq "chronic" -or $cat -eq "elderly") {
+    if ((Get-Random -Minimum 0 -Maximum 100) -lt 70) { $conditions += "hypertension" }
+    if ((Get-Random -Minimum 0 -Maximum 100) -lt 55) { $conditions += "diabetes" }
+  }
+
+  return @{
+    name = $name
+    birthDate = $birth.ToString("yyyy-MM-dd")
+    phone = New-Phone
+    phoneAlt = New-Phone
+    cpf = New-Cpf
+    cns = New-Cns
+    careCategory = $cat
+    assignedAcsId = $AssignedAcsId
+    chronicConditions = $conditions
+    zipCode = "{0:00000}-{1:000}" -f (Get-Random -Minimum 10000 -Maximum 99999), (Get-Random -Minimum 0 -Maximum 1000)
+    address = Random-From $street
+    number = [string](Get-Random -Minimum 1 -Maximum 5000)
+    complement = "Casa $(Get-Random -Minimum 1 -Maximum 50)"
+    neighborhood = Random-From $neigh
+    city = Random-From $city
+    state = "SP"
+    sex = Random-From @("masculino","feminino")
+    raceColor = Random-From @("Branca","Parda","Preta","Amarela","IndÃ­gena")
+    maritalStatus = Random-From @("Solteiro(a)","Casado(a)","UniÃ£o estÃ¡vel","Divorciado(a)","ViÃºvo(a)")
+    allergies = Random-From @("Nega alergias","Alergia a dipirona","")
+    comorbidities = Random-From @("Sem comorbidades relevantes","HipertensÃ£o arterial","Diabetes mellitus","")
+    medications = Random-From @("Losartana 50mg","Metformina 850mg","Sem uso contÃ­nuo","")
+    teamName = $TeamName
+  }
+}
+
 function Create-Record {
   param(
     [string]$Token,
@@ -331,7 +387,7 @@ function Populate-RecordsForPatient {
       Create-Record -Token $Token -PatientId $Patient.id -Type "procedure" -Title "Teste rápido 3º trimestre HIV sífilis" -Date $d -Details "TR de 3º trimestre realizado."
     }
   }
-  else {
+  elseif ($Category -eq "child_followup") {
     $consults = 0
     $visits = 0
     $vaccines = 0
@@ -355,12 +411,47 @@ function Populate-RecordsForPatient {
       $d = $now.AddDays(-1 * (Get-Random -Minimum 1 -Maximum 720))
       Create-Record -Token $Token -PatientId $Patient.id -Type "vaccine" -Title (Random-From $childVaccines) -Date $d -Details "Vacina aplicada em sala de vacina."
     }
+  } else {
+    $consults = 0
+    $visits = 0
+    $vaccines = 0
+
+    if ($scenario -le 30) { $consults = Get-Random -Minimum 0 -Maximum 2; $visits = Get-Random -Minimum 0 -Maximum 1; $vaccines = Get-Random -Minimum 0 -Maximum 1 }
+    elseif ($scenario -le 70) { $consults = Get-Random -Minimum 1 -Maximum 3; $visits = Get-Random -Minimum 1 -Maximum 2; $vaccines = Get-Random -Minimum 0 -Maximum 2 }
+    else { $consults = Get-Random -Minimum 2 -Maximum 5; $visits = Get-Random -Minimum 1 -Maximum 3; $vaccines = Get-Random -Minimum 1 -Maximum 3 }
+
+    1..$consults | ForEach-Object {
+      $d = $now.AddDays(-1 * (Get-Random -Minimum 3 -Maximum 360))
+      $title = Random-From @("Consulta mÃ©dica","Consulta de enfermagem")
+      Create-Record -Token $Token -PatientId $Patient.id -Type "consultation" -Title $title -Date $d -Details "Acompanhamento clÃ­nico."
+    }
+    1..$visits | ForEach-Object {
+      $d = $now.AddDays(-1 * (Get-Random -Minimum 3 -Maximum 360))
+      Create-Record -Token $Token -PatientId $Patient.id -Type "visit" -Title "Visita ACS" -Date $d -Details "Visita domiciliar de acompanhamento."
+    }
+    $vaccinesPool = @("Influenza","COVID-19","Hepatite B","dTpa","HPV","Febre amarela")
+    1..$vaccines | ForEach-Object {
+      $d = $now.AddDays(-1 * (Get-Random -Minimum 1 -Maximum 360))
+      Create-Record -Token $Token -PatientId $Patient.id -Type "vaccine" -Title (Random-From $vaccinesPool) -Date $d -Details "Dose aplicada."
+    }
+
+    if ($Category -eq "chronic") {
+      if ((Get-Random -Minimum 0 -Maximum 100) -lt 65) {
+        $d = $now.AddDays(-1 * (Get-Random -Minimum 1 -Maximum 330))
+        Create-Record -Token $Token -PatientId $Patient.id -Type "procedure" -Title "Hemoglobina glicada solicitada/avaliada" -Date $d -Details "Registro de seguimento de condiÃ§Ã£o crÃ´nica."
+      }
+      if ((Get-Random -Minimum 0 -Maximum 100) -lt 60) {
+        $d = $now.AddDays(-1 * (Get-Random -Minimum 1 -Maximum 330))
+        Create-Record -Token $Token -PatientId $Patient.id -Type "procedure" -Title "AvaliaÃ§Ã£o dos pÃ©s" -Date $d -Details "AvaliaÃ§Ã£o anual dos pÃ©s registrada."
+      }
+    }
   }
 }
 
 Write-Host "== Iniciando seed massivo =="
 Write-Host "API: $ApiUrl"
-Write-Host "Pacientes por equipe: $PatientsPerTeam (foco gestantes + crianças)"
+Write-Host "Pacientes por equipe: $PatientsPerTeam"
+Write-Host "Distribuição alvo: $FocusPregChildPerTeam entre gestantes/crianças + restante misto"
 
 $teams = Invoke-Api -Method "GET" -Path "/teams/public"
 if (-not $teams -or $teams.Count -lt 5) {
@@ -415,11 +506,13 @@ foreach ($team in $selectedTeams) {
   $acsId = [string]$ctx.acsId
   $teamName = [string]$ctx.teamName
 
-  $pregnantCount = [int][math]::Floor($PatientsPerTeam * 0.5)
-  $childCount = $PatientsPerTeam - $pregnantCount
+  $focusCount = [Math]::Min($PatientsPerTeam, $FocusPregChildPerTeam)
+  $pregnantCount = [int][math]::Floor($focusCount * 0.5)
+  $childCount = $focusCount - $pregnantCount
+  $otherCount = $PatientsPerTeam - $focusCount
 
   Write-Host ""
-  Write-Host ("== Equipe {0}: criando {1} gestantes + {2} crianças ==" -f $teamName, $pregnantCount, $childCount)
+  Write-Host ("== Equipe {0}: criando {1} gestantes + {2} crianças + {3} mistos ==" -f $teamName, $pregnantCount, $childCount, $otherCount)
 
   for ($i=1; $i -le $pregnantCount; $i++) {
     $payload = Build-PregnantPatientPayload -TeamName $teamName -AssignedAcsId $acsId
@@ -437,6 +530,15 @@ foreach ($team in $selectedTeams) {
     Populate-RecordsForPatient -Token $teamToken -Patient $created -Category "child_followup"
     $totalRecords += 1
     if (($i % 25) -eq 0) { Write-Host ("   Crianças: {0}/{1}" -f $i, $childCount) }
+  }
+
+  for ($i=1; $i -le $otherCount; $i++) {
+    $payload = Build-OtherPatientPayload -TeamName $teamName -AssignedAcsId $acsId
+    $created = Invoke-Api -Method "POST" -Path "/patients" -Body $payload -Token $teamToken
+    $totalCreated++
+    Populate-RecordsForPatient -Token $teamToken -Patient $created -Category $payload.careCategory
+    $totalRecords += 1
+    if (($i % 10) -eq 0) { Write-Host ("   Mistos: {0}/{1}" -f $i, $otherCount) }
   }
 }
 
