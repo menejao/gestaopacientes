@@ -457,6 +457,25 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = (body) => {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    return json(body);
+  };
+
+  const send = res.send.bind(res);
+  res.send = (body) => {
+    const current = String(res.getHeader("Content-Type") || "");
+    if (typeof body === "string" && (!current || current.startsWith("text/"))) {
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    }
+    return send(body);
+  };
+
+  next();
+});
+
 app.use(express.json({ limit: "1mb" }));
 
 app.use((req, res, next) => {

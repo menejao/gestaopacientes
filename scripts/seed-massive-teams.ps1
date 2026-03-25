@@ -43,6 +43,20 @@ function Invoke-Api {
       } catch {
         $lastErr = $_
         $status = Get-HttpStatusCode $_
+        try {
+          $respBody = $_.ErrorDetails.Message
+          if (-not $respBody -and $_.Exception.Response) {
+            $stream = $_.Exception.Response.GetResponseStream()
+            if ($stream) {
+              $reader = New-Object System.IO.StreamReader($stream)
+              $respBody = $reader.ReadToEnd()
+              $reader.Close()
+            }
+          }
+          if ($status -ge 400 -and $status -lt 500 -and $respBody) {
+            Write-Host ("   ! API {0} {1} => {2}: {3}" -f $Method, $Path, $status, $respBody)
+          }
+        } catch {}
         if ($status -ge 400 -and $status -lt 500 -and $status -ne 429) { break }
         Start-Sleep -Seconds ([Math]::Min(12, 2 * $try))
       }
@@ -56,6 +70,20 @@ function Invoke-Api {
     } catch {
       $lastErr = $_
       $status = Get-HttpStatusCode $_
+      try {
+        $respBody = $_.ErrorDetails.Message
+        if (-not $respBody -and $_.Exception.Response) {
+          $stream = $_.Exception.Response.GetResponseStream()
+          if ($stream) {
+            $reader = New-Object System.IO.StreamReader($stream)
+            $respBody = $reader.ReadToEnd()
+            $reader.Close()
+          }
+        }
+        if ($status -ge 400 -and $status -lt 500 -and $respBody) {
+          Write-Host ("   ! API {0} {1} => {2}: {3}" -f $Method, $Path, $status, $respBody)
+        }
+      } catch {}
       if ($status -ge 400 -and $status -lt 500 -and $status -ne 429) { break }
       Start-Sleep -Seconds ([Math]::Min(12, 2 * $try))
     }
@@ -323,9 +351,9 @@ function Build-OtherPatientPayload {
 
   $first = @("Carlos","Marina","Eliane","Fernando","Joana","Ricardo","Paula","Renata","Tiago","Luciana","Bruno","Camila","Eduardo","Sonia","Jorge")
   $last  = @("Silva","Souza","Oliveira","Santos","Pereira","Lima","Costa","Almeida","Rocha","Carvalho","Melo","Martins","Araujo","Nunes","Barbosa")
-  $city  = @("SÃ£o Paulo","Guarulhos","Campinas","Santos","Sorocaba","SÃ£o Bernardo do Campo")
-  $neigh = @("Centro","Jardim AmÃ©rica","Vila Nova","Parque das Flores","Jardim SÃ£o JosÃ©","Nova EsperanÃ§a")
-  $street = @("Rua das AcÃ¡cias","Rua SÃ£o JoÃ£o","Avenida Brasil","Rua do ComÃ©rcio","Rua Boa Vista","Avenida Paulista")
+  $city  = @("São Paulo","Guarulhos","Campinas","Santos","Sorocaba","São Bernardo do Campo")
+  $neigh = @("Centro","Jardim América","Vila Nova","Parque das Flores","Jardim São José","Nova Esperança")
+  $street = @("Rua das Acácias","Rua São João","Avenida Brasil","Rua do Comércio","Rua Boa Vista","Avenida Paulista")
 
   $categories = @("general","puerperal","elderly","pap_only","chronic")
   $cat = Random-From $categories
@@ -361,11 +389,11 @@ function Build-OtherPatientPayload {
     city = Random-From $city
     state = "SP"
     sex = Random-From @("masculino","feminino")
-    raceColor = Random-From @("Branca","Parda","Preta","Amarela","IndÃ­gena")
-    maritalStatus = Random-From @("Solteiro(a)","Casado(a)","UniÃ£o estÃ¡vel","Divorciado(a)","ViÃºvo(a)")
+    raceColor = Random-From @("Branca","Parda","Preta","Amarela","Indígena")
+    maritalStatus = Random-From @("Solteiro(a)","Casado(a)","União estável","Divorciado(a)","Viúvo(a)")
     allergies = Random-From @("Nega alergias","Alergia a dipirona","")
-    comorbidities = Random-From @("Sem comorbidades relevantes","HipertensÃ£o arterial","Diabetes mellitus","")
-    medications = Random-From @("Losartana 50mg","Metformina 850mg","Sem uso contÃ­nuo","")
+    comorbidities = Random-From @("Sem comorbidades relevantes","Hipertensão arterial","Diabetes mellitus","")
+    medications = Random-From @("Losartana 50mg","Metformina 850mg","Sem uso contínuo","")
     teamName = $TeamName
   }
 }
@@ -467,8 +495,8 @@ function Populate-RecordsForPatient {
 
     1..$consults | ForEach-Object {
       $d = $now.AddDays(-1 * (Get-Random -Minimum 3 -Maximum 360))
-      $title = Random-From @("Consulta mÃ©dica","Consulta de enfermagem")
-      Create-Record -Token $Token -PatientId $Patient.id -Type "consultation" -Title $title -Date $d -Details "Acompanhamento clÃ­nico."
+      $title = Random-From @("Consulta médica","Consulta de enfermagem")
+      Create-Record -Token $Token -PatientId $Patient.id -Type "consultation" -Title $title -Date $d -Details "Acompanhamento clínico."
     }
     1..$visits | ForEach-Object {
       $d = $now.AddDays(-1 * (Get-Random -Minimum 3 -Maximum 360))
@@ -483,11 +511,11 @@ function Populate-RecordsForPatient {
     if ($Category -eq "chronic") {
       if ((Get-Random -Minimum 0 -Maximum 100) -lt 65) {
         $d = $now.AddDays(-1 * (Get-Random -Minimum 1 -Maximum 330))
-        Create-Record -Token $Token -PatientId $Patient.id -Type "procedure" -Title "Hemoglobina glicada solicitada/avaliada" -Date $d -Details "Registro de seguimento de condiÃ§Ã£o crÃ´nica."
+        Create-Record -Token $Token -PatientId $Patient.id -Type "procedure" -Title "Hemoglobina glicada solicitada/avaliada" -Date $d -Details "Registro de seguimento de condição crônica."
       }
       if ((Get-Random -Minimum 0 -Maximum 100) -lt 60) {
         $d = $now.AddDays(-1 * (Get-Random -Minimum 1 -Maximum 330))
-        Create-Record -Token $Token -PatientId $Patient.id -Type "procedure" -Title "AvaliaÃ§Ã£o dos pÃ©s" -Date $d -Details "AvaliaÃ§Ã£o anual dos pÃ©s registrada."
+        Create-Record -Token $Token -PatientId $Patient.id -Type "procedure" -Title "Avaliação dos pés" -Date $d -Details "Avaliação anual dos pés registrada."
       }
     }
   }
