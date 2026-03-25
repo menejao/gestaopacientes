@@ -84,13 +84,18 @@ function Try-RegisterUser {
   }
 
   try {
-    $null = Invoke-Api -Method "POST" -Path "/auth/register" -Body $payload
+    $res = Invoke-Api -Method "POST" -Path "/auth/register" -Body $payload
     Write-Host "   + Usuário criado: $Email"
+    if ($res -and $res.token) {
+      return @{ created = $true; token = [string]$res.token }
+    }
+    return @{ created = $true; token = "" }
   } catch {
     $statusCode = Get-HttpStatusCode $_
     $msg = $_.Exception.Message
     if ($statusCode -eq 409 -or $msg -match "já cadastrado|j. cadastrado|E-mail j|Conflito|Conflict") {
       Write-Host "   = Usuário já existe: $Email"
+      return @{ created = $false; token = "" }
     } else {
       throw
     }
@@ -135,6 +140,46 @@ function Do-Login {
   $res = Invoke-Api -Method "POST" -Path "/auth/login" -Body @{ email = $Email; password = $DefaultPassword }
   if (-not $res.token) { throw "Login sem token para $Email" }
   return $res
+}
+
+function Resolve-NurseToken {
+  param(
+    [string]$Name,
+    [string]$BaseEmail,
+    [string]$TeamId,
+    [string]$CouncilUf = "SP",
+    [string]$CouncilNumber = ""
+  )
+
+  $registerResult = $null
+  if (-not $SkipUserCreation) {
+    $registerResult = Try-RegisterUser -Name $Name -Email $BaseEmail -Role "nurse_manager" -TeamId $TeamId -CouncilUf $CouncilUf -CouncilNumber $CouncilNumber
+  }
+
+  if ($registerResult -and $registerResult.token) {
+    return @{ email = $BaseEmail; token = [string]$registerResult.token }
+  }
+
+  try {
+    $login = Do-Login -Email $BaseEmail
+    return @{ email = $BaseEmail; token = [string]$login.token }
+  } catch {
+    $statusCode = Get-HttpStatusCode $_
+    if ($statusCode -ne 401) { throw }
+    if ($SkipUserCreation) {
+      throw "Falha de login (401) para $BaseEmail com SkipUserCreation ativo."
+    }
+
+    $suffix = [DateTime]::UtcNow.ToString("yyyyMMddHHmmss")
+    $altEmail = ($BaseEmail -replace "@", ".$suffix@")
+    Write-Host "   ! Login 401 para $BaseEmail. Criando enfermeira alternativa: $altEmail"
+    $altRegister = Try-RegisterUser -Name $Name -Email $altEmail -Role "nurse_manager" -TeamId $TeamId -CouncilUf $CouncilUf -CouncilNumber $CouncilNumber
+    if ($altRegister -and $altRegister.token) {
+      return @{ email = $altEmail; token = [string]$altRegister.token }
+    }
+    $altLogin = Do-Login -Email $altEmail
+    return @{ email = $altEmail; token = [string]$altLogin.token }
+  }
 }
 
 function Random-From {
@@ -475,25 +520,30 @@ foreach ($team in $selectedTeams) {
   $nurseEmail = "enfermeira.$slug@ubs.local"
   $acsEmail = "acs.$slug@ubs.local"
 
-  if (-not $SkipUserCreation) {
-    Try-RegisterUser -Name "Enfermeira $($team.name)" -Email $nurseEmail -Role "nurse_manager" -TeamId $team.id -CouncilUf "SP" -CouncilNumber ("{0:000000}" -f (Get-Random -Minimum 100000 -Maximum 999999))
-  }
+  $nurseAuth = Resolve-NurseToken -Name "Enfermeira $($team.name)" -BaseEmail $nurseEmail -TeamId $team.id -CouncilUf "SP" -CouncilNumber ("{0:000000}" -f (Get-Random -Minimum 100000 -Maximum 999999))
+  $nurseEmail = [string]$nurseAuth.email
+  $nurseLogin = @{ token = [string]$nurseAuth.token }
 
-  $nurseLogin = Do-Login -Email $nurseEmail
   if (-not $SkipUserCreation) {
-    Try-CreateManagedUser -ManagerToken $nurseLogin.token -Name "ACS $($team.name)" -Email $acsEmail -Role "acs"
+    try {
+      Try-CreateManagedUser -ManagerToken $nurseLogin.token -Name "ACS $($team.name)" -Email $acsEmail -Role "acs"
+    } catch {
+      $statusCode = Get-HttpStatusCode $_
+      if ($statusCode -eq 401 -or $statusCode -eq 403) {
+        Write-Host "   ! Sem permissão para criar ACS via /users nesta equipe. Seguindo seed com ACS existente/sem ACS."
+      } else {
+        throw
+      }
+    }
   }
   $bootstrap = Invoke-Api -Method "GET" -Path "/bootstrap" -Token $nurseLogin.token
   $acsUser = $bootstrap.users | Where-Object { $_.role -eq "acs" } | Select-Object -First 1
-  if (-not $acsUser) {
-    throw "Nenhum ACS encontrado na equipe $($team.name)."
-  }
 
   $usersByTeam[$team.id] = @{
     teamName = $team.name
     nurseEmail = $nurseEmail
     nurseToken = $nurseLogin.token
-    acsId = $acsUser.id
+    acsId = if ($acsUser) { $acsUser.id } else { "" }
   }
 }
 
