@@ -8,6 +8,19 @@ param(
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+function Get-HttpStatusCode {
+  param([object]$ErrorRecord)
+  try {
+    if ($null -ne $ErrorRecord.Exception.Response.StatusCode.value__) {
+      return [int]$ErrorRecord.Exception.Response.StatusCode.value__
+    }
+  } catch {}
+  try {
+    return [int]$ErrorRecord.Exception.Response.StatusCode
+  } catch {}
+  return 0
+}
+
 function Invoke-Api {
   param(
     [Parameter(Mandatory=$true)][string]$Method,
@@ -28,6 +41,8 @@ function Invoke-Api {
         return Invoke-RestMethod -Method $Method -Uri $uri -Headers $headers -Body $json
       } catch {
         $lastErr = $_
+        $status = Get-HttpStatusCode $_
+        if ($status -ge 400 -and $status -lt 500 -and $status -ne 429) { break }
         Start-Sleep -Seconds ([Math]::Min(12, 2 * $try))
       }
     }
@@ -39,6 +54,8 @@ function Invoke-Api {
       return Invoke-RestMethod -Method $Method -Uri $uri -Headers $headers
     } catch {
       $lastErr = $_
+      $status = Get-HttpStatusCode $_
+      if ($status -ge 400 -and $status -lt 500 -and $status -ne 429) { break }
       Start-Sleep -Seconds ([Math]::Min(12, 2 * $try))
     }
   }
@@ -69,8 +86,7 @@ function Try-RegisterUser {
     $null = Invoke-Api -Method "POST" -Path "/auth/register" -Body $payload
     Write-Host "   + Usuário criado: $Email"
   } catch {
-    $statusCode = 0
-    try { $statusCode = [int]$_.Exception.Response.StatusCode } catch {}
+    $statusCode = Get-HttpStatusCode $_
     $msg = $_.Exception.Message
     if ($statusCode -eq 409 -or $msg -match "já cadastrado|j. cadastrado|E-mail j|Conflito|Conflict") {
       Write-Host "   = Usuário já existe: $Email"
@@ -103,8 +119,7 @@ function Try-CreateManagedUser {
     $null = Invoke-Api -Method "POST" -Path "/users" -Body $payload -Token $ManagerToken
     Write-Host "   + Usuário da equipe criado: $Email"
   } catch {
-    $statusCode = 0
-    try { $statusCode = [int]$_.Exception.Response.StatusCode } catch {}
+    $statusCode = Get-HttpStatusCode $_
     $msg = $_.Exception.Message
     if ($statusCode -eq 409 -or $msg -match "já cadastrado|j. cadastrado|E-mail j|Conflito|Conflict") {
       Write-Host "   = Usuário já existe: $Email"

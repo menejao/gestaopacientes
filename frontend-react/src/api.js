@@ -7,10 +7,19 @@ export async function api(path, options = {}, token = "") {
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers
-  });
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers
+    });
+  } catch (err) {
+    const message = String(err?.message || "");
+    if (message.toLowerCase().includes("failed to fetch")) {
+      throw new Error("Falha de conexão com o servidor");
+    }
+    throw err;
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body?.error || "Erro na API");

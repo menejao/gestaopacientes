@@ -45,12 +45,12 @@ const MOJIBAKE_REPLACEMENTS = [
   ["Ã‡", "Ç"], ["Ã¼", "ü"], ["Ãœ", "Ü"], ["Ã¶", "ö"], ["Ã–", "Ö"],
   ["Â·", "·"], ["Âº", "º"], ["Âª", "ª"], ["Â°", "°"], ["Â ", " "], ["Â", ""],
   ["â€”", "—"], ["â€“", "–"], ["â€¢", "•"], ["â€¦", "…"], ["â€œ", "“"], ["â€", "”"], ["â€˜", "‘"], ["â€™", "’"],
-  ["â†’", "→"], ["â†", "←"], ["âœ“", "OK"], ["âœ…", "OK"], ["âœ•", "X"], ["âš ï¸", "Alerta"], ["âš™ï¸", "Config"],
-  ["âš–ï¸", "Regra"], ["â¬‡ï¸", "Baixar"], ["â€¹", "‹"], ["â€º", "›"], ["â‰¥", "≥"], ["â‰¤", "≤"],
-  ["ðŸ‘¥", "Equipe"], ["ðŸ””", "Aviso"], ["ðŸŒ¸", "Resumo"], ["ðŸŽ‰", "Sucesso"], ["ðŸ’‰", "Vacina"], ["ðŸ’Š", "Farmácia"],
-  ["ðŸ“¦", "Estoque"], ["ðŸ—‚ï¸", "Arquivos"], ["ðŸš«", "Bloqueio"], ["ðŸ¤°", "Gestante"], ["ðŸ”", "Segurança"],
-  ["â³", "Prazo"], ["ðŸ©º", "Clínico"], ["ðŸ“‹", "Protocolo"], ["ðŸ“…", "Agenda"], ["ðŸ”¬", "Exame"], ["ðŸ“Ž", "Anexo"], ["ðŸ¥", "UBS"], ["ðŸ”", "Sync"], ["ðŸ“", "Nota"],
-  ["✅", "OK"], ["⚠️", "Alerta"], ["⚠", "Alerta"], ["💉", "Vacina"], ["📋", "Protocolo"], ["📅", "Agenda"], ["🏥", "UBS"], ["📦", "Estoque"], ["🔔", "Aviso"], ["🤰", "Gestante"],
+  ["â†’", "→"], ["â†", "←"], ["âœ“", "✓"], ["âœ…", "✅"], ["âœ•", "✖"], ["âš ï¸", "⚠️"], ["âš™ï¸", "⚙️"],
+  ["âš–ï¸", "⚖️"], ["â¬‡ï¸", "⬇️"], ["â€¹", "‹"], ["â€º", "›"], ["â‰¥", "≥"], ["â‰¤", "≤"],
+  ["ðŸ‘¥", "👥"], ["ðŸ””", "🔔"], ["ðŸŒ¸", "🌸"], ["ðŸŽ‰", "🎉"], ["ðŸ’‰", "💉"], ["ðŸ’Š", "💊"],
+  ["ðŸ“¦", "📦"], ["ðŸ—‚ï¸", "🗂️"], ["ðŸš«", "🚫"], ["ðŸ¤°", "🤰"], ["ðŸ”", "🔐"],
+  ["â³", "⏳"], ["ðŸ©º", "🩺"], ["ðŸ“‹", "📋"], ["ðŸ“…", "📅"], ["ðŸ”¬", "🔬"], ["ðŸ“Ž", "📎"], ["ðŸ¥", "🏥"], ["ðŸ”", "🔁"], ["ðŸ“", "📝"], ["ðŸ“ˆ", "📈"], ["ðŸ“Š", "📊"], ["ðŸ“¤", "📤"], ["ðŸ–¨ï¸", "🖨️"], ["ðŸ˜ï¸", "🏘️"], ["âŒ", "❌"], ["âœ”ï¸", "✔️"],
+  ["✅", "✅"], ["⚠️", "⚠️"], ["⚠", "⚠️"], ["💉", "💉"], ["📋", "📋"], ["📅", "📅"], ["🏥", "🏥"], ["📦", "📦"], ["🔔", "🔔"], ["🤰", "🤰"],
   ["RecepÃ§Ã£o", "Recepção"], ["GestÃ£o", "Gestão"], ["VisÃ£o", "Visão"], ["ProduÃ§Ã£o", "Produção"], ["clÃ­nicos", "clínicos"],
   ["espontÃ¢neos", "espontâneos"], ["ConcluÃ­do", "Concluído"], ["PrÃ³ximo", "Próximo"], ["NÃ£o", "Não"], ["MÃ©dico", "Médico"], ["MÃ©dica", "Médica"]
 ];
@@ -405,11 +405,11 @@ function displayText(value, fallback = "-") {
 
 function gestationalAgeInfo(patient) {
   if(!patient) return null;
-  const today=new Date(), usgRef=parseDateSafe(patient.usgDate1), usgW=toBoundedInt(patient.gestationalAgeUsgWeeks,0,45), usgD=toBoundedInt(patient.gestationalAgeUsgDays,0,6)??0;
-  if(usgRef&&usgW!==null){const base=usgW*7+usgD,elapsed=Math.max(0,Math.floor((today-usgRef)/86400000)),total=base+elapsed;return{weeks:Math.floor(total/7),days:total%7,source:"1Âª USG"};}
+  const today=new Date(), usgRef=parseDateSafe(patient.usgDate1), usgW=toBoundedInt(patient.gestationalAgeUsgWeeks,0,45), usgD=toBoundedInt(patient.gestationalAgeUsgDays,0,6) ?? 0;
+  if(usgRef&&usgW!==null){const base=usgW*7+usgD,elapsed=Math.max(0,Math.floor((today-usgRef)/86400000)),total=base+elapsed;return{weeks:Math.floor(total/7),days:total%7,source:"1ª USG"};}
   const dum=parseDateSafe(patient.pregnancyStartDate);
   if(dum){const elapsed=Math.max(0,Math.floor((today-dum)/86400000));return{weeks:Math.floor(elapsed/7),days:elapsed%7,source:"DUM"};}
-  const dumW=toBoundedInt(patient.gestationalAgeDumWeeks,0,45),dumD=toBoundedInt(patient.gestationalAgeDumDays,0,6)??0;
+  const dumW=toBoundedInt(patient.gestationalAgeDumWeeks,0,45),dumD=toBoundedInt(patient.gestationalAgeDumDays,0,6) ?? 0;
   if(dumW!==null) return{weeks:dumW,days:dumD,source:"DUM"};
   return null;
 }
@@ -417,7 +417,7 @@ function gestationalAgeInfo(patient) {
 function deriveProtocolAlerts(summary) {
   if(!summary) return [];
   const special=Array.isArray(summary.specialAlerts)?summary.specialAlerts:[];
-  if(special.length) return special.map((a,i)=>({id:a?.id||`s-${i}`,title:a?.title||"Alerta clÃ­nico",detail:a?.detail||"",severity:String(a?.severity||"low").toLowerCase()}));
+  if(special.length) return special.map((a,i)=>({id:a?.id||`s-${i}`,title:a?.title||"Alerta clínico",detail:a?.detail||"",severity:String(a?.severity||"low").toLowerCase()}));
   const schedule=summary.schedule||{},out=[];
   for(const[key,label] of[["visits","visitas"],["consultations","consultas"],["vaccines","vacinas"]]){
     const s=schedule?.[key];
@@ -1440,9 +1440,9 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
     .slice(0,6);
   const recent = [...patients].slice(-6).reverse();
 
-  const dmTotal=demandMonthly?.totals?.total??0;
-  const dmSched=demandMonthly?.totals?.scheduled??0;
-  const dmSpont=demandMonthly?.totals?.spontaneous??0;
+  const dmTotal=demandMonthly?.totals?.total ?? 0;
+  const dmSched=demandMonthly?.totals?.scheduled ?? 0;
+  const dmSpont=demandMonthly?.totals?.spontaneous ?? 0;
   const dmPct=dmTotal>0?Math.round((dmSched/dmTotal)*100):null;
   const dmInRange=dmPct!==null&&dmPct>=50&&dmPct<=70;
   const dmColor=dmPct===null?"var(--text-3)":dmInRange?"#15803d":dmPct<50?"#b45309":"#be123c";
@@ -1514,7 +1514,7 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
               <thead><tr style={{borderBottom:"1px solid var(--border)"}}>
                 {["","Nome","E-mail","Perfil","Status"].map((h,i)=><th key={i} style={{padding:".5rem .85rem",textAlign:"left",fontWeight:600,color:"var(--text-3)",fontSize:".72rem",width:i===0?"36px":undefined}}>{h}</th>)}
               </tr></thead>
-              <tbody>{[...adminUserList].sort((a,b)=>{const o={nurse_manager:0,doctor:1,dentist:2,nursing_tech:3,pharmacist:4,pharmacy_tech:5,acs:6,receptionist:7};return(o[a.role]??9)-(o[b.role]??9);}).map(u=>{
+                <tbody>{[...adminUserList].sort((a,b)=>{const o={nurse_manager:0,doctor:1,dentist:2,nursing_tech:3,pharmacist:4,pharmacy_tech:5,acs:6,receptionist:7};return((o[a.role] ?? 9)-(o[b.role] ?? 9));}).map(u=>{
                 const rc={nurse_manager:"#0d9488",doctor:"#6366f1",dentist:"#8b5cf6",nursing_tech:"#0891b2",acs:"#f59e0b",pharmacist:"#7c3aed",pharmacy_tech:"#a855f7",receptionist:"#64748b"}[u.role]||"var(--teal-600)";
                 const online=u.online===true;
                 return(<tr key={u.id} style={{borderBottom:"1px solid var(--border)"}} onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"} onMouseLeave={e=>e.currentTarget.style.background=""}>
@@ -1825,7 +1825,7 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
             onSubmitTask={onSubmitTask} onSubmitMessage={onSubmitMessage}
             onDeleteRecord={onDeleteRecord} onDeleteAppointment={onDeleteAppointment}
             onStatusChange={onStatusChange}
-            acsUsers={users.filter(u=>u.role==="acs")} canManageUser={canManageUser} canWriteRecords={canWriteRecords??canManageUser} userObj={userObj} token={token}
+            acsUsers={users.filter(u=>u.role==="acs")} canManageUser={canManageUser} canWriteRecords={Boolean(canWriteRecords && canManageUser)} userObj={userObj} token={token}
           />
         </div>
       )}
@@ -3783,7 +3783,7 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
   const sortedQueue = [...queue].sort((a,b) => {
     if(a.status==="done"&&b.status!=="done") return 1;
     if(b.status==="done"&&a.status!=="done") return -1;
-    const pa=PRIORITY_COLORS[a.priority]?.order??4, pb=PRIORITY_COLORS[b.priority]?.order??4;
+    const pa=PRIORITY_COLORS[a.priority]?.order ?? 4, pb=PRIORITY_COLORS[b.priority]?.order ?? 4;
     return pa!==pb ? pa-pb : a.arrivedAt.localeCompare(b.arrivedAt);
   });
 
@@ -5039,7 +5039,7 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
   const sorted = [...queue].sort((a,b)=>{
     if (a.status==="done"&&b.status!=="done") return 1;
     if (b.status==="done"&&a.status!=="done") return -1;
-    const po=PRIORITY_COLORS,pa=po[a.priority]?.order??4,pb=po[b.priority]?.order??4;
+    const po=PRIORITY_COLORS,pa=po[a.priority]?.order ?? 4,pb=po[b.priority]?.order ?? 4;
     if(pa!==pb) return pa-pb;
     return a.arrivedAt.localeCompare(b.arrivedAt);
   });
@@ -6772,7 +6772,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:".85rem"}}>
         <KPI label="Pacientes cadastrados" value={totalPacientes} sub={`Com ACS: ${comAcs} · Sem ACS: ${semAcs}`} icon="P" color={TEAL}/>
-        <KPI label="Protocolos criticos" value={criticos} sub={`Atencao: ${atencao} · Em dia: ${emDia}`} icon="!" color={criticos>0?RED:GREEN}/>
+        <KPI label="Protocolos criticos" value={criticos} sub={`Aten?o: ${atencao} · Em dia: ${emDia}`} icon="!" color={criticos>0?RED:GREEN}/>
         <KPI label="Cobertura protocolar" value={cobertura+"%"} sub={`${emDia} de ${totalPacientes} pacientes em dia`} icon="OK" color={cobertura>=80?GREEN:cobertura>=50?AMBER:RED}/>
         <KPI label="Consultas realizadas" value={consultDone} sub={`Faltas: ${consultAbsent} · Taxa: ${taxaComp!=null?taxaComp+"%":"-"}`} icon="C" color={BLUE}/>
         <KPI label="Encaminhamentos" value={refPeriod.length} sub={`Pendentes: ${refPendentes} · Concluidos: ${refConcluidos}`} icon="E" color={VIOLET}/>
@@ -6784,7 +6784,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
         <div className="card-header"><span className="card-title">ðŸ“ˆ Desempenho Protocolar</span></div>
         <div className="card-body" style={{display:"flex",alignItems:"center",gap:"2rem",flexWrap:"wrap"}}>
           <GaugePie value={emDia} max={totalPacientes} color={GREEN} label="Em dia"/>
-          <GaugePie value={atencao} max={totalPacientes} color={AMBER} label="Atencao"/>
+          <GaugePie value={atencao} max={totalPacientes} color={AMBER} label="Aten?o"/>
           <GaugePie value={criticos} max={totalPacientes} color={RED} label="Critico"/>
           {taxaComp!=null&&<GaugePie value={consultDone} max={consultTotal} color={BLUE} label="Comparecimento"/>}
           <div style={{flex:1,minWidth:200}}>
@@ -6813,7 +6813,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
 
         {/* ComposiÃ§Ã£o da equipe */}
         <div className="card">
-          <div className="card-header"><span className="card-title">Composicao da equipe</span><span style={{fontSize:".75rem",color:"var(--text-3)"}}>{users.length} membros</span></div>
+          <div className="card-header"><span className="card-title">Composi?o da equipe</span><span style={{fontSize:".75rem",color:"var(--text-3)"}}>{users.length} membros</span></div>
           <div className="card-body">
             {[
               {label:"ACS",count:acsCount,color:AMBER,icon:"ðŸ˜ï¸"},
@@ -7856,9 +7856,9 @@ function inferVaccineDoseTitle(genericName, applicationDate, birthDate) {
   if (!candidates.length) return genericName;
 
   // Preferir o candidato cuja janela Ã© mais prÃ³xima da idade de aplicaÃ§Ã£o
-  candidates.sort((a, b) => {
-    const midA = (a.windowMin + (a.windowMax ?? a.windowMin)) / 2;
-    const midB = (b.windowMin + (b.windowMax ?? b.windowMin)) / 2;
+    candidates.sort((a, b) => {
+      const midA = (a.windowMin + (a.windowMax ?? a.windowMin)) / 2;
+      const midB = (b.windowMin + (b.windowMax ?? b.windowMin)) / 2;
     return Math.abs(appliedAgeMonths - midA) - Math.abs(appliedAgeMonths - midB);
   });
 
@@ -8525,7 +8525,7 @@ function InsumoPage({ patients, users, user }) {
             ) : (
               <div style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
                 <div style={{fontSize:".82rem",color:"var(--text-2)"}}>Insumo: <strong>{editStockItem.nome}</strong></div>
-                <div style={{fontSize:".82rem",color:"var(--text-2)"}}>Estoque atual: <strong>{stock.find(s=>s.id===editStockItem.id)?.qty??0} {editStockItem.unidade}</strong></div>
+                  <div style={{fontSize:".82rem",color:"var(--text-2)"}}>Estoque atual: <strong>{stock.find(s=>s.id===editStockItem.id)?.qty ?? 0} {editStockItem.unidade}</strong></div>
                 <label style={{display:"flex",flexDirection:"column",gap:".3rem",fontSize:".8rem",fontWeight:600}}>
                   Quantidade a adicionar *
                   <input type="number" min="1" value={editQty} onChange={e=>setEditQty(e.target.value)} placeholder="Ex: 50" autoFocus/>
@@ -10519,7 +10519,7 @@ function AppInner() {
     }
 
     return [...alerts].sort((a,b)=>{
-      const ra=rank[String(a?.severity||"").toLowerCase()]??3, rb=rank[String(b?.severity||"").toLowerCase()]??3;
+      const ra=rank[String(a?.severity||"").toLowerCase()] ?? 3, rb=rank[String(b?.severity||"").toLowerCase()] ?? 3;
       return ra!==rb?ra-rb:String(a?.title||"").localeCompare(String(b?.title||""),"pt-BR");
     });
     } catch(e) { console.error("sortedSpecialAlerts error:", e); return []; }
@@ -10659,7 +10659,7 @@ function AppInner() {
   function openEditPatient(p) {
     return ()=>{
       setEditingPatient(p);
-      setForm(p?{name:String(p?.name||""),motherName:String(p?.motherName||""),motherUnknown:p?.motherUnknown||false,guardianName:String(p?.guardianName||""),cpf:String(p?.cpf||""),cns:String(p?.cns||""),birthDate:String(p?.birthDate||""),birthCity:String(p?.birthCity||""),birthState:String(p?.birthState||""),phone:String(p?.phone||""),phoneAlt:String(p?.phoneAlt||""),careCategory:String(p?.careCategory||"general"),chronicConditions:Array.isArray(p?.chronicConditions)?p.chronicConditions:[],assignedAcsId:String(p?.assignedAcsId||""),zipCode:String(p?.zipCode||""),address:String(p?.address||""),number:String(p?.number||""),complement:String(p?.complement||""),neighborhood:String(p?.neighborhood||""),city:String(p?.city||""),state:String(p?.state||""),sex:String(p?.sex||""),raceColor:String(p?.raceColor||""),maritalStatus:String(p?.maritalStatus||""),allergies:String(p?.allergies||""),comorbidities:String(p?.comorbidities||""),medications:String(p?.medications||""),microArea:String(p?.microArea||""),familyCode:String(p?.familyCode||""),homeVisitFreq:String(p?.homeVisitFreq||""),housingType:String(p?.housingType||""),waterSupply:String(p?.waterSupply||""),sewage:String(p?.sewage||""),garbage:String(p?.garbage||""),electricity:String(p?.electricity||""),pregnancyStartDate:String(p?.pregnancyStartDate||""),expectedDeliveryDate:String(p?.expectedDeliveryDate||""),gestationalAgeDumWeeks:String(p?.gestationalAgeDumWeeks??""),gestationalAgeDumDays:String(p?.gestationalAgeDumDays??""),gestationalAgeUsgWeeks:String(p?.gestationalAgeUsgWeeks??""),gestationalAgeUsgDays:String(p?.gestationalAgeUsgDays??""),usgDate1:String(p?.usgDate1||""),usgDate2:String(p?.usgDate2||""),usgDate3:String(p?.usgDate3||"")}:emptyPatientForm());
+      setForm(p?{name:String(p?.name||""),motherName:String(p?.motherName||""),motherUnknown:p?.motherUnknown||false,guardianName:String(p?.guardianName||""),cpf:String(p?.cpf||""),cns:String(p?.cns||""),birthDate:String(p?.birthDate||""),birthCity:String(p?.birthCity||""),birthState:String(p?.birthState||""),phone:String(p?.phone||""),phoneAlt:String(p?.phoneAlt||""),careCategory:String(p?.careCategory||"general"),chronicConditions:Array.isArray(p?.chronicConditions)?p.chronicConditions:[],assignedAcsId:String(p?.assignedAcsId||""),zipCode:String(p?.zipCode||""),address:String(p?.address||""),number:String(p?.number||""),complement:String(p?.complement||""),neighborhood:String(p?.neighborhood||""),city:String(p?.city||""),state:String(p?.state||""),sex:String(p?.sex||""),raceColor:String(p?.raceColor||""),maritalStatus:String(p?.maritalStatus||""),allergies:String(p?.allergies||""),comorbidities:String(p?.comorbidities||""),medications:String(p?.medications||""),microArea:String(p?.microArea||""),familyCode:String(p?.familyCode||""),homeVisitFreq:String(p?.homeVisitFreq||""),housingType:String(p?.housingType||""),waterSupply:String(p?.waterSupply||""),sewage:String(p?.sewage||""),garbage:String(p?.garbage||""),electricity:String(p?.electricity||""),pregnancyStartDate:String(p?.pregnancyStartDate||""),expectedDeliveryDate:String(p?.expectedDeliveryDate||""),gestationalAgeDumWeeks:String(p?.gestationalAgeDumWeeks ?? ""),gestationalAgeDumDays:String(p?.gestationalAgeDumDays ?? ""),gestationalAgeUsgWeeks:String(p?.gestationalAgeUsgWeeks ?? ""),gestationalAgeUsgDays:String(p?.gestationalAgeUsgDays ?? ""),usgDate1:String(p?.usgDate1||""),usgDate2:String(p?.usgDate2||""),usgDate3:String(p?.usgDate3||"")}:emptyPatientForm());
       setShowModal(true);
     };
   }
