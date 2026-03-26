@@ -1,5 +1,7 @@
-name = "gestaopacientes"
-compatibility_date = "2026-03-19"
+﻿name = "gestaopacientes"
+main = "worker.js"
+compatibility_date = "2026-03-25"
 
 [assets]
 directory = "./frontend-react/dist"
+binding = "ASSETS"
