@@ -5143,6 +5143,9 @@ function AppInner() {
     } catch { return ""; }
   })();
 
+  const [token, setToken] = useState(initialToken);
+  const [selectedPatientId, setSelectedPatientId] = useState(uiState?.selectedPatientId || "");
+
   const [patientTab, setPatientTab] = useState(uiState?.patientTab==="history"?"chart":(uiState?.patientTab||"protocol"));
   const [appointments, setAppointments] = useState([]);
   const [tasks,    setTasks]    = useState([]);
@@ -5435,7 +5438,7 @@ function AppInner() {
   useEffect(()=>{
     listPublicTeams().then(arr=>{ const a=Array.isArray(arr)?arr:[]; setPublicTeams(a); }).catch(()=>setPublicTeams([]));
   },[token]);
-  useEffect(()=>{ localStorage.setItem(UI_STATE_KEY,JSON.stringify({tab: activeTab, patientTab})); },[activeTab, patientTab]);
+  useEffect(()=>{ localStorage.setItem(UI_STATE_KEY,JSON.stringify({tab: activeTab, patientTab, selectedPatientId})); },[activeTab, patientTab, selectedPatientId]);
   useEffect(()=>{
     if(!token||!selectedPatientId){setAppointments([]);setTasks([]);setMessages([]);setHistory([]);setPatientProtocolSummary(null);return;}
     loadSelectedPatientData(selectedPatientId);
