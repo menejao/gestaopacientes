@@ -6,6 +6,15 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function readJsonWithTimeout(response, timeoutMs) {
+  return Promise.race([
+    response.json().catch(() => ({})),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Tempo de resposta excedido. Tente novamente em instantes.")), timeoutMs)
+    )
+  ]);
+}
+
 function shouldRetryStatus(status, customStatuses) {
   if (Array.isArray(customStatuses) && customStatuses.length > 0) {
     return customStatuses.includes(status);
@@ -18,6 +27,7 @@ export async function api(path, options = {}, token = "") {
     retryCount = 0,
     retryDelayMs = 350,
     retryStatuses,
+    timeoutMs = 20000,
     ...fetchOptions
   } = options || {};
 
@@ -30,14 +40,26 @@ export async function api(path, options = {}, token = "") {
 
   for (let attempt = 0; attempt <= retryCount; attempt += 1) {
     let response;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), Math.max(1000, Number(timeoutMs) || 20000));
 
     try {
       response = await fetch(`${API_URL}${path}`, {
         ...fetchOptions,
-        headers
+        headers,
+        signal: controller.signal
       });
     } catch (err) {
+      clearTimeout(timeoutId);
       const message = String(err?.message || "");
+      if (err?.name === "AbortError") {
+        if (attempt < retryCount) {
+          const waitMs = retryDelayMs * (attempt + 1) + Math.floor(Math.random() * 120);
+          await sleep(waitMs);
+          continue;
+        }
+        throw new Error("Tempo de resposta excedido. Tente novamente em instantes.");
+      }
       if (attempt < retryCount) {
         const waitMs = retryDelayMs * (attempt + 1) + Math.floor(Math.random() * 120);
         await sleep(waitMs);
@@ -48,6 +70,7 @@ export async function api(path, options = {}, token = "") {
       }
       throw err;
     }
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       if (attempt < retryCount && shouldRetryStatus(response.status, retryStatuses)) {
@@ -55,11 +78,11 @@ export async function api(path, options = {}, token = "") {
         await sleep(waitMs);
         continue;
       }
-      const body = await response.json().catch(() => ({}));
+      const body = await readJsonWithTimeout(response, Math.max(1000, Number(timeoutMs) || 20000));
       throw new Error(body?.error || "Erro na API");
     }
 
-    return response.json();
+    return readJsonWithTimeout(response, Math.max(1000, Number(timeoutMs) || 20000));
   }
 
   throw new Error("Erro na API");
@@ -68,7 +91,10 @@ export async function api(path, options = {}, token = "") {
 export async function login(email, password) {
   return api("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password }),
+    retryCount: 1,
+    retryDelayMs: 600,
+    timeoutMs: 45000
   });
 }
 
