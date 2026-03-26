@@ -5524,32 +5524,61 @@ function App() {
   const [users, setUsers] = useState([]);
   const [templates, setTemplates] = useState([]);
 
-  async function loadAll() {
-    if (!token || String(token).startsWith("local_")) return;
-    setError("");
+async function loadAll() {
+  if (!token || String(token).startsWith("local_")) return;
+  setError("");
 
-    try {
-      const [boot, usFallback, tplsFallback] = await Promise.all([
-        bootstrap(token),
-        listUsers(token).catch(() => []),
-        listProtocolTemplates(token).catch(() => []),
-      ]);
+  try {
+    const [boot, usFallback, tplsFallback] = await Promise.all([
+      bootstrap(token),
+      listUsers(token).catch(() => []),
+      listProtocolTemplates(token).catch(() => []),
+    ]);
 
-      setUser(prev => prev || boot?.user || null);
+    setUser(prev => prev || boot?.user || null);
 
-      const ptsSource = Array.isArray(boot?.patients)
-        ? boot.patients
-        : await listPatients(token).catch(() => []);
+    const ptsSource = Array.isArray(boot?.patients)
+      ? boot.patients
+      : await listPatients(token).catch(() => []);
 
-      const pts = normalizePatientsResponse(ptsSource);
-      const us = Array.isArray(boot?.users) ? boot.users : usFallback;
-      const tpls = Array.isArray(boot?.protocolTemplates) ? boot.protocolTemplates : tplsFallback;
+    const pts = normalizePatientsResponse(ptsSource);
+    const us = Array.isArray(boot?.users) ? boot.users : usFallback;
+    const tpls = Array.isArray(boot?.protocolTemplates)
+      ? boot.protocolTemplates
+      : tplsFallback;
 
-      setPatients(pts);
-      setUsers(us);
-      setTemplates(tpls);
-    } catch (e) {
+    setPatients(pts);
+    setUsers(Array.isArray(us) ? us : []);
+    setTemplates(Array.isArray(tpls) ? tpls : []);
+    setAllUsers(
+      (Array.isArray(us) ? us : []).map(u =>
+        u.id === boot?.user?.id ? { ...u, online: true } : u
+      )
+    );
+    setLastLoadAt(new Date().toISOString());
 
+    Promise.resolve().then(async () => {
+      try {
+        if (boot?.demandMonthly) {
+          setDemandMonthly(boot.demandMonthly);
+        }
+      } catch {}
+
+      try {
+        if (pts.length) {
+          const sums = await getProtocolSummaries(
+            token,
+            pts.map(p => p.id).filter(Boolean)
+          );
+          setProtocolByPatient(sums?.summaries || {});
+        } else {
+          setProtocolByPatient({});
+        }
+      } catch {}
+    });
+  } catch (e) {
+    if (!handleApiError(e)) {
+      setError(e.message || "Falha ao carregar dados");
     }
   }
 }
