@@ -5509,39 +5509,49 @@ function AppInner() {
     return false;
   }
 
-  function normalizePatientsResponse(payload) {
+function normalizePatientsResponse(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.patients)) return payload.patients;
   if (Array.isArray(payload?.items)) return payload.items;
   if (Array.isArray(payload?.data)) return payload.data;
   return [];
 }
-  
+
+function App() {
+  const [token, setToken] = useState(initialToken);
+  const [user, setUser] = useState(initialToken ? (session?.user || null) : null);
+  const [patients, setPatients] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [templates, setTemplates] = useState([]);
+
   async function loadAll() {
-    if(!token || String(token).startsWith("local_")) return;
+    if (!token || String(token).startsWith("local_")) return;
     setError("");
+
     try {
-      // 1. Carrega dados essenciais em paralelo — libera a UI rapidamente
       const [boot, usFallback, tplsFallback] = await Promise.all([
         bootstrap(token),
-        listUsers(token).catch(()=>[]),
-        listProtocolTemplates(token).catch(()=>[]),
+        listUsers(token).catch(() => []),
+        listProtocolTemplates(token).catch(() => []),
       ]);
-      setUser(prev=>prev||boot?.user||null);
-      const ptsSource = Array.isArray(boot?.patients) ? boot.patients : await listPatients(token).catch(() => []);
-      const pts = normalizePatientsResponse(ptsSource);
-      const us  = Array.isArray(boot?.users)    ? boot.users    : usFallback;
-      const tpls= Array.isArray(boot?.protocolTemplates) ? boot.protocolTemplates : tplsFallback;
-      setPatients(pts); setUsers(us); setTemplates(tpls);
-      setAllUsers(us.map(u=>u.id===boot?.user?.id?{...u,online:true}:u));
-      setLastLoadAt(new Date().toISOString());
 
-      function normalizePatientsResponse(payload) {
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.patients)) return payload.patients;
-    if (Array.isArray(payload?.items)) return payload.items;
-    if (Array.isArray(payload?.data)) return payload.data;
-  return [];
+      setUser(prev => prev || boot?.user || null);
+
+      const ptsSource = Array.isArray(boot?.patients)
+        ? boot.patients
+        : await listPatients(token).catch(() => []);
+
+      const pts = normalizePatientsResponse(ptsSource);
+      const us = Array.isArray(boot?.users) ? boot.users : usFallback;
+      const tpls = Array.isArray(boot?.protocolTemplates) ? boot.protocolTemplates : tplsFallback;
+
+      setPatients(pts);
+      setUsers(us);
+      setTemplates(tpls);
+    } catch (e) {
+
+    }
+  }
 }
 
       // 2. Dados secundários em background — não travam a entrada no sistema
@@ -5573,7 +5583,6 @@ function AppInner() {
         } catch {}
       });
     } catch(e){ if(!handleApiError(e)) setError(e.message||"Falha ao carregar dados"); }
-  }
 
   async function loadSelectedPatientData(patientId) {
     try {
