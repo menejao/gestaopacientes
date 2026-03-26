@@ -5126,29 +5126,23 @@ class AppErrorBoundary extends Component {
 }
 
 function AppInner() {
-  const [user, setUser] = useState(null);
+  const session = readSession();
+  const uiState = readUiState();
+  const [user, setUser] = useState(session?.user || null);
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState(uiState?.tab || "dashboard");
 
   // Valida o token – se vier algo inválido limpa a sessão
   const initialToken = (() => {
     try {
-      const t = String(session?.token||"");
+      const t = String(session?.token || "");
       // Token deve ser string não vazia sem espaços – se inválido, limpa sessão
       if (t && !/\s/.test(t)) return t;
       return "";
     } catch { return ""; }
   })();
 
-  const [token,  setToken]  = useState(initialToken);
-  const [user,   setUser]   = useState(initialToken ? (session?.user||null) : null);
-  const [patients,  setPatients]  = useState([]);
-  const [users,     setUsers]     = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [protocolByPatient, setProtocolByPatient] = useState({});
-  const [tab,  setTab]  = useState(()=>{ const t=uiState?.tab; if(t) return t; return "dashboard"; });
-  const [selectedPatientId, setSelectedPatientId] = useState("");
   const [patientTab, setPatientTab] = useState(uiState?.patientTab==="history"?"chart":(uiState?.patientTab||"protocol"));
   const [appointments, setAppointments] = useState([]);
   const [tasks,    setTasks]    = useState([]);
@@ -5441,7 +5435,7 @@ function AppInner() {
   useEffect(()=>{
     listPublicTeams().then(arr=>{ const a=Array.isArray(arr)?arr:[]; setPublicTeams(a); }).catch(()=>setPublicTeams([]));
   },[token]);
-  useEffect(()=>{ localStorage.setItem(UI_STATE_KEY,JSON.stringify({tab,patientTab})); },[tab,patientTab]);
+  useEffect(()=>{ localStorage.setItem(UI_STATE_KEY,JSON.stringify({tab: activeTab, patientTab})); },[activeTab, patientTab]);
   useEffect(()=>{
     if(!token||!selectedPatientId){setAppointments([]);setTasks([]);setMessages([]);setHistory([]);setPatientProtocolSummary(null);return;}
     loadSelectedPatientData(selectedPatientId);
@@ -5459,7 +5453,7 @@ function AppInner() {
       const payload=await Promise.race([
         login(email.trim(),password),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Tempo de resposta excedido. Tente novamente em alguns segundos.")), 30000)
+          setTimeout(() => reject(new Error("timeout")), 15000)
         )
       ]);
       if(payload?.twoFactorRequired) throw new Error("2FA ativo: tela React ainda não implementa desafio.");
@@ -5470,11 +5464,11 @@ function AppInner() {
       if(String(payload.user?.role||"")==="gestor") setTab("gestor");
     } catch(_backendErr) {
       auditLog("LOGIN_FAILED", { email: email.trim().toLowerCase(), success: false });
-      const msg = String(_backendErr?.message || "").toLowerCase();
+      const msg = String(_backendErr?.message || _backendErr || "").toLowerCase();
       if (msg.includes("credenciais")) {
         setError("E-mail ou senha incorretos.");
-      } else if (msg.includes("tempo de resposta excedido")) {
-        setError("Servidor demorou para responder. Tente novamente em alguns segundos.");
+      } else if (msg.includes("timeout")) {
+        setError("O servidor demorou demais para responder (Timeout). Verifique se o backend está ativo.");
       } else if (msg.includes("falha de conexão")) {
         setError("Falha de conexão com a API. Verifique backend/CORS e tente novamente.");
       } else {
@@ -5495,7 +5489,11 @@ function AppInner() {
 
   /* ── Token expirado – desloga automaticamente ── */
   function handleApiError(e) {
-    const msg = String(e?.message||e||"").toLowerCase();
+    const msg = String(e?.message || e || "").toLowerCase();
+    if (msg.includes("timeout") || msg.includes("timed out") || msg.includes("failed to fetch")) {
+      setError("Erro de comunicação: o servidor não respondeu ou a conexão falhou.");
+      return true;
+    }
     const is401 = msg.includes("401") || msg.includes("token expirado") || msg.includes("expirad") ||
                   msg.includes("unauthorized") || msg.includes("não autorizado") || msg.includes("sessão inválida");
     if (is401) {
@@ -5517,22 +5515,16 @@ function normalizePatientsResponse(payload) {
   return [];
 }
 
-function App() {
-  const [token, setToken] = useState(initialToken);
-  const [user, setUser] = useState(initialToken ? (session?.user || null) : null);
-  const [patients, setPatients] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [templates, setTemplates] = useState([]);
-
 async function loadAll() {
   if (!token || String(token).startsWith("local_")) return;
-  setError("");
-
+    setError(""); setLoading(true);
+    // Helper para timeout individual em requisições
+    const withTimeout = (p) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error("timeout")), 20000))]);
   try {
     const [boot, usFallback, tplsFallback] = await Promise.all([
-      bootstrap(token),
-      listUsers(token).catch(() => []),
-      listProtocolTemplates(token).catch(() => []),
+        withTimeout(bootstrap(token)),
+        withTimeout(listUsers(token)).catch(() => []),
+        withTimeout(listProtocolTemplates(token)).catch(() => []),
     ]);
 
     setUser(prev => prev || boot?.user || null);
@@ -5542,6 +5534,7 @@ async function loadAll() {
       : await listPatients(token).catch(() => []);
 
     const pts = normalizePatientsResponse(ptsSource);
+
     const us = Array.isArray(boot?.users) ? boot.users : usFallback;
     const tpls = Array.isArray(boot?.protocolTemplates)
       ? boot.protocolTemplates
@@ -5550,20 +5543,8 @@ async function loadAll() {
     setPatients(pts);
     setUsers(Array.isArray(us) ? us : []);
     setTemplates(Array.isArray(tpls) ? tpls : []);
-    setAllUsers(
-      (Array.isArray(us) ? us : []).map(u =>
-        u.id === boot?.user?.id ? { ...u, online: true } : u
-      )
-    );
-    setLastLoadAt(new Date().toISOString());
 
     Promise.resolve().then(async () => {
-      try {
-        if (boot?.demandMonthly) {
-          setDemandMonthly(boot.demandMonthly);
-        }
-      } catch {}
-
       try {
         if (pts.length) {
           const sums = await getProtocolSummaries(
@@ -5571,47 +5552,16 @@ async function loadAll() {
             pts.map(p => p.id).filter(Boolean)
           );
           setProtocolByPatient(sums?.summaries || {});
-        } else {
-          setProtocolByPatient({});
         }
-      } catch {}
+      } catch (err) {
+        console.error(err);
+      }
     });
-  } catch (e) {
-    if (!handleApiError(e)) {
-      setError(e.message || "Falha ao carregar dados");
-    }
-  }
-}
 
-      // 2. Dados secundários em background — não travam a entrada no sistema
-      Promise.resolve().then(async () => {
-        try {
-          if(boot?.demandMonthly) {
-            setDemandMonthly(boot.demandMonthly);
-          } else if(pts.length) {
-            // Atendimentos retroativos NÕO contam para demanda programada
-            // Limita a 20 pacientes para não sobrecarregar na carga inicial
-            const now = new Date();
-            const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-            const sample = pts.slice(0, 20);
-            const allAppts = (await Promise.all(sample.map(p=>listAppointments(token,p.id).catch(()=>[]))))
-              .flat()
-              .filter(a=>String(a.date||"").startsWith(ym))
-              .filter(a=>a.demandType!=="retroactive");
-            const sched = allAppts.filter(a=>a.demandType==="scheduled"||(!a.demandType)).length;
-            const spont = allAppts.filter(a=>a.demandType==="spontaneous").length;
-            const total = allAppts.length;
-            if(total>0) setDemandMonthly({totals:{total,scheduled:sched,spontaneous:spont}});
-          }
-        } catch {}
-        try {
-          if(pts.length){
-            const sums=await getProtocolSummaries(token,pts.map(p=>p.id).filter(Boolean));
-            setProtocolByPatient(sums?.summaries||{});
-          }
-        } catch {}
-      });
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Falha ao carregar dados"); }
+  } catch (e) {
+      if (!handleApiError(e)) setError(e.message || "Falha ao carregar dados");
+    } finally { setLoading(false); }
+}
 
   async function loadSelectedPatientData(patientId) {
     try {
