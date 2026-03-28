@@ -1179,33 +1179,44 @@ export function InsumoPage({ patients, users, user }) {
   const CATEGORIES_OPTIONS = ["EPI", "Material clínico", "Higiene", "Medicamento", "Equipamento", "Outro"];
 
   return (
-    <div style={{ padding: "1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+    <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
         <div>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Insumos e Materiais</h2>
-          <p style={{ fontSize: ".78rem", color: "var(--text-3)", margin: ".2rem 0 0" }}>{items.length} item(s) · {critical.length} com estoque crítico</p>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--ink)", margin: 0, letterSpacing: "-0.02em" }}>📦 Gestão de Insumos</h2>
+          <p style={{ fontSize: ".88rem", color: "var(--text-3)", margin: ".4rem 0 0" }}>Controle de estoque e materiais da unidade</p>
         </div>
         {canManage(user) && (
           <button onClick={() => { setEditItem(null); setForm({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clínico" }); setShowForm(true); }}
-            style={{ padding: ".45rem .9rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".82rem", fontWeight: 600 }}>
+            style={{ padding: ".6rem 1.2rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: ".88rem", fontWeight: 700, boxShadow: "0 4px 12px rgba(13, 148, 136, 0.2)" }}>
             + Novo insumo
           </button>
         )}
       </div>
 
       {critical.length > 0 && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-md)", padding: ".65rem 1rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: ".6rem" }}>
+        <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "12px", padding: "1rem", marginBottom: "2rem", display: "flex", alignItems: "center", gap: ".75rem" }}>
           <span style={{ fontSize: ".88rem" }}>⚠️</span>
-          <span style={{ fontSize: ".8rem", fontWeight: 600, color: "#b91c1c" }}>{critical.length} item(s) com estoque abaixo do mínimo: {critical.map(i => i.name).join(", ")}</span>
+          <span style={{ fontSize: ".85rem", fontWeight: 700, color: "#be123c" }}>Estoque Crítico ({critical.length}): {critical.map(i => i.name).join(", ")}</span>
         </div>
       )}
 
-      <div style={{ display: "flex", gap: ".65rem", marginBottom: "1rem", flexWrap: "wrap" }}>
-        <input placeholder="Buscar insumo…" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
+      {/* Busca Proeminente */}
+      <div style={{ background: "var(--surface)", padding: "1.25rem", borderRadius: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", marginBottom: "2rem", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center", border: "1px solid var(--border)" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: "300px" }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-3)" }}>
+            <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="2"/><path d="M11 11l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          <input 
+            placeholder="Pesquisar por nome do insumo ou material..." 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+            style={{ width: "100%", padding: ".75rem 1rem .75rem 2.75rem", fontSize: "1rem", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface-2)", transition: "all 0.2s" }} 
+          />
+        </div>
         <div style={{ display: "flex", gap: ".35rem", flexWrap: "wrap" }}>
-          <button onClick={() => setFilterCat("all")} style={{ padding: ".3rem .6rem", borderRadius: 999, border: "1px solid var(--border)", cursor: "pointer", fontSize: ".73rem", fontWeight: 600, background: filterCat === "all" ? "var(--teal-600)" : "var(--surface-2)", color: filterCat === "all" ? "#fff" : "var(--text-2)" }}>Todos</button>
+          <button onClick={() => setFilterCat("all")} style={{ padding: ".5rem 1rem", borderRadius: "10px", border: "1px solid var(--border)", cursor: "pointer", fontSize: ".8rem", fontWeight: 700, background: filterCat === "all" ? "var(--teal-600)" : "var(--surface)", color: filterCat === "all" ? "#fff" : "var(--text-2)" }}>Todos</button>
           {categories.map(c => (
-            <button key={c} onClick={() => setFilterCat(c)} style={{ padding: ".3rem .6rem", borderRadius: 999, border: "1px solid var(--border)", cursor: "pointer", fontSize: ".73rem", fontWeight: 600, background: filterCat === c ? "var(--teal-600)" : "var(--surface-2)", color: filterCat === c ? "#fff" : "var(--text-2)" }}>{c}</button>
+            <button key={c} onClick={() => setFilterCat(c)} style={{ padding: ".5rem 1rem", borderRadius: "10px", border: "1px solid var(--border)", cursor: "pointer", fontSize: ".8rem", fontWeight: 700, background: filterCat === c ? "var(--teal-600)" : "var(--surface)", color: filterCat === c ? "#fff" : "var(--text-2)" }}>{c}</button>
           ))}
         </div>
       </div>
@@ -1218,24 +1229,32 @@ export function InsumoPage({ patients, users, user }) {
           const isCrit = qty <= min;
           const isLow = qty <= min * 1.5 && qty > min;
           const barColor = isCrit ? "#ef4444" : isLow ? "#f59e0b" : "#16a34a";
+          const textColor = isCrit ? "#be123c" : "var(--ink)";
+          
           return (
-            <div key={item.id} style={{ background: "var(--surface)", border: `1px solid ${isCrit ? "#fecaca" : "var(--border)"}`, borderRadius: "var(--r-md)", padding: ".85rem 1rem" }}>
+            <div key={item.id} style={{ background: "var(--surface)", border: `1px solid ${isCrit ? "#fecdd3" : "var(--border)"}`, borderRadius: "16px", padding: "1.25rem", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", transition: "transform 0.2s, box-shadow 0.2s" }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.05)"; }} onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.02)"; }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: ".5rem", marginBottom: ".5rem" }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink)" }}>{item.name}</div>
-                  <div style={{ fontSize: ".68rem", color: "var(--text-3)" }}>{item.category}</div>
+                  <div style={{ fontWeight: 800, fontSize: ".95rem", color: textColor }}>{item.name}</div>
+                  <div style={{ fontSize: ".72rem", color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginTop: ".2rem" }}>{item.category}</div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: barColor }}>{qty}</div>
-                  <div style={{ fontSize: ".65rem", color: "var(--text-3)" }}>{item.unit} (min {min})</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: 900, color: barColor, lineHeight: 1 }}>{qty}</div>
+                  <div style={{ fontSize: ".68rem", color: "var(--text-3)", fontWeight: 500 }}>{item.unit} <span style={{opacity: 0.6}}>(min {min})</span></div>
                 </div>
               </div>
-              <div style={{ height: 5, borderRadius: 999, background: "var(--surface-2)", overflow: "hidden", marginBottom: ".65rem" }}>
-                <div style={{ height: "100%", width: pct + "%", background: barColor, borderRadius: 999, transition: "width .3s" }} />
+              <div style={{ height: 6, borderRadius: 999, background: "var(--surface-2)", overflow: "hidden", marginBottom: "1.25rem", marginTop: ".75rem" }}>
+                <div style={{ height: "100%", width: pct + "%", background: barColor, borderRadius: 999 }} />
               </div>
-              <div style={{ display: "flex", gap: ".35rem" }}>
-                <button onClick={() => setShowAdjust(item)} style={{ flex: 1, padding: ".28rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".72rem", fontWeight: 600 }}>Ajustar</button>
-                {canManage(user) && <button onClick={() => openEdit(item)} style={{ padding: ".28rem .55rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".72rem" }}>Editar</button>}
+              <div style={{ display: "flex", gap: ".5rem", justifyContent: "flex-end" }}>
+                <button onClick={() => setShowAdjust(item)} title="Ajustar estoque" style={{ padding: ".5rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 11h12M2 5h12M5 2v6M11 8v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                </button>
+                {canManage(user) && (
+                  <button onClick={() => openEdit(item)} title="Editar insumo" style={{ padding: ".5rem", background: "var(--teal-50)", border: "1px solid var(--teal-100)", color: "var(--teal-700)", borderRadius: "10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M11 2l3 3-9 9H2v-3l9-9z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                )}
               </div>
             </div>
           );

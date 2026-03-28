@@ -1470,7 +1470,7 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
   const dmInRange=dmPct!==null&&dmPct>=50&&dmPct<=70;
   const dmColor=dmPct===null?"var(--text-3)":dmInRange?"#15803d":dmPct<50?"#b45309":"#be123c";
   const dmBg=dmPct===null?"var(--surface-3)":dmInRange?"#dcfce7":dmPct<50?"#fef3c7":"#fee2e2";
-  const dmStatus=dmPct===null?"Sem dados":dmInRange?"Na meta âœ“":dmPct<50?"Abaixo da meta":"Acima da meta";
+  const dmStatus=dmPct===null?"Sem dados":dmInRange?"Na meta ✓":dmPct<50?"Abaixo da meta":"Acima da meta";
   const isAna = isAdmin(currentUser);
   // Mescla usuários da API com locais (recepção/farmácia), sem duplicatas
   const localExtras = [...RECEPTION_USERS, ...PHARMA_USERS].filter(lu=>
@@ -1920,7 +1920,7 @@ function ExamRequestModal({ patient, user, users, token, onClose }) {
       <div className="modal" style={{maxWidth:560}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
           <div>
-            <h3 style={{margin:0,fontSize:"1rem"}}>ðŸ”¬ Pedido de Exame</h3>
+            <h3 style={{margin:0,fontSize:"1rem"}}>🔬 Pedido de Exame</h3>
             <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem"}}>{patient.name}</div>
           </div>
           <button className="icon-btn" onClick={()=>onClose(false)}><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
@@ -2139,7 +2139,7 @@ function InternalReferralModal({ patient, user, users, token, onClose }) {
       <div className="modal" style={{maxWidth:460}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
           <div>
-            <h3 style={{margin:0,fontSize:"1rem"}}>ðŸ” Encaminhamento Interno</h3>
+            <h3 style={{margin:0,fontSize:"1rem"}}>🔄 Encaminhamento Interno</h3>
             <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem"}}>{patient.name}</div>
           </div>
           <button className="icon-btn" onClick={()=>onClose(false)}><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
@@ -2263,7 +2263,7 @@ function ExamsTab({ patientId, patient, canManageUser, canWriteRecords, user, us
         <div style={{display:"flex",gap:".45rem",flexWrap:"wrap",padding:".75rem 0",borderBottom:"1px solid var(--border)",marginBottom:".85rem"}}>
           <button type="button" onClick={()=>setShowExamReq(true)}
             style={{fontSize:".76rem",padding:".3rem .7rem",background:"var(--teal-50)",border:"1px solid var(--teal-200)",borderRadius:"var(--r-md)",color:"var(--teal-700)",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:".3rem"}}>
-            ðŸ”¬ Pedir exame
+            🔬 Pedir exame
           </button>
           {(canManageUser||["doctor","dentist","nurse_manager"].includes(user?.role))&&(
             <button type="button" onClick={()=>setShowPrescription(true)}
@@ -2274,7 +2274,7 @@ function ExamsTab({ patientId, patient, canManageUser, canWriteRecords, user, us
           {user?.role==="nurse_manager"&&(
             <button type="button" onClick={()=>setShowReferral(true)}
               style={{fontSize:".76rem",padding:".3rem .7rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",color:"#1d4ed8",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:".3rem"}}>
-              ðŸ” Encaminhar ao médico
+              🔄 Encaminhar ao médico
             </button>
           )}
           <div style={{marginLeft:"auto",display:"flex",gap:".4rem"}}>
@@ -2294,7 +2294,7 @@ function ExamsTab({ patientId, patient, canManageUser, canWriteRecords, user, us
       {addMode&&(
         <div style={{padding:".85rem",background:"var(--surface-2)",border:`2px solid ${addMode==="externo"?"#6366f1":"var(--teal-500)"}`,borderRadius:"var(--r-md)",marginBottom:"1rem"}}>
           <div style={{fontSize:".72rem",fontWeight:700,color:addMode==="externo"?"#6366f1":"var(--teal-700)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".65rem"}}>
-            {addMode==="externo"?"ðŸ“Ž Inserir exame externo (trazido pelo paciente)":"ðŸ¥ Registrar exame realizado no posto"}
+            {addMode==="externo"?"📌 Inserir exame externo (trazido pelo paciente)":"🏥 Registrar exame realizado no posto"}
           </div>
           <form onSubmit={handleSubmit} style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
             <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:".5rem"}}>
@@ -2340,7 +2340,7 @@ function ExamsTab({ patientId, patient, canManageUser, canWriteRecords, user, us
           Realizados no posto ({posto.length})
         </div>
         {loading ? <p className="muted" style={{fontSize:".82rem"}}>Carregando...</p>
-          : !posto.length ? <p className="muted" style={{fontSize:".82rem"}}>ðŸ”¬ Nenhum exame registrado no posto.</p>
+          : !posto.length ? <p className="muted" style={{fontSize:".82rem"}}>🔬 Nenhum exame registrado no posto.</p>
           : posto.map(exam=>examCard(exam,canManageUser,handleDelete,setPreview,isImg,fmtDate))}
       </div>
 
@@ -2439,7 +2439,7 @@ function PatientActionsTab({ patient, user, users, token, canManageUser, canWrit
 
   const actions = [
     canExam && {
-      id:"exam", icon:"ðŸ”¬", title:"Pedir Exame",
+      id:"exam", icon:"🔬", title:"Pedir Exame",
       desc:"Solicite exames laboratoriais ou de imagem com prioridade e justificativa.",
       color:"var(--teal-600)", bg:"var(--teal-50)", border:"var(--teal-200)"
     },
@@ -2449,7 +2449,7 @@ function PatientActionsTab({ patient, user, users, token, canManageUser, canWrit
       color:"#15803d", bg:"#f0fdf4", border:"#bbf7d0"
     },
     canRefer && {
-      id:"referral", icon:"ðŸ”", title:"Encaminhar ao Médico",
+      id:"referral", icon:"🔄", title:"Encaminhar ao Médico",
       desc:"Encaminhe o paciente a um médico ou dentista da unidade com justificativa.",
       color:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe"
     },
@@ -2483,7 +2483,7 @@ function PatientActionsTab({ patient, user, users, token, canManageUser, canWrit
           <div style={{fontSize:".7rem",fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".45rem"}}>Registrado nesta sessão</div>
           {done.map((d,i)=>(
             <div key={i} style={{fontSize:".78rem",color:"var(--text-2)",display:"flex",gap:".5rem",padding:".2rem 0"}}>
-              <span style={{color:"var(--teal-600)",fontWeight:600}}>âœ“</span>
+              <span style={{color:"var(--teal-600)",fontWeight:600}}>✓</span>
               <span>{d.type==="exam"?"Pedido de exame":d.type==="prescription"?"Prescrição":d.type==="referral"?"Encaminhamento interno":d.type}</span>
               <span style={{color:"var(--text-3)",marginLeft:"auto",fontFamily:"IBM Plex Mono",fontSize:".72rem"}}>{d.ts}</span>
             </div>
@@ -2640,9 +2640,9 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
                   <div style={{fontSize:".73rem",color:"var(--text-3)",marginTop:".1rem"}}>{catLabel([],selectedPatient.careCategory)}</div>
                 </div>
                 {onNavigatePatient&&(
-                  <button onClick={()=>onNavigatePatient(selectedPatient.id)}
+                    <button onClick={()=>onNavigatePatient(selectedPatient.id)}
                     style={{fontSize:".75rem",padding:".3rem .7rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",cursor:"pointer",color:"var(--text-1)",flexShrink:0}}>
-                    Ver ficha â†’
+                      Ver ficha →
                   </button>
                 )}
               </div>
@@ -2665,7 +2665,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
               {addMode&&(
                 <div style={{padding:".85rem",background:"var(--surface-2)",border:`2px solid ${addMode==="externo"?"#6366f1":"var(--teal-500)"}`,borderRadius:"var(--r-md)",marginBottom:"1rem"}}>
                   <div style={{fontSize:".71rem",fontWeight:700,color:addMode==="externo"?"#6366f1":"var(--teal-700)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".6rem"}}>
-                    {addMode==="externo"?"ðŸ“Ž Exame externo (trazido pelo paciente)":"ðŸ¥ Exame realizado no posto"}
+                    {addMode==="externo"?"📌 Exame externo (trazido pelo paciente)":"🏥 Exame realizado no posto"}
                   </div>
                   <form onSubmit={handleSubmit} style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
                     <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:".5rem"}}>
@@ -2711,7 +2711,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
                   Realizados na unidade ({posto.length})
                 </div>
                 {loading?<p className="muted" style={{fontSize:".82rem"}}>Carregando...</p>
-                  :!posto.length?<p className="muted" style={{fontSize:".82rem"}}>ðŸ”¬ Nenhum exame registrado.</p>
+                  :!posto.length?<p className="muted" style={{fontSize:".82rem"}}>🔬 Nenhum exame registrado.</p>
                   :posto.map(exam=>examCard(exam,canManage,handleDelete,setPreview,isImg,fmtDate))}
               </div>
 
@@ -3358,7 +3358,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
                     if (!stock.find(s=>s.id===editStockItem.id)) newStock.push({id:editStockItem.id,qty:n});
                     setStock(newStock); saveInsumoStock(newStock);
                     setEditStockItem(null);
-                  }} style={{flex:2}}>âœ“ Confirmar entrada</button>
+                  }} style={{flex:2}}>✓ Confirmar entrada</button>
                 </div>
               </div>
             )}
@@ -3508,8 +3508,8 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
               <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".4rem"}}>Contato</div>
               <div style={{fontSize:".8rem",color:"var(--text-2)",display:"flex",flexDirection:"column",gap:".2rem"}}>
                 {patient.phone&&<span>ðŸ“± {patient.phone}</span>}
-                {patient.phoneAlt&&<span>â˜Žï¸ {patient.phoneAlt}</span>}
-                {(patient.address||patient.city)&&<span>ðŸ“ {[patient.address,patient.number,patient.neighborhood,patient.city,patient.state].filter(Boolean).join(", ")}</span>}
+                {patient.phoneAlt&&<span>☎️ {patient.phoneAlt}</span>}
+                {(patient.address||patient.city)&&<span>📍 {[patient.address,patient.number,patient.neighborhood,patient.city,patient.state].filter(Boolean).join(", ")}</span>}
               </div>
             </div>
 
@@ -3518,9 +3518,9 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
               <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".4rem"}}>Dados Clínicos</div>
               <div style={{fontSize:".8rem",color:"var(--text-2)",display:"flex",flexDirection:"column",gap:".2rem"}}>
                 {allergies
-                  ? <span style={{color:"#be123c",fontWeight:600}}>âš ï¸ Alergias: {allergies}</span>
+                  ? <span style={{color:"#be123c",fontWeight:600}}>⚠️ Alergias: {allergies}</span>
                   : <span style={{color:"var(--text-3)"}}>Sem alergias registradas</span>}
-                {comorbid&&<span>ðŸ¥ {comorbid}</span>}
+                {comorbid&&<span>🏥 {comorbid}</span>}
               </div>
             </div>
           </div>
@@ -3717,7 +3717,7 @@ function DispenseModal({ item, pharmaUser, onConfirm, onClose }) {
             </label>
           </div>
           <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:700,color:"var(--text-1)"}}>
-            ðŸ” Confirmar com sua senha
+            🔐 Confirmar com sua senha
             <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Senha do farmacêutico" autoFocus/>
           </label>
           {err && <p className="error" style={{margin:0}}>{err}</p>}
@@ -3822,7 +3822,7 @@ function StockEditModal({ item, pharmaUser, mode, onConfirm, onClose }) {
             </div>
           )}
           <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:700,color:"var(--text-1)"}}>
-            ðŸ” Confirmar com sua senha
+            🔐 Confirmar com sua senha
             <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Senha do farmacêutico"/>
           </label>
           {err && <p className="error" style={{margin:0}}>{err}</p>}
@@ -4011,8 +4011,8 @@ function PharmacyPage({ user }) {
       {/* KPI Cards */}
       <div style={{display:"flex",gap:".75rem",padding:"0 1.5rem .75rem",flexWrap:"wrap"}}>
         {[
-          { label:"Total de itens", value:totalItems, icon:"ðŸ“¦", color:"var(--teal-600)" },
-          { label:"Estoque baixo",  value:lowStock.length, icon:"âš ï¸", color:lowStock.length>0?"var(--amber-600)":"var(--text-3)", warn:lowStock.length>0 },
+          { label:"Total de itens", value:totalItems, icon:"📦", color:"var(--teal-600)" },
+          { label:"Estoque baixo",  value:lowStock.length, icon:"⚠️", color:lowStock.length>0?"var(--amber-600)":"var(--text-3)", warn:lowStock.length>0 },
           { label:"Sem estoque",    value:outStock.length, icon:"🚫", color:outStock.length>0?"#be123c":"var(--text-3)", danger:outStock.length>0 },
           { label:"Dispensações hoje", value:log.filter(l=>l.type==="dispensa"&&l.ts?.slice(0,10)===new Date().toISOString().slice(0,10)).length, icon:"💊", color:"var(--teal-600)" },
         ].map(k => (
@@ -4030,7 +4030,7 @@ function PharmacyPage({ user }) {
 
       {/* Tabs */}
       <div style={{display:"flex",gap:0,padding:"0 1.5rem",borderBottom:"1px solid var(--border)",marginBottom:0}}>
-        {[["stock","📋 Estoque"],["log","🗂ï¸ Log de Movimentações"]].map(([id,label])=>(
+        {[["stock","📋 Estoque"],["log","🗂️ Log de Movimentações"]].map(([id,label])=>(
           <button key={id} onClick={()=>setPharmaTab(id)}
             style={{padding:".55rem 1rem",fontSize:".8rem",fontWeight:600,border:"none",
               background:"transparent",cursor:"pointer",color:pharmaTab===id?"var(--teal-600)":"var(--text-3)",
@@ -4064,7 +4064,7 @@ function PharmacyPage({ user }) {
                   background:showLowOnly?"#fff7ed":"var(--surface-2)",
                   border:`1px solid ${showLowOnly?"#fed7aa":"var(--border)"}`,
                   color:showLowOnly?"#c2410c":"var(--text-2)"}}>
-                {showLowOnly?"âš ï¸ Só baixo":"âš ï¸ Filtrar baixo"}
+                {showLowOnly?"⚠️ Só baixo":"⚠️ Filtrar baixo"}
               </button>
               {isAuthenticated && (
                 <button onClick={()=>setEditItem({item:null,mode:"add"})} style={{fontSize:".78rem",padding:".38rem .8rem",flexShrink:0}}>
@@ -4137,7 +4137,7 @@ function PharmacyPage({ user }) {
                                 title="Editar"
                                 style={{fontSize:".71rem",padding:".25rem .5rem",flexShrink:0,
                                   background:"var(--surface-2)",border:"1px solid var(--border)",color:"var(--text-2)"}}>
-                                âœï¸
+                                ✏️
                               </button>
                             </div>
                           </td>
@@ -4161,7 +4161,7 @@ function PharmacyPage({ user }) {
           <>
             {/* ANVISA RDC 20/2011 – aviso de retenção obrigatória */}
             <div style={{marginBottom:"1rem",padding:".6rem .85rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".73rem",color:"#92400e",display:"flex",gap:".5rem",alignItems:"flex-start"}}>
-              <span style={{flexShrink:0}}>âš–ï¸</span>
+              <span style={{flexShrink:0}}>⚖️</span>
               <span><strong>ANVISA RDC 20/2011:</strong> A escrituração de dispensação deve ser conservada por no mínimo <strong>5 anos</strong>. Este histórico não pode ser deletado. Para fins de auditoria, todos os registros devem ser exportados e arquivados fisicamente.</span>
             </div>
             <div style={{marginBottom:"1rem",display:"flex",gap:".65rem",alignItems:"center",flexWrap:"wrap"}}>
@@ -4180,7 +4180,7 @@ function PharmacyPage({ user }) {
                 const a=document.createElement("a"); a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
                 a.download=`dispensacoes_${new Date().toISOString().slice(0,10)}.csv`; a.click();
               }} style={{fontSize:".76rem",padding:".4rem .85rem",background:"var(--teal-600)",color:"#fff",border:"none",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}}>
-                â¬‡ï¸ Exportar CSV (ANVISA)
+                ⬇️ Exportar CSV (ANVISA)
               </button>
             </div>
             <div className="card" style={{padding:0,overflow:"hidden"}}>
@@ -4208,7 +4208,7 @@ function PharmacyPage({ user }) {
                       </td>
                       <td style={{fontSize:".76rem",color:"var(--text-2)"}}>
                         {l.type==="dispensa" && <div style={{display:"flex",flexDirection:"column",gap:".1rem"}}>
-                          <span><strong>{l.qty}x</strong> â†’ <strong>{l.patient}</strong></span>
+                          <span><strong>{l.qty}x</strong> → <strong>{l.patient}</strong></span>
                           {l.prescriber && <span style={{color:"var(--text-3)"}}>Prescritor: {l.prescriber}{l.prescriberCouncil?` (${l.prescriberCouncil})`:""}</span>}
                           {l.numReceita && <span style={{color:"var(--text-3)"}}>Receita nº {l.numReceita}{l.dtReceita?` – ${new Date(l.dtReceita+"T12:00:00").toLocaleDateString("pt-BR")}`:""}</span>}
                           {l.notes && <span style={{color:"var(--text-3)",fontStyle:"italic"}}>{l.notes}</span>}
@@ -4243,6 +4243,91 @@ function PharmacyPage({ user }) {
 }
 
 /* ── VACCINES PAGE ─────────────────────────────────────────────── */
+const AGE_GROUP_COLOR = {
+  "Criança":    { bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8" },
+  "Adolescente": { bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d" },
+  "Adulto":      { bg: "#faf5ff", border: "#e9d5ff", text: "#7e22ce" },
+  "Idoso":       { bg: "#fff7ed", border: "#fed7aa", text: "#c2410c" },
+  "Gestante":    { bg: "#fdf2f8", border: "#fbcfe8", text: "#9d174d" },
+};
+
+const PNI_CALENDAR = [
+  { id: "bcg", name: "BCG", ageGroup: "Criança", windowMin: 0, doseLabel: "Dose única", aliases: ["BCG"] },
+  { id: "hepb-rn", name: "Hepatite B (RN)", ageGroup: "Criança", windowMin: 0, doseLabel: "Dose ao nascer", aliases: ["Hepatite B", "Hep B"] },
+  { id: "penta-1", name: "Pentavalente (1ª dose)", ageGroup: "Criança", windowMin: 2, doseLabel: "1ª dose", aliases: ["Penta", "Pentavalente"] },
+  { id: "vip-1", name: "VIP (1ª dose)", ageGroup: "Criança", windowMin: 2, doseLabel: "1ª dose", aliases: ["VIP", "Polio"] },
+  { id: "rota-1", name: "Rotavírus (1ª dose)", ageGroup: "Criança", windowMin: 2, doseLabel: "1ª dose", aliases: ["Rotavirus"] },
+  { id: "pneumo-1", name: "Pneumocócica 10V (1ª dose)", ageGroup: "Criança", windowMin: 2, doseLabel: "1ª dose", aliases: ["Pneumo", "Pneumococica"] },
+  { id: "meningo-1", name: "Meningocócica C (1ª dose)", ageGroup: "Criança", windowMin: 3, doseLabel: "1ª dose", aliases: ["Meningo", "Meningococica"] },
+  { id: "penta-2", name: "Pentavalente (2ª dose)", ageGroup: "Criança", windowMin: 4, doseLabel: "2ª dose", aliases: ["Penta", "Pentavalente"] },
+  { id: "vip-2", name: "VIP (2ª dose)", ageGroup: "Criança", windowMin: 4, doseLabel: "2ª dose", aliases: ["VIP", "Polio"] },
+  { id: "rota-2", name: "Rotavírus (2ª dose)", ageGroup: "Criança", windowMin: 4, doseLabel: "2ª dose", aliases: ["Rotavirus"] },
+  { id: "pneumo-2", name: "Pneumocócica 10V (2ª dose)", ageGroup: "Criança", windowMin: 4, doseLabel: "2ª dose", aliases: ["Pneumo", "Pneumococica"] },
+  { id: "meningo-2", name: "Meningocócica C (2ª dose)", ageGroup: "Criança", windowMin: 5, doseLabel: "2ª dose", aliases: ["Meningo", "Meningococica"] },
+  { id: "penta-3", name: "Pentavalente (3ª dose)", ageGroup: "Criança", windowMin: 6, doseLabel: "3ª dose", aliases: ["Penta", "Pentavalente"] },
+  { id: "vip-3", name: "VIP (3ª dose)", ageGroup: "Criança", windowMin: 6, doseLabel: "3ª dose", aliases: ["VIP", "Polio"] },
+  { id: "fa-1", name: "Febre Amarela (1ª dose)", ageGroup: "Criança", windowMin: 9, doseLabel: "1ª dose", aliases: ["Febre Amarela", "FA"] },
+  { id: "pneumo-ref", name: "Pneumocócica 10V (Reforço)", ageGroup: "Criança", windowMin: 12, doseLabel: "Reforço", aliases: ["Pneumo", "Pneumococica"] },
+  { id: "scr-1", name: "Tríplice Viral (1ª dose)", ageGroup: "Criança", windowMin: 12, doseLabel: "1ª dose", aliases: ["Triplice Viral", "SCR"] },
+  { id: "dtp-1r", name: "DTP (1º reforço)", ageGroup: "Criança", windowMin: 15, doseLabel: "1º reforço", aliases: ["DTP"] },
+  { id: "vip-ref", name: "VIP (Reforço)", ageGroup: "Criança", windowMin: 15, doseLabel: "Reforço", aliases: ["VIP", "Polio"] },
+  { id: "scrv", name: "Tetra Viral / SCR + Varicela", ageGroup: "Criança", windowMin: 15, doseLabel: "Dose única", aliases: ["Tetra Viral", "SCRV", "Varicela"] },
+  { id: "hpv", name: "HPV", ageGroup: "Adolescente", windowMin: 108, doseLabel: "Dose única", aliases: ["HPV"] },
+  { id: "dt-g", name: "dT / dTpa (Gestante)", ageGroup: "Gestante", windowMin: 0, doseLabel: "A partir da 20ª semana", aliases: ["dTpa", "Dupla bacteriana"] },
+  { id: "influenza-i", name: "Influenza (Idoso)", ageGroup: "Idoso", windowMin: 0, doseLabel: "Dose anual", aliases: ["Influenza", "Gripe"] },
+];
+
+function ageInMonths(birthDate) {
+  if (!birthDate) return null;
+  const b = parseLocalDate(birthDate);
+  if (!b) return null;
+  const now = new Date();
+  let m = (now.getFullYear() - b.getFullYear()) * 12 + (now.getMonth() - b.getMonth());
+  if (now.getDate() < b.getDate()) m--;
+  return Math.max(0, m);
+}
+
+function getAgeGroup(months, careCategory) {
+  if (String(careCategory || "").toLowerCase() === "pregnant") return "Gestante";
+  if (months === null) return "Adulto";
+  if (months < 120) return "Criança";
+  if (months < 240) return "Adolescente";
+  if (months < 720) return "Adulto";
+  return "Idoso";
+}
+
+function getAllLifetimeVaccines(months) {
+  if (months === null) return PNI_CALENDAR.filter(v => v.ageGroup === "Adulto");
+  return PNI_CALENDAR.filter(v => {
+    if (v.ageGroup === "Criança") return months < 120;
+    if (v.ageGroup === "Adolescente") return months >= 120 && months < 240;
+    if (v.ageGroup === "Adulto") return months >= 240 && months < 720;
+    if (v.ageGroup === "Idoso") return months >= 720;
+    return false;
+  });
+}
+
+function getConditionVaccines(careCategory) {
+  const cat = String(careCategory || "").toLowerCase();
+  if (cat === "pregnant") return PNI_CALENDAR.filter(v => v.ageGroup === "Gestante");
+  return [];
+}
+
+function getConditionGroup(careCategory) {
+  const cat = String(careCategory || "").toLowerCase();
+  if (cat === "pregnant") return "Gestante";
+  return null;
+}
+
+function vaccineApplied(v, appliedList, birthDate) {
+  const norm = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+  return appliedList.some(a => v.aliases.some(alias => norm(a.title).includes(norm(alias))));
+}
+
+function inferVaccineDoseTitle(vaccine, applyDate, birthDate) {
+  return vaccine;
+}
+
 // ── Calendário vacinal do Indicador – Equipe Rosa ────────────────
 // Apenas as vacinas que compõem o indicador de cobertura vacinal da equipe.
 // IDs devem corresponder aos IDs do PNI_CALENDAR.
@@ -4511,7 +4596,7 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                           color:totalPending?"var(--amber-700)":"#15803d",
                           border:totalPending?"1px solid var(--amber-100)":"1px solid #bbf7d0",
                           fontWeight:600}}>
-                          {totalPending ? `${totalPending} pendente${totalPending>1?"s":""}` : "Em dia âœ“"}
+                          {totalPending ? `${totalPending} pendente${totalPending>1?"s":""}` : "Em dia ✓"}
                         </span>
                       </div>
                     </div>
@@ -4559,7 +4644,7 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                         </label>
                       </div>
                       {applyError && <p className="error" style={{margin:".25rem 0 .4rem"}}>{applyError}</p>}
-                      <button type="submit" disabled={applyBusy}>{applyBusy?"Salvando...":"âœ… Registrar"}</button>
+                      <button type="submit" disabled={applyBusy}>{applyBusy?"Salvando...":"✅ Registrar"}</button>
                     </form>
                   </div>
                 )}
@@ -4874,7 +4959,7 @@ function AiTab({ aiView, aiData, aiQuestion, setAiQuestion, onPriorities, onQual
               <>
                 <h4 style={{marginBottom:".75rem",fontWeight:700,fontSize:".85rem"}}>Qualidade de dados</h4>
                 {!Array.isArray(aiData?.findings)||!aiData.findings.length
-                  ? <p className="muted">Nenhuma inconsistência encontrada. âœ“</p>
+                  ? <p className="muted">Nenhuma inconsistência encontrada. ✓</p>
                   : aiData.findings.map((f,idx)=>(
                       <div key={idx} style={{padding:".65rem .85rem",borderLeft:"3px solid var(--amber-400)",background:"var(--amber-50)",borderRadius:"0 var(--r-md) var(--r-md) 0",marginBottom:".4rem"}}>
                         <strong style={{fontSize:".83rem",color:"var(--amber-800)"}}>{f.patientName||"Paciente"}</strong>
@@ -5098,7 +5183,7 @@ class AppErrorBoundary extends Component {
           minHeight:"100vh",padding:"2rem",background:"#f8fafc",fontFamily:"system-ui,sans-serif"}}>
           <div style={{maxWidth:480,width:"100%",background:"#fff",borderRadius:12,padding:"2rem",
             boxShadow:"0 4px 24px rgba(0,0,0,.08)",border:"1px solid #e2e8f0"}}>
-            <div style={{fontSize:"2rem",marginBottom:"1rem",textAlign:"center"}}>âš ï¸</div>
+            <div style={{fontSize:"2rem",marginBottom:"1rem",textAlign:"center"}}>⚠️</div>
             <h2 style={{margin:"0 0 .5rem",fontSize:"1.1rem",color:"#0f172a",textAlign:"center"}}>
               Ocorreu um erro inesperado
             </h2>
@@ -5130,8 +5215,11 @@ function AppInner() {
   const uiState = readUiState();
   const [user, setUser] = useState(session?.user || null);
   const [patients, setPatients] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [protocolByPatient, setProtocolByPatient] = useState({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(uiState?.tab || "dashboard");
+  const [tab, setTab] = useState(uiState?.tab || "dashboard");
 
   // Valida o token – se vier algo inválido limpa a sessão
   const initialToken = (() => {
@@ -5259,7 +5347,7 @@ function AppInner() {
     // 1ª visita ACS: realizar até os 30 dias de vida.
     // 2ª visita ACS: realizar do 2º ao 6º mês (31–180 dias de vida).
     // Quando a janela passa sem registro â†’ prazo perdido (sem recuperação), sem gerar alerta.
-    if (selectedPatient &&
+      if (selectedPatient &&
         String(selectedPatient.careCategory||"").toLowerCase() === "child_followup" &&
         selectedPatient.birthDate) {
       const agedays = Math.floor((Date.now() - (parseLocalDate(selectedPatient.birthDate)||new Date()).getTime()) / 86400000);
@@ -5438,7 +5526,7 @@ function AppInner() {
   useEffect(()=>{
     listPublicTeams().then(arr=>{ const a=Array.isArray(arr)?arr:[]; setPublicTeams(a); }).catch(()=>setPublicTeams([]));
   },[token]);
-  useEffect(()=>{ localStorage.setItem(UI_STATE_KEY,JSON.stringify({tab: activeTab, patientTab, selectedPatientId})); },[activeTab, patientTab, selectedPatientId]);
+  useEffect(()=>{ localStorage.setItem(UI_STATE_KEY,JSON.stringify({tab, patientTab, selectedPatientId})); },[tab, patientTab, selectedPatientId]);
   useEffect(()=>{
     if(!token||!selectedPatientId){setAppointments([]);setTasks([]);setMessages([]);setHistory([]);setPatientProtocolSummary(null);return;}
     loadSelectedPatientData(selectedPatientId);
@@ -5532,9 +5620,19 @@ async function loadAll() {
 
     setUser(prev => prev || boot?.user || null);
 
-    const ptsSource = Array.isArray(boot?.patients)
-      ? boot.patients
-      : await listPatients(token).catch(() => []);
+    let ptsSource;
+    if (Array.isArray(boot?.patients)) {
+      ptsSource = boot.patients;
+    } else {
+      // bootstrap nao retornou patients — tenta listPatients separado
+      try {
+        ptsSource = await withTimeout(listPatients(token));
+      } catch (ptsErr) {
+        console.error("[loadAll] Falha ao carregar pacientes:", ptsErr);
+        ptsSource = [];
+        setError("Nao foi possivel carregar a lista de pacientes. Verifique sua conexao ou contate o suporte.");
+      }
+    }
 
     const pts = normalizePatientsResponse(ptsSource);
 

@@ -939,7 +939,7 @@ app.MapPost("/patients", async (
 
     if (string.IsNullOrWhiteSpace(req.Name) || string.IsNullOrWhiteSpace(req.Phone))
     {
-        return Results.BadRequest(new { error = "Nome e telefone sÃ£o obrigatÃ³rios" });
+        return Results.BadRequest(new { error = "Nome e telefone são obrigatórios" });
     }
 
     var state = await store.ReadAsync();
@@ -1228,7 +1228,7 @@ app.MapPost("/patients/{id}/records", async (
     var dateText = (req.Date ?? "").Trim();
     if (string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(dateText))
     {
-        return Results.BadRequest(new { error = "type, date e title sÃ£o obrigatÃ³rios" });
+        return Results.BadRequest(new { error = "type, date e title são obrigatórios" });
     }
 
     // Tipos válidos — alinhados com ENTRY_TYPE do frontend e CFM 1638/2002
