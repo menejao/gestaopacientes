@@ -181,7 +181,7 @@ function Avatar({ name, size = 36, color = "var(--teal-600, #0d9488)" }) {
       width: size, height: size, borderRadius: "50%", flexShrink: 0,
       background: color, color: "#fff",
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * .28 + "rem", fontWeight: 800, letterSpacing: "-.01em",
+      fontSize: `${Math.max(10, Math.round(size * 0.42))}px`, fontWeight: 800, letterSpacing: "-.01em",
     }}>
       {initials(name)}
     </div>
