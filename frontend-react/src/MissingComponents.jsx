@@ -405,7 +405,9 @@ function PageHeader({ icon, title, subtitle, actions }) {
    1. NOTIFICATION BELL
 ═══════════════════════════════════════════════════════════════════════════ */
 export function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, onNavigate }) {
+  const NOTIF_READ_KEY = "saudeubs_notifications_read_v1";
   const [open, setOpen] = useState(false);
+  const [readMap, setReadMap] = useState(() => readLS(NOTIF_READ_KEY, {}));
   const ref = useRef(null);
 
   useEffect(() => {
@@ -413,6 +415,8 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  useEffect(() => { writeLS(NOTIF_READ_KEY, readMap); }, [readMap]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -423,7 +427,7 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
       if (!s) return;
       const pending = (s.pending?.visits || 0) + (s.pending?.consultations || 0) + (s.pending?.vaccines || 0);
       if (pending > 0) {
-        out.push({ id: "prot-" + p.id, type: "danger", title: "Protocolo pendente", detail: p.name + " – " + pending + " item(s)", patientId: p.id });
+        out.push({ id: "prot-" + p.id, type: "danger", title: "Protocolo pendente", detail: `${p.name} - ${pending} item(s)`, patientId: p.id });
       }
     });
     (pharmacyStock || []).forEach(s => {
@@ -437,8 +441,34 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
     return out.slice(0, 30);
   }, [patients, protocolByPatient, pharmacyStock, agenda]);
 
-  const count = alerts.length;
-  const danger = alerts.filter(a => a.type === "danger").length;
+  useEffect(() => {
+    setReadMap(prev => {
+      const activeIds = new Set(alerts.map(a => a.id));
+      const next = {};
+      let changed = false;
+      Object.entries(prev || {}).forEach(([id, read]) => {
+        if (activeIds.has(id)) next[id] = read;
+        else changed = true;
+      });
+      return changed ? next : prev;
+    });
+  }, [alerts]);
+
+  const markRead = useCallback((id) => {
+    setReadMap(prev => (prev?.[id] ? prev : { ...(prev || {}), [id]: true }));
+  }, []);
+
+  const clearNotifications = useCallback(() => {
+    setReadMap(prev => {
+      const next = { ...(prev || {}) };
+      alerts.forEach(a => { next[a.id] = true; });
+      return next;
+    });
+  }, [alerts]);
+
+  const unreadAlerts = alerts.filter(a => !readMap?.[a.id]);
+  const count = unreadAlerts.length;
+  const danger = unreadAlerts.filter(a => a.type === "danger").length;
   const badgeColor = danger > 0 ? DS.red[500] : count > 0 ? DS.amber[500] : "transparent";
 
   const typeStyle = {
@@ -467,9 +497,16 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
         <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, width: 340, background: "var(--surface, #fff)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 16, boxShadow: "0 12px 40px rgba(0,0,0,.13)", zIndex: 1000, overflow: "hidden" }}>
           <div style={{ padding: ".75rem 1.1rem", borderBottom: "1px solid var(--border, #e2e8f0)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>Notificações</span>
-            <Badge color={DS.slate[500]} bg={DS.slate[100]} border={DS.slate[200]}>{count}</Badge>
+            <div style={{ display: "flex", alignItems: "center", gap: ".45rem" }}>
+              {alerts.length > 0 && (
+                <button type="button" onClick={clearNotifications} style={{ ...css.btnGhost, fontSize: ".72rem", padding: ".2rem .45rem" }}>
+                  Limpar
+                </button>
+              )}
+              <Badge color={DS.slate[500]} bg={DS.slate[100]} border={DS.slate[200]}>{count}</Badge>
+            </div>
           </div>
-          {count === 0 ? (
+          {alerts.length === 0 ? (
             <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-3, #64748b)", fontSize: ".82rem" }}>
               <div style={{ fontSize: "1.5rem", marginBottom: ".5rem" }}>🔔</div>
               Nenhuma notificação pendente
@@ -478,13 +515,14 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
             <ul style={{ listStyle: "none", margin: 0, padding: ".3rem 0", maxHeight: 360, overflowY: "auto" }}>
               {alerts.map(a => {
                 const s = typeStyle[a.type] || typeStyle.info;
+                const isRead = Boolean(readMap?.[a.id]);
                 return (
                   <li key={a.id}
-                    onClick={() => { if (a.patientId) { onNavigate(a.patientId); setOpen(false); } }}
-                    style={{ display: "flex", alignItems: "flex-start", gap: ".7rem", padding: ".6rem 1.1rem", cursor: a.patientId ? "pointer" : "default", borderLeft: `3px solid ${s.dot}`, transition: "background .12s" }}
+                    onClick={() => { markRead(a.id); if (a.patientId) { onNavigate(a.patientId); setOpen(false); } }}
+                    style={{ display: "flex", alignItems: "flex-start", gap: ".7rem", padding: ".6rem 1.1rem", cursor: a.patientId ? "pointer" : "default", borderLeft: `3px solid ${isRead ? "var(--border, #e2e8f0)" : s.dot}`, transition: "background .12s", opacity: isRead ? .72 : 1 }}
                     onMouseEnter={e => { if (a.patientId) e.currentTarget.style.background = "var(--surface-2, #f8fafc)"; }}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: s.dot, marginTop: 5, flexShrink: 0 }} />
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: isRead ? "var(--border, #e2e8f0)" : s.dot, marginTop: 5, flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: ".8rem", color: "var(--ink, #0f172a)" }}>{a.title}</div>
                       <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.detail}</div>
@@ -499,7 +537,6 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
     </div>
   );
 }
-
 /* ═══════════════════════════════════════════════════════════════════════════
    2. QUEUE PAGE — Fila de Espera / Recepção
 ═══════════════════════════════════════════════════════════════════════════ */
