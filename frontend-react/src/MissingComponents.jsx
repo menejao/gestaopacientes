@@ -355,12 +355,27 @@ function PatientAutocompleteField({ patients, search, setSearch, selectedId, onS
             <div style={{ padding: ".55rem .85rem", fontSize: ".76rem", color: "var(--text-3, #64748b)" }}>Nenhum paciente encontrado.</div>
           ) : options.map(p => (
             <button key={p.id} type="button" onClick={() => { onSelect(p.id); setSearch(p.name); }}
-              style={{ width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid var(--border, #e2e8f0)", padding: ".55rem .8rem", cursor: "pointer", display: "grid", gridTemplateColumns: "26px 1fr", alignItems: "center", gap: ".6rem" }}>
-              <Avatar name={p.name} size={26} />
+              style={{
+                width: "100%",
+                textAlign: "left",
+                background: "transparent",
+                border: "none",
+                borderBottom: "1px solid var(--border, #e2e8f0)",
+                padding: ".55rem .8rem",
+                cursor: "pointer",
+                display: "grid",
+                gridTemplateColumns: "28px 1fr",
+                alignItems: "center",
+                gap: ".6rem",
+                appearance: "none",
+                WebkitAppearance: "none",
+                outline: "none",
+              }}>
+              <Avatar name={p.name} size={28} />
               <div style={{ minWidth: 0, overflow: "hidden" }}>
                 <div style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--ink, #0f172a)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {p.cpf || "-"}{p.phone ? ` • ${p.phone}` : ""}
+                <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {`CPF: ${p.cpf || "-"} | Tel: ${p.phone || "-"}`}
                 </div>
               </div>
             </button>
