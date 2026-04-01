@@ -72,17 +72,25 @@ function roleLabel(role) {
     dentist: "Dentista", gestor: "Gestor(a) UBS",
   })[String(role || "").toLowerCase()] || role || "—";
 }
+function normalizeCareCategory(cat) {
+  const c = String(cat || "").trim().toLowerCase();
+  if (!c) return "general";
+  const allowed = new Set(["general", "pregnant", "puerperal", "child_followup", "elderly", "chronic"]);
+  return allowed.has(c) ? c : "general";
+}
 function catLabel(cat) {
+  const normalized = normalizeCareCategory(cat);
   return ({
     pregnant: "Gestante", child_followup: "Puericultura", chronic: "Crônico",
-    puerperal: "Puérpera", pap_only: "Papanicolau", general: "Geral",
-  })[cat] || cat || "—";
+    puerperal: "Puérpera", general: "Geral", elderly: "Pessoa Idosa",
+  })[normalized] || normalized || "—";
 }
 function catColor(cat) {
+  const normalized = normalizeCareCategory(cat);
   return ({
     pregnant: "#db2777", child_followup: "#0891b2", chronic: "#d97706",
-    puerperal: "#7c3aed", pap_only: "#059669", general: "#4f46e5",
-  })[cat] || T.text3;
+    puerperal: "#7c3aed", general: "#4f46e5", elderly: "#0ea5e9",
+  })[normalized] || T.text3;
 }
 function recordTypeLabel(t) {
   return ({
@@ -1778,7 +1786,10 @@ export function GestorPageNew({ patients, users, templates, protocolByPatient })
 
   const byCategory = useMemo(() => {
     const m = {};
-    patients.forEach(p => { m[p.careCategory] = (m[p.careCategory] || 0) + 1; });
+    patients.forEach(p => {
+      const normalized = normalizeCareCategory(p.careCategory);
+      m[normalized] = (m[normalized] || 0) + 1;
+    });
     return Object.entries(m).sort((a,b)=>b[1]-a[1]);
   }, [patients]);
 
@@ -1815,6 +1826,57 @@ export function GestorPageNew({ patients, users, templates, protocolByPatient })
   const withAcs     = patients.filter(p=>p.assignedAcsId).length;
   const incomplete  = patients.filter(p=>p.incompleteProfile).length;
   const dataScore   = total ? Math.round(((withPhone+withCpf+withAddress+withCns+withAcs)/(total*5))*100) : 0;
+  const missingIdentification = patients.filter(p => !p.cpf || !p.cns).length;
+  const withoutTeamReference = patients.filter(p => !p.microArea || !p.assignedAcsId).length;
+  const legacyCategoryNormalizedCount = patients.filter(p => normalizeCareCategory(p.careCategory) !== String(p.careCategory || "").toLowerCase()).length;
+
+  const protocolOverview = useMemo(() => {
+    let withSummary = 0;
+    let patientsWithPending = 0;
+    let totalPending = 0;
+    const ranked = [];
+    patients.forEach((p) => {
+      const summary = protocolByPatient?.[p.id];
+      if (!summary) return;
+      withSummary++;
+      const pendingVisits = Number(summary?.pending?.visits || 0);
+      const pendingConsultations = Number(summary?.pending?.consultations || 0);
+      const pendingVaccines = Number(summary?.pending?.vaccines || 0);
+      const pending = pendingVisits + pendingConsultations + pendingVaccines;
+      if (pending > 0) {
+        patientsWithPending++;
+        totalPending += pending;
+        ranked.push({
+          id: p.id,
+          name: p.name,
+          risk: p.status === "risk" ? 2 : 0,
+          pending,
+          pendingVisits,
+          pendingConsultations,
+          pendingVaccines,
+        });
+      }
+    });
+    ranked.sort((a, b) => (b.risk - a.risk) || (b.pending - a.pending) || a.name.localeCompare(b.name));
+    return {
+      withSummary,
+      withoutSummary: Math.max(0, total - withSummary),
+      patientsWithPending,
+      totalPending,
+      topPending: ranked.slice(0, 8),
+    };
+  }, [patients, protocolByPatient, total]);
+
+  const complianceScore = total
+    ? Math.max(0, Math.min(100, Math.round(
+      (
+        ((total - incomplete) / total) * 0.30 +
+        ((total - missingIdentification) / total) * 0.30 +
+        ((total - withoutTeamReference) / total) * 0.20 +
+        ((total - protocolOverview.patientsWithPending) / total) * 0.20
+      ) * 100
+    )))
+    : 100;
 
   // Metas PNAB / pactuação
   const metaCobertura   = 3500;
@@ -1834,6 +1896,7 @@ export function GestorPageNew({ patients, users, templates, protocolByPatient })
     { key:"overview",      label:"Visão Geral",          icon:"📊" },
     { key:"equipe",        label:"Equipe & Cobertura",   icon:"👥" },
     { key:"qualidade",     label:"Qualidade dos Dados",  icon:"✅" },
+    { key:"conformidade",  label:"Conformidade",         icon:"🛡️" },
     { key:"metas",         label:"Metas e Indicadores",  icon:"🎯" },
   ];
 
@@ -1884,7 +1947,7 @@ export function GestorPageNew({ patients, users, templates, protocolByPatient })
         </div>
 
         {/* Barra de Alertas */}
-        {(byStatus.risk > 0 || incomplete > 0) && (
+        {(byStatus.risk > 0 || incomplete > 0 || protocolOverview.patientsWithPending > 0 || missingIdentification > 0) && (
           <div style={{ display: "flex", gap: ".65rem", flexWrap: "wrap" }}>
             {byStatus.risk > 0 && (
               <AlertBanner type="warning">
@@ -1894,6 +1957,16 @@ export function GestorPageNew({ patients, users, templates, protocolByPatient })
             {incomplete > 0 && (
               <AlertBanner type="info">
                 <strong>{incomplete} cadastro(s) incompletos</strong> afetam a qualidade dos dados. Priorize a completude.
+              </AlertBanner>
+            )}
+            {protocolOverview.patientsWithPending > 0 && (
+              <AlertBanner type="warning">
+                <strong>{protocolOverview.patientsWithPending} paciente(s) com protocolo pendente</strong> ({protocolOverview.totalPending} pendência(s) total).
+              </AlertBanner>
+            )}
+            {missingIdentification > 0 && (
+              <AlertBanner type="error">
+                <strong>{missingIdentification} paciente(s) sem CPF/CNS completo</strong>. Corrija para rastreabilidade e conformidade regulatória.
               </AlertBanner>
             )}
           </div>
@@ -1934,6 +2007,10 @@ export function GestorPageNew({ patients, users, templates, protocolByPatient })
                 sub="Cadastros do mês atual" />
               <DashKpi label="Score de Dados" value={`${dataScore}%`} icon="🏆" color={scoreColor} bg={scoreColor+"18"}
                 sub="Qualidade dos cadastros" />
+              <DashKpi label="Score de Conformidade" value={`${complianceScore}%`} icon="🛡️" color={complianceScore >= 80 ? T.green : complianceScore >= 60 ? T.amber : T.rose} bg={T.surface3}
+                sub="LGPD · CFM · Lei 13.787" />
+              <DashKpi label="Pendências de Protocolo" value={protocolOverview.totalPending} icon="📌" color={protocolOverview.totalPending > 0 ? T.amber : T.green} bg={protocolOverview.totalPending > 0 ? T.amberL : T.greenL}
+                sub={`${protocolOverview.patientsWithPending} paciente(s)`} />
             </div>
 
             {/* Linha 2: Distribuição por categoria + Microárea */}
@@ -2205,6 +2282,77 @@ export function GestorPageNew({ patients, users, templates, protocolByPatient })
         )}
 
         {/* ── METAS E INDICADORES ── */}
+        {tab === "conformidade" && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))", gap: ".85rem" }}>
+              <DashKpi label="Score de Conformidade" value={`${complianceScore}%`} icon="🛡️" color={complianceScore >= 80 ? T.green : complianceScore >= 60 ? T.amber : T.rose} bg={T.surface3}
+                sub="Consolidado da unidade" />
+              <DashKpi label="Sem CPF/CNS completo" value={missingIdentification} icon="🪪" color={missingIdentification > 0 ? T.rose : T.green} bg={missingIdentification > 0 ? T.roseL : T.greenL}
+                sub="Identificação obrigatória" />
+              <DashKpi label="Sem microárea/ACS" value={withoutTeamReference} icon="🗺️" color={withoutTeamReference > 0 ? T.amber : T.green} bg={withoutTeamReference > 0 ? T.amberL : T.greenL}
+                sub="Territorialização" />
+              <DashKpi label="Sem resumo de protocolo" value={protocolOverview.withoutSummary} icon="📄" color={protocolOverview.withoutSummary > 0 ? T.amber : T.green} bg={protocolOverview.withoutSummary > 0 ? T.amberL : T.greenL}
+                sub="Pacientes sem monitoramento" />
+            </div>
+
+            <Card style={{ padding: "1.25rem" }}>
+              <SectionHeader title="Checklist Regulatório Operacional" icon="📚"
+                sub="Acompanhamento assistencial e de governança para gestão da UBS" />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
+                {[
+                  { label: "Identificação mínima (CPF/CNS)", ok: missingIdentification === 0, detail: `${missingIdentification} pendente(s)` },
+                  { label: "Completude de cadastro", ok: incomplete === 0, detail: `${incomplete} incompleto(s)` },
+                  { label: "Territorialização (ACS + microárea)", ok: withoutTeamReference === 0, detail: `${withoutTeamReference} sem vínculo` },
+                  { label: "Pendências de protocolo", ok: protocolOverview.totalPending === 0, detail: `${protocolOverview.totalPending} pendência(s)` },
+                  { label: "Categorias legadas não normalizadas", ok: legacyCategoryNormalizedCount === 0, detail: `${legacyCategoryNormalizedCount} registro(s)` },
+                  { label: "Cobertura de dados (score ≥ 80%)", ok: dataScore >= 80, detail: `${dataScore}%` },
+                ].map(item => (
+                  <div key={item.label} style={{ padding: ".75rem .85rem", borderRadius: T.r, border: `1px solid ${item.ok ? "#86efac" : "#fecaca"}`, background: item.ok ? "#f0fdf4" : "#fff1f2" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: ".5rem", fontSize: ".78rem", fontWeight: 700, color: item.ok ? T.green : T.rose }}>
+                      <span>{item.ok ? "✓" : "!"}</span>
+                      <span>{item.label}</span>
+                    </div>
+                    <div style={{ fontSize: ".72rem", color: T.text2, marginTop: ".25rem" }}>{item.detail}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card style={{ padding: "1.25rem" }}>
+              <SectionHeader title="Fila de Ação do Gestor" icon="🧭" sub="Pacientes com maior prioridade operacional (risco e pendências)" />
+              {protocolOverview.topPending.length === 0 ? (
+                <EmptyState icon="✅" title="Sem pendências de protocolo" sub="A unidade está sem pendências assistenciais registradas." />
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".8rem" }}>
+                    <thead>
+                      <tr style={{ background: T.surface2 }}>
+                        {["Paciente", "Risco", "Visitas", "Consultas", "Vacinas", "Total"].map(h => (
+                          <th key={h} style={{ padding: ".6rem .85rem", textAlign: "left", fontWeight: 700, color: T.text2, borderBottom: `1px solid ${T.border}` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {protocolOverview.topPending.map((row, idx) => (
+                        <tr key={row.id} style={{ background: idx % 2 === 0 ? T.surface : T.surface2 }}>
+                          <td style={{ padding: ".6rem .85rem", fontWeight: 700, color: T.ink }}>{row.name}</td>
+                          <td style={{ padding: ".6rem .85rem" }}>
+                            <Badge label={row.risk ? "Alto" : "Moderado"} color={row.risk ? T.rose : T.amber} bg={row.risk ? T.roseL : T.amberL} />
+                          </td>
+                          <td style={{ padding: ".6rem .85rem", color: T.text2 }}>{row.pendingVisits}</td>
+                          <td style={{ padding: ".6rem .85rem", color: T.text2 }}>{row.pendingConsultations}</td>
+                          <td style={{ padding: ".6rem .85rem", color: T.text2 }}>{row.pendingVaccines}</td>
+                          <td style={{ padding: ".6rem .85rem", fontWeight: 800, color: T.indigo }}>{row.pending}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </>
+        )}
+
         {tab === "metas" && (
           <>
             <AlertBanner type="info">
@@ -2362,7 +2510,9 @@ export function ReportsPageNew({ patients, users, templates, protocolByPatient }
   const [category, setCategory] = useState("all");
 
   const filtered = useMemo(() =>
-    category === "all" ? patients : patients.filter(p => p.careCategory === category),
+    category === "all"
+      ? patients
+      : patients.filter(p => normalizeCareCategory(p.careCategory) === category),
     [patients, category]
   );
   const total  = filtered.length;
@@ -2378,7 +2528,7 @@ export function ReportsPageNew({ patients, users, templates, protocolByPatient }
     { key:"child_followup",label:"Puericultura"},
     { key:"chronic",      label:"Crônicos"    },
     { key:"puerperal",    label:"Puérperas"   },
-    { key:"pap_only",     label:"Papanicolau" },
+    { key:"elderly",      label:"Pessoa Idosa"},
     { key:"general",      label:"Geral"       },
   ];
 
@@ -2391,6 +2541,39 @@ export function ReportsPageNew({ patients, users, templates, protocolByPatient }
     })).sort((a,b)=>b.total-a.total),
     [patients, users]
   );
+
+  const protocolReport = useMemo(() => {
+    let withSummary = 0;
+    let pendingPatients = 0;
+    let totalPending = 0;
+    filtered.forEach((p) => {
+      const s = protocolByPatient?.[p.id];
+      if (!s) return;
+      withSummary++;
+      const pending = Number(s?.pending?.visits || 0) + Number(s?.pending?.consultations || 0) + Number(s?.pending?.vaccines || 0);
+      if (pending > 0) {
+        pendingPatients++;
+        totalPending += pending;
+      }
+    });
+    return {
+      withSummary,
+      withoutSummary: Math.max(0, filtered.length - withSummary),
+      pendingPatients,
+      totalPending,
+    };
+  }, [filtered, protocolByPatient]);
+
+  const reportActions = useMemo(() => {
+    const actions = [];
+    if (protocolReport.pendingPatients > 0) actions.push(`Priorizar ${protocolReport.pendingPatients} paciente(s) com pendências de protocolo.`);
+    if (protocolReport.withoutSummary > 0) actions.push(`Gerar resumo de protocolo para ${protocolReport.withoutSummary} paciente(s) sem monitoramento.`);
+    const missingId = filtered.filter(p => !p.cpf || !p.cns).length;
+    if (missingId > 0) actions.push(`Completar CPF/CNS de ${missingId} paciente(s) para rastreabilidade e auditoria.`);
+    const withoutAcs = filtered.filter(p => !p.assignedAcsId).length;
+    if (withoutAcs > 0) actions.push(`Vincular ACS para ${withoutAcs} paciente(s) sem responsável territorial.`);
+    return actions;
+  }, [filtered, protocolReport]);
 
   return (
     <div style={{ padding:"1.5rem 2rem", display:"flex", flexDirection:"column", gap:"1.25rem" }}>
@@ -2411,6 +2594,8 @@ export function ReportsPageNew({ patients, users, templates, protocolByPatient }
           { label:"Em risco", value:risk, icon:"⚠️", color:T.amber, bg:T.amberL },
           { label:"Novos este mês", value:newThisMonth, icon:"🆕", color:T.blue, bg:T.blueL },
           { label:"ACS", value:users.filter(u=>u.role==="acs").length, icon:"🏃", color:T.teal, bg:T.tealL },
+          { label:"Pendências protocolo", value:protocolReport.totalPending, icon:"📌", color:protocolReport.totalPending ? T.amber : T.green, bg:protocolReport.totalPending ? T.amberL : T.greenL },
+          { label:"Sem resumo", value:protocolReport.withoutSummary, icon:"📄", color:protocolReport.withoutSummary ? T.amber : T.green, bg:protocolReport.withoutSummary ? T.amberL : T.greenL },
         ].map(k => (
           <Card key={k.label} style={{ padding:".85rem 1rem", flex:"1 1 120px", minWidth:100 }}>
             <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
@@ -2428,7 +2613,7 @@ export function ReportsPageNew({ patients, users, templates, protocolByPatient }
         <SectionHeader title="Distribuição por Categoria" sub="Pacientes por programa de cuidado" icon="📊" />
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:".65rem" }}>
           {catOptions.filter(o=>o.key!=="all").map(o=>{
-            const count = patients.filter(p=>p.careCategory===o.key).length;
+            const count = patients.filter(p=>normalizeCareCategory(p.careCategory)===o.key).length;
             return (
               <div key={o.key} style={{ padding:".85rem 1rem", border:`1px solid ${T.border}`, borderRadius:T.r, background:T.surface }}>
                 <div style={{ fontSize:"1.5rem", fontWeight:800, color:catColor(o.key) }}>{count}</div>
@@ -2440,6 +2625,30 @@ export function ReportsPageNew({ patients, users, templates, protocolByPatient }
               </div>
             );
           })}
+        </div>
+      </Card>
+
+      <Card style={{ padding:"1.25rem" }}>
+        <SectionHeader title="Conformidade e Protocolo (Gestão)" sub="Panorama operacional para auditoria interna e tomada de decisão" icon="🛡️" />
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:".7rem" }}>
+          {[
+            { label:"Pacientes com resumo", value:protocolReport.withSummary, color:T.green, bg:T.greenL },
+            { label:"Pacientes sem resumo", value:protocolReport.withoutSummary, color:protocolReport.withoutSummary?T.amber:T.green, bg:protocolReport.withoutSummary?T.amberL:T.greenL },
+            { label:"Pacientes com pendência", value:protocolReport.pendingPatients, color:protocolReport.pendingPatients?T.amber:T.green, bg:protocolReport.pendingPatients?T.amberL:T.greenL },
+            { label:"Pendências totais", value:protocolReport.totalPending, color:protocolReport.totalPending?T.rose:T.green, bg:protocolReport.totalPending?T.roseL:T.greenL },
+          ].map(item => (
+            <div key={item.label} style={{ padding:".75rem .85rem", borderRadius:T.r, border:`1px solid ${item.color}40`, background:item.bg }}>
+              <div style={{ fontSize:"1.25rem", fontWeight:900, color:item.color }}>{item.value}</div>
+              <div style={{ fontSize:".72rem", color:T.text2 }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: ".85rem", display:"flex", flexDirection:"column", gap:".4rem" }}>
+          {reportActions.length === 0 ? (
+            <AlertBanner type="success">Sem pendências críticas no recorte atual. Manter monitoramento de rotina.</AlertBanner>
+          ) : reportActions.map((text, i) => (
+            <AlertBanner key={i} type={i === 0 ? "warning" : "info"}>{text}</AlertBanner>
+          ))}
         </div>
       </Card>
 

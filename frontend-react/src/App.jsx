@@ -545,12 +545,13 @@ function catLabel(templates,category) {
 }
 function normalizeCareCategory(category) {
   const c = String(category||"").toLowerCase();
-  if(c==="papanicolau") return "general";
-  return c || "general";
+  if (!c) return "general";
+  const allowed = new Set(["general","pregnant","puerperal","child_followup","elderly","chronic"]);
+  return allowed.has(c) ? c : "general";
 }
 function isHiddenCareCategory(category) {
   const c = String(category||"").toLowerCase();
-  return c==="chronic" || c==="papanicolau";
+  return c==="chronic";
 }
 
 function canManage(user) { return["nurse_manager","doctor","dentist"].includes(String(user?.role||"")); }
@@ -1888,7 +1889,7 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
 }
 
 
-const EXAM_TYPES = ["Hemograma completo","Glicemia em jejum","HbA1c","Colesterol total e frações","Triglicerídeos","Creatinina","Ureia","TGO/TGP","TSH/T4 livre","Urina rotina (EAS)","Urocultura","Raio-X tórax","Ultrassonografia abdominal","Ultrassonografia obstétrica","ECG","Espirometria","Mamografia","Papanicolau","PSA","Ferritina/Ferro sérico","Vitamina D","Coagulograma","Outros"];
+const EXAM_TYPES = ["Hemograma completo","Glicemia em jejum","HbA1c","Colesterol total e frações","Triglicerídeos","Creatinina","Ureia","TGO/TGP","TSH/T4 livre","Urina rotina (EAS)","Urocultura","Raio-X tórax","Ultrassonografia abdominal","Ultrassonografia obstétrica","ECG","Espirometria","Mamografia","PSA","Ferritina/Ferro sérico","Vitamina D","Coagulograma","Outros"];
 
 const MEDICATIONS_COMMON = [
   "Ácido fólico 5mg","Amlodipino 5mg","Amlodipino 10mg","Atenolol 25mg","Atenolol 50mg",

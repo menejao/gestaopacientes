@@ -72,13 +72,6 @@ const DEFAULT_CARE_PROTOCOLS = {
     deadlines: { visits: 0, consultations: 0, vaccines: 0 },
     vaccines: []
   },
-  pap_only: {
-    category: "pap_only",
-    label: "Rastreamento Feminino/Trans",
-    targets: { visits: 0, consultations: 1, vaccines: 1 },
-    deadlines: { visits: 0, consultations: 0, vaccines: 0 },
-    vaccines: ["HPV"]
-  },
   child_followup: {
     category: "child_followup",
     label: "Puericultura",
@@ -115,10 +108,6 @@ function buildDefaultProtocolTemplates() {
     puerperal: {
       reference: "https://bvsms.saude.gov.br/bvs/saudelegis/gm/2011/prt1459_24_06_2011.html",
       version: "Rede Cegonha"
-    },
-    pap_only: {
-      reference: "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/c/cancer-do-colo-do-utero",
-      version: "Rastreamento Colo e Mama"
     },
     child_followup: {
       reference: "https://www.gov.br/saude/pt-br/vacinacao/calendario",
@@ -230,7 +219,7 @@ function buildSeedPatient({
   const districts = ["Centro", "Jardim Primavera", "Vila Nova", "Bela Vista", "Alvorada", "São José"];
   const cities = ["São Paulo", "Guarulhos", "Campinas", "Santo André", "Osasco", "Sorocaba"];
   const ufs = ["SP", "RJ", "MG", "BA", "PE", "PR"];
-  const categories = ["pregnant", "puerperal", "child_followup", "elderly", "pap_only", "general"];
+  const categories = ["pregnant", "puerperal", "child_followup", "elderly", "general"];
   const category = normalizeSeedCategory(categories[index % categories.length]);
   const teamId = pickRandom(teamIds) || "team-ana";
   const acsId = chance(82) ? (pickRandom(acsIds) || "") : "";
@@ -1414,7 +1403,7 @@ function getProtocolTemplateMap(db, teamId = "") {
 
 function normalizeCategory(value, templateMap = DEFAULT_CARE_PROTOCOLS) {
   if (!value) return "general";
-  const next = String(value).trim();
+  const next = String(value).trim().toLowerCase();
   // "Condição crônica" não é mais categoria principal; as regras são complementares por checkbox.
   if (next === "chronic") return "general";
   return templateMap[next] ? next : "general";
@@ -2454,123 +2443,6 @@ function evaluatePuerperalProtocol(patient, history) {
   };
 }
 
-function evaluatePapOnlyProtocol(patient, history) {
-  const alerts = [];
-  const categoryLabel = "Rastreamento Feminino/Trans";
-  const birthDate = toDateOnlySafe(patient?.birthDate);
-  const ageYears = yearsFromDate(birthDate, new Date());
-  const sexAtBirth = String(patient?.sexAtBirth || "").trim().toLowerCase();
-  const genderIdentity = String(patient?.genderIdentity || "").trim().toLowerCase();
-  const isFemale = sexAtBirth === "female";
-  const isTransMan = genderIdentity === "trans_man";
-  const eligiblePapPopulation = isFemale || isTransMan;
-  const now = toDateOnlySafe(new Date());
-
-  if (ageYears === null) {
-    alerts.push(makeClinicalAlert({
-      id: "pap-birthdate-missing",
-      activity: "dados demográficos",
-      title: "Data de nascimento não informada",
-      detail: "Cadastre a data de nascimento para aplicar as regras de idade de rastreamento.",
-      severity: "high",
-      categoryLabel
-    }));
-  }
-  if (!sexAtBirth && !genderIdentity) {
-    alerts.push(makeClinicalAlert({
-      id: "pap-sex-gender-missing",
-      activity: "dados demográficos",
-      title: "Sexo ao nascer/identidade de gênero não informados",
-      detail: "Preencha sexo ao nascer e identidade de gênero para aplicar as regras de elegibilidade.",
-      severity: "medium",
-      categoryLabel
-    }));
-  }
-
-  const history12 = filterHistoryByPeriod(history, addDays(now, -365), now);
-  const history24 = filterHistoryByPeriod(history, addDays(now, -730), now);
-  const history36 = filterHistoryByPeriod(history, addDays(now, -1095), now);
-
-  const isRequestedCollectedOrEvaluated = (text) => /solicit|colet|avali/.test(text);
-
-  if (eligiblePapPopulation && ageYears !== null && ageYears >= 25 && ageYears <= 64) {
-    const papDone = history36.some((h) => {
-      const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
-      const isCervicalScreening = /papanicolau|citopat|colo do utero|preventivo|oncotica/.test(text);
-      return isCervicalScreening && isRequestedCollectedOrEvaluated(text);
-    });
-    if (!papDone) {
-      alerts.push(makeClinicalAlert({
-        id: "pap-screening-36m",
-        activity: "rastreamento de colo do útero",
-        title: "Papanicolau/citopatológico pendente",
-        detail: "Necessário registro coletado, solicitado ou avaliado nos últimos 36 meses (25 a 64 anos).",
-        severity: "high",
-        categoryLabel
-      }));
-    }
-  }
-
-  if (isFemale && ageYears !== null && ageYears >= 9 && ageYears <= 14) {
-    const hpvDose = history.some((h) => {
-      if (h.type !== "vaccine") return false;
-      const text = normalizeText(`${h.metadata?.vaccineName || ""} ${h.title || ""} ${h.details || ""}`);
-      return /hpv/.test(text);
-    });
-    if (!hpvDose) {
-      alerts.push(makeClinicalAlert({
-        id: "pap-hpv-9-14",
-        activity: "vacina HPV",
-        title: "Dose de HPV pendente",
-        detail: "Necessária pelo menos 1 dose de HPV para meninas de 9 a 14 anos.",
-        severity: "high",
-        categoryLabel
-      }));
-    }
-  }
-
-  if (ageYears !== null && ageYears >= 14 && ageYears <= 69) {
-    const consultDone = history12.some((h) => isClinicalConsultation(h));
-    if (!consultDone) {
-      alerts.push(makeClinicalAlert({
-        id: "pap-consult-12m",
-        activity: "consulta anual",
-        title: "Consulta anual pendente",
-        detail: "Necessária pelo menos 1 consulta médica ou de enfermagem nos últimos 12 meses (14 a 69 anos).",
-        severity: "medium",
-        categoryLabel
-      }));
-    }
-  }
-
-  if (ageYears !== null && ageYears >= 50 && ageYears <= 69) {
-    const breastDone = history24.some((h) => {
-      const text = normalizeText(`${h.title || ""} ${h.details || ""}`);
-      const isBreastScreening = /(mamografia|rastreamento de mama|cancer de mama|exame de mama)/.test(text);
-      return isBreastScreening && isRequestedCollectedOrEvaluated(text);
-    });
-    if (!breastDone) {
-      alerts.push(makeClinicalAlert({
-        id: "pap-breast-24m",
-        activity: "rastreamento de mama",
-        title: "Rastreamento de mama pendente",
-        detail: "Necessário exame de rastreamento de câncer de mama solicitado ou avaliado nos últimos 24 meses (50 a 69 anos).",
-        severity: "high",
-        categoryLabel
-      }));
-    }
-  }
-
-  return {
-    timeline: { birthDate, ageYears },
-    alerts,
-    checklist: {
-      eligiblePapPopulation,
-      ageYears
-    }
-  };
-}
-
 function monthsFromDate(startDate, endDate = new Date()) {
   const start = toDateOnlySafe(startDate);
   const end = toDateOnlySafe(endDate);
@@ -3092,9 +2964,6 @@ function buildProtocolSummary(patient, history, templateMap) {
     specialAlerts = specialMonitoring.alerts || [];
   } else if (template.category === "puerperal") {
     specialMonitoring = evaluatePuerperalProtocol(patient, history);
-    specialAlerts = specialMonitoring.alerts || [];
-  } else if (template.category === "pap_only") {
-    specialMonitoring = evaluatePapOnlyProtocol(patient, history);
     specialAlerts = specialMonitoring.alerts || [];
   } else if (template.category === "child_followup") {
     specialMonitoring = evaluateChildProtocol(patient, history, template);

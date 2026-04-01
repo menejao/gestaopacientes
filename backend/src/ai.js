@@ -153,9 +153,9 @@ function suggestProtocolCategory(context) {
   } else if (/puerper|pos-parto/.test(text)) {
     category = "puerperal";
     signals.push("Termos relacionados ao puerpério.");
-  } else if (/preventivo|papanicolau|colo do utero|citopat/.test(text)) {
-    category = "pap_only";
-    signals.push("Termos relacionados a rastreamento de colo do útero.");
+  } else if (/preventivo/.test(text)) {
+    category = "general";
+    signals.push("Termo de prevenção identificado; classificado em categoria geral.");
   } else if (/idos|geriatr|longev/.test(text)) {
     category = "elderly";
     signals.push("Termos relacionados ao cuidado da pessoa idosa.");

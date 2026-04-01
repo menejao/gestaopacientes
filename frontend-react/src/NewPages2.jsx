@@ -150,16 +150,22 @@ function roleLabel(role) {
   })[String(role || "").toLowerCase()] || role || "—";
 }
 function catLabel(cat) {
+  const c = String(cat || "").toLowerCase();
+  const allowed = new Set(["general", "pregnant", "puerperal", "child_followup", "elderly", "chronic"]);
+  const normalized = allowed.has(c) ? c : "general";
   return ({
     pregnant: "Gestante", child_followup: "Puericultura", chronic: "Crônico",
-    puerperal: "Puérpera", pap_only: "Papanicolau", general: "Geral",
-  })[cat] || cat || "Geral";
+    puerperal: "Puérpera", general: "Geral", elderly: "Pessoa Idosa",
+  })[normalized] || normalized || "Geral";
 }
 function catColor(cat) {
+  const c = String(cat || "").toLowerCase();
+  const allowed = new Set(["general", "pregnant", "puerperal", "child_followup", "elderly", "chronic"]);
+  const normalized = allowed.has(c) ? c : "general";
   return ({
     pregnant: "#db2777", child_followup: "#0891b2", chronic: "#d97706",
-    puerperal: "#7c3aed", pap_only: "#059669", general: "#4f46e5",
-  })[cat] || T.text3;
+    puerperal: "#7c3aed", general: "#4f46e5", elderly: "#0ea5e9",
+  })[normalized] || T.text3;
 }
 
 /* ─── Componentes base ──────────────────────────────────────────── */
@@ -1408,7 +1414,7 @@ export function ReportsPageNew2({ patients = [], users = [], appointments = [], 
     { key: "child_followup", label: "Puericultura" },
     { key: "chronic",      label: "Crônicos" },
     { key: "puerperal",    label: "Puérperas" },
-    { key: "pap_only",     label: "Papanicolau" },
+    { key: "elderly",      label: "Pessoa Idosa" },
     { key: "general",      label: "Geral" },
   ];
 
