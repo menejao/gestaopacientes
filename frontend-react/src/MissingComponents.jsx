@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+﻿import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   listAppointments, createAppointment, deleteAppointment,
   listTasks, createTask, updateTaskStatus,
@@ -7,9 +7,102 @@ import {
   createRecord, getPatientHistory,
 } from "./api";
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   HELPERS (locais – duplicados do App.jsx para manter este arquivo autônomo)
-───────────────────────────────────────────────────────────────────────────── */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   DESIGN SYSTEM â€” SIGUS v2
+   Paleta: slate-dark + teal + tokens refinados
+   Tipografia: 'DM Sans' + 'IBM Plex Mono' (jÃ¡ carregados no App)
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+const DS = {
+  // Cores base (lidas como CSS vars quando disponÃ­veis, fallback aqui)
+  teal: { 50: "#f0fdfa", 100: "#ccfbf1", 200: "#99f6e4", 400: "#2dd4bf", 500: "#14b8a6", 600: "#0d9488", 700: "#0f766e" },
+  slate: { 50: "#f8fafc", 100: "#f1f5f9", 200: "#e2e8f0", 300: "#cbd5e1", 400: "#94a3b8", 500: "#64748b", 600: "#475569", 700: "#334155", 800: "#1e293b", 900: "#0f172a" },
+  red:   { 50: "#fef2f2", 100: "#fee2e2", 300: "#fca5a5", 500: "#ef4444", 700: "#b91c1c" },
+  amber: { 50: "#fffbeb", 100: "#fef3c7", 300: "#fcd34d", 500: "#f59e0b", 700: "#b45309" },
+  green: { 50: "#f0fdf4", 100: "#dcfce7", 300: "#86efac", 500: "#22c55e", 600: "#16a34a", 700: "#15803d" },
+  blue:  { 50: "#eff6ff", 100: "#dbeafe", 300: "#93c5fd", 500: "#3b82f6", 700: "#1d4ed8" },
+  purple:{ 50: "#faf5ff", 100: "#ede9fe", 300: "#c4b5fd", 500: "#8b5cf6", 700: "#7c3aed" },
+};
+
+const css = {
+  // Componentes reutilizÃ¡veis como objetos de estilo
+  card: {
+    background: "var(--surface, #fff)",
+    border: "1px solid var(--border, #e2e8f0)",
+    borderRadius: 16,
+    boxShadow: "0 1px 4px rgba(15,23,42,.06)",
+  },
+  cardHover: {
+    transition: "box-shadow .18s, transform .18s, border-color .18s",
+  },
+  badge: (color, bg, border) => ({
+    display: "inline-flex", alignItems: "center",
+    padding: "2px 10px", borderRadius: 999,
+    fontSize: ".68rem", fontWeight: 700, letterSpacing: ".03em",
+    color, background: bg, border: `1px solid ${border}`,
+  }),
+  btnPrimary: {
+    display: "inline-flex", alignItems: "center", gap: ".4rem",
+    padding: ".5rem 1.1rem",
+    background: "var(--teal-600, #0d9488)", color: "#fff",
+    border: "none", borderRadius: 10, cursor: "pointer",
+    fontSize: ".82rem", fontWeight: 700,
+    boxShadow: "0 2px 8px rgba(13,148,136,.25)",
+    transition: "background .15s, box-shadow .15s, transform .1s",
+    whiteSpace: "nowrap",
+  },
+  btnSecondary: {
+    display: "inline-flex", alignItems: "center", gap: ".4rem",
+    padding: ".5rem 1rem",
+    background: "var(--surface-2, #f8fafc)", color: "var(--text-2, #334155)",
+    border: "1px solid var(--border, #e2e8f0)", borderRadius: 10, cursor: "pointer",
+    fontSize: ".82rem", fontWeight: 600,
+    transition: "background .15s, border-color .15s",
+  },
+  btnGhost: {
+    background: "none", border: "none", cursor: "pointer",
+    color: "var(--text-3, #64748b)", borderRadius: 8, padding: ".3rem .5rem",
+    transition: "background .15s, color .15s",
+  },
+  input: {
+    width: "100%", boxSizing: "border-box",
+    padding: ".55rem .85rem",
+    border: "1px solid var(--border, #e2e8f0)",
+    borderRadius: 10,
+    background: "var(--surface, #fff)",
+    color: "var(--ink, #0f172a)",
+    fontSize: ".84rem",
+    outline: "none",
+    transition: "border-color .15s, box-shadow .15s",
+  },
+  label: {
+    display: "flex", flexDirection: "column", gap: ".3rem",
+    fontSize: ".75rem", fontWeight: 600, color: "var(--slate-700, #334155)",
+  },
+  sectionTitle: {
+    fontSize: ".65rem", fontWeight: 800, letterSpacing: ".08em",
+    textTransform: "uppercase", color: "var(--text-3, #64748b)",
+  },
+  modal: {
+    position: "fixed", inset: 0,
+    background: "rgba(15,23,42,.5)",
+    backdropFilter: "blur(3px)",
+    zIndex: 1000,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    padding: "1rem",
+  },
+  modalBox: {
+    background: "var(--surface, #fff)",
+    borderRadius: 20,
+    padding: "1.75rem",
+    width: "100%", maxWidth: 500,
+    boxShadow: "0 24px 80px rgba(0,0,0,.18)",
+    maxHeight: "90vh", overflowY: "auto",
+  },
+};
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   HELPERS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function fmtDate(v) {
   if (!v) return "-";
   try {
@@ -51,9 +144,9 @@ function calcAge(birthDate) {
 }
 function roleLabel(role) {
   return {
-    nurse_manager: "Enfermeira", doctor: "Médico(a)", acs: "ACS",
-    pharmacist: "Farmacêutico(a)", pharmacy_tech: "Téc. de Farmácia",
-    nursing_tech: "Téc. Enfermagem", receptionist: "Recepcionista",
+    nurse_manager: "Enfermeira", doctor: "MÃ©dico(a)", acs: "ACS",
+    pharmacist: "FarmacÃªutico(a)", pharmacy_tech: "TÃ©c. de FarmÃ¡cia",
+    nursing_tech: "TÃ©c. Enfermagem", receptionist: "Recepcionista",
     dentist: "Dentista", gestor: "Gestor(a) UBS",
   }[String(role || "").toLowerCase()] || role || "-";
 }
@@ -62,6 +155,7 @@ function catLabel(templates, category) {
 }
 function isAcs(user) { return String(user?.role || "") === "acs"; }
 function isManager(user) { return String(user?.role || "") === "nurse_manager"; }
+function isPharmacist(user) { return ["pharmacist", "pharmacy_tech"].includes(String(user?.role || "")); }
 function canManage(user) { return ["nurse_manager", "doctor", "dentist"].includes(String(user?.role || "")); }
 function normalizeSearch(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -77,11 +171,214 @@ function matchesSearch(p, q) {
 const readLS = (key, def) => { try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : def; } catch { return def; } };
 const writeLS = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   ATOMIC UI COMPONENTS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+function Avatar({ name, size = 36, color = "var(--teal-600, #0d9488)" }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", flexShrink: 0,
+      background: color, color: "#fff",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * .28 + "rem", fontWeight: 800, letterSpacing: "-.01em",
+    }}>
+      {initials(name)}
+    </div>
+  );
+}
+
+function Badge({ children, color = DS.slate[500], bg = DS.slate[100], border = DS.slate[200] }) {
+  return <span style={css.badge(color, bg, border)}>{children}</span>;
+}
+
+function PriorityBadge({ priority }) {
+  const map = {
+    urgent: { label: "Urgente", color: DS.red[700], bg: DS.red[50], border: DS.red[100] },
+    high:   { label: "PrioritÃ¡rio", color: DS.amber[700], bg: DS.amber[50], border: DS.amber[100] },
+    normal: { label: "Normal", color: DS.blue[700], bg: DS.blue[50], border: DS.blue[100] },
+    elective:{ label: "Eletivo", color: DS.slate[600], bg: DS.slate[50], border: DS.slate[200] },
+  };
+  const m = map[priority] || map.normal;
+  return <Badge color={m.color} bg={m.bg} border={m.border}>{m.label}</Badge>;
+}
+
+function StatusBadge({ status }) {
+  const map = {
+    pending:   { label: "Pendente",   color: DS.amber[700], bg: DS.amber[50],  border: DS.amber[100] },
+    scheduled: { label: "Agendado",   color: DS.blue[700],  bg: DS.blue[50],   border: DS.blue[100] },
+    completed: { label: "Realizado",  color: DS.green[700], bg: DS.green[50],  border: DS.green[100] },
+    cancelled: { label: "Cancelado",  color: DS.slate[500], bg: DS.slate[100], border: DS.slate[200] },
+    in_progress:{ label: "Em andamento", color: DS.purple[700], bg: DS.purple[50], border: DS.purple[100] },
+    done:      { label: "ConcluÃ­do",  color: DS.green[700], bg: DS.green[50],  border: DS.green[100] },
+    waiting:   { label: "Aguardando", color: DS.blue[700],  bg: DS.blue[50],   border: DS.blue[100] },
+    called:    { label: "Em atendimento", color: DS.green[700], bg: DS.green[50], border: DS.green[100] },
+  };
+  const m = map[status] || { label: status, color: DS.slate[500], bg: DS.slate[100], border: DS.slate[200] };
+  return <Badge color={m.color} bg={m.bg} border={m.border}>{m.label}</Badge>;
+}
+
+function IconBtn({ onClick, title, children, danger }) {
+  return (
+    <button onClick={onClick} title={title}
+      style={{ ...css.btnGhost, color: danger ? DS.red[500] : undefined }}>
+      {children}
+    </button>
+  );
+}
+
+function Modal({ title, subtitle, onClose, children, maxWidth = 500 }) {
+  useEffect(() => {
+    const esc = e => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [onClose]);
+
+  return (
+    <div style={css.modal} onClick={onClose}>
+      <div style={{ ...css.modalBox, maxWidth }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "var(--ink, #0f172a)" }}>{title}</h3>
+            {subtitle && <p style={{ margin: ".25rem 0 0", fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>{subtitle}</p>}
+          </div>
+          <button onClick={onClose} style={{ ...css.btnGhost, marginLeft: ".5rem", flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function FormField({ label, required, children }) {
+  return (
+    <label style={css.label}>
+      {label}{required && <span style={{ color: DS.red[500] }}> *</span>}
+      {children}
+    </label>
+  );
+}
+
+function EmptyState({ icon, title, subtitle, action }) {
+  return (
+    <div style={{ padding: "3.5rem 1rem", textAlign: "center", background: "var(--surface-2, #f8fafc)", border: "1px dashed var(--border, #e2e8f0)", borderRadius: 16 }}>
+      <div style={{ fontSize: "2.25rem", marginBottom: ".75rem", lineHeight: 1 }}>{icon}</div>
+      <div style={{ fontSize: ".95rem", fontWeight: 700, color: "var(--ink, #0f172a)", marginBottom: ".35rem" }}>{title}</div>
+      {subtitle && <div style={{ fontSize: ".8rem", color: "var(--text-3, #64748b)", maxWidth: 280, margin: "0 auto .75rem" }}>{subtitle}</div>}
+      {action}
+    </div>
+  );
+}
+
+function Tabs({ tabs, value, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: ".25rem", padding: ".3rem", background: "var(--surface-2, #f8fafc)", borderRadius: 12, border: "1px solid var(--border, #e2e8f0)" }}>
+      {tabs.map(([v, l, count]) => (
+        <button key={v} onClick={() => onChange(v)}
+          style={{
+            flex: 1, padding: ".4rem .75rem", borderRadius: 9, border: "none", cursor: "pointer",
+            fontSize: ".78rem", fontWeight: 700, transition: "all .15s",
+            background: value === v ? "var(--surface, #fff)" : "transparent",
+            color: value === v ? "var(--ink, #0f172a)" : "var(--text-3, #64748b)",
+            boxShadow: value === v ? "0 1px 3px rgba(0,0,0,.1)" : "none",
+            whiteSpace: "nowrap",
+          }}>
+          {l}{count !== undefined ? <span style={{ marginLeft: ".4rem", fontSize: ".65rem", opacity: .7 }}>({count})</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function KpiCard({ icon, label, value, color, trend }) {
+  return (
+    <div style={{ ...css.card, padding: "1.1rem 1.25rem", display: "flex", flexDirection: "column", gap: ".5rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: "1.1rem" }}>{icon}</span>
+        {trend && <span style={{ fontSize: ".7rem", fontWeight: 700, color: trend > 0 ? DS.green[600] : DS.red[500], background: trend > 0 ? DS.green[50] : DS.red[50], padding: "1px 6px", borderRadius: 999 }}>{trend > 0 ? "â†‘" : "â†“"} {Math.abs(trend)}%</span>}
+      </div>
+      <div style={{ fontSize: "1.85rem", fontWeight: 900, color: color || "var(--ink, #0f172a)", letterSpacing: "-.03em", lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: ".72rem", fontWeight: 600, color: "var(--text-3, #64748b)", textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</div>
+    </div>
+  );
+}
+
+function SearchInput({ value, onChange, placeholder = "Buscarâ€¦" }) {
+  return (
+    <div style={{ position: "relative" }}>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", left: ".85rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-3, #64748b)", pointerEvents: "none" }}>
+        <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.6"/>
+        <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      </svg>
+      <input value={value} onChange={onChange} placeholder={placeholder}
+        style={{ ...css.input, paddingLeft: "2.5rem" }} />
+    </div>
+  );
+}
+
+function PatientAutocompleteField({ patients, search, setSearch, selectedId, onSelect, placeholder = "Nome, CPF ou telefone…", required }) {
+  const selectedPatient = (patients || []).find(p => p.id === selectedId) || null;
+  const options = useMemo(() => (patients || []).filter(p => matchesSearch(p, search)).slice(0, 30), [patients, search]);
+  const showResults = search.trim().length > 0 &&
+    (!selectedPatient || normalizeSearch(search) !== normalizeSearch(selectedPatient.name || ""));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: ".45rem" }}>
+      <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder={placeholder} />
+      {selectedPatient && (
+        <div style={{ display: "flex", alignItems: "center", gap: ".55rem", padding: ".45rem .65rem", borderRadius: 10, border: "1px solid var(--teal-200, #99f6e4)", background: "var(--teal-50, #f0fdfa)" }}>
+          <Avatar name={selectedPatient.name} size={26} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--teal-700, #0f766e)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{selectedPatient.name}</div>
+            <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{selectedPatient.phone || "—"}</div>
+          </div>
+          <button type="button" onClick={() => { onSelect(""); setSearch(""); }} style={{ ...css.btnGhost, fontSize: ".72rem", padding: ".2rem .4rem" }}>
+            Limpar
+          </button>
+        </div>
+      )}
+      {showResults && (
+        <div style={{ maxHeight: 190, overflowY: "auto", border: "1px solid var(--border, #e2e8f0)", borderRadius: 10, background: "var(--surface, #fff)" }}>
+          {options.length === 0 ? (
+            <div style={{ padding: ".55rem .85rem", fontSize: ".76rem", color: "var(--text-3, #64748b)" }}>Nenhum paciente encontrado.</div>
+          ) : options.map(p => (
+            <button key={p.id} type="button" onClick={() => { onSelect(p.id); setSearch(p.name); }}
+              style={{ width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid var(--border, #e2e8f0)", padding: ".52rem .8rem", cursor: "pointer", display: "flex", alignItems: "center", gap: ".6rem" }}>
+              <Avatar name={p.name} size={26} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--ink, #0f172a)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{p.phone || "—"}{p.cpf ? ` · ${p.cpf}` : ""}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {required && <input type="hidden" value={selectedId || ""} required readOnly />}
+    </div>
+  );
+}
+function PageHeader({ icon, title, subtitle, actions }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: ".85rem" }}>
+        {icon && <div style={{ width: 42, height: 42, borderRadius: 12, background: "var(--teal-600, #0d9488)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>{icon}</div>}
+        <div>
+          <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 900, color: "var(--ink, #0f172a)", letterSpacing: "-.02em" }}>{title}</h2>
+          {subtitle && <p style={{ margin: ".2rem 0 0", fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>{subtitle}</p>}
+        </div>
+      </div>
+      {actions && <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>{actions}</div>}
+    </div>
+  );
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    1. NOTIFICATION BELL
-   Usado em: Topbar (linha 1308 do App.jsx)
-   Props: patients, protocolByPatient, pharmacyStock, agenda, onNavigate
-───────────────────────────────────────────────────────────────────────────── */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, onNavigate }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -96,22 +393,19 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
 
   const alerts = useMemo(() => {
     const out = [];
-    // Protocolos críticos
     (patients || []).forEach(p => {
       const s = protocolByPatient?.[p.id];
       if (!s) return;
       const pending = (s.pending?.visits || 0) + (s.pending?.consultations || 0) + (s.pending?.vaccines || 0);
       if (pending > 0) {
-        out.push({ id: "prot-" + p.id, type: "danger", title: "Protocolo pendente", detail: p.name + " – " + pending + " item(s)", patientId: p.id });
+        out.push({ id: "prot-" + p.id, type: "danger", title: "Protocolo pendente", detail: p.name + " â€“ " + pending + " item(s)", patientId: p.id });
       }
     });
-    // Estoque baixo
     (pharmacyStock || []).forEach(s => {
       if (Number(s.qty ?? 0) <= Number(s.minQty ?? 0)) {
         out.push({ id: "stk-" + s.id, type: s.qty === 0 ? "danger" : "warn", title: s.qty === 0 ? "Estoque zerado" : "Estoque baixo", detail: s.name || s.id, patientId: null });
       }
     });
-    // Agendamentos hoje
     (agenda || []).filter(a => a.date === todayStr).slice(0, 5).forEach(a => {
       out.push({ id: "ag-" + (a.id || a.date), type: "info", title: "Agendamento hoje", detail: a.patientName || a.title || "Consulta", patientId: a.patientId || null });
     });
@@ -120,51 +414,55 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
 
   const count = alerts.length;
   const danger = alerts.filter(a => a.type === "danger").length;
-  const badgeColor = danger > 0 ? "#ef4444" : count > 0 ? "#f59e0b" : "transparent";
+  const badgeColor = danger > 0 ? DS.red[500] : count > 0 ? DS.amber[500] : "transparent";
 
-  const typeStyle = { danger: { bg: "#fef2f2", border: "#fecaca", dot: "#ef4444" }, warn: { bg: "#fffbeb", border: "#fde68a", dot: "#f59e0b" }, info: { bg: "#eff6ff", border: "#bfdbfe", dot: "#3b82f6" } };
+  const typeStyle = {
+    danger: { border: DS.red[300], dot: DS.red[500] },
+    warn:   { border: DS.amber[300], dot: DS.amber[500] },
+    info:   { border: DS.blue[300], dot: DS.blue[500] },
+  };
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: ".3rem", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--r-md)", color: "var(--text-2)" }}
-        title="Notificações"
-      >
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-          <path d="M8 1a5 5 0 015 5v2.5l1 2H2l1-2V6a5 5 0 015-5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-          <path d="M6.5 13a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <button onClick={() => setOpen(o => !o)}
+        style={{ position: "relative", background: open ? "var(--surface-2, #f8fafc)" : "none", border: "1px solid " + (open ? "var(--border, #e2e8f0)" : "transparent"), cursor: "pointer", padding: ".4rem", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, color: "var(--text-2, #334155)", transition: "all .15s" }}
+        title="NotificaÃ§Ãµes">
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+          <path d="M8 1a5 5 0 015 5v2.5l1 2H2l1-2V6a5 5 0 015-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+          <path d="M6.5 13a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
         </svg>
         {count > 0 && (
-          <span style={{ position: "absolute", top: 0, right: 0, minWidth: 16, height: 16, borderRadius: 999, background: badgeColor, color: "#fff", fontSize: ".62rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px", lineHeight: 1, border: "2px solid var(--surface)" }}>
+          <span style={{ position: "absolute", top: -2, right: -2, minWidth: 17, height: 17, borderRadius: 999, background: badgeColor, color: "#fff", fontSize: ".58rem", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", lineHeight: 1, border: "2px solid var(--surface, #fff)" }}>
             {count > 9 ? "9+" : count}
           </span>
         )}
       </button>
 
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 320, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "0 8px 32px rgba(0,0,0,.12)", zIndex: 1000, overflow: "hidden" }}>
-          <div style={{ padding: ".65rem 1rem", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink)" }}>Notificações</span>
-            <span style={{ fontSize: ".72rem", color: "var(--text-3)", background: "var(--surface-2)", padding: ".1rem .45rem", borderRadius: 999 }}>{count}</span>
+        <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, width: 340, background: "var(--surface, #fff)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 16, boxShadow: "0 12px 40px rgba(0,0,0,.13)", zIndex: 1000, overflow: "hidden" }}>
+          <div style={{ padding: ".75rem 1.1rem", borderBottom: "1px solid var(--border, #e2e8f0)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>NotificaÃ§Ãµes</span>
+            <Badge color={DS.slate[500]} bg={DS.slate[100]} border={DS.slate[200]}>{count}</Badge>
           </div>
           {count === 0 ? (
-            <div style={{ padding: "1.5rem 1rem", textAlign: "center", color: "var(--text-3)", fontSize: ".82rem" }}>Nenhuma notificação pendente</div>
+            <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-3, #64748b)", fontSize: ".82rem" }}>
+              <div style={{ fontSize: "1.5rem", marginBottom: ".5rem" }}>ðŸ””</div>
+              Nenhuma notificaÃ§Ã£o pendente
+            </div>
           ) : (
-            <ul style={{ listStyle: "none", margin: 0, padding: ".35rem 0", maxHeight: 340, overflowY: "auto" }}>
+            <ul style={{ listStyle: "none", margin: 0, padding: ".3rem 0", maxHeight: 360, overflowY: "auto" }}>
               {alerts.map(a => {
                 const s = typeStyle[a.type] || typeStyle.info;
                 return (
                   <li key={a.id}
                     onClick={() => { if (a.patientId) { onNavigate(a.patientId); setOpen(false); } }}
-                    style={{ display: "flex", alignItems: "flex-start", gap: ".6rem", padding: ".55rem 1rem", cursor: a.patientId ? "pointer" : "default", transition: "background .1s", borderLeft: `3px solid ${s.dot}` }}
-                    onMouseEnter={e => { if (a.patientId) e.currentTarget.style.background = "var(--surface-2)"; }}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  >
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.dot, marginTop: 5, flexShrink: 0 }} />
+                    style={{ display: "flex", alignItems: "flex-start", gap: ".7rem", padding: ".6rem 1.1rem", cursor: a.patientId ? "pointer" : "default", borderLeft: `3px solid ${s.dot}`, transition: "background .12s" }}
+                    onMouseEnter={e => { if (a.patientId) e.currentTarget.style.background = "var(--surface-2, #f8fafc)"; }}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: s.dot, marginTop: 5, flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: ".78rem", color: "var(--ink)" }}>{a.title}</div>
-                      <div style={{ fontSize: ".72rem", color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.detail}</div>
+                      <div style={{ fontWeight: 700, fontSize: ".8rem", color: "var(--ink, #0f172a)" }}>{a.title}</div>
+                      <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.detail}</div>
                     </div>
                   </li>
                 );
@@ -177,11 +475,66 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   2. QUEUE PAGE – Fila de Espera / Recepção
-   Props: patients, users, user, token, onNewPatient
-───────────────────────────────────────────────────────────────────────────── */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   2. QUEUE PAGE â€” Fila de Espera / RecepÃ§Ã£o
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const QUEUE_KEY = "saudeubs_queue_v1";
+
+function QueueCard({ entry, onCall, onFinish, onRemove, position, priorityColor, priorityLabel }) {
+  const elapsed = Math.floor((Date.now() - new Date(entry.arrivedAt).getTime()) / 60000);
+  const isOverdue = elapsed > 30 && entry.status === "waiting";
+  const pc = priorityColor[entry.priority] || DS.blue[500];
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: ".85rem",
+      padding: ".85rem 1rem",
+      background: entry.status === "called" ? DS.green[50] : "var(--surface, #fff)",
+      border: `1px solid ${entry.status === "called" ? DS.green[200] : isOverdue ? DS.amber[200] : "var(--border, #e2e8f0)"}`,
+      borderLeft: `4px solid ${entry.status === "called" ? DS.green[500] : pc}`,
+      borderRadius: 12, marginBottom: ".4rem",
+      transition: "box-shadow .15s",
+    }}
+    onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,.07)"}
+    onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}>
+      {position !== undefined && (
+        <span style={{ fontSize: ".88rem", fontWeight: 900, color: "var(--text-3, #64748b)", minWidth: 22, textAlign: "center" }}>
+          {entry.status === "called" ? "â†’" : position + 1}
+        </span>
+      )}
+      <Avatar name={entry.patientName} size={36} color={entry.status === "called" ? DS.green[600] : "var(--teal-600, #0d9488)"} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>{entry.patientName}</div>
+        <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", display: "flex", gap: ".5rem", flexWrap: "wrap", marginTop: ".1rem" }}>
+          <span>{entry.reason}</span>
+          <span>Â·</span>
+          <span style={{ color: isOverdue ? DS.amber[700] : undefined, fontWeight: isOverdue ? 700 : 400 }}>{elapsed}min</span>
+          {entry.incompletePatient && <Badge color={DS.amber[700]} bg={DS.amber[50]} border={DS.amber[100]}>Cadastro incompleto</Badge>}
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexShrink: 0 }}>
+        <PriorityBadge priority={entry.priority} />
+        {entry.status === "waiting" && onCall && (
+          <button onClick={onCall} style={{ ...css.btnPrimary, padding: ".35rem .8rem", fontSize: ".75rem" }}>
+            Chamar
+          </button>
+        )}
+        {entry.status === "called" && onFinish && (
+          <button onClick={onFinish} style={{ ...css.btnPrimary, padding: ".35rem .8rem", fontSize: ".75rem", background: DS.green[600] }}>
+            Finalizar
+          </button>
+        )}
+        {onRemove && (
+          <IconBtn onClick={onRemove} title="Remover" danger>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </IconBtn>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function QueuePage({ patients, users, user, token, onNewPatient }) {
   const [queue, setQueue] = useState(() => readLS(QUEUE_KEY, []));
@@ -190,7 +543,7 @@ export function QueuePage({ patients, users, user, token, onNewPatient }) {
   const [quickName, setQuickName] = useState("");
   const [quickPhone, setQuickPhone] = useState("");
   const [adding, setAdding] = useState(false);
-  const [addMode, setAddMode] = useState("existing"); // "existing" | "quick"
+  const [addMode, setAddMode] = useState("existing");
   const [busy, setBusy] = useState(false);
 
   function saveQueue(q) { setQueue(q); writeLS(QUEUE_KEY, q); }
@@ -199,12 +552,8 @@ export function QueuePage({ patients, users, user, token, onNewPatient }) {
     e.preventDefault();
     if (addMode === "existing" && !form.patientId) return;
     if (addMode === "quick" && !quickName.trim()) return;
-
     let patient = null;
-    if (addMode === "existing") {
-      patient = patients.find(p => p.id === form.patientId);
-    }
-
+    if (addMode === "existing") patient = patients.find(p => p.id === form.patientId);
     const entry = {
       id: Date.now().toString(36),
       patientId: patient?.id || null,
@@ -214,295 +563,138 @@ export function QueuePage({ patients, users, user, token, onNewPatient }) {
       priority: form.priority,
       arrivedAt: new Date().toISOString(),
       status: "waiting",
+      incompletePatient: addMode === "quick",
     };
     saveQueue([...queue, entry]);
     setForm({ patientId: "", reason: "", priority: "normal" });
     setQuickName(""); setQuickPhone(""); setAdding(false);
   }
 
-  function removeEntry(id) { saveQueue(queue.filter(e => e.id !== id)); }
-  function callNext(id) { saveQueue(queue.map(e => e.id === id ? { ...e, status: "called" } : e)); }
-  function finishEntry(id) { saveQueue(queue.filter(e => e.id !== id)); }
-
   const waiting = queue.filter(e => e.status === "waiting");
   const called = queue.filter(e => e.status === "called");
   const filtered = patients.filter(p => matchesSearch(p, search));
+  const priorityColor = { urgent: DS.red[500], high: DS.amber[500], normal: DS.blue[500] };
+  const priorityLabel = { urgent: "Urgente", high: "PrioritÃ¡rio", normal: "Normal" };
 
-  const priorityColor = { urgent: "#ef4444", high: "#f59e0b", normal: "#3b82f6" };
-  const priorityLabel = { urgent: "Urgente", high: "Prioritário", normal: "Normal" };
+  const stats = [
+    { icon: "â³", label: "Aguardando", value: waiting.length, color: DS.blue[500] },
+    { icon: "ðŸ©º", label: "Em atendimento", value: called.length, color: DS.green[600] },
+    { icon: "ðŸ‘¥", label: "Total hoje", value: queue.length, color: DS.slate[500] },
+  ];
 
   return (
-    <div style={{ padding: "1.5rem", display: "grid", gridTemplateColumns: "1fr 320px", gap: "1.25rem", alignItems: "start" }}>
-      {/* Fila principal */}
-      <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-          <div>
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Fila de Espera</h2>
-            <p style={{ fontSize: ".78rem", color: "var(--text-3)", margin: ".2rem 0 0" }}>{waiting.length} aguardando · {called.length} em atendimento</p>
-          </div>
-          <button onClick={() => setAdding(true)} style={{ display: "flex", alignItems: "center", gap: ".4rem", padding: ".45rem .9rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".82rem", fontWeight: 600 }}>
-            + Adicionar à fila
+    <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
+      <PageHeader
+        icon="ðŸ¥"
+        title="Fila de Espera"
+        subtitle={new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+        actions={
+          <button onClick={() => setAdding(true)} style={css.btnPrimary}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Registrar chegada
           </button>
-        </div>
-
-        {/* Em atendimento */}
-        {called.length > 0 && (
-          <div style={{ marginBottom: "1rem" }}>
-            <div style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: ".5rem" }}>Em atendimento</div>
-            {called.map(entry => (
-              <QueueCard key={entry.id} entry={entry} onFinish={() => finishEntry(entry.id)} status="called" priorityColor={priorityColor} priorityLabel={priorityLabel} />
-            ))}
-          </div>
-        )}
-
-        {/* Aguardando */}
-        <div style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: ".5rem" }}>Aguardando ({waiting.length})</div>
-        {waiting.length === 0
-          ? <div style={{ background: "var(--surface-2)", border: "1px dashed var(--border)", borderRadius: "var(--r-lg)", padding: "2.5rem 1rem", textAlign: "center", color: "var(--text-3)", fontSize: ".84rem" }}>Fila vazia – nenhum paciente aguardando</div>
-          : waiting.map((entry, idx) => (
-            <QueueCard key={entry.id} entry={entry} position={idx + 1} onCall={() => callNext(entry.id)} onRemove={() => removeEntry(entry.id)} status="waiting" priorityColor={priorityColor} priorityLabel={priorityLabel} />
-          ))
         }
-      </div>
+      />
 
-      {/* Painel lateral – adicionar à fila */}
-      <div style={{ position: "sticky", top: "1.5rem" }}>
-        {adding ? (
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <h3 style={{ fontSize: ".9rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Adicionar à fila</h3>
-              <button onClick={() => setAdding(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)" }}>✕</button>
-            </div>
-
-            <div style={{ display: "flex", gap: ".4rem", marginBottom: "1rem" }}>
-              {["existing", "quick"].map(m => (
-                <button key={m} onClick={() => setAddMode(m)}
-                  style={{ flex: 1, padding: ".35rem", fontSize: ".75rem", fontWeight: 600, borderRadius: "var(--r-md)", border: "1px solid var(--border)", cursor: "pointer", background: addMode === m ? "var(--teal-600)" : "var(--surface-2)", color: addMode === m ? "#fff" : "var(--text-2)" }}>
-                  {m === "existing" ? "Paciente cadastrado" : "Cadastro rápido"}
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={addToQueue} style={{ display: "flex", flexDirection: "column", gap: ".65rem" }}>
-              {addMode === "existing" ? (
-                <>
-                  <input placeholder="Buscar paciente..." value={search} onChange={e => setSearch(e.target.value)} />
-                  <select value={form.patientId} onChange={e => setForm(s => ({ ...s, patientId: e.target.value }))} required>
-                    <option value="">Selecionar paciente…</option>
-                    {filtered.slice(0, 20).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </>
-              ) : (
-                <>
-                  <input placeholder="Nome do paciente *" value={quickName} onChange={e => setQuickName(e.target.value)} required />
-                  <input placeholder="Telefone" value={quickPhone} onChange={e => setQuickPhone(formatPhone(e.target.value))} />
-                </>
-              )}
-              <input placeholder="Motivo do atendimento" value={form.reason} onChange={e => setForm(s => ({ ...s, reason: e.target.value }))} />
-              <select value={form.priority} onChange={e => setForm(s => ({ ...s, priority: e.target.value }))}>
-                <option value="normal">Normal</option>
-                <option value="high">Prioritário</option>
-                <option value="urgent">Urgente</option>
-              </select>
-              <button type="submit" disabled={busy} style={{ padding: ".5rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", fontWeight: 600, cursor: "pointer", fontSize: ".84rem" }}>
-                Adicionar à fila
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem", textAlign: "center" }}>
-            <div style={{ fontSize: "1.75rem", marginBottom: ".5rem" }}>👥</div>
-            <div style={{ fontSize: ".84rem", fontWeight: 600, color: "var(--ink)", marginBottom: ".25rem" }}>Fila de espera</div>
-            <div style={{ fontSize: ".75rem", color: "var(--text-3)" }}>Gerencie a chegada dos pacientes na unidade</div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function QueueCard({ entry, position, onCall, onRemove, onFinish, status, priorityColor, priorityLabel }) {
-  const elapsed = Math.floor((Date.now() - new Date(entry.arrivedAt).getTime()) / 60000);
-  const pColor = priorityColor[entry.priority] || "#3b82f6";
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: ".75rem", padding: ".7rem .9rem", background: status === "called" ? "#f0fdf4" : "var(--surface)", border: `1px solid ${status === "called" ? "#bbf7d0" : "var(--border)"}`, borderRadius: "var(--r-md)", marginBottom: ".4rem", borderLeft: `4px solid ${pColor}` }}>
-      {position && <span style={{ fontSize: ".9rem", fontWeight: 800, color: "var(--text-3)", minWidth: 24, textAlign: "center" }}>{position}</span>}
-      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".75rem", fontWeight: 700, flexShrink: 0 }}>
-        {initials(entry.patientName)}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: ".84rem", color: "var(--ink)" }}>{entry.patientName}</div>
-        <div style={{ fontSize: ".72rem", color: "var(--text-3)" }}>{entry.reason} · {elapsed}min</div>
-      </div>
-      <span style={{ fontSize: ".68rem", fontWeight: 700, padding: ".12rem .45rem", borderRadius: 999, background: pColor + "1a", color: pColor, border: `1px solid ${pColor}33`, flexShrink: 0 }}>
-        {priorityLabel[entry.priority]}
-      </span>
-      <div style={{ display: "flex", gap: ".35rem" }}>
-        {status === "waiting" && (
-          <>
-            <button onClick={onCall} style={{ padding: ".28rem .65rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".72rem", fontWeight: 600 }}>Chamar</button>
-            <button onClick={onRemove} style={{ padding: ".28rem .65rem", background: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".72rem" }}>✕</button>
-          </>
-        )}
-        {status === "called" && (
-          <button onClick={onFinish} style={{ padding: ".28rem .65rem", background: "#16a34a", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".72rem", fontWeight: 600 }}>Finalizar</button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   3. TRIAGE PAGE – Triagem
-   Props: patients, users, user
-───────────────────────────────────────────────────────────────────────────── */
-const TRIAGE_KEY = "saudeubs_triage_v1";
-
-export function TriagePage({ patients, users, user }) {
-  const [records, setRecords] = useState(() => readLS(TRIAGE_KEY, []));
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [form, setForm] = useState({ bp: "", temp: "", weight: "", height: "", spo2: "", hr: "", rr: "", pain: "0", glicemia: "", notes: "", priority: "green" });
-  const [saved, setSaved] = useState(false);
-
-  function saveRecords(r) { setRecords(r); writeLS(TRIAGE_KEY, r); }
-
-  function openTriage(p) {
-    const existing = records.find(r => r.patientId === p.id && r.date === new Date().toISOString().slice(0, 10));
-    setSelected(p);
-    if (existing) {
-      setForm({ bp: existing.bp || "", temp: existing.temp || "", weight: existing.weight || "", height: existing.height || "", spo2: existing.spo2 || "", hr: existing.hr || "", rr: existing.rr || "", pain: existing.pain || "0", glicemia: existing.glicemia || "", notes: existing.notes || "", priority: existing.priority || "green" });
-    } else {
-      setForm({ bp: "", temp: "", weight: "", height: "", spo2: "", hr: "", rr: "", pain: "0", glicemia: "", notes: "", priority: "green" });
-    }
-    setSaved(false);
-  }
-
-  function submitTriage(e) {
-    e.preventDefault();
-    if (!selected) return;
-    const entry = {
-      id: Date.now().toString(36),
-      patientId: selected.id,
-      patientName: selected.name,
-      date: new Date().toISOString().slice(0, 10),
-      time: new Date().toTimeString().slice(0, 5),
-      ...form,
-      createdBy: user?.id,
-      createdByName: user?.name,
-    };
-    saveRecords([entry, ...records.filter(r => !(r.patientId === selected.id && r.date === entry.date))]);
-    setSaved(true);
-  }
-
-  const priorityColors = {
-    red: { bg: "#fef2f2", border: "#fecaca", text: "#b91c1c", label: "Emergência (Vermelho)" },
-    orange: { bg: "#fff7ed", border: "#fed7aa", text: "#c2410c", label: "Urgente (Laranja)" },
-    yellow: { bg: "#fefce8", border: "#fef08a", text: "#a16207", label: "Pouco urgente (Amarelo)" },
-    green: { bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d", label: "Não urgente (Verde)" },
-    blue: { bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8", label: "Observação (Azul)" },
-  };
-
-  const filtered = patients.filter(p => matchesSearch(p, search));
-  const todayRecords = records.filter(r => r.date === new Date().toISOString().slice(0, 10));
-
-  return (
-    <div style={{ padding: "1.5rem", display: "grid", gridTemplateColumns: "280px 1fr", gap: "1.25rem", alignItems: "start" }}>
-      {/* Lista de pacientes */}
-      <div>
-        <div style={{ marginBottom: ".75rem" }}>
-          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)", margin: "0 0 .5rem" }}>Triagem</h2>
-          <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: "100%", boxSizing: "border-box" }} />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: ".3rem", maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}>
-          {filtered.slice(0, 30).map(p => {
-            const triaged = todayRecords.find(r => r.patientId === p.id);
-            const pc = triaged ? priorityColors[triaged.priority] || priorityColors.green : null;
-            return (
-              <div key={p.id} onClick={() => openTriage(p)}
-                style={{ display: "flex", alignItems: "center", gap: ".6rem", padding: ".55rem .75rem", background: selected?.id === p.id ? "var(--teal-50, #f0fdfa)" : "var(--surface)", border: `1px solid ${selected?.id === p.id ? "var(--teal-200, #99f6e4)" : "var(--border)"}`, borderRadius: "var(--r-md)", cursor: "pointer" }}>
-                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".7rem", fontWeight: 700, flexShrink: 0 }}>{initials(p.name)}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: ".8rem", color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                  {triaged && <div style={{ fontSize: ".65rem", fontWeight: 600, color: pc.text }}>{pc.label}</div>}
-                </div>
-                {triaged && <div style={{ width: 10, height: 10, borderRadius: "50%", background: pc.text, flexShrink: 0 }} />}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Formulário de triagem */}
-      {selected ? (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.25rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: ".75rem", marginBottom: "1.25rem" }}>
-            <div style={{ width: 42, height: 42, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{initials(selected.name)}</div>
+      {/* Stats strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: ".65rem", marginBottom: "1.5rem" }}>
+        {stats.map(s => (
+          <div key={s.label} style={{ ...css.card, padding: ".9rem 1.1rem", display: "flex", alignItems: "center", gap: ".75rem" }}>
+            <span style={{ fontSize: "1.25rem" }}>{s.icon}</span>
             <div>
-              <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--ink)" }}>{selected.name}</div>
-              <div style={{ fontSize: ".75rem", color: "var(--text-3)" }}>{calcAge(selected.birthDate) || "Idade não informada"} · {selected.phone || "Sem telefone"}</div>
+              <div style={{ fontSize: "1.5rem", fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: ".68rem", fontWeight: 600, color: "var(--text-3, #64748b)", textTransform: "uppercase", letterSpacing: ".05em" }}>{s.label}</div>
             </div>
           </div>
+        ))}
+      </div>
 
-          {saved && <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-md)", padding: ".65rem 1rem", color: "#15803d", fontSize: ".82rem", fontWeight: 600, marginBottom: "1rem" }}>✓ Triagem salva com sucesso</div>}
+      {/* Em atendimento */}
+      {called.length > 0 && (
+        <div style={{ marginBottom: "1.5rem" }}>
+          <div style={{ ...css.sectionTitle, marginBottom: ".65rem" }}>Em atendimento ({called.length})</div>
+          {called.map(entry => (
+            <QueueCard key={entry.id} entry={entry} priorityColor={priorityColor} priorityLabel={priorityLabel}
+              onFinish={() => saveQueue(queue.filter(q => q.id !== entry.id))}
+              onRemove={() => saveQueue(queue.filter(q => q.id !== entry.id))} />
+          ))}
+        </div>
+      )}
 
-          <form onSubmit={submitTriage}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: ".65rem", marginBottom: "1rem" }}>
-              {[["bp", "PA (mmHg)", "ex: 120/80"], ["hr", "FC (bpm)", "ex: 72"], ["rr", "FR (irpm)", "ex: 16"], ["temp", "Temp (°C)", "ex: 36.5"], ["spo2", "SpO₂ (%)", "ex: 98"], ["weight", "Peso (kg)", "ex: 70"], ["height", "Altura (cm)", "ex: 170"], ["glicemia", "Glicemia", "ex: 95"]].map(([field, label, placeholder]) => (
-                <label key={field} style={{ display: "flex", flexDirection: "column", gap: ".25rem", fontSize: ".75rem", fontWeight: 600, color: "var(--slate-700)" }}>
-                  {label}
-                  <input value={form[field]} onChange={e => setForm(s => ({ ...s, [field]: e.target.value }))} placeholder={placeholder} style={{ fontSize: ".82rem" }} />
-                </label>
-              ))}
+      {/* Aguardando */}
+      <div style={{ ...css.sectionTitle, marginBottom: ".65rem" }}>Aguardando ({waiting.length})</div>
+      {waiting.length === 0
+        ? <EmptyState icon="ðŸŽ‰" title="Fila vazia" subtitle="Nenhum paciente aguardando no momento" />
+        : waiting.map((entry, idx) => (
+          <QueueCard key={entry.id} entry={entry} position={idx} priorityColor={priorityColor} priorityLabel={priorityLabel}
+            onCall={() => saveQueue(queue.map(q => q.id === entry.id ? { ...q, status: "called" } : q))}
+            onRemove={() => saveQueue(queue.filter(q => q.id !== entry.id))} />
+        ))
+      }
+
+      {/* Modal de registro de chegada */}
+      {adding && (
+        <Modal title="Registrar chegada" subtitle="Adicione um paciente Ã  fila de atendimento" onClose={() => setAdding(false)}>
+          <Tabs
+            tabs={[["existing", "Paciente cadastrado"], ["quick", "Cadastro rÃ¡pido"]]}
+            value={addMode}
+            onChange={setAddMode}
+          />
+          <form onSubmit={addToQueue} style={{ display: "flex", flexDirection: "column", gap: ".75rem", marginTop: "1rem" }}>
+            {addMode === "existing" ? (
+              <>
+                <FormField label="Paciente" required>
+              <PatientAutocompleteField
+                patients={patients}
+                search={search}
+                setSearch={setSearch}
+                selectedId={form.patientId}
+                onSelect={(id)=>setForm(s=>({...s, patientId:id}))}
+                required
+              />
+            </FormField>
+              </>
+            ) : (
+              <>
+                <FormField label="Nome completo" required>
+                  <input value={quickName} onChange={e => setQuickName(e.target.value)} required style={css.input} placeholder="Nome do paciente" />
+                </FormField>
+                <FormField label="Telefone">
+                  <input value={quickPhone} onChange={e => setQuickPhone(e.target.value)} style={css.input} placeholder="(00) 00000-0000" />
+                </FormField>
+              </>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
+              <FormField label="Motivo">
+                <input value={form.reason} onChange={e => setForm(s => ({ ...s, reason: e.target.value }))} style={css.input} placeholder="Ex: consulta, exameâ€¦" />
+              </FormField>
+              <FormField label="Prioridade">
+                <select value={form.priority} onChange={e => setForm(s => ({ ...s, priority: e.target.value }))} style={css.input}>
+                  <option value="normal">Normal</option>
+                  <option value="high">PrioritÃ¡rio</option>
+                  <option value="urgent">Urgente</option>
+                </select>
+              </FormField>
             </div>
-
-            <label style={{ display: "flex", flexDirection: "column", gap: ".25rem", fontSize: ".75rem", fontWeight: 600, color: "var(--slate-700)", marginBottom: ".65rem" }}>
-              Escala de dor (0–10): <strong style={{ fontSize: "1rem", color: "var(--ink)" }}>{form.pain}</strong>
-              <input type="range" min="0" max="10" value={form.pain} onChange={e => setForm(s => ({ ...s, pain: e.target.value }))} />
-            </label>
-
-            <label style={{ display: "flex", flexDirection: "column", gap: ".25rem", fontSize: ".75rem", fontWeight: 600, color: "var(--slate-700)", marginBottom: ".65rem" }}>
-              Classificação de risco
-              <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
-                {Object.entries(priorityColors).map(([key, c]) => (
-                  <button key={key} type="button" onClick={() => setForm(s => ({ ...s, priority: key }))}
-                    style={{ padding: ".3rem .7rem", borderRadius: "var(--r-md)", border: `2px solid ${form.priority === key ? c.text : c.border}`, background: c.bg, color: c.text, cursor: "pointer", fontSize: ".72rem", fontWeight: 700 }}>
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </label>
-
-            <label style={{ display: "flex", flexDirection: "column", gap: ".25rem", fontSize: ".75rem", fontWeight: 600, color: "var(--slate-700)", marginBottom: "1rem" }}>
-              Observações
-              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={3} placeholder="Queixa principal, alergias, observações…" />
-            </label>
-
-            <button type="submit" style={{ padding: ".55rem 1.25rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", fontWeight: 700, cursor: "pointer", fontSize: ".84rem" }}>
-              Salvar triagem
-            </button>
+            <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end", paddingTop: ".5rem" }}>
+              <button type="button" onClick={() => setAdding(false)} style={css.btnSecondary}>Cancelar</button>
+              <button type="submit" style={css.btnPrimary} disabled={busy}>{busy ? "Adicionandoâ€¦" : "Adicionar Ã  fila"}</button>
+            </div>
           </form>
-        </div>
-      ) : (
-        <div style={{ background: "var(--surface-2)", border: "1px dashed var(--border)", borderRadius: "var(--r-lg)", padding: "3rem 1rem", textAlign: "center" }}>
-          <div style={{ fontSize: "2rem", marginBottom: ".75rem" }}>🩺</div>
-          <div style={{ fontSize: ".9rem", fontWeight: 600, color: "var(--ink)", marginBottom: ".35rem" }}>Selecione um paciente</div>
-          <div style={{ fontSize: ".78rem", color: "var(--text-3)" }}>Clique em um paciente na lista para iniciar a triagem</div>
-        </div>
+        </Modal>
       )}
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   4. AGENDA PAGE – Agendamentos
-   Props: patients, users, user, token, teams, onNewPatient, onPatientCreated, onNavigatePatient
-───────────────────────────────────────────────────────────────────────────── */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   4. AGENDA PAGE â€” Agendamentos
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const AGENDA_KEY = "saudeubs_agenda_v1";
 
 export function AgendaPage({ patients, users, user, token, teams, onNewPatient, onPatientCreated, onNavigatePatient }) {
-  const authHeader = { "Authorization": `Bearer ${token}` };
   const today = new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState(today);
   const [appointments, setAppointments] = useState(() => readLS(AGENDA_KEY, []));
@@ -511,15 +703,14 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [viewMode, setViewMode] = useState("week");
 
-  // Days with appointments for the mini-calendar header
   const daysWithAppts = useMemo(() => {
     const s = new Set();
     appointments.forEach(a => s.add(a.date));
     return s;
   }, [appointments]);
 
-  // Build week view
   const weekDays = useMemo(() => {
     const start = new Date(selectedDate + "T12:00:00");
     const dow = start.getDay();
@@ -532,13 +723,14 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
     });
   }, [selectedDate]);
 
-  const dayAppointments = appointments.filter(a => a.date === selectedDate)
+  const dayAppointments = appointments
+    .filter(a => a.date === selectedDate)
     .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 
   async function submitForm(e) {
     e.preventDefault();
     setError("");
-    if (!form.patientId || !form.time) { setError("Selecione paciente e horário."); return; }
+    if (!form.patientId || !form.time) { setError("Selecione paciente e horÃ¡rio."); return; }
     setBusy(true);
     try {
       const patient = patients.find(p => p.id === form.patientId);
@@ -556,10 +748,7 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
       const updated = [...appointments, entry];
       setAppointments(updated);
       writeLS(AGENDA_KEY, updated);
-      // Try to also persist to API
-      try {
-        await createAppointment(token, form.patientId, { date: selectedDate, demandType: "scheduled", summary: form.type === "consultation" ? "Consulta agendada" : form.type, conduct: "", nextStep: form.notes });
-      } catch {}
+      try { await createAppointment(token, form.patientId, { date: selectedDate, demandType: "scheduled", summary: form.type === "consultation" ? "Consulta agendada" : form.type, conduct: "", nextStep: form.notes }); } catch {}
       setShowForm(false);
       setForm({ patientId: "", time: "", type: "consultation", notes: "", professional: "" });
     } catch (err) { setError(err.message || "Erro ao agendar."); }
@@ -568,413 +757,181 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
 
   function removeAppt(id) {
     const updated = appointments.filter(a => a.id !== id);
-    setAppointments(updated);
-    writeLS(AGENDA_KEY, updated);
+    setAppointments(updated); writeLS(AGENDA_KEY, updated);
   }
 
   const filteredPatients = patients.filter(p => matchesSearch(p, search));
   const typeLabel = { consultation: "Consulta", return: "Retorno", exam: "Exame", procedure: "Procedimento", visit: "Visita domiciliar" };
-  const typeColor = { consultation: "#0ea5e9", return: "#8b5cf6", exam: "#f59e0b", procedure: "#ef4444", visit: "#10b981" };
-  const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const typeColor = { consultation: DS.blue[500], return: DS.purple[500], exam: DS.amber[500], procedure: DS.red[500], visit: DS.green[600] };
+  const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "SÃ¡b"];
+
+  const hours = Array.from({ length: 10 }, (_, i) => `${(7 + i).toString().padStart(2, "0")}:00`);
 
   return (
-    <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Agenda</h2>
-          <p style={{ fontSize: ".78rem", color: "var(--text-3)", margin: ".2rem 0 0" }}>{fmtDate(selectedDate)}</p>
+    <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
+      <PageHeader
+        icon="ðŸ“…"
+        title="Agenda"
+        subtitle={fmtDate(selectedDate)}
+        actions={
+          <button onClick={() => setShowForm(true)} style={css.btnPrimary}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Novo agendamento
+          </button>
+        }
+      />
+
+      {/* Week navigator */}
+      <div style={{ ...css.card, padding: ".6rem", marginBottom: "1.25rem", display: "flex", gap: ".3rem" }}>
+        <button onClick={() => {
+          const d = new Date(weekDays[0] + "T12:00:00");
+          d.setDate(d.getDate() - 7);
+          setSelectedDate(d.toISOString().slice(0, 10));
+        }} style={{ ...css.btnGhost, padding: ".4rem .7rem" }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        <div style={{ flex: 1, display: "flex", gap: ".25rem" }}>
+          {weekDays.map(d => {
+            const dt = new Date(d + "T12:00:00");
+            const isToday = d === today;
+            const isSel = d === selectedDate;
+            const hasAppt = daysWithAppts.has(d);
+            const apptCount = appointments.filter(a => a.date === d).length;
+            return (
+              <button key={d} onClick={() => setSelectedDate(d)}
+                style={{
+                  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: ".2rem",
+                  padding: ".5rem .2rem", borderRadius: 10,
+                  border: isSel ? `2px solid var(--teal-600, #0d9488)` : `2px solid transparent`,
+                  background: isSel ? "var(--teal-600, #0d9488)" : isToday ? "var(--surface-2, #f8fafc)" : "transparent",
+                  cursor: "pointer", transition: "all .15s",
+                }}>
+                <span style={{ fontSize: ".62rem", fontWeight: 700, textTransform: "uppercase", color: isSel ? "rgba(255,255,255,.75)" : "var(--text-3, #64748b)" }}>
+                  {dayNames[dt.getDay()]}
+                </span>
+                <span style={{ fontSize: ".95rem", fontWeight: 900, color: isSel ? "#fff" : isToday ? "var(--teal-600, #0d9488)" : "var(--ink, #0f172a)" }}>
+                  {dt.getDate()}
+                </span>
+                {hasAppt ? (
+                  <span style={{ fontSize: ".58rem", fontWeight: 700, padding: "0 5px", borderRadius: 999, background: isSel ? "rgba(255,255,255,.25)" : "var(--teal-600, #0d9488)", color: isSel ? "#fff" : "#fff", minWidth: 16, textAlign: "center" }}>
+                    {apptCount}
+                  </span>
+                ) : <span style={{ height: 14 }} />}
+              </button>
+            );
+          })}
         </div>
-        <button onClick={() => setShowForm(true)} style={{ padding: ".45rem .9rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".82rem", fontWeight: 600 }}>
-          + Novo agendamento
+        <button onClick={() => {
+          const d = new Date(weekDays[0] + "T12:00:00");
+          d.setDate(d.getDate() + 7);
+          setSelectedDate(d.toISOString().slice(0, 10));
+        }} style={{ ...css.btnGhost, padding: ".4rem .7rem" }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M5 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </button>
       </div>
 
-      {/* Week strip */}
-      <div style={{ display: "flex", gap: ".4rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: ".5rem" }}>
-        {weekDays.map(d => {
-          const dt = new Date(d + "T12:00:00");
-          const isToday = d === today;
-          const isSel = d === selectedDate;
-          const hasAppt = daysWithAppts.has(d);
-          return (
-            <button key={d} onClick={() => setSelectedDate(d)}
-              style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: ".2rem", padding: ".4rem .2rem", borderRadius: "var(--r-md)", border: `2px solid ${isSel ? "var(--teal-600)" : "transparent"}`, background: isSel ? "var(--teal-600)" : isToday ? "var(--surface-2)" : "transparent", cursor: "pointer" }}>
-              <span style={{ fontSize: ".65rem", color: isSel ? "#fff" : "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{dayNames[dt.getDay()]}</span>
-              <span style={{ fontSize: ".9rem", fontWeight: 700, color: isSel ? "#fff" : "var(--ink)" }}>{dt.getDate()}</span>
-              {hasAppt && <div style={{ width: 5, height: 5, borderRadius: "50%", background: isSel ? "#fff" : "var(--teal-600)" }} />}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Day appointments */}
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
+      {/* Appointment list */}
+      <div style={css.card}>
         {dayAppointments.length === 0 ? (
-          <div style={{ padding: "2.5rem 1rem", textAlign: "center", color: "var(--text-3)", fontSize: ".84rem" }}>
-            Nenhum agendamento para {fmtDate(selectedDate)}
-          </div>
+          <EmptyState icon="ðŸ“­" title="Nenhum agendamento" subtitle={`Nenhum evento marcado para ${fmtDate(selectedDate)}`}
+            action={<button onClick={() => setShowForm(true)} style={{ ...css.btnPrimary, margin: "0 auto" }}>+ Agendar</button>} />
         ) : (
-          dayAppointments.map(a => {
-            const tc = typeColor[a.type] || "#64748b";
-            return (
-              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: ".75rem", padding: ".7rem 1.1rem", borderBottom: "1px solid var(--border)", borderLeft: `4px solid ${tc}` }}>
-                <div style={{ fontSize: ".78rem", fontFamily: "IBM Plex Mono", fontWeight: 600, color: "var(--text-2)", minWidth: 40 }}>{a.time || "--:--"}</div>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".7rem", fontWeight: 700, flexShrink: 0 }}>{initials(a.patientName)}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: ".84rem", color: "var(--ink)" }}>{a.patientName}</div>
-                  <div style={{ fontSize: ".72rem", color: "var(--text-3)" }}>{typeLabel[a.type] || a.type} {a.professional ? "· " + a.professional : ""}</div>
+          <div>
+            <div style={{ padding: ".75rem 1.25rem", borderBottom: "1px solid var(--border, #e2e8f0)", display: "grid", gridTemplateColumns: "56px 40px 1fr 180px auto", gap: ".75rem", alignItems: "center" }}>
+              <span style={css.sectionTitle}>Hora</span>
+              <span />
+              <span style={css.sectionTitle}>Paciente</span>
+              <span style={css.sectionTitle}>Tipo Â· Profissional</span>
+              <span />
+            </div>
+            {dayAppointments.map((a, idx) => {
+              const tc = typeColor[a.type] || DS.slate[400];
+              return (
+                <div key={a.id}
+                  style={{ display: "grid", gridTemplateColumns: "56px 40px 1fr 180px auto", gap: ".75rem", alignItems: "center", padding: ".8rem 1.25rem", borderBottom: idx < dayAppointments.length - 1 ? "1px solid var(--border, #e2e8f0)" : "none", borderLeft: `4px solid ${tc}`, transition: "background .12s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2, #f8fafc)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: ".78rem", fontWeight: 700, color: "var(--text-2, #334155)" }}>{a.time || "--:--"}</span>
+                  <Avatar name={a.patientName} size={32} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>{a.patientName}</div>
+                    {a.notes && <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", marginTop: ".1rem" }}>{a.notes}</div>}
+                  </div>
+                  <div>
+                    <Badge color={tc} bg={tc + "15"} border={tc + "30"}>{typeLabel[a.type] || a.type}</Badge>
+                    {a.professional && <div style={{ fontSize: ".7rem", color: "var(--text-3, #64748b)", marginTop: ".25rem" }}>{a.professional}</div>}
+                  </div>
+                  <div style={{ display: "flex", gap: ".35rem" }}>
+                    {a.patientId && <button onClick={() => onNavigatePatient(a.patientId)} style={{ ...css.btnSecondary, padding: ".3rem .65rem", fontSize: ".72rem" }}>Ver</button>}
+                    <IconBtn onClick={() => removeAppt(a.id)} danger>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </IconBtn>
+                  </div>
                 </div>
-                {a.notes && <div style={{ fontSize: ".72rem", color: "var(--text-3)", maxWidth: 180, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.notes}</div>}
-                <div style={{ display: "flex", gap: ".35rem" }}>
-                  {a.patientId && <button onClick={() => onNavigatePatient(a.patientId)} style={{ padding: ".25rem .55rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".7rem" }}>Ver</button>}
-                  <button onClick={() => removeAppt(a.id)} style={{ padding: ".25rem .55rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".7rem", color: "#ef4444" }}>✕</button>
-                </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* New appointment modal */}
       {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "var(--surface)", borderRadius: "var(--r-lg)", padding: "1.5rem", width: "100%", maxWidth: 480, boxShadow: "0 8px 40px rgba(0,0,0,.15)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-              <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700 }}>Novo agendamento – {fmtDate(selectedDate)}</h3>
-              <button onClick={() => setShowForm(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)" }}>✕</button>
+        <Modal title="Novo agendamento" subtitle={`Para ${fmtDate(selectedDate)}`} onClose={() => setShowForm(false)}>
+          <form onSubmit={submitForm} style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
+            <FormField label="Paciente" required>
+              <PatientAutocompleteField
+                patients={patients}
+                search={search}
+                setSearch={setSearch}
+                selectedId={form.patientId}
+                onSelect={(id)=>setForm(s=>({...s, patientId:id}))}
+                required
+              />
+            </FormField>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
+              <FormField label="HorÃ¡rio" required>
+                <input type="time" value={form.time} onChange={e => setForm(s => ({ ...s, time: e.target.value }))} required style={css.input} />
+              </FormField>
+              <FormField label="Tipo">
+                <select value={form.type} onChange={e => setForm(s => ({ ...s, type: e.target.value }))} style={css.input}>
+                  {Object.entries(typeLabel).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </FormField>
             </div>
-            <form onSubmit={submitForm} style={{ display: "flex", flexDirection: "column", gap: ".65rem" }}>
-              <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} />
-              <select value={form.patientId} onChange={e => setForm(s => ({ ...s, patientId: e.target.value }))} required>
-                <option value="">Selecionar paciente…</option>
-                {filteredPatients.slice(0, 25).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <FormField label="Profissional responsável">
+              <select value={form.professional} onChange={e => setForm(s => ({ ...s, professional: e.target.value }))} style={css.input}>
+                <option value="">Selecionar profissional…</option>
+                {users
+                  .filter(u => ["doctor","dentist","nurse_manager","nursing_tech","acs","pharmacist","pharmacy_tech"].includes(String(u.role||"")))
+                  .map(u => <option key={u.id} value={u.name}>{u.name} — {roleLabel(u.role)}</option>)
+                }
               </select>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
-                <label style={{ display: "flex", flexDirection: "column", gap: ".25rem", fontSize: ".75rem", fontWeight: 600 }}>
-                  Horário *<input type="time" value={form.time} onChange={e => setForm(s => ({ ...s, time: e.target.value }))} required />
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: ".25rem", fontSize: ".75rem", fontWeight: 600 }}>
-                  Tipo
-                  <select value={form.type} onChange={e => setForm(s => ({ ...s, type: e.target.value }))}>
-                    {Object.entries(typeLabel).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
-                </label>
-              </div>
-              <input placeholder="Profissional responsável" value={form.professional} onChange={e => setForm(s => ({ ...s, professional: e.target.value }))} />
-              <textarea placeholder="Observações" value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={2} />
-              {error && <p style={{ color: "#ef4444", fontSize: ".8rem", margin: 0 }}>{error}</p>}
-              <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
-                <button type="button" onClick={() => setShowForm(false)} style={{ padding: ".45rem .9rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer" }}>Cancelar</button>
-                <button type="submit" disabled={busy} style={{ padding: ".45rem .9rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontWeight: 600 }}>{busy ? "Salvando…" : "Agendar"}</button>
-              </div>
-            </form>
-          </div>
-        </div>
+            </FormField>
+            <FormField label="ObservaÃ§Ãµes">
+              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={2} style={{ ...css.input, resize: "vertical" }} placeholder="InstruÃ§Ãµes, preparo, observaÃ§Ãµesâ€¦" />
+            </FormField>
+            {error && <p style={{ color: DS.red[500], fontSize: ".8rem", margin: 0, padding: ".5rem .75rem", background: DS.red[50], borderRadius: 8, border: `1px solid ${DS.red[100]}` }}>{error}</p>}
+            <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => setShowForm(false)} style={css.btnSecondary}>Cancelar</button>
+              <button type="submit" disabled={busy} style={css.btnPrimary}>{busy ? "Agendandoâ€¦" : "Confirmar agendamento"}</button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   5. REFERRALS PAGE – Encaminhamentos
-   Props: patients, users, user
-───────────────────────────────────────────────────────────────────────────── */
-const REFERRALS_KEY = "saudeubs_referrals_v1";
-
-export function ReferralsPage({ patients, users, user }) {
-  const [referrals, setReferrals] = useState(() => readLS(REFERRALS_KEY, []));
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ patientId: "", specialty: "", reason: "", priority: "normal", notes: "" });
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-
-  function saveReferrals(r) { setReferrals(r); writeLS(REFERRALS_KEY, r); }
-
-  function submitForm(e) {
-    e.preventDefault();
-    const patient = patients.find(p => p.id === form.patientId);
-    const entry = {
-      id: Date.now().toString(36),
-      patientId: form.patientId,
-      patientName: patient?.name || "",
-      specialty: form.specialty,
-      reason: form.reason,
-      priority: form.priority,
-      notes: form.notes,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      createdBy: user?.name || "",
-    };
-    saveReferrals([entry, ...referrals]);
-    setForm({ patientId: "", specialty: "", reason: "", priority: "normal", notes: "" });
-    setSearch(""); setShowForm(false);
-  }
-
-  function updateStatus(id, status) { saveReferrals(referrals.map(r => r.id === id ? { ...r, status } : r)); }
-  function removeReferral(id) { saveReferrals(referrals.filter(r => r.id !== id)); }
-
-  const filtered = referrals.filter(r => filterStatus === "all" || r.status === filterStatus);
-  const filteredPatients = patients.filter(p => matchesSearch(p, search));
-  const statusInfo = { pending: { label: "Pendente", color: "#f59e0b", bg: "#fffbeb" }, scheduled: { label: "Agendado", color: "#3b82f6", bg: "#eff6ff" }, completed: { label: "Realizado", color: "#16a34a", bg: "#f0fdf4" }, cancelled: { label: "Cancelado", color: "#6b7280", bg: "#f9fafb" } };
-  const priorityInfo = { urgent: { label: "Urgente", color: "#ef4444" }, high: { label: "Alta", color: "#f97316" }, normal: { label: "Normal", color: "#3b82f6" }, elective: { label: "Eletivo", color: "#6b7280" } };
-
-  const SPECIALTIES = ["Cardiologia", "Neurologia", "Ortopedia", "Ginecologia", "Urologia", "Oftalmologia", "Dermatologia", "Psiquiatria", "Endocrinologia", "Gastroenterologia", "Pneumologia", "Nefrologia", "Oncologia", "Infectologia", "Reumatologia", "Fisioterapia", "Nutrição", "Psicologia", "Fonoaudiologia", "Outro"];
-
-  return (
-    <div style={{ padding: "1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-        <div>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Encaminhamentos</h2>
-          <p style={{ fontSize: ".78rem", color: "var(--text-3)", margin: ".2rem 0 0" }}>{referrals.length} encaminhamento(s) registrado(s)</p>
-        </div>
-        <button onClick={() => setShowForm(true)} style={{ padding: ".45rem .9rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".82rem", fontWeight: 600 }}>
-          + Novo encaminhamento
-        </button>
-      </div>
-
-      <div style={{ display: "flex", gap: ".4rem", marginBottom: "1rem", flexWrap: "wrap" }}>
-        {[["all", "Todos"], ["pending", "Pendentes"], ["scheduled", "Agendados"], ["completed", "Realizados"], ["cancelled", "Cancelados"]].map(([v, l]) => (
-          <button key={v} onClick={() => setFilterStatus(v)}
-            style={{ padding: ".3rem .65rem", borderRadius: 999, border: "1px solid var(--border)", cursor: "pointer", fontSize: ".75rem", fontWeight: 600, background: filterStatus === v ? "var(--teal-600)" : "var(--surface-2)", color: filterStatus === v ? "#fff" : "var(--text-2)" }}>
-            {l}
-          </button>
-        ))}
-      </div>
-
-      {filtered.length === 0 ? (
-        <div style={{ background: "var(--surface-2)", border: "1px dashed var(--border)", borderRadius: "var(--r-lg)", padding: "2.5rem 1rem", textAlign: "center", color: "var(--text-3)", fontSize: ".84rem" }}>
-          Nenhum encaminhamento encontrado
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
-          {filtered.map(r => {
-            const si = statusInfo[r.status] || statusInfo.pending;
-            const pi = priorityInfo[r.priority] || priorityInfo.normal;
-            return (
-              <div key={r.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: ".85rem 1rem", display: "flex", alignItems: "flex-start", gap: "1rem" }}>
-                <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: ".75rem", flexShrink: 0 }}>{initials(r.patientName)}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: ".6rem", flexWrap: "wrap", marginBottom: ".25rem" }}>
-                    <span style={{ fontWeight: 700, fontSize: ".88rem", color: "var(--ink)" }}>{r.patientName}</span>
-                    <span style={{ fontSize: ".75rem", fontWeight: 700, color: "#0ea5e9" }}>{r.specialty}</span>
-                    <span style={{ fontSize: ".68rem", fontWeight: 600, padding: ".1rem .4rem", borderRadius: 999, background: si.bg, color: si.color }}>{si.label}</span>
-                    <span style={{ fontSize: ".68rem", fontWeight: 600, color: pi.color }}>{pi.label}</span>
-                  </div>
-                  <div style={{ fontSize: ".78rem", color: "var(--text-2)", marginBottom: ".15rem" }}>{r.reason}</div>
-                  {r.notes && <div style={{ fontSize: ".72rem", color: "var(--text-3)" }}>{r.notes}</div>}
-                  <div style={{ fontSize: ".68rem", color: "var(--text-3)", marginTop: ".25rem" }}>Por {r.createdBy} · {fmtDate(r.createdAt?.slice(0, 10))}</div>
-                </div>
-                <div style={{ display: "flex", gap: ".3rem", flexWrap: "wrap", flexShrink: 0 }}>
-                  {r.status === "pending" && <button onClick={() => updateStatus(r.id, "scheduled")} style={{ padding: ".25rem .55rem", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".7rem", fontWeight: 600 }}>Agendar</button>}
-                  {r.status === "scheduled" && <button onClick={() => updateStatus(r.id, "completed")} style={{ padding: ".25rem .55rem", background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".7rem", fontWeight: 600 }}>Marcar como feito</button>}
-                  {r.status !== "cancelled" && <button onClick={() => updateStatus(r.id, "cancelled")} style={{ padding: ".25rem .55rem", background: "var(--surface-2)", color: "var(--text-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".7rem" }}>Cancelar</button>}
-                  <button onClick={() => removeReferral(r.id)} style={{ padding: ".25rem .55rem", background: "var(--surface-2)", color: "#ef4444", border: "1px solid #fecaca", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".7rem" }}>✕</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "var(--surface)", borderRadius: "var(--r-lg)", padding: "1.5rem", width: "100%", maxWidth: 480, boxShadow: "0 8px 40px rgba(0,0,0,.15)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-              <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700 }}>Novo encaminhamento</h3>
-              <button onClick={() => setShowForm(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)" }}>✕</button>
-            </div>
-            <form onSubmit={submitForm} style={{ display: "flex", flexDirection: "column", gap: ".65rem" }}>
-              <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} />
-              <select value={form.patientId} onChange={e => setForm(s => ({ ...s, patientId: e.target.value }))} required>
-                <option value="">Selecionar paciente *</option>
-                {filteredPatients.slice(0, 25).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <select value={form.specialty} onChange={e => setForm(s => ({ ...s, specialty: e.target.value }))} required>
-                <option value="">Especialidade *</option>
-                {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <input placeholder="Motivo do encaminhamento *" value={form.reason} onChange={e => setForm(s => ({ ...s, reason: e.target.value }))} required />
-              <select value={form.priority} onChange={e => setForm(s => ({ ...s, priority: e.target.value }))}>
-                <option value="elective">Eletivo</option><option value="normal">Normal</option><option value="high">Alta prioridade</option><option value="urgent">Urgente</option>
-              </select>
-              <textarea placeholder="Observações clínicas" value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={3} />
-              <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
-                <button type="button" onClick={() => setShowForm(false)} style={{ padding: ".45rem .9rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer" }}>Cancelar</button>
-                <button type="submit" style={{ padding: ".45rem .9rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontWeight: 600 }}>Salvar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   6. ACS TASKS PAGE – Tarefas do ACS
-   Props: patients, users, user, token, onNavigatePatient
-───────────────────────────────────────────────────────────────────────────── */
-export function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
-  const authHeader = { "Authorization": `Bearer ${token}` };
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("pending");
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ patientId: "", title: "", notes: "", dueDate: "", assigneeId: user?.id || "" });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!token) return;
-    setLoading(true);
-    // Load tasks for visible patients (ACS sees their patients)
-    const myPatients = isAcs(user)
-      ? patients.filter(p => p.assignedAcsId === user?.id)
-      : patients;
-
-    Promise.all(
-      myPatients.slice(0, 30).map(p =>
-        fetch(`/patients/${p.id}/tasks`, { headers: authHeader })
-          .then(r => r.ok ? r.json() : [])
-          .then(ts => ts.map(t => ({ ...t, patientId: p.id, patientName: p.name })))
-          .catch(() => [])
-      )
-    ).then(results => {
-      setTasks(results.flat().sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || "")));
-      setLoading(false);
-    });
-  }, [token, patients.length]);
-
-  async function submitForm(e) {
-    e.preventDefault();
-    if (!form.patientId || !form.title) { setError("Paciente e título são obrigatórios."); return; }
-    setBusy(true); setError("");
-    try {
-      const res = await fetch(`/patients/${form.patientId}/tasks`, {
-        method: "POST",
-        headers: { ...authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify({ title: form.title, notes: form.notes, dueDate: form.dueDate, assigneeId: form.assigneeId }),
-      });
-      if (!res.ok) throw new Error("Erro ao criar tarefa");
-      const patient = patients.find(p => p.id === form.patientId);
-      const created = await res.json();
-      setTasks(prev => [{ ...created, patientId: form.patientId, patientName: patient?.name || "" }, ...prev]);
-      setShowForm(false);
-      setForm({ patientId: "", title: "", notes: "", dueDate: "", assigneeId: user?.id || "" });
-    } catch (err) { setError(err.message); }
-    finally { setBusy(false); }
-  }
-
-  async function changeStatus(task, status) {
-    try {
-      await fetch(`/tasks/${task.id}/status`, { method: "PATCH", headers: { ...authHeader, "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status } : t));
-    } catch {}
-  }
-
-  const myPatients = isAcs(user) ? patients.filter(p => p.assignedAcsId === user?.id) : patients;
-  const filtered = tasks.filter(t => {
-    if (filterStatus !== "all" && t.status !== filterStatus) return false;
-    if (search && !normalizeSearch(t.patientName || "").includes(normalizeSearch(search)) && !normalizeSearch(t.title || "").includes(normalizeSearch(search))) return false;
-    return true;
-  });
-
-  const statusInfo = { pending: { label: "Pendente", color: "#f59e0b" }, in_progress: { label: "Em andamento", color: "#3b82f6" }, done: { label: "Concluída", color: "#16a34a" }, cancelled: { label: "Cancelada", color: "#6b7280" } };
-
-  return (
-    <div style={{ padding: "1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-        <div>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Tarefas ACS</h2>
-          <p style={{ fontSize: ".78rem", color: "var(--text-3)", margin: ".2rem 0 0" }}>{myPatients.length} paciente(s) vinculado(s) · {tasks.filter(t => t.status === "pending").length} tarefa(s) pendente(s)</p>
-        </div>
-        <button onClick={() => setShowForm(true)} style={{ padding: ".45rem .9rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".82rem", fontWeight: 600 }}>
-          + Nova tarefa
-        </button>
-      </div>
-
-      <div style={{ display: "flex", gap: ".65rem", marginBottom: "1rem", flexWrap: "wrap" }}>
-        <input placeholder="Buscar por paciente ou título…" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
-        <div style={{ display: "flex", gap: ".35rem" }}>
-          {[["all", "Todas"], ["pending", "Pendentes"], ["in_progress", "Em andamento"], ["done", "Concluídas"]].map(([v, l]) => (
-            <button key={v} onClick={() => setFilterStatus(v)}
-              style={{ padding: ".3rem .6rem", borderRadius: 999, border: "1px solid var(--border)", cursor: "pointer", fontSize: ".73rem", fontWeight: 600, background: filterStatus === v ? "var(--teal-600)" : "var(--surface-2)", color: filterStatus === v ? "#fff" : "var(--text-2)" }}>
-              {l}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-3)", fontSize: ".84rem" }}>Carregando tarefas…</div>
-      ) : filtered.length === 0 ? (
-        <div style={{ background: "var(--surface-2)", border: "1px dashed var(--border)", borderRadius: "var(--r-lg)", padding: "2.5rem", textAlign: "center", color: "var(--text-3)", fontSize: ".84rem" }}>Nenhuma tarefa encontrada</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
-          {filtered.map(t => {
-            const si = statusInfo[t.status] || statusInfo.pending;
-            const overdue = t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10) && t.status === "pending";
-            return (
-              <div key={t.id} style={{ background: "var(--surface)", border: `1px solid ${overdue ? "#fecaca" : "var(--border)"}`, borderRadius: "var(--r-md)", padding: ".75rem 1rem", display: "flex", alignItems: "flex-start", gap: ".75rem", borderLeft: `4px solid ${overdue ? "#ef4444" : si.color}` }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap", marginBottom: ".2rem" }}>
-                    <span style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink)" }}>{t.title}</span>
-                    <span style={{ fontSize: ".68rem", fontWeight: 600, padding: ".1rem .4rem", borderRadius: 999, color: si.color, background: si.color + "15" }}>{si.label}</span>
-                    {overdue && <span style={{ fontSize: ".68rem", fontWeight: 700, color: "#ef4444" }}>⚠ Atrasada</span>}
-                  </div>
-                  <div style={{ display: "flex", gap: ".75rem", fontSize: ".72rem", color: "var(--text-3)", flexWrap: "wrap" }}>
-                    <button onClick={() => onNavigatePatient(t.patientId)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--teal-600)", fontWeight: 600, fontSize: ".72rem", padding: 0 }}>{t.patientName}</button>
-                    {t.dueDate && <span>Prazo: {fmtDate(t.dueDate)}</span>}
-                    {t.notes && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{t.notes}</span>}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: ".3rem", flexShrink: 0 }}>
-                  {t.status === "pending" && <button onClick={() => changeStatus(t, "in_progress")} style={{ padding: ".25rem .55rem", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".7rem", fontWeight: 600 }}>Iniciar</button>}
-                  {(t.status === "pending" || t.status === "in_progress") && <button onClick={() => changeStatus(t, "done")} style={{ padding: ".25rem .55rem", background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".7rem", fontWeight: 600 }}>✓ Concluir</button>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "var(--surface)", borderRadius: "var(--r-lg)", padding: "1.5rem", width: "100%", maxWidth: 460, boxShadow: "0 8px 40px rgba(0,0,0,.15)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700 }}>Nova tarefa</h3>
-              <button onClick={() => setShowForm(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)" }}>✕</button>
-            </div>
-            <form onSubmit={submitForm} style={{ display: "flex", flexDirection: "column", gap: ".65rem" }}>
-              <select value={form.patientId} onChange={e => setForm(s => ({ ...s, patientId: e.target.value }))} required>
-                <option value="">Selecionar paciente *</option>
-                {myPatients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <input placeholder="Título da tarefa *" value={form.title} onChange={e => setForm(s => ({ ...s, title: e.target.value }))} required />
-              <textarea placeholder="Descrição / observações" value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={2} />
-              <input type="date" value={form.dueDate} onChange={e => setForm(s => ({ ...s, dueDate: e.target.value }))} />
-              <select value={form.assigneeId} onChange={e => setForm(s => ({ ...s, assigneeId: e.target.value }))}>
-                <option value="">Responsável (opcional)</option>
-                {users.map(u => <option key={u.id} value={u.id}>{u.name} – {roleLabel(u.role)}</option>)}
-              </select>
-              {error && <p style={{ color: "#ef4444", fontSize: ".78rem", margin: 0 }}>{error}</p>}
-              <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
-                <button type="button" onClick={() => setShowForm(false)} style={{ padding: ".45rem .9rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer" }}>Cancelar</button>
-                <button type="submit" disabled={busy} style={{ padding: ".45rem .9rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontWeight: 600 }}>{busy ? "Salvando…" : "Criar tarefa"}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   7. CHART PAGE – Prontuário centralizado (todas as consultas)
-   Props: patients, users, user, token, onNavigatePatient
-───────────────────────────────────────────────────────────────────────────── */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   7. CHART PAGE â€” ProntuÃ¡rio centralizado
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
   const authHeader = { "Authorization": `Bearer ${token}` };
   const [search, setSearch] = useState("");
@@ -1002,12 +959,12 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
   const filteredHistory = history.filter(h => filterType === "all" || h.type === filterType);
 
   const typeInfo = {
-    consultation: { label: "Consulta", color: "#0ea5e9", icon: "🩺" },
-    visit:        { label: "Visita", color: "#10b981", icon: "🏠" },
-    vaccine:      { label: "Vacina", color: "#8b5cf6", icon: "💉" },
-    exam:         { label: "Exame", color: "#f59e0b", icon: "🔬" },
-    task:         { label: "Tarefa", color: "#6b7280", icon: "📋" },
-    message:      { label: "Mensagem", color: "#64748b", icon: "💬" },
+    consultation: { label: "Consulta",  color: DS.blue[500],   icon: "ðŸ©º" },
+    visit:        { label: "Visita",    color: DS.green[600],  icon: "ðŸ " },
+    vaccine:      { label: "Vacina",    color: DS.purple[500], icon: "ðŸ’‰" },
+    exam:         { label: "Exame",     color: DS.amber[500],  icon: "ðŸ”¬" },
+    task:         { label: "Tarefa",    color: DS.slate[500],  icon: "ðŸ“‹" },
+    message:      { label: "Mensagem",  color: DS.slate[400],  icon: "ðŸ’¬" },
   };
 
   const typeCounts = useMemo(() => {
@@ -1017,467 +974,338 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
   }, [history]);
 
   return (
-    <div style={{ padding: "1.5rem", display: "grid", gridTemplateColumns: "280px 1fr", gap: "1.25rem", alignItems: "start", minHeight: 0 }}>
-      {/* Patient list */}
-      <div>
-        <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)", margin: "0 0 .75rem" }}>Prontuário</h2>
-        <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: "100%", boxSizing: "border-box", marginBottom: ".5rem" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: ".25rem", maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}>
-          {filtered.slice(0, 40).map(p => (
-            <div key={p.id} onClick={() => openPatient(p)}
-              style={{ display: "flex", alignItems: "center", gap: ".55rem", padding: ".5rem .65rem", background: selectedId === p.id ? "var(--teal-50, #f0fdfa)" : "var(--surface)", border: `1px solid ${selectedId === p.id ? "var(--teal-200, #99f6e4)" : "var(--border)"}`, borderRadius: "var(--r-md)", cursor: "pointer" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 700, flexShrink: 0 }}>{initials(p.name)}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: ".78rem", color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                <div style={{ fontSize: ".65rem", color: "var(--text-3)" }}>{calcAge(p.birthDate) || "—"}</div>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && <div style={{ textAlign: "center", color: "var(--text-3)", fontSize: ".8rem", padding: "1rem" }}>Nenhum paciente encontrado</div>}
-        </div>
-      </div>
-
-      {/* History panel */}
-      {selectedPatient ? (
-        <div>
-          {/* Patient header */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.1rem 1.25rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: ".85rem" }}>
-            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: ".9rem", flexShrink: 0 }}>{initials(selectedPatient.name)}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--ink)" }}>{selectedPatient.name}</div>
-              <div style={{ fontSize: ".75rem", color: "var(--text-3)", display: "flex", gap: ".85rem", flexWrap: "wrap" }}>
-                <span>{calcAge(selectedPatient.birthDate) || "Idade não informada"}</span>
-                {selectedPatient.cpf && <span>CPF: {selectedPatient.cpf}</span>}
-                {selectedPatient.phone && <span>{selectedPatient.phone}</span>}
-              </div>
-            </div>
-            <button onClick={() => onNavigatePatient(selectedPatient.id)} style={{ padding: ".4rem .85rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".78rem", fontWeight: 600 }}>
-              Ver ficha completa
-            </button>
+    <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: "1.25rem", padding: "1.75rem", maxWidth: 1200, margin: "0 auto", minHeight: "calc(100vh - 80px)" }}>
+      {/* Sidebar â€” lista de pacientes */}
+      <div style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
+        <div style={{ ...css.card, padding: "1rem" }}>
+          <div style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)", marginBottom: ".75rem", display: "flex", alignItems: "center", gap: ".5rem" }}>
+            <span>ðŸ“‹</span> ProntuÃ¡rio
           </div>
-
-          {/* Stats bar */}
-          {history.length > 0 && (
-            <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", marginBottom: ".75rem" }}>
-              {Object.entries(typeCounts).map(([type, count]) => {
-                const ti = typeInfo[type] || { label: type, color: "#64748b" };
-                return (
-                  <button key={type} onClick={() => setFilterType(f => f === type ? "all" : type)}
-                    style={{ padding: ".28rem .6rem", borderRadius: 999, border: `1px solid ${filterType === type ? ti.color : "var(--border)"}`, background: filterType === type ? ti.color + "15" : "var(--surface-2)", color: filterType === type ? ti.color : "var(--text-3)", cursor: "pointer", fontSize: ".72rem", fontWeight: 600 }}>
-                    {ti.label} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Records */}
-          {loadingHistory ? (
-            <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-3)", fontSize: ".84rem" }}>Carregando prontuário…</div>
-          ) : filteredHistory.length === 0 ? (
-            <div style={{ background: "var(--surface-2)", border: "1px dashed var(--border)", borderRadius: "var(--r-lg)", padding: "2.5rem", textAlign: "center", color: "var(--text-3)", fontSize: ".84rem" }}>
-              {history.length === 0 ? "Nenhum registro no prontuário" : "Nenhum registro para o filtro selecionado"}
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
-              {filteredHistory.map((h, i) => {
-                const ti = typeInfo[h.type] || { label: h.type, color: "#64748b", icon: "📄" };
-                return (
-                  <div key={h.id || i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: ".8rem 1rem", borderLeft: `4px solid ${ti.color}` }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: ".75rem" }}>
-                      <span style={{ fontSize: "1rem", flexShrink: 0 }}>{ti.icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: ".5rem", marginBottom: ".2rem", flexWrap: "wrap" }}>
-                          <span style={{ fontWeight: 700, fontSize: ".85rem", color: "var(--ink)" }}>{h.title || ti.label}</span>
-                          <span style={{ fontSize: ".68rem", fontWeight: 600, padding: ".1rem .4rem", borderRadius: 999, background: ti.color + "15", color: ti.color }}>{ti.label}</span>
-                        </div>
-                        {h.details && <div style={{ fontSize: ".75rem", color: "var(--text-2)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.details}</div>}
-                        <div style={{ display: "flex", gap: ".75rem", fontSize: ".68rem", color: "var(--text-3)", marginTop: ".3rem", flexWrap: "wrap" }}>
-                          <span>{fmtDate(h.date)}{h.time ? " " + h.time : ""}</span>
-                          {h.professionalName && <span>Por: {h.professionalName}</span>}
-                          {h.professionalCouncil && <span>{h.professionalCouncil}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar pacienteâ€¦" />
         </div>
-      ) : (
-        <div style={{ background: "var(--surface-2)", border: "1px dashed var(--border)", borderRadius: "var(--r-lg)", padding: "3rem 1rem", textAlign: "center" }}>
-          <div style={{ fontSize: "2rem", marginBottom: ".75rem" }}>📋</div>
-          <div style={{ fontSize: ".9rem", fontWeight: 600, color: "var(--ink)", marginBottom: ".35rem" }}>Prontuário</div>
-          <div style={{ fontSize: ".78rem", color: "var(--text-3)" }}>Selecione um paciente para visualizar seu prontuário completo</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   8. INSUMO PAGE – Materiais e Insumos
-   Props: patients, users, user
-───────────────────────────────────────────────────────────────────────────── */
-const INSUMOS_KEY = "saudeubs_insumos_v1";
-const DEFAULT_INSUMOS = [
-  { id: "i1", name: "Luvas descartáveis (caixa)", unit: "cx", qty: 10, minQty: 3, category: "EPI" },
-  { id: "i2", name: "Máscara cirúrgica (caixa)", unit: "cx", qty: 5, minQty: 2, category: "EPI" },
-  { id: "i3", name: "Seringa 3mL", unit: "un", qty: 200, minQty: 50, category: "Material clínico" },
-  { id: "i4", name: "Agulha 25x7", unit: "un", qty: 150, minQty: 50, category: "Material clínico" },
-  { id: "i5", name: "Algodão (rolo)", unit: "un", qty: 8, minQty: 3, category: "Material clínico" },
-  { id: "i6", name: "Esparadrapo", unit: "un", qty: 4, minQty: 2, category: "Material clínico" },
-  { id: "i7", name: "Álcool 70° (litro)", unit: "L", qty: 6, minQty: 2, category: "Higiene" },
-  { id: "i8", name: "Sabão líquido (L)", unit: "L", qty: 3, minQty: 1, category: "Higiene" },
-];
-
-export function InsumoPage({ patients, users, user }) {
-  const [items, setItems] = useState(() => readLS(INSUMOS_KEY, DEFAULT_INSUMOS));
-  const [search, setSearch] = useState("");
-  const [filterCat, setFilterCat] = useState("all");
-  const [showForm, setShowForm] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [form, setForm] = useState({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clínico" });
-  const [showAdjust, setShowAdjust] = useState(null);
-  const [adjustQty, setAdjustQty] = useState(0);
-  const [adjustReason, setAdjustReason] = useState("");
-
-  function saveItems(i) { setItems(i); writeLS(INSUMOS_KEY, i); }
-
-  function submitForm(e) {
-    e.preventDefault();
-    if (editItem) {
-      saveItems(items.map(i => i.id === editItem.id ? { ...i, ...form, qty: Number(form.qty), minQty: Number(form.minQty) } : i));
-    } else {
-      saveItems([...items, { ...form, id: Date.now().toString(36), qty: Number(form.qty), minQty: Number(form.minQty) }]);
-    }
-    setShowForm(false); setEditItem(null);
-    setForm({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clínico" });
-  }
-
-  function openEdit(item) {
-    setEditItem(item);
-    setForm({ name: item.name, unit: item.unit, qty: item.qty, minQty: item.minQty, category: item.category });
-    setShowForm(true);
-  }
-
-  function applyAdjust(item, delta) {
-    const newQty = Math.max(0, Number(item.qty) + delta);
-    saveItems(items.map(i => i.id === item.id ? { ...i, qty: newQty } : i));
-    setShowAdjust(null); setAdjustQty(0); setAdjustReason("");
-  }
-
-  const categories = [...new Set(items.map(i => i.category))];
-  const filtered = items.filter(i => {
-    if (filterCat !== "all" && i.category !== filterCat) return false;
-    if (search && !normalizeSearch(i.name).includes(normalizeSearch(search))) return false;
-    return true;
-  });
-
-  const critical = items.filter(i => Number(i.qty) <= Number(i.minQty));
-  const CATEGORIES_OPTIONS = ["EPI", "Material clínico", "Higiene", "Medicamento", "Equipamento", "Outro"];
-
-  return (
-    <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
-        <div>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--ink)", margin: 0, letterSpacing: "-0.02em" }}>📦 Gestão de Insumos</h2>
-          <p style={{ fontSize: ".88rem", color: "var(--text-3)", margin: ".4rem 0 0" }}>Controle de estoque e materiais da unidade</p>
-        </div>
-        {canManage(user) && (
-          <button onClick={() => { setEditItem(null); setForm({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clínico" }); setShowForm(true); }}
-            style={{ padding: ".6rem 1.2rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: ".88rem", fontWeight: 700, boxShadow: "0 4px 12px rgba(13, 148, 136, 0.2)" }}>
-            + Novo insumo
-          </button>
-        )}
-      </div>
-
-      {critical.length > 0 && (
-        <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "12px", padding: "1rem", marginBottom: "2rem", display: "flex", alignItems: "center", gap: ".75rem" }}>
-          <span style={{ fontSize: ".88rem" }}>⚠️</span>
-          <span style={{ fontSize: ".85rem", fontWeight: 700, color: "#be123c" }}>Estoque Crítico ({critical.length}): {critical.map(i => i.name).join(", ")}</span>
-        </div>
-      )}
-
-      {/* Busca Proeminente */}
-      <div style={{ background: "var(--surface)", padding: "1.25rem", borderRadius: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", marginBottom: "2rem", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center", border: "1px solid var(--border)" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: "300px" }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-3)" }}>
-            <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="2"/><path d="M11 11l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-          <input 
-            placeholder="Pesquisar por nome do insumo ou material..." 
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
-            style={{ width: "100%", padding: ".75rem 1rem .75rem 2.75rem", fontSize: "1rem", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface-2)", transition: "all 0.2s" }} 
-          />
-        </div>
-        <div style={{ display: "flex", gap: ".35rem", flexWrap: "wrap" }}>
-          <button onClick={() => setFilterCat("all")} style={{ padding: ".5rem 1rem", borderRadius: "10px", border: "1px solid var(--border)", cursor: "pointer", fontSize: ".8rem", fontWeight: 700, background: filterCat === "all" ? "var(--teal-600)" : "var(--surface)", color: filterCat === "all" ? "#fff" : "var(--text-2)" }}>Todos</button>
-          {categories.map(c => (
-            <button key={c} onClick={() => setFilterCat(c)} style={{ padding: ".5rem 1rem", borderRadius: "10px", border: "1px solid var(--border)", cursor: "pointer", fontSize: ".8rem", fontWeight: 700, background: filterCat === c ? "var(--teal-600)" : "var(--surface)", color: filterCat === c ? "#fff" : "var(--text-2)" }}>{c}</button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: ".65rem" }}>
-        {filtered.map(item => {
-          const qty = Number(item.qty);
-          const min = Number(item.minQty);
-          const pct = min > 0 ? Math.min(100, (qty / (min * 3)) * 100) : 100;
-          const isCrit = qty <= min;
-          const isLow = qty <= min * 1.5 && qty > min;
-          const barColor = isCrit ? "#ef4444" : isLow ? "#f59e0b" : "#16a34a";
-          const textColor = isCrit ? "#be123c" : "var(--ink)";
-          
-          return (
-            <div key={item.id} style={{ background: "var(--surface)", border: `1px solid ${isCrit ? "#fecdd3" : "var(--border)"}`, borderRadius: "16px", padding: "1.25rem", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", transition: "transform 0.2s, box-shadow 0.2s" }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.05)"; }} onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.02)"; }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: ".5rem", marginBottom: ".5rem" }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: ".95rem", color: textColor }}>{item.name}</div>
-                  <div style={{ fontSize: ".72rem", color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginTop: ".2rem" }}>{item.category}</div>
+        <div style={{ ...css.card, overflow: "hidden", flex: 1 }}>
+          <div style={{ maxHeight: "calc(100vh - 260px)", overflowY: "auto" }}>
+            {filtered.slice(0, 50).map(p => (
+              <div key={p.id} onClick={() => openPatient(p)}
+                style={{
+                  display: "flex", alignItems: "center", gap: ".65rem",
+                  padding: ".65rem .9rem",
+                  background: selectedId === p.id ? DS.teal[50] : "transparent",
+                  borderLeft: `3px solid ${selectedId === p.id ? "var(--teal-600, #0d9488)" : "transparent"}`,
+                  cursor: "pointer", transition: "all .12s",
+                }}
+                onMouseEnter={e => { if (selectedId !== p.id) e.currentTarget.style.background = "var(--surface-2, #f8fafc)"; }}
+                onMouseLeave={e => { if (selectedId !== p.id) e.currentTarget.style.background = "transparent"; }}>
+                <Avatar name={p.name} size={32} color={selectedId === p.id ? "var(--teal-600, #0d9488)" : DS.slate[600]} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: ".82rem", color: "var(--ink, #0f172a)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                  <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{calcAge(p.birthDate) || "â€”"}{p.phone ? " Â· " + p.phone : ""}</div>
                 </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: "1.4rem", fontWeight: 900, color: barColor, lineHeight: 1 }}>{qty}</div>
-                  <div style={{ fontSize: ".68rem", color: "var(--text-3)", fontWeight: 500 }}>{item.unit} <span style={{opacity: 0.6}}>(min {min})</span></div>
-                </div>
-              </div>
-              <div style={{ height: 6, borderRadius: 999, background: "var(--surface-2)", overflow: "hidden", marginBottom: "1.25rem", marginTop: ".75rem" }}>
-                <div style={{ height: "100%", width: pct + "%", background: barColor, borderRadius: 999 }} />
-              </div>
-              <div style={{ display: "flex", gap: ".5rem", justifyContent: "flex-end" }}>
-                <button onClick={() => setShowAdjust(item)} title="Ajustar estoque" style={{ padding: ".5rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 11h12M2 5h12M5 2v6M11 8v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                </button>
-                {canManage(user) && (
-                  <button onClick={() => openEdit(item)} title="Editar insumo" style={{ padding: ".5rem", background: "var(--teal-50)", border: "1px solid var(--teal-100)", color: "var(--teal-700)", borderRadius: "10px", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M11 2l3 3-9 9H2v-3l9-9z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
+                {selectedId === p.id && (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: "var(--teal-600, #0d9488)", flexShrink: 0 }}>
+                    <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 )}
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Adjust modal */}
-      {showAdjust && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "var(--surface)", borderRadius: "var(--r-lg)", padding: "1.5rem", width: "100%", maxWidth: 360 }}>
-            <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", fontWeight: 700 }}>Ajustar: {showAdjust.name}</h3>
-            <p style={{ fontSize: ".82rem", color: "var(--text-3)", margin: "0 0 .75rem" }}>Estoque atual: <strong>{showAdjust.qty}</strong> {showAdjust.unit}</p>
-            <div style={{ display: "flex", gap: ".5rem", marginBottom: ".65rem" }}>
-              <input type="number" placeholder="Qtd. (+/-)" value={adjustQty} onChange={e => setAdjustQty(Number(e.target.value))} style={{ flex: 1 }} />
-              <input placeholder="Motivo" value={adjustReason} onChange={e => setAdjustReason(e.target.value)} style={{ flex: 2 }} />
-            </div>
-            <div style={{ display: "flex", gap: ".5rem", justifyContent: "flex-end" }}>
-              <button onClick={() => setShowAdjust(null)} style={{ padding: ".4rem .8rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer" }}>Cancelar</button>
-              <button onClick={() => applyAdjust(showAdjust, adjustQty)} style={{ padding: ".4rem .8rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontWeight: 600 }}>Aplicar</button>
-            </div>
+            ))}
+            {filtered.length === 0 && <div style={{ textAlign: "center", color: "var(--text-3, #64748b)", fontSize: ".8rem", padding: "2rem" }}>Nenhum paciente encontrado</div>}
           </div>
         </div>
-      )}
-
-      {/* Add/edit form modal */}
-      {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "var(--surface)", borderRadius: "var(--r-lg)", padding: "1.5rem", width: "100%", maxWidth: 420 }}>
-            <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", fontWeight: 700 }}>{editItem ? "Editar insumo" : "Novo insumo"}</h3>
-            <form onSubmit={submitForm} style={{ display: "flex", flexDirection: "column", gap: ".65rem" }}>
-              <input placeholder="Nome do insumo *" value={form.name} onChange={e => setForm(s => ({ ...s, name: e.target.value }))} required />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
-                <label style={{ fontSize: ".75rem", fontWeight: 600, display: "flex", flexDirection: "column", gap: ".25rem" }}>Quantidade<input type="number" min="0" value={form.qty} onChange={e => setForm(s => ({ ...s, qty: e.target.value }))} /></label>
-                <label style={{ fontSize: ".75rem", fontWeight: 600, display: "flex", flexDirection: "column", gap: ".25rem" }}>Qtd mínima<input type="number" min="0" value={form.minQty} onChange={e => setForm(s => ({ ...s, minQty: e.target.value }))} /></label>
-                <label style={{ fontSize: ".75rem", fontWeight: 600, display: "flex", flexDirection: "column", gap: ".25rem" }}>Unidade<input value={form.unit} onChange={e => setForm(s => ({ ...s, unit: e.target.value }))} /></label>
-                <label style={{ fontSize: ".75rem", fontWeight: 600, display: "flex", flexDirection: "column", gap: ".25rem" }}>Categoria
-                  <select value={form.category} onChange={e => setForm(s => ({ ...s, category: e.target.value }))}>
-                    {CATEGORIES_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </label>
-              </div>
-              <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
-                <button type="button" onClick={() => setShowForm(false)} style={{ padding: ".4rem .8rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer" }}>Cancelar</button>
-                <button type="submit" style={{ padding: ".4rem .8rem", background: "var(--teal-600)", color: "#fff", border: "none", borderRadius: "var(--r-md)", cursor: "pointer", fontWeight: 600 }}>Salvar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   9. GESTOR PAGE – Painel do Gestor UBS
-   Props: patients, users, templates, protocolByPatient
-───────────────────────────────────────────────────────────────────────────── */
-export function GestorPage({ patients, users, templates, protocolByPatient }) {
-  const [activeTab, setActiveTab] = useState("overview");
-
-  const totalPatients = patients.length;
-  const totalUsers = users.length;
-  const criticalPatients = useMemo(() => {
-    return patients.filter(p => {
-      const s = protocolByPatient?.[p.id];
-      if (!s) return false;
-      const pending = (s.pending?.visits || 0) + (s.pending?.consultations || 0) + (s.pending?.vaccines || 0);
-      return pending > 0;
-    });
-  }, [patients, protocolByPatient]);
-
-  const byCategory = useMemo(() => {
-    const map = {};
-    patients.forEach(p => {
-      const cat = p.careCategory || "general";
-      map[cat] = (map[cat] || 0) + 1;
-    });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [patients]);
-
-  const byAcs = useMemo(() => {
-    const map = {};
-    patients.forEach(p => {
-      const acsId = p.assignedAcsId || "__none";
-      if (!map[acsId]) {
-        const acsUser = users.find(u => u.id === acsId);
-        map[acsId] = { name: acsUser?.name || "Sem ACS", count: 0, critical: 0 };
-      }
-      map[acsId].count++;
-      const s = protocolByPatient?.[p.id];
-      if (s && ((s.pending?.visits || 0) + (s.pending?.consultations || 0) + (s.pending?.vaccines || 0)) > 0) {
-        map[acsId].critical++;
-      }
-    });
-    return Object.values(map).sort((a, b) => b.count - a.count);
-  }, [patients, users, protocolByPatient]);
-
-  const kpis = [
-    { label: "Total de pacientes", value: totalPatients, icon: "👥", color: "#0ea5e9" },
-    { label: "Protocolos pendentes", value: criticalPatients.length, icon: "⚠️", color: criticalPatients.length > 10 ? "#ef4444" : "#f59e0b" },
-    { label: "Usuários ativos", value: totalUsers, icon: "👤", color: "#8b5cf6" },
-    { label: "Protocolos cadastrados", value: templates.length, icon: "📋", color: "#10b981" },
-  ];
-
-  const tabs = [["overview", "Visão geral"], ["coverage", "Cobertura ACS"], ["categories", "Categorias"]];
-
-  return (
-    <div style={{ padding: "1.5rem" }}>
-      <div style={{ marginBottom: "1.25rem" }}>
-        <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Painel do Gestor</h2>
-        <p style={{ fontSize: ".78rem", color: "var(--text-3)", margin: ".2rem 0 0" }}>Visão gerencial da unidade de saúde</p>
       </div>
 
-      {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: ".65rem", marginBottom: "1.25rem" }}>
-        {kpis.map(k => (
-          <div key={k.label} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1rem 1.1rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: ".5rem", marginBottom: ".4rem" }}>
-              <span style={{ fontSize: "1.2rem" }}>{k.icon}</span>
-              <span style={{ fontSize: ".72rem", color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em" }}>{k.label}</span>
+      {/* Painel principal â€” prontuÃ¡rio */}
+      {selectedPatient ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* CabeÃ§alho do paciente */}
+          <div style={{ ...css.card, padding: "1.25rem 1.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <Avatar name={selectedPatient.name} size={52} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 900, fontSize: "1.1rem", color: "var(--ink, #0f172a)", letterSpacing: "-.01em" }}>{selectedPatient.name}</div>
+                <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", fontSize: ".78rem", color: "var(--text-3, #64748b)", marginTop: ".3rem" }}>
+                  {calcAge(selectedPatient.birthDate) && <span>ðŸŽ‚ {calcAge(selectedPatient.birthDate)}</span>}
+                  {selectedPatient.cpf && <span>CPF: {selectedPatient.cpf}</span>}
+                  {selectedPatient.phone && <span>ðŸ“± {selectedPatient.phone}</span>}
+                  {selectedPatient.careCategory && <Badge color={DS.teal[700]} bg={DS.teal[50]} border={DS.teal[200]}>{selectedPatient.careCategory}</Badge>}
+                </div>
+              </div>
+              <button onClick={() => onNavigatePatient(selectedPatient.id)} style={css.btnPrimary}>
+                Ver ficha completa
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
             </div>
-            <div style={{ fontSize: "1.6rem", fontWeight: 800, color: k.color }}>{k.value}</div>
-          </div>
-        ))}
-      </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: ".35rem", marginBottom: "1rem", borderBottom: "1px solid var(--border)", paddingBottom: ".5rem" }}>
-        {tabs.map(([v, l]) => (
-          <button key={v} onClick={() => setActiveTab(v)}
-            style={{ padding: ".4rem .85rem", borderRadius: "var(--r-md)", border: "none", cursor: "pointer", fontSize: ".8rem", fontWeight: 600, background: activeTab === v ? "var(--teal-600)" : "transparent", color: activeTab === v ? "#fff" : "var(--text-2)" }}>
-            {l}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === "overview" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.1rem" }}>
-            <div style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink)", marginBottom: ".75rem" }}>Pacientes com protocolos pendentes</div>
-            {criticalPatients.length === 0
-              ? <div style={{ color: "var(--text-3)", fontSize: ".8rem" }}>Nenhum protocolo pendente</div>
-              : <div style={{ display: "flex", flexDirection: "column", gap: ".3rem", maxHeight: 300, overflowY: "auto" }}>
-                {criticalPatients.slice(0, 15).map(p => {
-                  const s = protocolByPatient?.[p.id];
-                  const pending = (s?.pending?.visits || 0) + (s?.pending?.consultations || 0) + (s?.pending?.vaccines || 0);
+            {/* Contadores de histÃ³rico */}
+            {history.length > 0 && (
+              <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border, #e2e8f0)" }}>
+                <button onClick={() => setFilterType("all")}
+                  style={{ ...css.btnSecondary, padding: ".25rem .65rem", fontSize: ".72rem", background: filterType === "all" ? "var(--teal-600, #0d9488)" : undefined, color: filterType === "all" ? "#fff" : undefined, borderColor: filterType === "all" ? "var(--teal-600, #0d9488)" : undefined }}>
+                  Todos ({history.length})
+                </button>
+                {Object.entries(typeCounts).map(([type, count]) => {
+                  const ti = typeInfo[type] || { label: type, color: DS.slate[500] };
                   return (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: ".4rem .5rem", background: "var(--surface-2)", borderRadius: "var(--r-md)", fontSize: ".78rem" }}>
-                      <span style={{ fontWeight: 600, color: "var(--ink)" }}>{p.name}</span>
-                      <span style={{ fontWeight: 700, color: "#ef4444", background: "#fef2f2", padding: ".1rem .4rem", borderRadius: 999, border: "1px solid #fecaca" }}>{pending} pendente(s)</span>
+                    <button key={type} onClick={() => setFilterType(f => f === type ? "all" : type)}
+                      style={{ ...css.btnSecondary, padding: ".25rem .65rem", fontSize: ".72rem", borderColor: filterType === type ? ti.color : undefined, color: filterType === type ? ti.color : undefined, background: filterType === type ? ti.color + "12" : undefined }}>
+                      {ti.icon} {ti.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Timeline de registros */}
+          {loadingHistory ? (
+            <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-3, #64748b)", fontSize: ".84rem" }}>
+              <div style={{ fontSize: "1.5rem", marginBottom: ".5rem", animation: "spin 1s linear infinite" }}>â³</div>
+              Carregando prontuÃ¡rioâ€¦
+            </div>
+          ) : filteredHistory.length === 0 ? (
+            <EmptyState icon="ðŸ“„" title={history.length === 0 ? "ProntuÃ¡rio vazio" : "Nenhum registro para este filtro"} subtitle={history.length === 0 ? "Este paciente ainda nÃ£o possui registros clÃ­nicos" : "Remova o filtro para ver todos os registros"} />
+          ) : (
+            <div style={{ position: "relative" }}>
+              {/* Linha de timeline */}
+              <div style={{ position: "absolute", left: "calc(1.5rem + 15px)", top: 0, bottom: 0, width: 2, background: "var(--border, #e2e8f0)", zIndex: 0 }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
+                {filteredHistory.map((h, i) => {
+                  const ti = typeInfo[h.type] || { label: h.type, color: DS.slate[500], icon: "ðŸ“„" };
+                  return (
+                    <div key={h.id || i} style={{ display: "flex", gap: "1rem", position: "relative", zIndex: 1 }}>
+                      {/* Ãcone na timeline */}
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: ti.color + "18", border: `2px solid ${ti.color}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".8rem", flexShrink: 0, marginLeft: ".5rem", marginTop: ".35rem" }}>
+                        {ti.icon}
+                      </div>
+                      <div style={{ ...css.card, padding: ".9rem 1.1rem", flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: ".5rem", marginBottom: ".3rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
+                            <span style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>{h.title || ti.label}</span>
+                            <Badge color={ti.color} bg={ti.color + "12"} border={ti.color + "25"}>{ti.label}</Badge>
+                          </div>
+                          <span style={{ fontSize: ".7rem", color: "var(--text-3, #64748b)", flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace" }}>
+                            {fmtDate(h.date)}{h.time ? " " + h.time : ""}
+                          </span>
+                        </div>
+                        {h.details && <div style={{ fontSize: ".8rem", color: "var(--text-2, #334155)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{h.details}</div>}
+                        {h.professionalName && (
+                          <div style={{ fontSize: ".7rem", color: "var(--text-3, #64748b)", marginTop: ".4rem", display: "flex", gap: ".5rem" }}>
+                            <span>Por: {h.professionalName}</span>
+                            {h.professionalCouncil && <span>Â· {h.professionalCouncil}</span>}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            }
-          </div>
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "1.1rem" }}>
-            <div style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink)", marginBottom: ".75rem" }}>Equipe</div>
-            {users.map(u => (
-              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: ".55rem", padding: ".35rem 0", borderBottom: "1px solid var(--border-soft, #f1f5f9)" }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".65rem", fontWeight: 700 }}>{initials(u.name)}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: ".78rem", color: "var(--ink)" }}>{u.name}</div>
-                  <div style={{ fontSize: ".65rem", color: "var(--text-3)" }}>{roleLabel(u.role)}</div>
-                </div>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: u.online ? "#16a34a" : "#cbd5e1" }} />
-              </div>
-            ))}
-          </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <EmptyState icon="ðŸ©º" title="Selecione um paciente" subtitle="Clique em um paciente na lista lateral para visualizar seu prontuÃ¡rio completo" />
         </div>
       )}
+    </div>
+  );
+}
 
-      {activeTab === "coverage" && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
-          <div style={{ padding: ".75rem 1.1rem", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: ".84rem", color: "var(--ink)" }}>Cobertura por ACS</div>
-          {byAcs.map((row, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: "1rem", padding: ".65rem 1.1rem", borderBottom: "1px solid var(--border-soft, #f1f5f9)" }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".7rem", fontWeight: 700 }}>{initials(row.name)}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: ".82rem", color: "var(--ink)" }}>{row.name}</div>
-                <div style={{ height: 5, background: "var(--surface-2)", borderRadius: 999, marginTop: ".3rem", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: Math.min(100, (row.count / Math.max(...byAcs.map(r => r.count), 1)) * 100) + "%", background: "var(--teal-600)", borderRadius: 999 }} />
-                </div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--ink)" }}>{row.count}</div>
-                {row.critical > 0 && <div style={{ fontSize: ".65rem", color: "#ef4444", fontWeight: 600 }}>{row.critical} crítico(s)</div>}
-              </div>
-            </div>
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   5. REFERRALS PAGE â€” Encaminhamentos
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+const REFERRALS_KEY = "saudeubs_referrals_v1";
+const SPECIALTIES = ["Cardiologia","Neurologia","Ortopedia","Ginecologia","Urologia","Oftalmologia","Dermatologia","Psiquiatria","Endocrinologia","Gastroenterologia","Pneumologia","Nefrologia","Oncologia","Infectologia","Reumatologia","Fisioterapia","NutriÃ§Ã£o","Psicologia","Fonoaudiologia","Outro"];
+
+export function ReferralsPage({ patients, users, user }) {
+  const [referrals, setReferrals] = useState(() => readLS(REFERRALS_KEY, []));
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ patientId: "", specialty: "", reason: "", priority: "normal", notes: "" });
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [listSearch, setListSearch] = useState("");
+
+  function saveReferrals(r) { setReferrals(r); writeLS(REFERRALS_KEY, r); }
+
+  function submitForm(e) {
+    e.preventDefault();
+    const patient = patients.find(p => p.id === form.patientId);
+    const entry = {
+      id: Date.now().toString(36),
+      patientId: form.patientId,
+      patientName: patient?.name || "",
+      specialty: form.specialty,
+      reason: form.reason,
+      priority: form.priority,
+      notes: form.notes,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      createdBy: user?.name || "",
+    };
+    saveReferrals([entry, ...referrals]);
+    setForm({ patientId: "", specialty: "", reason: "", priority: "normal", notes: "" });
+    setSearch(""); setShowForm(false);
+  }
+
+  function updateStatus(id, status) { saveReferrals(referrals.map(r => r.id === id ? { ...r, status } : r)); }
+  function removeReferral(id) { saveReferrals(referrals.filter(r => r.id !== id)); }
+
+  const filteredPatients = patients.filter(p => matchesSearch(p, search));
+
+  const byStatus = {
+    all: referrals.length,
+    pending: referrals.filter(r => r.status === "pending").length,
+    scheduled: referrals.filter(r => r.status === "scheduled").length,
+    completed: referrals.filter(r => r.status === "completed").length,
+    cancelled: referrals.filter(r => r.status === "cancelled").length,
+  };
+
+  const filtered = referrals.filter(r => {
+    if (filterStatus !== "all" && r.status !== filterStatus) return false;
+    if (listSearch) {
+      const q = normalizeSearch(listSearch);
+      if (!normalizeSearch(r.patientName).includes(q) && !normalizeSearch(r.specialty).includes(q) && !normalizeSearch(r.reason).includes(q)) return false;
+    }
+    return true;
+  });
+
+  const specialtyColors = { Cardiologia: DS.red[500], Neurologia: DS.purple[500], Ortopedia: DS.amber[500], Psiquiatria: DS.blue[500], Oncologia: DS.red[700] };
+
+  return (
+    <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
+      <PageHeader
+        icon="ðŸ“¤"
+        title="Encaminhamentos"
+        subtitle={`${referrals.length} encaminhamento(s) registrado(s)`}
+        actions={
+          <button onClick={() => setShowForm(true)} style={css.btnPrimary}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Novo encaminhamento
+          </button>
+        }
+      />
+
+      {/* Filtros + busca */}
+      <div style={{ display: "flex", gap: ".75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <SearchInput value={listSearch} onChange={e => setListSearch(e.target.value)} placeholder="Buscar por paciente, especialidadeâ€¦" />
+        </div>
+        <div style={{ display: "flex", gap: ".3rem", padding: ".3rem", background: "var(--surface-2, #f8fafc)", borderRadius: 12, border: "1px solid var(--border, #e2e8f0)", flexWrap: "wrap" }}>
+          {[["all","Todos"],["pending","Pendentes"],["scheduled","Agendados"],["completed","Realizados"],["cancelled","Cancelados"]].map(([v, l]) => (
+            <button key={v} onClick={() => setFilterStatus(v)}
+              style={{ padding: ".35rem .75rem", borderRadius: 9, border: "none", cursor: "pointer", fontSize: ".75rem", fontWeight: 700, transition: "all .15s", background: filterStatus === v ? "var(--teal-600, #0d9488)" : "transparent", color: filterStatus === v ? "#fff" : "var(--text-3, #64748b)" }}>
+              {l} <span style={{ opacity: .7 }}>({byStatus[v]})</span>
+            </button>
           ))}
         </div>
-      )}
+      </div>
 
-      {activeTab === "categories" && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
-          <div style={{ padding: ".75rem 1.1rem", borderBottom: "1px solid var(--border)", fontWeight: 700, fontSize: ".84rem", color: "var(--ink)" }}>Distribuição por categoria de cuidado</div>
-          {byCategory.map(([cat, count]) => {
-            const tpl = templates.find(t => t.category === cat);
-            const pct = totalPatients > 0 ? (count / totalPatients) * 100 : 0;
+      {filtered.length === 0 ? (
+        <EmptyState icon="ðŸ“­" title="Nenhum encaminhamento" subtitle={filterStatus === "all" ? "Clique em 'Novo encaminhamento' para registrar" : `Nenhum encaminhamento com status '${filterStatus}'`}
+          action={filterStatus !== "all" && <button onClick={() => setFilterStatus("all")} style={css.btnSecondary}>Ver todos</button>} />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
+          {filtered.map(r => {
+            const specColor = specialtyColors[r.specialty] || DS.teal[600];
             return (
-              <div key={cat} style={{ display: "flex", alignItems: "center", gap: "1rem", padding: ".65rem 1.1rem", borderBottom: "1px solid var(--border-soft, #f1f5f9)" }}>
-                <div style={{ width: 120, fontSize: ".78rem", fontWeight: 600, color: "var(--ink)" }}>{tpl?.label || cat}</div>
-                <div style={{ flex: 1, height: 8, background: "var(--surface-2)", borderRadius: 999, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: pct + "%", background: "var(--teal-600)", borderRadius: 999 }} />
+              <div key={r.id} style={{ ...css.card, ...css.cardHover, padding: "1rem 1.25rem", display: "flex", alignItems: "flex-start", gap: "1rem" }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(15,23,42,.06)"; e.currentTarget.style.transform = ""; }}>
+                <Avatar name={r.patientName} size={40} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap", marginBottom: ".3rem" }}>
+                    <span style={{ fontWeight: 800, fontSize: ".92rem", color: "var(--ink, #0f172a)" }}>{r.patientName}</span>
+                    <Badge color={specColor} bg={specColor + "12"} border={specColor + "25"}>{r.specialty}</Badge>
+                    <StatusBadge status={r.status} />
+                    <PriorityBadge priority={r.priority} />
+                  </div>
+                  <div style={{ fontSize: ".82rem", color: "var(--text-2, #334155)", marginBottom: ".2rem" }}>{r.reason}</div>
+                  {r.notes && <div style={{ fontSize: ".75rem", color: "var(--text-3, #64748b)", fontStyle: "italic" }}>{r.notes}</div>}
+                  <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)", marginTop: ".35rem" }}>Por {r.createdBy} Â· {fmtDate(r.createdAt?.slice(0, 10))}</div>
                 </div>
-                <div style={{ minWidth: 60, textAlign: "right", fontSize: ".78rem", fontWeight: 700, color: "var(--ink)" }}>{count} <span style={{ fontWeight: 400, color: "var(--text-3)", fontSize: ".68rem" }}>({pct.toFixed(0)}%)</span></div>
+                <div style={{ display: "flex", gap: ".3rem", flexShrink: 0, flexWrap: "wrap" }}>
+                  {r.status === "pending" && (
+                    <button onClick={() => updateStatus(r.id, "scheduled")} style={{ ...css.btnSecondary, padding: ".3rem .7rem", fontSize: ".72rem", color: DS.blue[700], borderColor: DS.blue[200] }}>
+                      Agendar
+                    </button>
+                  )}
+                  {r.status === "scheduled" && (
+                    <button onClick={() => updateStatus(r.id, "completed")} style={{ ...css.btnSecondary, padding: ".3rem .7rem", fontSize: ".72rem", color: DS.green[700], borderColor: DS.green[200] }}>
+                      âœ“ Realizado
+                    </button>
+                  )}
+                  {r.status !== "cancelled" && (
+                    <button onClick={() => updateStatus(r.id, "cancelled")} style={{ ...css.btnGhost, padding: ".3rem .6rem", fontSize: ".72rem" }}>
+                      Cancelar
+                    </button>
+                  )}
+                  <IconBtn onClick={() => removeReferral(r.id)} danger>
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                      <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </IconBtn>
+                </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {showForm && (
+        <Modal title="Novo encaminhamento" onClose={() => setShowForm(false)}>
+          <form onSubmit={submitForm} style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
+            <FormField label="Paciente" required>
+              <PatientAutocompleteField
+                patients={patients}
+                search={search}
+                setSearch={setSearch}
+                selectedId={form.patientId}
+                onSelect={(id)=>setForm(s=>({...s, patientId:id}))}
+                required
+              />
+            </FormField>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
+              <FormField label="Especialidade" required>
+                <select value={form.specialty} onChange={e => setForm(s => ({ ...s, specialty: e.target.value }))} required style={css.input}>
+                  <option value="">Selecionarâ€¦</option>
+                  {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </FormField>
+              <FormField label="Prioridade">
+                <select value={form.priority} onChange={e => setForm(s => ({ ...s, priority: e.target.value }))} style={css.input}>
+                  <option value="elective">Eletivo</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">Alta prioridade</option>
+                  <option value="urgent">Urgente</option>
+                </select>
+              </FormField>
+            </div>
+            <FormField label="Motivo do encaminhamento" required>
+              <input value={form.reason} onChange={e => setForm(s => ({ ...s, reason: e.target.value }))} required style={css.input} placeholder="Descreva o motivoâ€¦" />
+            </FormField>
+            <FormField label="ObservaÃ§Ãµes clÃ­nicas">
+              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={3} style={{ ...css.input, resize: "vertical" }} placeholder="HistÃ³rico relevante, exames, medicaÃ§Ãµes em usoâ€¦" />
+            </FormField>
+            <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => setShowForm(false)} style={css.btnSecondary}>Cancelar</button>
+              <button type="submit" style={css.btnPrimary}>Registrar encaminhamento</button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   10. REPORTS PAGE – Relatórios
-   Props: patients, users, templates, protocolByPatient
-───────────────────────────────────────────────────────────────────────────── */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   10. REPORTS PAGE â€” RelatÃ³rios
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export function ReportsPage({ patients, users, templates, protocolByPatient }) {
   const [reportType, setReportType] = useState("protocol");
   const [filterCat, setFilterCat] = useState("");
-
   const now = new Date();
 
   const protocolReport = useMemo(() => {
@@ -1495,7 +1323,10 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
     const acsMap = {};
     patients.forEach(p => {
       const acsId = p.assignedAcsId || "__none";
-      if (!acsMap[acsId]) { const u = users.find(u => u.id === acsId); acsMap[acsId] = { name: u?.name || "Sem ACS", patients: 0, pendingTotal: 0 }; }
+      if (!acsMap[acsId]) {
+        const u = users.find(u => u.id === acsId);
+        acsMap[acsId] = { name: u?.name || "Sem ACS", patients: 0, pendingTotal: 0 };
+      }
       acsMap[acsId].patients++;
       const s = protocolByPatient?.[p.id];
       if (s) acsMap[acsId].pendingTotal += (s.pending?.visits || 0) + (s.pending?.consultations || 0) + (s.pending?.vaccines || 0);
@@ -1504,39 +1335,47 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
   }, [patients, users, protocolByPatient]);
 
   function exportCSV() {
-    let rows = ["Nome;Categoria;ACS;Pendências;Realizados"];
-    protocolReport.forEach(p => {
-      rows.push([p.name, p.careCategory, p.acsName, p.pending, p.completed].join(";"));
-    });
+    let rows = ["Nome;Categoria;ACS;PendÃªncias;Realizados"];
+    protocolReport.forEach(p => rows.push([p.name, p.careCategory, p.acsName, p.pending, p.completed].join(";")));
     const a = document.createElement("a");
     a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(rows.join("\n"));
     a.download = `relatorio_protocolos_${now.toISOString().slice(0, 10)}.csv`;
     a.click();
   }
 
-  const reportTabs = [["protocol", "Protocolos"], ["coverage", "Cobertura ACS"]];
+  const totalPending = protocolReport.reduce((s, p) => s + p.pending, 0);
+  const totalCompleted = protocolReport.reduce((s, p) => s + p.completed, 0);
+  const criticalCount = protocolReport.filter(p => p.pending > 0).length;
 
   return (
-    <div style={{ padding: "1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-        <div>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>Relatórios</h2>
-          <p style={{ fontSize: ".78rem", color: "var(--text-3)", margin: ".2rem 0 0" }}>Gerado em {now.toLocaleDateString("pt-BR")}</p>
-        </div>
-        <button onClick={exportCSV} style={{ padding: ".45rem .9rem", background: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", cursor: "pointer", fontSize: ".82rem", fontWeight: 600, display: "flex", alignItems: "center", gap: ".4rem" }}>
-          ⬇ Exportar CSV
-        </button>
+    <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
+      <PageHeader
+        icon="ðŸ“Š"
+        title="RelatÃ³rios"
+        subtitle={`Gerado em ${now.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}`}
+        actions={
+          <button onClick={exportCSV} style={{ ...css.btnSecondary, gap: ".4rem" }}>
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Exportar CSV
+          </button>
+        }
+      />
+
+      {/* KPIs de relatÃ³rio */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: ".65rem", marginBottom: "1.5rem" }}>
+        <KpiCard icon="ðŸ‘¥" label="Total de pacientes" value={patients.length} color={DS.blue[500]} />
+        <KpiCard icon="âš ï¸" label="Com pendÃªncias" value={criticalCount} color={criticalCount > 10 ? DS.red[500] : DS.amber[500]} />
+        <KpiCard icon="âœ…" label="Realizados (total)" value={totalCompleted} color={DS.green[600]} />
+        <KpiCard icon="ðŸ“‹" label="PendÃªncias (total)" value={totalPending} color={totalPending > 20 ? DS.red[500] : DS.amber[500]} />
       </div>
 
-      <div style={{ display: "flex", gap: ".35rem", marginBottom: "1rem" }}>
-        {reportTabs.map(([v, l]) => (
-          <button key={v} onClick={() => setReportType(v)}
-            style={{ padding: ".4rem .85rem", borderRadius: "var(--r-md)", border: "none", cursor: "pointer", fontSize: ".8rem", fontWeight: 600, background: reportType === v ? "var(--teal-600)" : "var(--surface-2)", color: reportType === v ? "#fff" : "var(--text-2)" }}>
-            {l}
-          </button>
-        ))}
+      {/* Tabs + filtros */}
+      <div style={{ display: "flex", gap: ".75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
+        <Tabs tabs={[["protocol", "Protocolos"], ["coverage", "Cobertura ACS"]]} value={reportType} onChange={setReportType} />
         {reportType === "protocol" && (
-          <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ marginLeft: "auto", fontSize: ".78rem" }}>
+          <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ ...css.input, width: "auto", minWidth: 180 }}>
             <option value="">Todas as categorias</option>
             {templates.map(t => <option key={t.category} value={t.category}>{t.label}</option>)}
           </select>
@@ -1544,53 +1383,1154 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
       </div>
 
       {reportType === "protocol" && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 120px 90px 90px", padding: ".55rem 1rem", background: "var(--surface-2)", borderBottom: "1px solid var(--border)", fontSize: ".72rem", fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-            <span>Paciente</span><span>Categoria</span><span>ACS</span><span style={{ textAlign: "right" }}>Pendências</span><span style={{ textAlign: "right" }}>Realizados</span>
+        <div style={css.card}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 120px 100px 100px", padding: ".65rem 1.25rem", background: "var(--surface-2, #f8fafc)", borderBottom: "1px solid var(--border, #e2e8f0)", gap: ".75rem" }}>
+            {["Paciente", "Categoria", "ACS", "PendÃªncias", "Realizados"].map((h, i) => (
+              <span key={h} style={{ ...css.sectionTitle, textAlign: i > 2 ? "right" : undefined }}>{h}</span>
+            ))}
           </div>
-          <div style={{ maxHeight: 480, overflowY: "auto" }}>
-            {protocolReport.map(p => (
-              <div key={p.id} style={{ display: "grid", gridTemplateColumns: "1fr 160px 120px 90px 90px", padding: ".55rem 1rem", borderBottom: "1px solid var(--border-soft, #f1f5f9)", alignItems: "center", fontSize: ".8rem" }}>
-                <span style={{ fontWeight: 600, color: "var(--ink)" }}>{p.name}</span>
-                <span style={{ color: "var(--text-3)" }}>{catLabel(templates, p.careCategory)}</span>
-                <span style={{ color: "var(--text-3)" }}>{p.acsName}</span>
-                <span style={{ textAlign: "right", fontWeight: 700, color: p.pending > 0 ? "#ef4444" : "#16a34a" }}>{p.pending}</span>
-                <span style={{ textAlign: "right", color: "var(--text-2)" }}>{p.completed}</span>
+          <div style={{ maxHeight: 520, overflowY: "auto" }}>
+            {protocolReport.map((p, idx) => (
+              <div key={p.id}
+                style={{ display: "grid", gridTemplateColumns: "1fr 160px 120px 100px 100px", padding: ".65rem 1.25rem", borderBottom: idx < protocolReport.length - 1 ? "1px solid var(--border, #e2e8f0)" : "none", gap: ".75rem", alignItems: "center", transition: "background .12s" }}
+                onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2, #f8fafc)"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <div style={{ display: "flex", alignItems: "center", gap: ".55rem" }}>
+                  <Avatar name={p.name} size={28} color={DS.slate[600]} />
+                  <span style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink, #0f172a)" }}>{p.name}</span>
+                </div>
+                <span style={{ fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>{catLabel(templates, p.careCategory)}</span>
+                <span style={{ fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>{p.acsName}</span>
+                <div style={{ textAlign: "right" }}>
+                  {p.pending > 0 ? (
+                    <Badge color={DS.red[700]} bg={DS.red[50]} border={DS.red[100]}>{p.pending}</Badge>
+                  ) : (
+                    <Badge color={DS.green[700]} bg={DS.green[50]} border={DS.green[100]}>0</Badge>
+                  )}
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ fontSize: ".82rem", fontWeight: 600, color: "var(--text-2, #334155)" }}>{p.completed}</span>
+                </div>
               </div>
             ))}
           </div>
-          <div style={{ padding: ".55rem 1rem", background: "var(--surface-2)", borderTop: "1px solid var(--border)", display: "flex", gap: "1.5rem", fontSize: ".78rem", color: "var(--text-3)" }}>
-            <span>Total: <strong style={{ color: "var(--ink)" }}>{protocolReport.length}</strong> pacientes</span>
-            <span>Pendências: <strong style={{ color: "#ef4444" }}>{protocolReport.reduce((s, p) => s + p.pending, 0)}</strong></span>
-            <span>Realizados: <strong style={{ color: "#16a34a" }}>{protocolReport.reduce((s, p) => s + p.completed, 0)}</strong></span>
+          <div style={{ padding: ".65rem 1.25rem", background: "var(--surface-2, #f8fafc)", borderTop: "1px solid var(--border, #e2e8f0)", display: "flex", gap: "1.5rem", fontSize: ".78rem" }}>
+            <span>Total: <strong style={{ color: "var(--ink, #0f172a)" }}>{protocolReport.length}</strong> pacientes</span>
+            <span>PendÃªncias: <strong style={{ color: DS.red[500] }}>{totalPending}</strong></span>
+            <span>Realizados: <strong style={{ color: DS.green[600] }}>{totalCompleted}</strong></span>
           </div>
         </div>
       )}
 
       {reportType === "coverage" && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 120px", padding: ".55rem 1rem", background: "var(--surface-2)", borderBottom: "1px solid var(--border)", fontSize: ".72rem", fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-            <span>ACS</span><span style={{ textAlign: "right" }}>Pacientes</span><span style={{ textAlign: "right" }}>Pendências total</span>
+        <div style={css.card}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 140px", padding: ".65rem 1.25rem", background: "var(--surface-2, #f8fafc)", borderBottom: "1px solid var(--border, #e2e8f0)", gap: ".75rem" }}>
+            {["ACS", "Pacientes", "PendÃªncias total"].map((h, i) => (
+              <span key={h} style={{ ...css.sectionTitle, textAlign: i > 0 ? "right" : undefined }}>{h}</span>
+            ))}
           </div>
-          {coverageReport.map((row, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 100px 120px", padding: ".6rem 1rem", borderBottom: "1px solid var(--border-soft, #f1f5f9)", fontSize: ".8rem", alignItems: "center" }}>
-              <span style={{ fontWeight: 600, color: "var(--ink)" }}>{row.name}</span>
-              <span style={{ textAlign: "right", color: "var(--text-2)" }}>{row.patients}</span>
-              <span style={{ textAlign: "right", fontWeight: 700, color: row.pendingTotal > 0 ? "#ef4444" : "#16a34a" }}>{row.pendingTotal}</span>
-            </div>
-          ))}
+          {coverageReport.map((row, i) => {
+            const maxPatients = Math.max(...coverageReport.map(r => r.patients), 1);
+            const pct = (row.patients / maxPatients) * 100;
+            return (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 120px 140px", padding: ".75rem 1.25rem", borderBottom: i < coverageReport.length - 1 ? "1px solid var(--border, #e2e8f0)" : "none", gap: ".75rem", alignItems: "center", transition: "background .12s" }}
+                onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2, #f8fafc)"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <div style={{ display: "flex", alignItems: "center", gap: ".65rem" }}>
+                  <Avatar name={row.name} size={30} color={DS.teal[600]} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink, #0f172a)" }}>{row.name}</div>
+                    <div style={{ width: 100, height: 5, background: "var(--surface-2, #f8fafc)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 999, marginTop: ".3rem", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: pct + "%", background: "var(--teal-600, #0d9488)", borderRadius: 999 }} />
+                    </div>
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", fontWeight: 700, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>{row.patients}</div>
+                <div style={{ textAlign: "right" }}>
+                  {row.pendingTotal > 0 ? (
+                    <Badge color={DS.red[700]} bg={DS.red[50]} border={DS.red[100]}>{row.pendingTotal}</Badge>
+                  ) : (
+                    <Badge color={DS.green[700]} bg={DS.green[50]} border={DS.green[100]}>0</Badge>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   11. RECEPTIONIST APP – App dedicado de recepção
-   Props: recUser, patients, users, templates, onLogout
-───────────────────────────────────────────────────────────────────────────── */
-const RECEPTION_KEY = "saudeubs_reception_v1";
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   8. INSUMO PAGE â€” Materiais e Insumos
+   LÃ³gica de recorrÃªncia: enfermeira libera, farmacÃªutico controla estoque
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+const INSUMOS_KEY     = "saudeubs_insumos_v1";
+const RECURRING_KEY   = "saudeubs_recurring_v1";    // { patientId: [{insumoId, qty, notes, addedBy, addedAt}] }
+const DELIVERIES_KEY  = "saudeubs_deliveries_v1";   // histÃ³rico de entregas
 
+const DEFAULT_INSUMOS = [
+  { id: "i1", name: "Luvas descartÃ¡veis (caixa)", unit: "cx", qty: 10, minQty: 3, category: "EPI" },
+  { id: "i2", name: "MÃ¡scara cirÃºrgica (caixa)", unit: "cx", qty: 5, minQty: 2, category: "EPI" },
+  { id: "i3", name: "Seringa 3mL", unit: "un", qty: 200, minQty: 50, category: "Material clÃ­nico" },
+  { id: "i4", name: "Agulha 25x7", unit: "un", qty: 150, minQty: 50, category: "Material clÃ­nico" },
+  { id: "i5", name: "AlgodÃ£o (rolo)", unit: "un", qty: 8, minQty: 3, category: "Material clÃ­nico" },
+  { id: "i6", name: "Esparadrapo", unit: "un", qty: 4, minQty: 2, category: "Material clÃ­nico" },
+  { id: "i7", name: "Ãlcool 70Â° (litro)", unit: "L", qty: 6, minQty: 2, category: "Higiene" },
+  { id: "i8", name: "SabÃ£o lÃ­quido (L)", unit: "L", qty: 3, minQty: 1, category: "Higiene" },
+];
+const CATEGORIES_OPTIONS = ["EPI", "Material clÃ­nico", "Higiene", "Medicamento", "Equipamento", "Outro"];
+
+export function InsumoPage({ patients, users, user }) {
+  const [items, setItems]         = useState(() => readLS(INSUMOS_KEY, DEFAULT_INSUMOS));
+  const [recurring, setRecurring] = useState(() => readLS(RECURRING_KEY, {}));   // { patientId: [{insumoId, qty, notes}] }
+  const [deliveries, setDeliveries] = useState(() => readLS(DELIVERIES_KEY, []));
+  const [activeTab, setActiveTab] = useState("stock");
+  const [search, setSearch]       = useState("");
+  const [filterCat, setFilterCat] = useState("all");
+  const [showForm, setShowForm]   = useState(false);
+  const [editItem, setEditItem]   = useState(null);
+  const [form, setForm]           = useState({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clÃ­nico" });
+  const [showAdjust, setShowAdjust] = useState(null);
+  const [adjustDelta, setAdjustDelta] = useState(0);
+  const [adjustReason, setAdjustReason] = useState("");
+
+  // Modal de paciente recorrente (enfermeira apenas)
+  const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [recurringPatient, setRecurringPatient] = useState(null);
+  const [patientSearch, setPatientSearch] = useState("");
+  const [recurringForm, setRecurringForm] = useState({ insumoId: "", qty: 1, notes: "" });
+
+  // Modal de entrega mensal (enfermeira)
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveryPatient, setDeliveryPatient] = useState(null);
+
+  function saveItems(i) { setItems(i); writeLS(INSUMOS_KEY, i); }
+  function saveRecurring(r) { setRecurring(r); writeLS(RECURRING_KEY, r); }
+  function saveDeliveries(d) { setDeliveries(d); writeLS(DELIVERIES_KEY, d); }
+
+  function submitForm(e) {
+    e.preventDefault();
+    if (editItem) {
+      saveItems(items.map(i => i.id === editItem.id ? { ...i, ...form, qty: Number(form.qty), minQty: Number(form.minQty) } : i));
+    } else {
+      saveItems([...items, { ...form, id: Date.now().toString(36), qty: Number(form.qty), minQty: Number(form.minQty) }]);
+    }
+    setShowForm(false); setEditItem(null);
+    setForm({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clÃ­nico" });
+  }
+
+  function openEdit(item) {
+    setEditItem(item);
+    setForm({ name: item.name, unit: item.unit, qty: item.qty, minQty: item.minQty, category: item.category });
+    setShowForm(true);
+  }
+
+  function applyAdjust() {
+    if (!showAdjust) return;
+    const newQty = Math.max(0, Number(showAdjust.qty) + Number(adjustDelta));
+    saveItems(items.map(i => i.id === showAdjust.id ? { ...i, qty: newQty } : i));
+    setShowAdjust(null); setAdjustDelta(0); setAdjustReason("");
+  }
+
+  // Adicionar insumo ao paciente recorrente (sÃ³ enfermeira)
+  function addRecurringItem(e) {
+    e.preventDefault();
+    if (!recurringPatient || !recurringForm.insumoId) return;
+    const pid = recurringPatient.id;
+    const existing = recurring[pid] || [];
+    // Evita duplicar insumo
+    if (existing.find(r => r.insumoId === recurringForm.insumoId)) {
+      const updated = existing.map(r => r.insumoId === recurringForm.insumoId ? { ...r, qty: Number(recurringForm.qty), notes: recurringForm.notes } : r);
+      saveRecurring({ ...recurring, [pid]: updated });
+    } else {
+      saveRecurring({ ...recurring, [pid]: [...existing, { insumoId: recurringForm.insumoId, qty: Number(recurringForm.qty), notes: recurringForm.notes, addedBy: user?.name, addedAt: new Date().toISOString() }] });
+    }
+    setRecurringForm({ insumoId: "", qty: 1, notes: "" });
+  }
+
+  // Remover insumo do paciente recorrente
+  function removeRecurringItem(patientId, insumoId) {
+    const existing = (recurring[patientId] || []).filter(r => r.insumoId !== insumoId);
+    if (existing.length === 0) {
+      const { [patientId]: _, ...rest } = recurring;
+      saveRecurring(rest);
+    } else {
+      saveRecurring({ ...recurring, [patientId]: existing });
+    }
+  }
+
+  // Desmarcar paciente como recorrente completamente
+  function removeAllRecurring(patientId) {
+    const { [patientId]: _, ...rest } = recurring;
+    saveRecurring(rest);
+  }
+
+  // Registrar entrega mensal de insumos ao paciente
+  function registerDelivery(patient) {
+    const items_to_deliver = recurring[patient.id] || [];
+    if (items_to_deliver.length === 0) return;
+    const delivery = {
+      id: Date.now().toString(36),
+      patientId: patient.id,
+      patientName: patient.name,
+      items: items_to_deliver.map(r => {
+        const insumo = items.find(i => i.id === r.insumoId);
+        return { insumoId: r.insumoId, name: insumo?.name || r.insumoId, qty: r.qty, unit: insumo?.unit || "un" };
+      }),
+      deliveredAt: new Date().toISOString(),
+      deliveredBy: user?.name || "",
+    };
+    // Baixar do estoque
+    const newItems = items.map(item => {
+      const delivered = items_to_deliver.find(r => r.insumoId === item.id);
+      if (delivered) return { ...item, qty: Math.max(0, item.qty - Number(delivered.qty)) };
+      return item;
+    });
+    saveItems(newItems);
+    saveDeliveries([delivery, ...deliveries]);
+    setShowDeliveryModal(false); setDeliveryPatient(null);
+  }
+
+  const categories = [...new Set(items.map(i => i.category))];
+  const filtered = items.filter(i => {
+    if (filterCat !== "all" && i.category !== filterCat) return false;
+    if (search && !normalizeSearch(i.name).includes(normalizeSearch(search))) return false;
+    return true;
+  });
+  const critical = items.filter(i => Number(i.qty) <= Number(i.minQty));
+  const low = items.filter(i => Number(i.qty) > Number(i.minQty) && Number(i.qty) <= Number(i.minQty) * 1.5);
+
+  const recurringPatients = Object.keys(recurring)
+    .map(pid => ({ patient: patients.find(p => p.id === pid), items: recurring[pid] }))
+    .filter(r => r.patient);
+
+  const filteredPatients = patients.filter(p => matchesSearch(p, patientSearch));
+
+  const canNurse = isManager(user) || canManage(user);
+  const canPharm = isPharmacist(user) || canNurse;
+
+  return (
+    <div style={{ padding: "1.75rem", maxWidth: 1200, margin: "0 auto" }}>
+      <PageHeader
+        icon="ðŸ“¦"
+        title="Insumos e Materiais"
+        subtitle="Controle de estoque e dispensaÃ§Ã£o"
+        actions={
+          <div style={{ display: "flex", gap: ".5rem" }}>
+            {canPharm && (
+              <button onClick={() => { setEditItem(null); setForm({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clÃ­nico" }); setShowForm(true); }}
+                style={css.btnPrimary}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                Novo insumo
+              </button>
+            )}
+          </div>
+        }
+      />
+
+      {/* Alertas crÃ­ticos */}
+      {critical.length > 0 && (
+        <div style={{ background: DS.red[50], border: `1px solid ${DS.red[100]}`, borderRadius: 14, padding: "1rem 1.25rem", marginBottom: "1.25rem", display: "flex", alignItems: "flex-start", gap: ".85rem" }}>
+          <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>ðŸš¨</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: ".88rem", color: DS.red[700], marginBottom: ".25rem" }}>Estoque crÃ­tico â€” {critical.length} item(s)</div>
+            <div style={{ fontSize: ".8rem", color: DS.red[700] }}>{critical.map(i => i.name).join(" Â· ")}</div>
+          </div>
+        </div>
+      )}
+      {low.length > 0 && critical.length === 0 && (
+        <div style={{ background: DS.amber[50], border: `1px solid ${DS.amber[100]}`, borderRadius: 14, padding: ".85rem 1.25rem", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: ".75rem" }}>
+          <span>âš ï¸</span>
+          <span style={{ fontSize: ".82rem", fontWeight: 700, color: DS.amber[700] }}>{low.length} item(s) com estoque baixo: {low.map(i => i.name).join(", ")}</span>
+        </div>
+      )}
+
+      {/* Tabs principais */}
+      <div style={{ marginBottom: "1.25rem" }}>
+        <Tabs
+          tabs={[
+            ["stock", "Estoque", items.length],
+            ["recurring", "Pacientes Recorrentes", recurringPatients.length],
+            ["history", "HistÃ³rico de Entregas", deliveries.length],
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
+      </div>
+
+      {/* â”€â”€ ABA: ESTOQUE â”€â”€ */}
+      {activeTab === "stock" && (
+        <>
+          {/* Busca + filtros */}
+          <div style={{ display: "flex", gap: ".75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Pesquisar por nome do insumoâ€¦" />
+            </div>
+            <div style={{ display: "flex", gap: ".3rem", padding: ".3rem", background: "var(--surface-2, #f8fafc)", borderRadius: 12, border: "1px solid var(--border, #e2e8f0)", flexWrap: "wrap" }}>
+              <button onClick={() => setFilterCat("all")} style={{ padding: ".35rem .75rem", borderRadius: 9, border: "none", cursor: "pointer", fontSize: ".75rem", fontWeight: 700, background: filterCat === "all" ? "var(--teal-600, #0d9488)" : "transparent", color: filterCat === "all" ? "#fff" : "var(--text-3, #64748b)" }}>Todos</button>
+              {categories.map(c => (
+                <button key={c} onClick={() => setFilterCat(c)} style={{ padding: ".35rem .75rem", borderRadius: 9, border: "none", cursor: "pointer", fontSize: ".75rem", fontWeight: 700, background: filterCat === c ? "var(--teal-600, #0d9488)" : "transparent", color: filterCat === c ? "#fff" : "var(--text-3, #64748b)" }}>{c}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Grid de insumos */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: ".75rem" }}>
+            {filtered.map(item => {
+              const qty = Number(item.qty);
+              const min = Number(item.minQty);
+              const pct = min > 0 ? Math.min(100, (qty / (min * 3)) * 100) : 100;
+              const isCrit = qty <= min;
+              const isLow = qty <= min * 1.5 && qty > min;
+              const barColor = isCrit ? DS.red[500] : isLow ? DS.amber[500] : DS.green[600];
+              const statusLabel = isCrit ? (qty === 0 ? "Zerado" : "CrÃ­tico") : isLow ? "Baixo" : "OK";
+
+              return (
+                <div key={item.id} style={{ ...css.card, ...css.cardHover, padding: "1.1rem 1.2rem" }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,.09)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(15,23,42,.06)"; e.currentTarget.style.transform = ""; }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: ".75rem" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: ".9rem", color: "var(--ink, #0f172a)", marginBottom: ".2rem", lineHeight: 1.3 }}>{item.name}</div>
+                      <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+                        <Badge color={DS.slate[600]} bg={DS.slate[100]} border={DS.slate[200]}>{item.category}</Badge>
+                        <Badge
+                          color={isCrit ? DS.red[700] : isLow ? DS.amber[700] : DS.green[700]}
+                          bg={isCrit ? DS.red[50] : isLow ? DS.amber[50] : DS.green[50]}
+                          border={isCrit ? DS.red[100] : isLow ? DS.amber[100] : DS.green[100]}>
+                          {statusLabel}
+                        </Badge>
+                      </div>
+                    </div>
+                    {canPharm && (
+                      <div style={{ display: "flex", gap: ".2rem", marginLeft: ".5rem" }}>
+                        <IconBtn onClick={() => openEdit(item)} title="Editar">
+                          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                            <path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                          </svg>
+                        </IconBtn>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quantidade */}
+                  <div style={{ display: "flex", alignItems: "baseline", gap: ".4rem", marginBottom: ".65rem" }}>
+                    <span style={{ fontSize: "2rem", fontWeight: 900, color: barColor, letterSpacing: "-.02em", lineHeight: 1 }}>{qty}</span>
+                    <span style={{ fontSize: ".78rem", color: "var(--text-3, #64748b)", fontWeight: 600 }}>{item.unit}</span>
+                    <span style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", marginLeft: ".25rem" }}>/ mÃ­n {min} {item.unit}</span>
+                  </div>
+
+                  {/* Barra de progresso */}
+                  <div style={{ height: 6, background: "var(--surface-2, #f8fafc)", borderRadius: 999, overflow: "hidden", marginBottom: ".85rem" }}>
+                    <div style={{ height: "100%", width: pct + "%", background: barColor, borderRadius: 999, transition: "width .3s" }} />
+                  </div>
+
+                  {/* AÃ§Ãµes */}
+                  {canPharm && (
+                    <div style={{ display: "flex", gap: ".4rem" }}>
+                      <button onClick={() => { setAdjustDelta(0); setShowAdjust(item); }}
+                        style={{ ...css.btnSecondary, flex: 1, fontSize: ".75rem", padding: ".38rem .6rem", justifyContent: "center" }}>
+                        Ajustar estoque
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* â”€â”€ ABA: PACIENTES RECORRENTES â”€â”€ */}
+      {activeTab === "recurring" && (
+        <div>
+          {/* DescriÃ§Ã£o da funcionalidade */}
+          <div style={{ background: DS.teal[50], border: `1px solid ${DS.teal[200]}`, borderRadius: 14, padding: "1rem 1.25rem", marginBottom: "1.25rem", display: "flex", gap: ".85rem" }}>
+            <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>â„¹ï¸</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: ".88rem", color: DS.teal[700], marginBottom: ".2rem" }}>Pacientes com retirada mensal de insumos</div>
+              <div style={{ fontSize: ".78rem", color: DS.teal[700], lineHeight: 1.5 }}>
+                Pacientes recorrentes retiram os mesmos insumos todo mÃªs. A <strong>enfermeira</strong> configura os itens e quantidades, e pode desmarcar o paciente quando necessÃ¡rio. O <strong>farmacÃªutico</strong> registra a entrega e o estoque Ã© baixado automaticamente.
+              </div>
+            </div>
+          </div>
+
+          {/* BotÃ£o adicionar (sÃ³ enfermeira) */}
+          {canNurse && (
+            <div style={{ marginBottom: "1.25rem" }}>
+              <button onClick={() => { setRecurringPatient(null); setPatientSearch(""); setRecurringForm({ insumoId: "", qty: 1, notes: "" }); setShowRecurringModal(true); }}
+                style={css.btnPrimary}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                Adicionar paciente recorrente
+              </button>
+            </div>
+          )}
+
+          {/* Lista de pacientes recorrentes */}
+          {recurringPatients.length === 0 ? (
+            <EmptyState icon="ðŸ”„" title="Nenhum paciente recorrente" subtitle="Pacientes com retirada mensal de insumos aparecerÃ£o aqui." />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: ".65rem" }}>
+              {recurringPatients.map(({ patient, items: ritems }) => {
+                const lastDelivery = deliveries.filter(d => d.patientId === patient.id)[0];
+                const lastDate = lastDelivery ? fmtDate(lastDelivery.deliveredAt.slice(0, 10)) : null;
+                return (
+                  <div key={patient.id} style={{ ...css.card, padding: "1.1rem 1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+                      <Avatar name={patient.name} size={42} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap", marginBottom: ".3rem" }}>
+                          <span style={{ fontWeight: 900, fontSize: ".95rem", color: "var(--ink, #0f172a)" }}>{patient.name}</span>
+                          <Badge color={DS.teal[700]} bg={DS.teal[50]} border={DS.teal[200]}>Recorrente</Badge>
+                          {lastDate && <span style={{ fontSize: ".7rem", color: "var(--text-3, #64748b)" }}>Ãšltima entrega: {lastDate}</span>}
+                        </div>
+
+                        {/* Itens do paciente */}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: ".4rem", marginTop: ".4rem" }}>
+                          {ritems.map(r => {
+                            const insumo = items.find(i => i.id === r.insumoId);
+                            return (
+                              <div key={r.insumoId} style={{ display: "inline-flex", alignItems: "center", gap: ".4rem", padding: ".3rem .65rem .3rem .5rem", background: "var(--surface-2, #f8fafc)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 8, fontSize: ".78rem" }}>
+                                <span style={{ fontWeight: 700, color: "var(--ink, #0f172a)" }}>{insumo?.name || r.insumoId}</span>
+                                <span style={{ color: "var(--text-3, #64748b)" }}>Ã—{r.qty} {insumo?.unit || ""}</span>
+                                {r.notes && <span style={{ color: "var(--text-3, #64748b)", fontStyle: "italic" }}>â€” {r.notes}</span>}
+                                {canNurse && (
+                                  <button onClick={() => removeRecurringItem(patient.id, r.insumoId)} title="Remover este insumo"
+                                    style={{ background: "none", border: "none", cursor: "pointer", color: DS.red[400], padding: "0 0 0 .2rem", fontSize: ".7rem", lineHeight: 1 }}>âœ•</button>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {canNurse && (
+                            <button onClick={() => { setRecurringPatient(patient); setRecurringForm({ insumoId: "", qty: 1, notes: "" }); setShowRecurringModal(true); }}
+                              style={{ display: "inline-flex", alignItems: "center", gap: ".3rem", padding: ".3rem .65rem", background: "none", border: `1px dashed var(--border, #e2e8f0)`, borderRadius: 8, cursor: "pointer", fontSize: ".75rem", color: "var(--text-3, #64748b)", fontWeight: 600 }}>
+                              + Insumo
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* AÃ§Ãµes */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: ".4rem", alignItems: "flex-end" }}>
+                        {/* Enfermeira pode dispensar */}
+                        {canNurse && (
+                          <button onClick={() => { setDeliveryPatient(patient); setShowDeliveryModal(true); }}
+                            style={{ ...css.btnPrimary, fontSize: ".78rem", padding: ".4rem .85rem" }}>
+                            Registrar entrega
+                          </button>
+                        )}
+                        {/* FarmacÃªutico tambÃ©m pode dispensar */}
+                        {isPharmacist(user) && !canNurse && (
+                          <button onClick={() => { setDeliveryPatient(patient); setShowDeliveryModal(true); }}
+                            style={{ ...css.btnSecondary, fontSize: ".78rem", padding: ".4rem .85rem" }}>
+                            Dispensar
+                          </button>
+                        )}
+                        {/* Enfermeira pode desmarcar como recorrente */}
+                        {canNurse && (
+                          <button onClick={() => { if (window.confirm(`Desmarcar ${patient.name} como paciente recorrente?`)) removeAllRecurring(patient.id); }}
+                            style={{ ...css.btnGhost, fontSize: ".72rem", color: DS.red[400] }}>
+                            Desmarcar recorrente
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* â”€â”€ ABA: HISTÃ“RICO DE ENTREGAS â”€â”€ */}
+      {activeTab === "history" && (
+        <div>
+          {deliveries.length === 0 ? (
+            <EmptyState icon="ðŸ“œ" title="Nenhuma entrega registrada" subtitle="O histÃ³rico de dispensaÃ§Ãµes aparecerÃ¡ aqui." />
+          ) : (
+            <div style={css.card}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 200px 120px", padding: ".65rem 1.25rem", background: "var(--surface-2, #f8fafc)", borderBottom: "1px solid var(--border, #e2e8f0)", gap: ".75rem" }}>
+                {["Paciente", "Insumos entregues", "Data", "Por"].map((h, i) => (
+                  <span key={h} style={{ ...css.sectionTitle, textAlign: i > 1 ? "right" : undefined }}>{h}</span>
+                ))}
+              </div>
+              <div style={{ maxHeight: 520, overflowY: "auto" }}>
+                {deliveries.map((d, idx) => (
+                  <div key={d.id}
+                    style={{ display: "grid", gridTemplateColumns: "1fr 1fr 200px 120px", padding: ".75rem 1.25rem", borderBottom: idx < deliveries.length - 1 ? "1px solid var(--border, #e2e8f0)" : "none", gap: ".75rem", alignItems: "center", transition: "background .12s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2, #f8fafc)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <div style={{ display: "flex", alignItems: "center", gap: ".55rem" }}>
+                      <Avatar name={d.patientName} size={30} color={DS.teal[600]} />
+                      <span style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink, #0f172a)" }}>{d.patientName}</span>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: ".3rem" }}>
+                      {d.items.map((it, ii) => (
+                        <Badge key={ii} color={DS.teal[700]} bg={DS.teal[50]} border={DS.teal[200]}>{it.name} Ã—{it.qty}</Badge>
+                      ))}
+                    </div>
+                    <div style={{ textAlign: "right", fontSize: ".78rem", color: "var(--text-3, #64748b)", fontFamily: "'IBM Plex Mono', monospace" }}>
+                      {fmtDate(d.deliveredAt.slice(0, 10))} {d.deliveredAt.slice(11, 16)}
+                    </div>
+                    <div style={{ textAlign: "right", fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>{d.deliveredBy || "â€”"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* â”€â”€ MODAL: Adicionar/editar insumo â”€â”€ */}
+      {showForm && (
+        <Modal title={editItem ? "Editar insumo" : "Novo insumo"} onClose={() => { setShowForm(false); setEditItem(null); }}>
+          <form onSubmit={submitForm} style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
+            <FormField label="Nome do insumo" required>
+              <input value={form.name} onChange={e => setForm(s => ({ ...s, name: e.target.value }))} required style={css.input} placeholder="Ex: Seringa 3mL" />
+            </FormField>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
+              <FormField label="Unidade">
+                <input value={form.unit} onChange={e => setForm(s => ({ ...s, unit: e.target.value }))} style={css.input} placeholder="un, cx, Lâ€¦" />
+              </FormField>
+              <FormField label="Categoria">
+                <select value={form.category} onChange={e => setForm(s => ({ ...s, category: e.target.value }))} style={css.input}>
+                  {CATEGORIES_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </FormField>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
+              <FormField label="Quantidade atual">
+                <input type="number" min="0" value={form.qty} onChange={e => setForm(s => ({ ...s, qty: e.target.value }))} style={css.input} />
+              </FormField>
+              <FormField label="Quantidade mÃ­nima">
+                <input type="number" min="0" value={form.minQty} onChange={e => setForm(s => ({ ...s, minQty: e.target.value }))} style={css.input} />
+              </FormField>
+            </div>
+            <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => { setShowForm(false); setEditItem(null); }} style={css.btnSecondary}>Cancelar</button>
+              <button type="submit" style={css.btnPrimary}>{editItem ? "Salvar alteraÃ§Ãµes" : "Adicionar insumo"}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* â”€â”€ MODAL: Ajuste de estoque â”€â”€ */}
+      {showAdjust && (
+        <Modal title="Ajuste de estoque" subtitle={showAdjust.name} onClose={() => { setShowAdjust(null); setAdjustDelta(0); setAdjustReason(""); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem", background: "var(--surface-2, #f8fafc)", borderRadius: 12 }}>
+              <div>
+                <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", fontWeight: 600, textTransform: "uppercase" }}>Estoque atual</div>
+                <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--ink, #0f172a)" }}>{showAdjust.qty} <span style={{ fontSize: ".9rem", fontWeight: 600, color: "var(--text-3, #64748b)" }}>{showAdjust.unit}</span></div>
+              </div>
+              <div style={{ fontSize: "1.5rem", color: "var(--text-3, #64748b)" }}>â†’</div>
+              <div>
+                <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", fontWeight: 600, textTransform: "uppercase" }}>Novo estoque</div>
+                <div style={{ fontSize: "2rem", fontWeight: 900, color: Number(adjustDelta) < 0 ? DS.red[500] : DS.green[600] }}>
+                  {Math.max(0, Number(showAdjust.qty) + Number(adjustDelta))} <span style={{ fontSize: ".9rem", fontWeight: 600, color: "var(--text-3, #64748b)" }}>{showAdjust.unit}</span>
+                </div>
+              </div>
+            </div>
+            <FormField label="Ajuste (use nÃºmero negativo para retirada)">
+              <input type="number" value={adjustDelta} onChange={e => setAdjustDelta(e.target.value)} style={css.input} placeholder="Ex: 50 (entrada) ou -10 (saÃ­da)" />
+            </FormField>
+            <FormField label="Motivo">
+              <input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} style={css.input} placeholder="Recebimento, vencimento, usoâ€¦" />
+            </FormField>
+            <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
+              <button onClick={() => { setShowAdjust(null); setAdjustDelta(0); setAdjustReason(""); }} style={css.btnSecondary}>Cancelar</button>
+              <button onClick={applyAdjust} style={css.btnPrimary}>Confirmar ajuste</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* â”€â”€ MODAL: Configurar insumos de paciente recorrente (ENFERMEIRA) â”€â”€ */}
+      {showRecurringModal && (
+        <Modal title={recurringPatient ? `Insumos de ${recurringPatient.name}` : "Adicionar paciente recorrente"} subtitle="Defina os insumos que este paciente retira mensalmente" onClose={() => setShowRecurringModal(false)} maxWidth={520}>
+          <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
+            {/* SeleÃ§Ã£o de paciente (se nÃ£o veio prÃ©-selecionado) */}
+            {!recurringPatient && (
+              <>
+                <FormField label="Buscar paciente">
+                  <SearchInput value={patientSearch} onChange={e => setPatientSearch(e.target.value)} placeholder="Nome, CPF ou telefoneâ€¦" />
+                </FormField>
+                <div style={{ maxHeight: 180, overflowY: "auto", border: "1px solid var(--border, #e2e8f0)", borderRadius: 10 }}>
+                  {filteredPatients.slice(0, 20).map(p => (
+                    <div key={p.id} onClick={() => setRecurringPatient(p)}
+                      style={{ display: "flex", alignItems: "center", gap: ".65rem", padding: ".55rem .9rem", cursor: "pointer", background: recurringPatient?.id === p.id ? DS.teal[50] : "transparent", transition: "background .12s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2, #f8fafc)"}
+                      onMouseLeave={e => { if (recurringPatient?.id !== p.id) e.currentTarget.style.background = "transparent"; }}>
+                      <Avatar name={p.name} size={28} />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: ".82rem", color: "var(--ink, #0f172a)" }}>{p.name}</div>
+                        <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{calcAge(p.birthDate) || "â€”"}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {recurringPatient && (
+              <>
+                {/* Info do paciente selecionado */}
+                <div style={{ display: "flex", alignItems: "center", gap: ".75rem", padding: ".75rem 1rem", background: DS.teal[50], border: `1px solid ${DS.teal[200]}`, borderRadius: 10 }}>
+                  <Avatar name={recurringPatient.name} size={36} />
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: ".9rem", color: DS.teal[700] }}>{recurringPatient.name}</div>
+                    <div style={{ fontSize: ".72rem", color: DS.teal[600] }}>{calcAge(recurringPatient.birthDate) || "â€”"}</div>
+                  </div>
+                  {!recurring[recurringPatient.id] && (
+                    <button onClick={() => setRecurringPatient(null)} style={{ ...css.btnGhost, marginLeft: "auto", fontSize: ".72rem" }}>Trocar</button>
+                  )}
+                </div>
+
+                {/* Insumos jÃ¡ configurados */}
+                {(recurring[recurringPatient.id] || []).length > 0 && (
+                  <div>
+                    <div style={{ ...css.sectionTitle, marginBottom: ".5rem" }}>Insumos configurados</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
+                      {(recurring[recurringPatient.id] || []).map(r => {
+                        const insumo = items.find(i => i.id === r.insumoId);
+                        return (
+                          <div key={r.insumoId} style={{ display: "flex", alignItems: "center", gap: ".65rem", padding: ".5rem .85rem", background: "var(--surface-2, #f8fafc)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 9 }}>
+                            <div style={{ flex: 1, fontSize: ".82rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>{insumo?.name || r.insumoId}</div>
+                            <span style={{ fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>Ã—{r.qty} {insumo?.unit || ""}</span>
+                            <button onClick={() => removeRecurringItem(recurringPatient.id, r.insumoId)} style={{ ...css.btnGhost, color: DS.red[400], padding: ".2rem .4rem" }}>âœ•</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Adicionar insumo */}
+                <div style={{ borderTop: "1px solid var(--border, #e2e8f0)", paddingTop: ".85rem" }}>
+                  <div style={{ ...css.sectionTitle, marginBottom: ".5rem" }}>Adicionar insumo</div>
+                  <form onSubmit={addRecurringItem} style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}>
+                    <FormField label="Insumo" required>
+                      <select value={recurringForm.insumoId} onChange={e => setRecurringForm(s => ({ ...s, insumoId: e.target.value }))} required style={css.input}>
+                        <option value="">Selecionar insumoâ€¦</option>
+                        {items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.qty} {i.unit} em estoque)</option>)}
+                      </select>
+                    </FormField>
+                    <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: ".65rem" }}>
+                      <FormField label="Qtd/mÃªs">
+                        <input type="number" min="1" value={recurringForm.qty} onChange={e => setRecurringForm(s => ({ ...s, qty: Number(e.target.value) }))} style={css.input} />
+                      </FormField>
+                      <FormField label="ObservaÃ§Ã£o">
+                        <input value={recurringForm.notes} onChange={e => setRecurringForm(s => ({ ...s, notes: e.target.value }))} style={css.input} placeholder="Ex: uso contÃ­nuo, fracionadoâ€¦" />
+                      </FormField>
+                    </div>
+                    <button type="submit" style={{ ...css.btnPrimary, alignSelf: "flex-start" }}>+ Adicionar</button>
+                  </form>
+                </div>
+              </>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={() => setShowRecurringModal(false)} style={css.btnSecondary}>Fechar</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* â”€â”€ MODAL: Confirmar entrega â”€â”€ */}
+      {showDeliveryModal && deliveryPatient && (
+        <Modal title="Confirmar entrega de insumos" subtitle={`Paciente: ${deliveryPatient.name}`} onClose={() => { setShowDeliveryModal(false); setDeliveryPatient(null); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div style={{ background: "var(--surface-2, #f8fafc)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ padding: ".55rem 1rem", background: "var(--surface, #fff)", borderBottom: "1px solid var(--border, #e2e8f0)", ...css.sectionTitle }}>
+                Itens a dispensar
+              </div>
+              {(recurring[deliveryPatient.id] || []).map(r => {
+                const insumo = items.find(i => i.id === r.insumoId);
+                const available = insumo ? Number(insumo.qty) : 0;
+                const insufficiente = available < r.qty;
+                return (
+                  <div key={r.insumoId} style={{ display: "flex", alignItems: "center", gap: ".75rem", padding: ".65rem 1rem", borderBottom: "1px solid var(--border, #e2e8f0)" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink, #0f172a)" }}>{insumo?.name || r.insumoId}</div>
+                      <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)" }}>Estoque atual: {available} {insumo?.unit || ""}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
+                      <span style={{ fontWeight: 800, fontSize: ".92rem", color: insufficiente ? DS.red[500] : "var(--ink, #0f172a)" }}>Ã—{r.qty}</span>
+                      {insufficiente && <Badge color={DS.red[700]} bg={DS.red[50]} border={DS.red[100]}>Insuficiente</Badge>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {(recurring[deliveryPatient.id] || []).some(r => { const insumo = items.find(i => i.id === r.insumoId); return insumo && Number(insumo.qty) < r.qty; }) && (
+              <div style={{ background: DS.amber[50], border: `1px solid ${DS.amber[200]}`, borderRadius: 10, padding: ".75rem 1rem", fontSize: ".8rem", color: DS.amber[700], fontWeight: 600 }}>
+                âš ï¸ Alguns itens podem ficar abaixo do estoque mÃ­nimo apÃ³s esta entrega.
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
+              <button onClick={() => { setShowDeliveryModal(false); setDeliveryPatient(null); }} style={css.btnSecondary}>Cancelar</button>
+              <button onClick={() => registerDelivery(deliveryPatient)} style={{ ...css.btnPrimary, background: DS.green[600] }}>
+                âœ“ Confirmar entrega
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   3. TRIAGE PAGE â€” (mantida, mas com novo visual)
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+export function TriagePage({ patients, user, token }) {
+  const authHeader = { "Authorization": `Bearer ${token}` };
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [search, setSearch] = useState("");
+  const [form, setForm] = useState({ bp: "", temp: "", heartRate: "", weight: "", height: "", glucose: "", spo2: "", pain: "0", priority: "green", notes: "" });
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const filtered = patients.filter(p => matchesSearch(p, search));
+
+  const vitalsFields = [
+    { key: "bp", label: "PressÃ£o arterial", placeholder: "120/80 mmHg", icon: "ðŸ©¸" },
+    { key: "temp", label: "Temperatura", placeholder: "36.5 Â°C", icon: "ðŸŒ¡ï¸" },
+    { key: "heartRate", label: "Freq. cardÃ­aca", placeholder: "70 bpm", icon: "ðŸ’—" },
+    { key: "weight", label: "Peso", placeholder: "70 kg", icon: "âš–ï¸" },
+    { key: "height", label: "Altura", placeholder: "170 cm", icon: "ðŸ“" },
+    { key: "glucose", label: "Glicemia", placeholder: "mg/dL", icon: "ðŸ©¸" },
+    { key: "spo2", label: "SpOâ‚‚", placeholder: "99%", icon: "ðŸ«" },
+  ];
+
+  const priorityColors = {
+    red:    { label: "Vermelho â€” EmergÃªncia", text: DS.red[700], bg: DS.red[50], border: DS.red[300] },
+    orange: { label: "Laranja â€” Muito urgente", text: "#c2410c", bg: "#fff7ed", border: "#fed7aa" },
+    yellow: { label: "Amarelo â€” Urgente", text: DS.amber[700], bg: DS.amber[50], border: DS.amber[300] },
+    green:  { label: "Verde â€” Pouco urgente", text: DS.green[700], bg: DS.green[50], border: DS.green[300] },
+    blue:   { label: "Azul â€” NÃ£o urgente", text: DS.blue[700], bg: DS.blue[50], border: DS.blue[300] },
+  };
+
+  async function submitTriage(e) {
+    e.preventDefault();
+    if (!selectedPatient) return;
+    setBusy(true);
+    try {
+      const details = [
+        form.bp && `PA: ${form.bp}`, form.temp && `Temp: ${form.temp}`,
+        form.heartRate && `FC: ${form.heartRate}`, form.weight && `Peso: ${form.weight}`,
+        form.height && `Altura: ${form.height}`, form.glucose && `Glicemia: ${form.glucose}`,
+        form.spo2 && `SpOâ‚‚: ${form.spo2}`, `Dor: ${form.pain}/10`,
+        form.notes && `Obs: ${form.notes}`,
+      ].filter(Boolean).join(" Â· ");
+      await createRecord(token, selectedPatient.id, {
+        type: "visit", date: new Date().toISOString().slice(0, 10),
+        title: `Triagem â€” ${priorityColors[form.priority]?.label}`,
+        details, conductedBy: user?.id,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      setForm({ bp: "", temp: "", heartRate: "", weight: "", height: "", glucose: "", spo2: "", pain: "0", priority: "green", notes: "" });
+    } catch {}
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "1.25rem", padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
+      {/* Lista de pacientes */}
+      <div style={{ ...css.card, padding: "1rem", display: "flex", flexDirection: "column", gap: ".75rem" }}>
+        <div style={{ fontWeight: 800, fontSize: ".9rem", color: "var(--ink, #0f172a)" }}>ðŸ©º Triagem</div>
+        <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar pacienteâ€¦" />
+        <div style={{ flex: 1, overflowY: "auto", maxHeight: "calc(100vh - 240px)", display: "flex", flexDirection: "column", gap: ".25rem" }}>
+          {filtered.slice(0, 40).map(p => (
+            <div key={p.id} onClick={() => { setSelectedPatient(p); setSaved(false); }}
+              style={{ display: "flex", alignItems: "center", gap: ".6rem", padding: ".55rem .75rem", borderRadius: 10, cursor: "pointer", background: selectedPatient?.id === p.id ? DS.teal[50] : "transparent", borderLeft: `3px solid ${selectedPatient?.id === p.id ? "var(--teal-600, #0d9488)" : "transparent"}`, transition: "all .12s" }}
+              onMouseEnter={e => { if (selectedPatient?.id !== p.id) e.currentTarget.style.background = "var(--surface-2, #f8fafc)"; }}
+              onMouseLeave={e => { if (selectedPatient?.id !== p.id) e.currentTarget.style.background = "transparent"; }}>
+              <Avatar name={p.name} size={30} color={selectedPatient?.id === p.id ? "var(--teal-600, #0d9488)" : DS.slate[500]} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: ".8rem", color: "var(--ink, #0f172a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                <div style={{ fontSize: ".65rem", color: "var(--text-3, #64748b)" }}>{calcAge(p.birthDate) || "â€”"}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FormulÃ¡rio de triagem */}
+      {selectedPatient ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* Header do paciente */}
+          <div style={{ ...css.card, padding: "1.1rem 1.4rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+            <Avatar name={selectedPatient.name} size={44} />
+            <div>
+              <div style={{ fontWeight: 900, fontSize: "1.05rem", color: "var(--ink, #0f172a)" }}>{selectedPatient.name}</div>
+              <div style={{ fontSize: ".75rem", color: "var(--text-3, #64748b)", display: "flex", gap: ".65rem" }}>
+                {calcAge(selectedPatient.birthDate) && <span>ðŸŽ‚ {calcAge(selectedPatient.birthDate)}</span>}
+                {selectedPatient.phone && <span>ðŸ“± {selectedPatient.phone}</span>}
+              </div>
+            </div>
+            {saved && <div style={{ marginLeft: "auto", fontSize: ".8rem", color: DS.green[700], fontWeight: 700, background: DS.green[50], padding: ".3rem .75rem", borderRadius: 8, border: `1px solid ${DS.green[200]}` }}>âœ“ Triagem registrada!</div>}
+          </div>
+
+          <form onSubmit={submitTriage} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {/* Sinais vitais */}
+            <div style={{ ...css.card, padding: "1.25rem" }}>
+              <div style={{ ...css.sectionTitle, marginBottom: ".9rem" }}>Sinais vitais</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: ".65rem" }}>
+                {vitalsFields.map(({ key, label, placeholder, icon }) => (
+                  <label key={key} style={css.label}>
+                    {icon} {label}
+                    <input value={form[key]} onChange={e => setForm(s => ({ ...s, [key]: e.target.value }))} placeholder={placeholder} style={css.input} />
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Dor e classificaÃ§Ã£o */}
+            <div style={{ ...css.card, padding: "1.25rem" }}>
+              <div style={{ ...css.sectionTitle, marginBottom: ".9rem" }}>AvaliaÃ§Ã£o</div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={css.label}>
+                  Escala de dor (0â€“10): <strong style={{ fontSize: "1.1rem", color: "var(--ink, #0f172a)" }}>{form.pain}</strong>
+                  <input type="range" min="0" max="10" value={form.pain} onChange={e => setForm(s => ({ ...s, pain: e.target.value }))} style={{ width: "100%", accentColor: "var(--teal-600, #0d9488)" }} />
+                </label>
+              </div>
+              <div>
+                <div style={{ ...css.label, marginBottom: ".5rem" }}>ClassificaÃ§Ã£o de risco (Manchester)</div>
+                <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+                  {Object.entries(priorityColors).map(([key, c]) => (
+                    <button key={key} type="button" onClick={() => setForm(s => ({ ...s, priority: key }))}
+                      style={{ padding: ".4rem .85rem", borderRadius: 9, border: `2px solid ${form.priority === key ? c.text : c.border}`, background: c.bg, color: c.text, cursor: "pointer", fontSize: ".75rem", fontWeight: 800, opacity: form.priority === key ? 1 : .7, transition: "all .15s" }}>
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label style={{ ...css.label, marginTop: "1rem" }}>
+                Queixa principal / observaÃ§Ãµes
+                <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={3} placeholder="Motivo da consulta, alergias, medicaÃ§Ãµes em usoâ€¦" style={{ ...css.input, resize: "vertical" }} />
+              </label>
+            </div>
+
+            <button type="submit" disabled={busy} style={{ ...css.btnPrimary, alignSelf: "flex-start", fontSize: ".88rem", padding: ".6rem 1.4rem" }}>
+              {busy ? "Salvandoâ€¦" : "âœ“ Salvar triagem"}
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <EmptyState icon="ðŸ©º" title="Selecione um paciente" subtitle="Clique em um paciente na lista para iniciar a triagem" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   6. ACS TASKS PAGE
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+export function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
+  const authHeader = { "Authorization": `Bearer ${token}` };
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ patientId: "", title: "", notes: "", dueDate: "", assigneeId: "" });
+  const [patientSearch, setPatientSearch] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const myPatients = isAcs(user) ? patients.filter(p => p.assignedAcsId === user?.id) : patients;
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try { const data = await listTasks(token); setTasks(Array.isArray(data) ? data : []); } catch { setTasks([]); }
+      setLoading(false);
+    })();
+  }, [token]);
+
+  async function submitForm(e) {
+    e.preventDefault();
+    if (!form.patientId || !form.title) { setError("Preencha paciente e tÃ­tulo."); return; }
+    setBusy(true); setError("");
+    try {
+      const patient = patients.find(p => p.id === form.patientId);
+      const newTask = await createTask(token, form.patientId, {
+        title: form.title, notes: form.notes, dueDate: form.dueDate,
+        assigneeId: form.assigneeId || user?.id,
+      });
+      const enriched = { ...newTask, patientName: patient?.name || "", status: "pending" };
+      setTasks(prev => [enriched, ...prev]);
+      setShowForm(false);
+      setForm({ patientId: "", title: "", notes: "", dueDate: "", assigneeId: "" });
+      setPatientSearch("");
+    } catch (err) { setError(err.message || "Erro ao criar tarefa."); }
+    finally { setBusy(false); }
+  }
+
+  async function changeStatus(task, status) {
+    try {
+      await updateTaskStatus(token, task.id, status);
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status } : t));
+    } catch {}
+  }
+
+  const filtered = tasks.filter(t => {
+    if (filterStatus === "all") return true;
+    return t.status === filterStatus;
+  });
+
+  const counts = { all: tasks.length, pending: tasks.filter(t => t.status === "pending").length, in_progress: tasks.filter(t => t.status === "in_progress").length, done: tasks.filter(t => t.status === "done").length };
+
+  return (
+    <div style={{ padding: "1.75rem", maxWidth: 1000, margin: "0 auto" }}>
+      <PageHeader
+        icon="âœ…"
+        title="Tarefas ACS"
+        subtitle={`${counts.pending} pendentes Â· ${counts.in_progress} em andamento`}
+        actions={
+          <button onClick={() => setShowForm(true)} style={css.btnPrimary}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Nova tarefa
+          </button>
+        }
+      />
+
+      <div style={{ marginBottom: "1.25rem" }}>
+        <Tabs tabs={[["all","Todas",counts.all],["pending","Pendentes",counts.pending],["in_progress","Em andamento",counts.in_progress],["done","ConcluÃ­das",counts.done]]} value={filterStatus} onChange={setFilterStatus} />
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-3, #64748b)" }}>â³ Carregando tarefasâ€¦</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon="ðŸ“‹" title="Nenhuma tarefa" subtitle={filterStatus === "all" ? "Crie a primeira tarefa clicando em 'Nova tarefa'" : `Nenhuma tarefa com status '${filterStatus}'`} />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
+          {filtered.map(t => {
+            const overdue = t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10) && t.status !== "done";
+            return (
+              <div key={t.id} style={{ ...css.card, ...css.cardHover, padding: "1rem 1.25rem", display: "flex", alignItems: "flex-start", gap: ".85rem", borderLeft: `4px solid ${t.status === "done" ? DS.green[500] : overdue ? DS.red[400] : DS.teal[500]}` }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,.08)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(15,23,42,.06)"; }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap", marginBottom: ".25rem" }}>
+                    <span style={{ fontWeight: 800, fontSize: ".9rem", color: "var(--ink, #0f172a)", textDecoration: t.status === "done" ? "line-through" : "none" }}>{t.title}</span>
+                    <StatusBadge status={t.status} />
+                    {overdue && <Badge color={DS.red[700]} bg={DS.red[50]} border={DS.red[100]}>âš  Atrasada</Badge>}
+                  </div>
+                  <div style={{ display: "flex", gap: ".65rem", fontSize: ".75rem", color: "var(--text-3, #64748b)", flexWrap: "wrap" }}>
+                    {t.patientId && <button onClick={() => onNavigatePatient(t.patientId)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--teal-600, #0d9488)", fontWeight: 700, fontSize: ".75rem", padding: 0 }}>{t.patientName}</button>}
+                    {t.dueDate && <span>ðŸ“… {fmtDate(t.dueDate)}</span>}
+                    {t.notes && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{t.notes}</span>}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: ".35rem", flexShrink: 0 }}>
+                  {t.status === "pending" && <button onClick={() => changeStatus(t, "in_progress")} style={{ ...css.btnSecondary, padding: ".3rem .7rem", fontSize: ".72rem", color: DS.blue[700], borderColor: DS.blue[200] }}>Iniciar</button>}
+                  {(t.status === "pending" || t.status === "in_progress") && <button onClick={() => changeStatus(t, "done")} style={{ ...css.btnSecondary, padding: ".3rem .7rem", fontSize: ".72rem", color: DS.green[700], borderColor: DS.green[200] }}>âœ“ Concluir</button>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showForm && (
+        <Modal title="Nova tarefa" onClose={() => { setShowForm(false); setPatientSearch(""); }}>
+          <form onSubmit={submitForm} style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
+            <FormField label="Paciente" required>
+              <PatientAutocompleteField
+                patients={myPatients}
+                search={patientSearch}
+                setSearch={setPatientSearch}
+                selectedId={form.patientId}
+                onSelect={(id) => setForm(s => ({ ...s, patientId: id }))}
+                required
+              />
+            </FormField>
+            <FormField label="TÃ­tulo da tarefa" required>
+              <input value={form.title} onChange={e => setForm(s => ({ ...s, title: e.target.value }))} required style={css.input} placeholder="Descreva a tarefaâ€¦" />
+            </FormField>
+            <FormField label="ObservaÃ§Ãµes">
+              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={2} style={{ ...css.input, resize: "vertical" }} placeholder="Detalhes adicionaisâ€¦" />
+            </FormField>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
+              <FormField label="Prazo">
+                <input type="date" value={form.dueDate} onChange={e => setForm(s => ({ ...s, dueDate: e.target.value }))} style={css.input} />
+              </FormField>
+              <FormField label="ResponsÃ¡vel">
+                <select value={form.assigneeId} onChange={e => setForm(s => ({ ...s, assigneeId: e.target.value }))} style={css.input}>
+                  <option value="">Minha tarefa</option>
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name} â€“ {roleLabel(u.role)}</option>)}
+                </select>
+              </FormField>
+            </div>
+            {error && <p style={{ color: DS.red[500], fontSize: ".8rem", margin: 0, padding: ".5rem .75rem", background: DS.red[50], borderRadius: 8 }}>{error}</p>}
+            <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => { setShowForm(false); setPatientSearch(""); }} style={css.btnSecondary}>Cancelar</button>
+              <button type="submit" disabled={busy} style={css.btnPrimary}>{busy ? "Criandoâ€¦" : "Criar tarefa"}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   9. GESTOR PAGE (stub â€” mantido funcional)
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+export function GestorPage({ patients, users, user, templates, protocolByPatient }) {
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const totalPatients = patients.length;
+  const criticalPatients = useMemo(() => {
+    return patients.filter(p => {
+      const s = protocolByPatient?.[p.id];
+      if (!s) return false;
+      return ((s.pending?.visits || 0) + (s.pending?.consultations || 0) + (s.pending?.vaccines || 0)) > 0;
+    });
+  }, [patients, protocolByPatient]);
+
+  const byCategory = useMemo(() => {
+    const map = {};
+    patients.forEach(p => { const cat = p.careCategory || "general"; map[cat] = (map[cat] || 0) + 1; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [patients]);
+
+  const byAcs = useMemo(() => {
+    const map = {};
+    patients.forEach(p => {
+      const acsId = p.assignedAcsId || "__none";
+      if (!map[acsId]) { const u = users.find(u => u.id === acsId); map[acsId] = { name: u?.name || "Sem ACS", count: 0, critical: 0 }; }
+      map[acsId].count++;
+      const s = protocolByPatient?.[p.id];
+      if (s && ((s.pending?.visits || 0) + (s.pending?.consultations || 0) + (s.pending?.vaccines || 0)) > 0) map[acsId].critical++;
+    });
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }, [patients, users, protocolByPatient]);
+
+  const kpis = [
+    { icon: "ðŸ‘¥", label: "Total de pacientes", value: totalPatients, color: DS.blue[500] },
+    { icon: "âš ï¸", label: "Protocolos pendentes", value: criticalPatients.length, color: criticalPatients.length > 10 ? DS.red[500] : DS.amber[500] },
+    { icon: "ðŸ‘¤", label: "UsuÃ¡rios ativos", value: users.length, color: DS.purple[500] },
+    { icon: "ðŸ“‹", label: "Protocolos cadastrados", value: templates.length, color: DS.green[600] },
+  ];
+
+  return (
+    <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
+      <PageHeader icon="ðŸ›ï¸" title="Painel do Gestor" subtitle="VisÃ£o gerencial da unidade de saÃºde" />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: ".65rem", marginBottom: "1.5rem" }}>
+        {kpis.map(k => <KpiCard key={k.label} {...k} />)}
+      </div>
+
+      <div style={{ marginBottom: "1.25rem" }}>
+        <Tabs tabs={[["overview","VisÃ£o geral"],["coverage","Cobertura ACS"],["categories","Categorias"]]} value={activeTab} onChange={setActiveTab} />
+      </div>
+
+      {activeTab === "overview" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+          <div style={css.card}>
+            <div style={{ padding: ".85rem 1.25rem", borderBottom: "1px solid var(--border, #e2e8f0)", fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>Pacientes com protocolos pendentes</div>
+            <div style={{ padding: ".5rem", maxHeight: 300, overflowY: "auto" }}>
+              {criticalPatients.length === 0 ? (
+                <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-3, #64748b)", fontSize: ".8rem" }}>âœ… Nenhum protocolo pendente</div>
+              ) : criticalPatients.slice(0, 15).map(p => {
+                const s = protocolByPatient?.[p.id];
+                const pending = (s?.pending?.visits || 0) + (s?.pending?.consultations || 0) + (s?.pending?.vaccines || 0);
+                return (
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: ".5rem .75rem", borderRadius: 9, transition: "background .12s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2, #f8fafc)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <div style={{ display: "flex", alignItems: "center", gap: ".55rem" }}>
+                      <Avatar name={p.name} size={26} color={DS.slate[500]} />
+                      <span style={{ fontWeight: 700, fontSize: ".82rem", color: "var(--ink, #0f172a)" }}>{p.name}</span>
+                    </div>
+                    <Badge color={DS.red[700]} bg={DS.red[50]} border={DS.red[100]}>{pending} pend.</Badge>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div style={css.card}>
+            <div style={{ padding: ".85rem 1.25rem", borderBottom: "1px solid var(--border, #e2e8f0)", fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>Equipe</div>
+            <div style={{ padding: ".5rem" }}>
+              {users.map(u => (
+                <div key={u.id} style={{ display: "flex", alignItems: "center", gap: ".6rem", padding: ".45rem .75rem", borderRadius: 9 }}>
+                  <Avatar name={u.name} size={28} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: ".82rem", color: "var(--ink, #0f172a)" }}>{u.name}</div>
+                    <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{roleLabel(u.role)}</div>
+                  </div>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: u.online ? DS.green[500] : DS.slate[300] }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "coverage" && (
+        <div style={css.card}>
+          <div style={{ padding: ".85rem 1.25rem", borderBottom: "1px solid var(--border, #e2e8f0)", fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>Cobertura por ACS</div>
+          {byAcs.map((row, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "1rem", padding: ".75rem 1.25rem", borderBottom: i < byAcs.length - 1 ? "1px solid var(--border, #e2e8f0)" : "none" }}>
+              <Avatar name={row.name} size={32} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink, #0f172a)", marginBottom: ".3rem" }}>{row.name}</div>
+                <div style={{ height: 6, background: "var(--surface-2, #f8fafc)", borderRadius: 999, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: Math.min(100, (row.count / Math.max(...byAcs.map(r => r.count), 1)) * 100) + "%", background: "var(--teal-600, #0d9488)", borderRadius: 999 }} />
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontWeight: 900, fontSize: ".92rem", color: "var(--ink, #0f172a)" }}>{row.count}</div>
+                {row.critical > 0 && <div style={{ fontSize: ".65rem", color: DS.red[500], fontWeight: 700 }}>{row.critical} crÃ­tico(s)</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "categories" && (
+        <div style={css.card}>
+          <div style={{ padding: ".85rem 1.25rem", borderBottom: "1px solid var(--border, #e2e8f0)", fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>DistribuiÃ§Ã£o por categoria</div>
+          {byCategory.map(([cat, count]) => {
+            const tpl = templates.find(t => t.category === cat);
+            const pct = totalPatients > 0 ? (count / totalPatients) * 100 : 0;
+            return (
+              <div key={cat} style={{ display: "flex", alignItems: "center", gap: "1rem", padding: ".75rem 1.25rem", borderBottom: "1px solid var(--border, #e2e8f0)" }}>
+                <div style={{ width: 130, fontSize: ".82rem", fontWeight: 700, color: "var(--ink, #0f172a)", flexShrink: 0 }}>{tpl?.label || cat}</div>
+                <div style={{ flex: 1, height: 8, background: "var(--surface-2, #f8fafc)", borderRadius: 999, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: pct + "%", background: "var(--teal-600, #0d9488)", borderRadius: 999 }} />
+                </div>
+                <div style={{ minWidth: 80, textAlign: "right", fontWeight: 700, fontSize: ".82rem", color: "var(--ink, #0f172a)" }}>
+                  {count} <span style={{ fontWeight: 400, color: "var(--text-3, #64748b)", fontSize: ".72rem" }}>({pct.toFixed(0)}%)</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   11. RECEPTIONIST APP â€” App dedicado de recepÃ§Ã£o (redesenhado)
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
   const [activeTab, setActiveTab] = useState("queue");
   const [queue, setQueue] = useState(() => readLS(QUEUE_KEY, []));
@@ -1628,22 +2568,11 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
 
   async function registerQuick(e) {
     e.preventDefault();
-    if (!quickForm.name.trim() || !quickForm.phone.trim()) { setError("Nome e telefone obrigatórios."); return; }
+    if (!quickForm.name.trim() || !quickForm.phone.trim()) { setError("Nome e telefone obrigatÃ³rios."); return; }
     setBusy(true); setError("");
     try {
-      // Locally add a patient to the queue even without API
       const localId = "local_" + Date.now().toString(36);
-      const entry = {
-        id: Date.now().toString(36),
-        patientId: localId,
-        patientName: quickForm.name.trim(),
-        phone: quickForm.phone.trim(),
-        reason: "Cadastro rápido",
-        priority: "normal",
-        arrivedAt: new Date().toISOString(),
-        status: "waiting",
-        incompletePatient: true,
-      };
+      const entry = { id: Date.now().toString(36), patientId: localId, patientName: quickForm.name.trim(), phone: quickForm.phone.trim(), reason: "Cadastro rÃ¡pido", priority: "normal", arrivedAt: new Date().toISOString(), status: "waiting", incompletePatient: true };
       saveQueue([...queue, entry]);
       setShowQuickReg(false);
       setQuickForm({ name: "", cpf: "", phone: "", birthDate: "" });
@@ -1651,140 +2580,138 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
     finally { setBusy(false); }
   }
 
-  const priorityColor = { urgent: "#ef4444", high: "#f59e0b", normal: "#3b82f6" };
-  const priorityLabel = { urgent: "Urgente", high: "Prioritário", normal: "Normal" };
-  const tabs = [["queue", "Fila"], ["patients", "Pacientes"], ["register", "Cadastrar"]];
+  const priorityColor = { urgent: DS.red[500], high: DS.amber[500], normal: DS.blue[500] };
+  const priorityLabel = { urgent: "Urgente", high: "PrioritÃ¡rio", normal: "Normal" };
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--surface, #f8fafc)", fontFamily: "var(--font-sans, system-ui, sans-serif)" }}>
       {/* Header */}
-      <div style={{ background: "#0f172a", color: "#fff", padding: ".75rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ background: DS.slate[900], color: "#fff", padding: ".85rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `3px solid var(--teal-600, #0d9488)` }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: ".95rem" }}>SIGUS · Recepção</div>
-          <div style={{ fontSize: ".72rem", color: "#94a3b8" }}>{recUser?.name} · {waiting.length} aguardando</div>
+          <div style={{ fontWeight: 900, fontSize: "1rem", letterSpacing: "-.01em" }}>SIGUS Â· RecepÃ§Ã£o</div>
+          <div style={{ fontSize: ".72rem", color: DS.slate[400] }}>{recUser?.name} Â· {waiting.length} aguardando</div>
         </div>
-        <button onClick={onLogout} style={{ background: "rgba(255,255,255,.1)", border: "none", color: "#fff", padding: ".35rem .75rem", borderRadius: 6, cursor: "pointer", fontSize: ".75rem" }}>Sair</button>
+        <button onClick={onLogout} style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.15)", color: "#fff", padding: ".35rem .85rem", borderRadius: 8, cursor: "pointer", fontSize: ".75rem", fontWeight: 600 }}>Sair</button>
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: "flex", background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
-        {tabs.map(([v, l]) => (
+      <div style={{ display: "flex", background: "#fff", borderBottom: "1px solid var(--border, #e2e8f0)", padding: "0 .5rem" }}>
+        {[["queue", "Fila", waiting.length], ["patients", "Pacientes", null], ["register", "Cadastrar", null]].map(([v, l, cnt]) => (
           <button key={v} onClick={() => setActiveTab(v)}
-            style={{ flex: 1, padding: ".7rem", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 600, background: "transparent", color: activeTab === v ? "#0f172a" : "#94a3b8", borderBottom: `2px solid ${activeTab === v ? "#0f172a" : "transparent"}` }}>
-            {l}
+            style={{ flex: 1, padding: ".75rem .5rem", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 700, background: "transparent", color: activeTab === v ? "var(--teal-600, #0d9488)" : DS.slate[400], borderBottom: `2px solid ${activeTab === v ? "var(--teal-600, #0d9488)" : "transparent"}`, transition: "all .15s" }}>
+            {l}{cnt !== null && cnt !== undefined ? <span style={{ marginLeft: ".35rem", fontSize: ".65rem", background: activeTab === v ? "var(--teal-600, #0d9488)" : DS.slate[200], color: activeTab === v ? "#fff" : DS.slate[500], padding: "1px 6px", borderRadius: 999, fontWeight: 800 }}>{cnt}</span> : null}
           </button>
         ))}
       </div>
 
-      {/* Content */}
+      {/* ConteÃºdo */}
       <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
-        {error && <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, padding: ".5rem .75rem", color: "#b91c1c", fontSize: ".8rem", marginBottom: ".75rem" }}>{error}</div>}
+        {error && <div style={{ background: DS.red[50], border: `1px solid ${DS.red[100]}`, borderRadius: 9, padding: ".5rem .85rem", color: DS.red[700], fontSize: ".8rem", marginBottom: ".75rem", fontWeight: 600 }}>{error}</div>}
 
         {activeTab === "queue" && (
           <div>
-            {/* Add to queue form */}
-            <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: "1rem", marginBottom: "1rem" }}>
-              <div style={{ fontWeight: 700, fontSize: ".84rem", color: "#0f172a", marginBottom: ".65rem" }}>Registrar chegada</div>
+            {/* Form de registro de chegada */}
+            <div style={{ ...css.card, padding: "1rem", marginBottom: "1rem" }}>
+              <div style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)", marginBottom: ".75rem" }}>Registrar chegada</div>
               <form onSubmit={addToQueue} style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
-                <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} style={{ borderRadius: 6, border: "1px solid #e2e8f0", padding: ".4rem .65rem", fontSize: ".82rem" }} />
-                <select value={queueForm.patientId} onChange={e => setQueueForm(s => ({ ...s, patientId: e.target.value }))} required style={{ borderRadius: 6, border: "1px solid #e2e8f0", padding: ".4rem .65rem", fontSize: ".82rem" }}>
-                  <option value="">Selecionar paciente…</option>
-                  {filtered.slice(0, 20).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <PatientAutocompleteField
+                  patients={patients}
+                  search={search}
+                  setSearch={setSearch}
+                  selectedId={queueForm.patientId}
+                  onSelect={(id)=>setQueueForm(s=>({...s, patientId:id}))}
+                  required
+                />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: ".5rem" }}>
-                  <input placeholder="Motivo" value={queueForm.reason} onChange={e => setQueueForm(s => ({ ...s, reason: e.target.value }))} style={{ borderRadius: 6, border: "1px solid #e2e8f0", padding: ".4rem .65rem", fontSize: ".82rem" }} />
-                  <select value={queueForm.priority} onChange={e => setQueueForm(s => ({ ...s, priority: e.target.value }))} style={{ borderRadius: 6, border: "1px solid #e2e8f0", padding: ".4rem .65rem", fontSize: ".82rem" }}>
-                    <option value="normal">Normal</option><option value="high">Prioritário</option><option value="urgent">Urgente</option>
+                  <input placeholder="Motivo" value={queueForm.reason} onChange={e => setQueueForm(s => ({ ...s, reason: e.target.value }))} style={css.input} />
+                  <select value={queueForm.priority} onChange={e => setQueueForm(s => ({ ...s, priority: e.target.value }))} style={{ ...css.input, width: "auto" }}>
+                    <option value="normal">Normal</option><option value="high">PrioritÃ¡rio</option><option value="urgent">Urgente</option>
                   </select>
                 </div>
                 <div style={{ display: "flex", gap: ".5rem" }}>
-                  <button type="submit" style={{ flex: 1, padding: ".45rem", background: "#0f172a", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: ".82rem" }}>+ Adicionar à fila</button>
-                  <button type="button" onClick={() => setShowQuickReg(true)} style={{ padding: ".45rem .85rem", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontSize: ".78rem", color: "#64748b" }}>Novo paciente</button>
+                  <button type="submit" style={{ ...css.btnPrimary, flex: 1, justifyContent: "center" }}>+ Adicionar Ã  fila</button>
+                  <button type="button" onClick={() => setShowQuickReg(true)} style={css.btnSecondary}>Novo paciente</button>
                 </div>
               </form>
             </div>
 
-            {/* Called */}
+            {/* Em atendimento */}
             {called.length > 0 && (
               <div style={{ marginBottom: "1rem" }}>
-                <div style={{ fontSize: ".68rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: ".4rem" }}>Em atendimento ({called.length})</div>
-                {called.map(e => (
-                  <div key={e.id} style={{ display: "flex", alignItems: "center", gap: ".65rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: ".6rem .85rem", marginBottom: ".3rem" }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#16a34a", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".7rem", fontWeight: 700 }}>{initials(e.patientName)}</div>
-                    <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: ".82rem" }}>{e.patientName}</div><div style={{ fontSize: ".68rem", color: "#6b7280" }}>{e.reason}</div></div>
-                    <button onClick={() => saveQueue(queue.filter(q => q.id !== e.id))} style={{ padding: ".3rem .6rem", background: "#16a34a", color: "#fff", border: "none", borderRadius: 5, cursor: "pointer", fontSize: ".72rem", fontWeight: 600 }}>Finalizar</button>
-                  </div>
+                <div style={{ ...css.sectionTitle, marginBottom: ".5rem" }}>Em atendimento ({called.length})</div>
+                {called.map(entry => (
+                  <QueueCard key={entry.id} entry={entry} priorityColor={priorityColor} priorityLabel={priorityLabel}
+                    onFinish={() => saveQueue(queue.filter(q => q.id !== entry.id))} />
                 ))}
               </div>
             )}
 
-            {/* Waiting */}
-            <div style={{ fontSize: ".68rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: ".4rem" }}>Aguardando ({waiting.length})</div>
+            {/* Aguardando */}
+            <div style={{ ...css.sectionTitle, marginBottom: ".5rem" }}>Aguardando ({waiting.length})</div>
             {waiting.length === 0
-              ? <div style={{ background: "#f8fafc", border: "1px dashed #e2e8f0", borderRadius: 8, padding: "2rem", textAlign: "center", color: "#94a3b8", fontSize: ".82rem" }}>Fila vazia</div>
-              : waiting.map((e, idx) => {
-                const pc = priorityColor[e.priority] || "#3b82f6";
-                const elapsed = Math.floor((Date.now() - new Date(e.arrivedAt).getTime()) / 60000);
-                return (
-                  <div key={e.id} style={{ display: "flex", alignItems: "center", gap: ".65rem", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: ".6rem .85rem", marginBottom: ".3rem", borderLeft: `4px solid ${pc}` }}>
-                    <span style={{ fontSize: ".9rem", fontWeight: 800, color: "#94a3b8", minWidth: 20 }}>{idx + 1}</span>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#0f172a", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".7rem", fontWeight: 700 }}>{initials(e.patientName)}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: ".82rem" }}>{e.patientName}</div>
-                      <div style={{ fontSize: ".68rem", color: "#6b7280" }}>{e.reason} · {elapsed}min</div>
-                    </div>
-                    <button onClick={() => saveQueue(queue.map(q => q.id === e.id ? { ...q, status: "called" } : q))} style={{ padding: ".3rem .6rem", background: "#0f172a", color: "#fff", border: "none", borderRadius: 5, cursor: "pointer", fontSize: ".72rem", fontWeight: 600 }}>Chamar</button>
-                  </div>
-                );
-              })
+              ? <EmptyState icon="âœ¨" title="Fila vazia" subtitle="Nenhum paciente aguardando" />
+              : waiting.map((entry, idx) => (
+                <QueueCard key={entry.id} entry={entry} position={idx} priorityColor={priorityColor} priorityLabel={priorityLabel}
+                  onCall={() => saveQueue(queue.map(q => q.id === entry.id ? { ...q, status: "called" } : q))}
+                  onRemove={() => saveQueue(queue.filter(q => q.id !== entry.id))} />
+              ))
             }
           </div>
         )}
 
         {activeTab === "patients" && (
           <div>
-            <input placeholder="Buscar paciente…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: "100%", boxSizing: "border-box", borderRadius: 6, border: "1px solid #e2e8f0", padding: ".45rem .75rem", fontSize: ".84rem", marginBottom: ".75rem" }} />
-            {filtered.slice(0, 20).map(p => (
-              <div key={p.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: ".7rem .9rem", marginBottom: ".35rem", display: "flex", alignItems: "center", gap: ".65rem" }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#0f172a", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".75rem", fontWeight: 700 }}>{initials(p.name)}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: ".84rem" }}>{p.name}</div>
-                  <div style={{ fontSize: ".72rem", color: "#64748b" }}>{p.phone || "Sem telefone"} · {calcAge(p.birthDate) || "—"}</div>
+            <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar pacienteâ€¦" />
+            <div style={{ marginTop: ".75rem", display: "flex", flexDirection: "column", gap: ".35rem" }}>
+              {filtered.slice(0, 25).map(p => (
+                <div key={p.id} style={{ ...css.card, padding: ".7rem .9rem", display: "flex", alignItems: "center", gap: ".65rem" }}>
+                  <Avatar name={p.name} size={34} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: ".84rem" }}>{p.name}</div>
+                    <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)" }}>{p.phone || "â€”"} Â· {calcAge(p.birthDate) || "â€”"}</div>
+                  </div>
+                  <button onClick={() => { setQueueForm(s => ({ ...s, patientId: p.id })); setSearch(p.name); setActiveTab("queue"); }} style={{ ...css.btnPrimary, padding: ".3rem .7rem", fontSize: ".72rem" }}>+ Fila</button>
                 </div>
-                <button onClick={() => { setQueueForm(s => ({ ...s, patientId: p.id })); setSearch(p.name); setActiveTab("queue"); }}
-                  style={{ padding: ".3rem .65rem", background: "#0f172a", color: "#fff", border: "none", borderRadius: 5, cursor: "pointer", fontSize: ".72rem", fontWeight: 600 }}>+ Fila</button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
         {activeTab === "register" && (
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: "1rem" }}>
-            <div style={{ fontWeight: 700, fontSize: ".88rem", color: "#0f172a", marginBottom: "1rem" }}>Cadastro rápido de paciente</div>
-            <form onSubmit={registerQuick} style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}>
-              <input placeholder="Nome completo *" value={quickForm.name} onChange={e => setQuickForm(s => ({ ...s, name: e.target.value }))} required style={{ borderRadius: 6, border: "1px solid #e2e8f0", padding: ".45rem .75rem", fontSize: ".84rem" }} />
-              <input placeholder="CPF" value={quickForm.cpf} onChange={e => setQuickForm(s => ({ ...s, cpf: formatCpf(e.target.value) }))} style={{ borderRadius: 6, border: "1px solid #e2e8f0", padding: ".45rem .75rem", fontSize: ".84rem" }} />
-              <input placeholder="Telefone *" value={quickForm.phone} onChange={e => setQuickForm(s => ({ ...s, phone: e.target.value }))} required style={{ borderRadius: 6, border: "1px solid #e2e8f0", padding: ".45rem .75rem", fontSize: ".84rem" }} />
-              <label style={{ fontSize: ".75rem", fontWeight: 600, color: "#334155" }}>Data de nascimento<input type="date" value={quickForm.birthDate} onChange={e => setQuickForm(s => ({ ...s, birthDate: e.target.value }))} style={{ display: "block", width: "100%", borderRadius: 6, border: "1px solid #e2e8f0", padding: ".45rem .75rem", fontSize: ".84rem", marginTop: ".25rem" }} /></label>
-              <p style={{ fontSize: ".73rem", color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>⚠ Cadastro simplificado — o perfil deverá ser completado pela equipe clínica.</p>
-              <button type="submit" disabled={busy} style={{ padding: ".5rem", background: "#0f172a", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontSize: ".84rem" }}>{busy ? "Salvando…" : "Cadastrar e adicionar à fila"}</button>
+          <div style={{ ...css.card, padding: "1.25rem" }}>
+            <div style={{ fontWeight: 800, fontSize: ".92rem", marginBottom: "1rem" }}>Cadastro rÃ¡pido de paciente</div>
+            <form onSubmit={registerQuick} style={{ display: "flex", flexDirection: "column", gap: ".65rem" }}>
+              <FormField label="Nome completo" required>
+                <input value={quickForm.name} onChange={e => setQuickForm(s => ({ ...s, name: e.target.value }))} required style={css.input} placeholder="Nome completo" />
+              </FormField>
+              <FormField label="CPF">
+                <input value={quickForm.cpf} onChange={e => setQuickForm(s => ({ ...s, cpf: formatCpf(e.target.value) }))} style={css.input} placeholder="000.000.000-00" />
+              </FormField>
+              <FormField label="Telefone" required>
+                <input value={quickForm.phone} onChange={e => setQuickForm(s => ({ ...s, phone: e.target.value }))} required style={css.input} placeholder="(00) 00000-0000" />
+              </FormField>
+              <FormField label="Data de nascimento">
+                <input type="date" value={quickForm.birthDate} onChange={e => setQuickForm(s => ({ ...s, birthDate: e.target.value }))} style={css.input} />
+              </FormField>
+              <p style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", margin: 0, lineHeight: 1.5 }}>âš  Cadastro simplificado â€” perfil deverÃ¡ ser completado pela equipe clÃ­nica.</p>
+              <button type="submit" disabled={busy} style={{ ...css.btnPrimary, justifyContent: "center" }}>{busy ? "Salvandoâ€¦" : "Cadastrar e adicionar Ã  fila"}</button>
             </form>
           </div>
         )}
       </div>
 
-      {/* Quick register modal */}
+      {/* Quick register modal (bottom sheet) */}
       {showQuickReg && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 500, display: "flex", alignItems: "flex-end" }}>
-          <div style={{ background: "#fff", borderRadius: "12px 12px 0 0", padding: "1.25rem", width: "100%" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <strong style={{ fontSize: ".9rem" }}>Novo paciente</strong>
-              <button onClick={() => setShowQuickReg(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}>✕</button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.5)", zIndex: 500, display: "flex", alignItems: "flex-end" }} onClick={() => setShowQuickReg(false)}>
+          <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "1.5rem", width: "100%" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.1rem" }}>
+              <strong style={{ fontSize: ".95rem", fontWeight: 800 }}>Novo paciente</strong>
+              <button onClick={() => setShowQuickReg(false)} style={{ ...css.btnGhost, padding: ".2rem .5rem" }}>âœ•</button>
             </div>
             <form onSubmit={registerQuick} style={{ display: "flex", flexDirection: "column", gap: ".55rem" }}>
-              <input placeholder="Nome *" value={quickForm.name} onChange={e => setQuickForm(s => ({ ...s, name: e.target.value }))} required style={{ borderRadius: 6, border: "1px solid #e2e8f0", padding: ".45rem .75rem", fontSize: ".84rem" }} />
-              <input placeholder="Telefone *" value={quickForm.phone} onChange={e => setQuickForm(s => ({ ...s, phone: e.target.value }))} required style={{ borderRadius: 6, border: "1px solid #e2e8f0", padding: ".45rem .75rem", fontSize: ".84rem" }} />
-              <button type="submit" disabled={busy} style={{ padding: ".5rem", background: "#0f172a", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>{busy ? "…" : "Cadastrar"}</button>
+              <input placeholder="Nome *" value={quickForm.name} onChange={e => setQuickForm(s => ({ ...s, name: e.target.value }))} required style={css.input} />
+              <input placeholder="Telefone *" value={quickForm.phone} onChange={e => setQuickForm(s => ({ ...s, phone: e.target.value }))} required style={css.input} />
+              <button type="submit" disabled={busy} style={{ ...css.btnPrimary, justifyContent: "center" }}>{busy ? "â€¦" : "Cadastrar"}</button>
             </form>
           </div>
         </div>
@@ -1792,3 +2719,6 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
     </div>
   );
 }
+
+
+

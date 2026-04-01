@@ -16,6 +16,15 @@ import {
   GestorPage, ReportsPage, ReceptionistApp,
 } from "./MissingComponents";
 
+import {
+  ProntuarioPage, InsumoPageNew, GestorPageNew, ReportsPageNew, DiagnosticsPageNew,
+} from "./NewPages";
+
+import {
+  QueuePageNew, AgendaPageNew, ReferralsPageNew,
+  ReportsPageNew2, InsumoPageNew2
+} from "./NewPages2";
+
 /* -- Limpeza de Codificação (Anti-Mojibake) -- */
 function cleanEncoding(str) {
   if (!str || typeof str !== 'string') return str;
@@ -144,6 +153,20 @@ function exportAuditLog() {
 const RECEPTION_USERS = [
   { id:"rc1", name:"Ana (Administradora)", email:"ana@clinica.local",  role:"receptionist" },
   { id:"rc2", name:"Recepcionista",        email:"recepcao@ubs.local", role:"receptionist" },
+];
+const PHARMA_USERS = [
+  { id:"ph1", name:"Farmaceutico(a)", email:"farmacia@ubs.local", role:"pharmacist" },
+  { id:"ph2", name:"Tec. de Farmacia", email:"farmacia.tec@ubs.local", role:"pharmacy_tech" },
+];
+const PHARMACY_KEY = "saudeubs_pharmacy_stock_v1";
+const PHARMA_LOG_KEY = "saudeubs_pharmacy_log_v1";
+const PHARMA_AUTH_KEY = "saudeubs_pharmacy_auth_v1";
+const DEFAULT_STOCK = [
+  { id:"med_1", name:"Paracetamol 500mg", category:"Analgésico", unit:"comprimido", qty:180, minQty:50, location:"Prateleira A1" },
+  { id:"med_2", name:"Dipirona 500mg", category:"Analgésico", unit:"comprimido", qty:140, minQty:50, location:"Prateleira A2" },
+  { id:"med_3", name:"Amoxicilina 500mg", category:"Antibiótico", unit:"cápsula", qty:90, minQty:30, location:"Prateleira B1" },
+  { id:"med_4", name:"Losartana 50mg", category:"Cardiovascular", unit:"comprimido", qty:220, minQty:60, location:"Prateleira C1" },
+  { id:"med_5", name:"Metformina 850mg", category:"Diabetes", unit:"comprimido", qty:200, minQty:60, location:"Prateleira C2" },
 ];
 function isReceptionist(user)    { return String(user?.role||"")==="receptionist"; }
 const QUEUE_KEY        = "saudeubs_queue_v1";
@@ -517,7 +540,17 @@ function buildProactiveAlerts(patients, protocolByPatient, stock, agenda) {
 }
 
 function catLabel(templates,category) {
-  return templates.find(t=>t.category===category)?.label||category||"Geral";
+  const normalized = normalizeCareCategory(category);
+  return templates.find(t=>t.category===normalized)?.label||normalized||"Geral";
+}
+function normalizeCareCategory(category) {
+  const c = String(category||"").toLowerCase();
+  if(c==="papanicolau") return "general";
+  return c || "general";
+}
+function isHiddenCareCategory(category) {
+  const c = String(category||"").toLowerCase();
+  return c==="chronic" || c==="papanicolau";
 }
 
 function canManage(user) { return["nurse_manager","doctor","dentist"].includes(String(user?.role||"")); }
@@ -1678,10 +1711,10 @@ function EmptyState({ message }) {
 function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery,categoryFilter,setCategoryFilter,acsFilter,setAcsFilter,conditionFilter,setConditionFilter,selectedPatientId,setSelectedPatientId,canManageUser,canWriteRecords,onEdit,onDelete,onView,patientTab,setPatientTab,appointments,tasks,messages,history,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,appointmentForm,setAppointmentForm,taskForm,setTaskForm,messageText,setMessageText,onSubmitRecord,onSubmitAppointment,onSubmitTask,onSubmitMessage,onDeleteRecord,onDeleteAppointment,onStatusChange,selectedPatient,userObj,token }) {
   const [page, setPage] = useState(1);
   const acsUsers=users.filter(u=>u.role==="acs");
-  const catOpts=templates.map(t=>({value:t.category,label:t.label})).filter(c=>c.value!=="chronic");
+  const catOpts=templates.map(t=>({value:t.category,label:t.label})).filter(c=>!isHiddenCareCategory(c.value));
   const filtered=patients
     .filter(p=>{ if(!query.trim()) return true; const acsName=users.find(u=>u.id===p.assignedAcsId)?.name||""; const cat=catLabel(templates,p.careCategory); const haystack=normalizeSearch(`${p.name||""} ${p.phone||""} ${acsName} ${cat}`); return haystack.includes(normalizeSearch(query)); })
-    .filter(p=>categoryFilter?p.careCategory===categoryFilter:true)
+    .filter(p=>categoryFilter?normalizeCareCategory(p.careCategory)===categoryFilter:true)
     .filter(p=>acsFilter?p.assignedAcsId===acsFilter:true)
     .filter(p=>{
       if(!conditionFilter) return true;
@@ -2926,507 +2959,365 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
   );
 }
 
-function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appointments,tasks,messages,history,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,appointmentForm,setAppointmentForm,taskForm,setTaskForm,messageText,setMessageText,onSubmitRecord,onSubmitAppointment,onSubmitTask,onSubmitMessage,onDeleteRecord,onDeleteAppointment,onStatusChange,acsUsers,canManageUser,canWriteRecords,userObj,token }) {
+function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appointments,tasks,messages,history,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,taskForm,setTaskForm,acsUsers,userObj,messageText,setMessageText,onSubmitRecord,onSubmitTask,onSubmitMessage,onDeleteAppointment,onStatusChange,canManageUser }) {
   const g = gestationalAgeInfo(patient);
-  const acsName = users.find(u=>u.id===patient.assignedAcsId)?.name||"Não atribuído";
-  const [docType, setDocType] = useState(null);
-  const [showPatientCard, setShowPatientCard] = useState(false);
+  const acsName = users.find(u=>u.id===patient.assignedAcsId)?.name||"Nao atribuido";
+  const activeTab = ["protocol","attendance","chart","agenda","tasks","messages"].includes(patientTab) ? patientTab : "protocol";
+  const isPregnant = String(patient?.careCategory||"").toLowerCase()==="pregnant";
 
-  const TABS = [
-    canDispense && ["dispensar","Nova dispensação"],
-    ["estoque","Estoque de insumos"],
-    (canDispense||canViewAll) && ["log","Histórico de saídas"],
-    ["continuos","Pacientes contínuos"],
-  ].filter(Boolean);
+  const safeFmtDate = (value) => {
+    if(!value) return "-";
+    const d = new Date(value);
+    if(Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleDateString("pt-BR");
+  };
+
+  const statusTone = (status) => {
+    if(status==="done") return { bg:"#dcfce7", color:"#166534", border:"#86efac", label:"Concluida" };
+    if(status==="in_progress") return { bg:"#dbeafe", color:"#1d4ed8", border:"#93c5fd", label:"Em andamento" };
+    return { bg:"#f3f4f6", color:"#475569", border:"#d1d5db", label:"Pendente" };
+  };
+
+  const alertTone = (severity) => {
+    const v = String(severity||"").toLowerCase();
+    if(v==="high"||v==="alto") return { bg:"#fef2f2", border:"#fecaca", title:"#991b1b", detail:"#7f1d1d", chip:"#dc2626", chipText:"Alta" };
+    if(v==="medium"||v==="medio"||v==="médio") return { bg:"#fffbeb", border:"#fde68a", title:"#92400e", detail:"#78350f", chip:"#d97706", chipText:"Media" };
+    return { bg:"#eff6ff", border:"#bfdbfe", title:"#1e3a8a", detail:"#1e40af", chip:"#2563eb", chipText:"Baixa" };
+  };
+
+  const tabs = [
+    ["protocol","Resumo"],
+    ["attendance","Atendimento"],
+    ["chart","Prontuario"],
+    ["agenda","Agenda"],
+    ["tasks","Tarefas"],
+    ["messages","Mensagens"],
+  ];
+
+  const protocolIndicators = [
+    { key:"visits", label:"Visitas", color:"#0d9488", bg:"#f0fdfa" },
+    { key:"consultations", label:"Consultas", color:"#4338ca", bg:"#eef2ff" },
+    { key:"vaccines", label:"Vacinas", color:"#c2410c", bg:"#fff7ed" },
+  ].map((item)=>{
+    const done = Number(patientProtocolSummary?.completed?.[item.key]||0);
+    const target = Number(patientProtocolSummary?.targets?.[item.key]||0);
+    const pct = target>0 ? Math.min(100, Math.round((done/target)*100)) : 0;
+    return { ...item, done, target, pct };
+  });
+  const canAssignTask = ["nurse_manager","doctor"].includes(String(userObj?.role||""));
+  const titleOptionsByType = {
+    consultation: ["Consulta medica","Consulta enfermagem","Consulta odontologica"],
+    visit: ["Visita ACS","Visita medica","Visita enfermagem"],
+  };
+  const titleOptions = titleOptionsByType[recordForm?.type] || [];
+
+  const updateRecord = (key,value) => setRecordForm(s=>({...s,[key]:value}));
+  const updateTask = (key,value) => setTaskForm(s=>({...s,[key]:value}));
+
+  function handleTypeChange(type) {
+    const titleByType = {
+      consultation: "Consulta medica",
+      procedure: "Procedimento",
+      visit: "Visita ACS",
+      vaccine: "Aplicacao de vacina",
+    };
+    setRecordForm(s=>({
+      ...s,
+      type,
+      title: titleByType[type] || s.title || "",
+      demandType: s.demandType || "scheduled",
+    }));
+    if(type!=="vaccine") setRecordVaccines([]);
+  }
+
+  function toggleVaccine(vaccine) {
+    setRecordVaccines(prev => prev.includes(vaccine) ? prev.filter(v=>v!==vaccine) : [...prev, vaccine]);
+  }
 
   return (
-    <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
-
-      {/* Header */}
-      <section className="home-hero" style={{flexShrink:0}}>
-        <div>
-          <p className="home-kicker">Gestão de insumos</p>
-          <h1 className="home-title">Dispensação de insumos ao paciente</h1>
-          <p className="home-sub">Controle de saída, estoque e pacientes contínuos, baseado no formulário DAF/Osasco.</p>
+    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      <div style={{padding:"1rem 1rem .6rem",borderBottom:"1px solid var(--border)"}}>
+        <div style={{fontWeight:800,fontSize:"1rem",color:"var(--ink)"}}>{patient?.name||"Paciente"}</div>
+        <div style={{fontSize:".75rem",color:"var(--text-3)",marginTop:".2rem"}}>
+          {catLabel(templates, patient?.careCategory)} - ACS: {acsName}
         </div>
-        <div style={{display:"flex",gap:".75rem",flexWrap:"wrap",alignItems:"center"}}>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:".75rem",fontWeight:700,color:"var(--teal-700)"}}>{user?.name}</div>
-            <div style={{fontSize:".68rem",color:"var(--text-3)"}}>{roleLabel(user?.role)}</div>
-          </div>
-        </div>
-      </section>
-
-      {/* KPIs */}
-      <div style={{display:"flex",gap:".65rem",padding:"0 1.5rem .75rem",flexWrap:"wrap",flexShrink:0}}>
-        {[
-          { label:"Pacientes cont\u00EDnuos ativos", value:continuosAtivos.length, icon:"\u21BB", color:"#0d9488" },
-          { label:"Dispensa\u00E7\u00F5es hoje", value:totalSaidasHoje, icon:"\u25A4", color:"#6366f1" },
-          { label:"Total de dispensa\u00E7\u00F5es", value:dispensas.length, icon:"\u25A6", color:"#0891b2" },
-          { label:"Itens sem estoque", value:stock.filter(s=>s.qty===0).length, icon:"\u26A0", color:"#be123c", warn:true },
-        ].map(k=>(
-          <div key={k.label} className="card" style={{flex:"1 1 140px",padding:".75rem 1rem",minWidth:120,background:k.warn&&k.value>0?"#fff1f2":"var(--surface)",border:"1px solid " + (k.warn&&k.value>0?"#fecdd3":"var(--border)")}}>
-            <div style={{fontSize:"1.2rem"}}>{k.icon}</div>
-            <div style={{fontSize:"1.5rem",fontWeight:800,color:k.color,lineHeight:1.1,marginTop:".25rem"}}>{k.value}</div>
-            <div style={{fontSize:".7rem",color:"var(--text-3)",marginTop:".15rem"}}>{k.label}</div>
-          </div>
-        ))}
       </div>
 
-      {/* Tabs */}
-      <div style={{display:"flex",padding:"0 1.5rem",borderBottom:"1px solid var(--border)",flexShrink:0,overflowX:"auto"}}>
-        {TABS.map(([id,label])=>(
-          <button key={id} onClick={()=>setInsumoTab(id)}
-            style={{padding:".55rem 1rem",fontSize:".8rem",fontWeight:600,border:"none",background:"transparent",
-              cursor:"pointer",color:insumoTab===id?"var(--teal-600)":"var(--text-3)",whiteSpace:"nowrap",
-              borderBottom:insumoTab===id?"2px solid var(--teal-500)":"2px solid transparent"}}>
+      <div style={{display:"flex",gap:".35rem",padding:".65rem 1rem",borderBottom:"1px solid var(--border)",overflowX:"auto"}}>
+        {tabs.map(([id,label])=>(
+          <button key={id} type="button" onClick={()=>setPatientTab(id)}
+            style={{
+              padding:".35rem .65rem",
+              borderRadius:"var(--r-md)",
+              border:`1px solid ${activeTab===id?"var(--teal-500)":"var(--border)"}`,
+              background:activeTab===id?"var(--teal-50)":"var(--surface)",
+              color:activeTab===id?"var(--teal-700)":"var(--text-2)",
+              fontWeight:activeTab===id?700:600,
+              cursor:"pointer",
+              whiteSpace:"nowrap",
+              fontSize:".75rem",
+            }}>
             {label}
           </button>
         ))}
       </div>
 
-      <div style={{flex:1,overflow:"auto",padding:"1.25rem 1.5rem"}}>
-
-        {/* ABA: NOVA DISPENSAÇÃO */}
-        {insumoTab==="dispensar"&&canDispense&&(
-          <div style={{display:"flex",gap:"1.25rem",alignItems:"flex-start",flexWrap:"wrap"}}>
-
-            {/* Coluna esquerda: seleção de paciente */}
-            <div style={{flex:"0 0 300px",minWidth:260}}>
-              <div className="card" style={{padding:"1rem",marginBottom:"1rem"}}>
-                <div style={{fontWeight:700,fontSize:".8rem",color:"var(--ink)",marginBottom:".75rem"}}>Paciente</div>
-                <div style={{position:"relative"}}>
-                  <div style={{position:"absolute",left:".65rem",top:"50%",transform:"translateY(-50%)",color:"var(--text-3)",pointerEvents:"none"}}>
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                  </div>
-                  <input value={patSearch}
-                    onChange={e=>{ setPatSearch(e.target.value); if(patSelected&&e.target.value!==patSelected.name){setPatSelected(null);setItens({});setIsContinuo(false);} }}
-                    placeholder="Buscar por nome ou CPF..."
-                    style={{paddingLeft:"1.9rem",width:"100%",boxSizing:"border-box",border:patSelected?"2px solid var(--teal-500)":"1px solid var(--border)",borderRadius:"var(--r-md)"}}/>
-                  {patResults.length>0&&!patSelected&&(
-                    <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:40,background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"0 0 var(--r-md) var(--r-md)",boxShadow:"0 4px 12px rgba(0,0,0,.08)",maxHeight:200,overflowY:"auto"}}>
-                      {patResults.map(p=>{
-                        const cont = continuos.find(c=>c.patientId===p.id&&c.ativo);
-                        return (
-                          <button key={p.id} type="button" onClick={()=>selectPat(p)}
-                            style={{display:"flex",alignItems:"center",gap:".6rem",width:"100%",padding:".5rem .8rem",background:"none",border:"none",cursor:"pointer",textAlign:"left"}}
-                            onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"}
-                            onMouseLeave={e=>e.currentTarget.style.background="none"}>
-                            <div style={{width:28,height:28,borderRadius:"50%",background:cont?"#dcfce7":"var(--teal-100)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".7rem",fontWeight:700,color:cont?"#15803d":"var(--teal-700)",flexShrink:0}}>{initials(p.name)}</div>
-                            <div style={{minWidth:0}}>
-                              <div style={{fontWeight:600,fontSize:".83rem",color:"var(--ink)"}}>{p.name}</div>
-                              <div style={{fontSize:".7rem",color:"var(--text-3)"}}>{p.cpf||""}{cont?" · Contínuo":""}</div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {patSelected&&(
-                  <div style={{marginTop:".75rem",padding:".65rem .8rem",background:"var(--teal-50)",border:"1px solid var(--teal-200)",borderRadius:"var(--r-md)"}}>
-                    <div style={{fontWeight:700,fontSize:".85rem",color:"var(--teal-800)"}}>{patSelected.name}</div>
-                    <div style={{fontSize:".72rem",color:"var(--teal-600)",marginTop:".2rem"}}>
-                      {patSelected.birthDate&&`Nasc.: ${fmtDate(patSelected.birthDate)}`}
-                      {patSelected.cpf&&` · CPF: ${patSelected.cpf}`}
-                    </div>
-                    {continuos.find(c=>c.patientId===patSelected.id&&c.ativo)&&(
-                      <div style={{marginTop:".4rem",fontSize:".72rem",fontWeight:700,color:"#15803d",display:"flex",alignItems:"center",gap:".3rem"}}>
-                        Paciente contínuo ativo
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Marcar como contínuo */}
-              {patSelected&&(
-                <div className="card" style={{padding:"1rem",marginBottom:"1rem"}}>
-                  <label style={{display:"flex",alignItems:"flex-start",gap:".65rem",cursor:"pointer"}}>
-                    <input type="checkbox" checked={isContinuo} onChange={e=>setIsContinuo(e.target.checked)}
-                      style={{width:16,height:16,marginTop:2,cursor:"pointer",accentColor:"var(--teal-600)"}}/>
-                    <div>
-                      <div style={{fontWeight:700,fontSize:".82rem",color:"var(--ink)"}}>Paciente contínuo</div>
-                      <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".2rem",lineHeight:1.5}}>
-                        Marca este paciente para retirada mensal recorrente. A quantidade definida agora será o limite máximo nas próximas retiradas. Para encerrar, use a aba "Pacientes Contínuos".
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              )}
-
-              {patSelected&&(
-                <div className="card" style={{padding:"1rem"}}>
-                  <div style={{fontWeight:700,fontSize:".8rem",color:"var(--ink)",marginBottom:".5rem"}}>Observações</div>
-                  <textarea value={obsDispensa} onChange={e=>setObsDispensa(e.target.value)}
-                    placeholder="Motivo, diagnóstico, orientações ao paciente..."
-                    style={{width:"100%",boxSizing:"border-box",minHeight:70,resize:"vertical",fontSize:".8rem"}}/>
-                </div>
-              )}
-            </div>
-
-            {/* Coluna direita: seleção de insumos */}
-            <div style={{flex:1,minWidth:0}}>
-              {/* Aviso máximos */}
-              <div style={{marginBottom:".85rem",padding:".6rem .9rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",fontSize:".75rem",color:"#1d4ed8",display:"flex",gap:".4rem"}}>
-                <span style={{fontWeight:700}}>Info:</span>
-                <span>As quantidades máximas por insumo seguem o formulário DAF/Secretaria de Saúde de Osasco. Nenhum campo pode ultrapassar o limite definido.</span>
-              </div>
-
-              {/* Filtro por categoria */}
-              <div style={{display:"flex",gap:".4rem",flexWrap:"wrap",marginBottom:".85rem"}}>
-                {INSUMO_CATEGORIAS.map(c=>(
-                  <button key={c} type="button" onClick={()=>setCatFilter(c)}
-                    style={{fontSize:".72rem",padding:".28rem .65rem",borderRadius:999,border:`1px solid ${catFilter===c?"var(--teal-500)":"var(--border)"}`,background:catFilter===c?"var(--teal-50)":"var(--surface)",color:catFilter===c?"var(--teal-700)":"var(--text-2)",cursor:"pointer",fontWeight:catFilter===c?700:500}}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-
-              {/* Grid de insumos */}
-              <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
-                {CATALOGO_INSUMOS.filter(i=>catFilter==="Todas"||i.categoria===catFilter).map(insumo=>{
-                  const qtd = itens[insumo.id] || 0;
-                  const estq = stock.find(s=>s.id===insumo.id)?.qty ?? 0;
-                  const semEstoque = estq === 0;
-                  const contItem = continuos.find(c=>c.patientId===patSelected?.id&&c.ativo)?.itens?.find(i=>i.id===insumo.id);
-                  const limite = contItem ? contItem.qtd : insumo.qtdMax;
-                  return (
-                    <div key={insumo.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".55rem .85rem",background:qtd>0?"var(--teal-50)":"var(--surface)",border:`1px solid ${qtd>0?"var(--teal-300)":semEstoque?"#fecdd3":"var(--border)"}`,borderRadius:"var(--r-md)",opacity:semEstoque?0.6:1}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:600,fontSize:".82rem",color:"var(--ink)"}}>{insumo.nome}</div>
-                        <div style={{display:"flex",gap:".5rem",marginTop:".1rem",flexWrap:"wrap"}}>
-                          <span style={{fontSize:".68rem",color:"var(--text-3)"}}>{insumo.categoria}</span>
-                          <span style={{fontSize:".68rem",color:"var(--text-3)"}}>Máx: {limite} {insumo.unidade}</span>
-                          <span style={{fontSize:".68rem",fontWeight:600,color:semEstoque?"#be123c":estq<=5?"#b45309":"#15803d"}}>
-                            Estoque: {estq} {insumo.unidade}
-                          </span>
-                        </div>
-                        {insumo.obs&&<div style={{fontSize:".68rem",color:"#1d4ed8",marginTop:".15rem"}}>Info: {insumo.obs}</div>}
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:".3rem",flexShrink:0}}>
-                        <button type="button" onClick={()=>setItem(insumo.id, qtd-1)} disabled={!patSelected||qtd<=0}
-                          style={{width:26,height:26,borderRadius:"var(--r-md)",border:"1px solid var(--border)",background:"var(--surface-2)",cursor:"pointer",fontWeight:700,fontSize:".9rem",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-1)"}}>-</button>
-                        <input type="number" min={0} max={limite} value={qtd||""}
-                          onChange={e=>setItem(insumo.id, e.target.value)}
-                          disabled={!patSelected||semEstoque}
-                          placeholder="0"
-                          style={{width:52,textAlign:"center",fontWeight:700,fontSize:".85rem",padding:".2rem .3rem",border:`1px solid ${qtd>0?"var(--teal-400)":"var(--border)"}`,borderRadius:"var(--r-md)"}}/>
-                        <button type="button" onClick={()=>setItem(insumo.id, qtd+1)} disabled={!patSelected||qtd>=limite||semEstoque}
-                          style={{width:26,height:26,borderRadius:"var(--r-md)",border:"1px solid var(--border)",background:"var(--surface-2)",cursor:"pointer",fontWeight:700,fontSize:".9rem",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-1)"}}>+</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Resumo e confirmar */}
-              {Object.values(itens).some(v=>v>0)&&(
-                <div style={{marginTop:"1rem",padding:".85rem 1rem",background:"var(--surface)",border:"1px solid var(--teal-200)",borderRadius:"var(--r-md)",boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
-                  <div style={{fontWeight:700,fontSize:".82rem",color:"var(--ink)",marginBottom:".5rem"}}>Resumo da dispensação</div>
-                  {Object.entries(itens).filter(([,v])=>v>0).map(([id,qtd])=>{
-                    const cat = CATALOGO_INSUMOS.find(i=>i.id===id);
-                    return <div key={id} style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",color:"var(--text-1)",marginBottom:".2rem"}}>
-                      <span>{cat?.nome}</span><span style={{fontWeight:700}}>{qtd} {cat?.unidade}</span>
-                    </div>;
-                  })}
-                  {dispErr&&<div style={{marginTop:".65rem",padding:".45rem .65rem",background:"#fff1f2",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",fontSize:".76rem",color:"#be123c"}}>{dispErr}</div>}
-                  {dispOk&&<div style={{marginTop:".65rem",padding:".45rem .65rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",fontSize:".76rem",color:"#15803d",fontWeight:700}}>Dispensação registrada com sucesso.</div>}
-                  <button type="button" onClick={confirmarDispensa} disabled={!patSelected||dispOk}
-                    style={{marginTop:".75rem",width:"100%",padding:".55rem",background:"var(--teal-600)",color:"#fff",border:"none",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:700,fontSize:".85rem"}}>
-                    Confirmar dispensação{isContinuo?" (contínuo)":""}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── ABA: ESTOQUE ── */}
-        {insumoTab==="estoque"&&(
-          <div>
-            <div style={{display:"flex",gap:".65rem",marginBottom:"1rem",flexWrap:"wrap",alignItems:"center"}}>
-              <input value={stockSearch} onChange={e=>setStockSearch(e.target.value)}
-                placeholder="Buscar insumo..." style={{flex:"1 1 200px",maxWidth:320}}/>
-              <select value={stockCat} onChange={e=>setStockCat(e.target.value)} style={{flex:"0 0 auto"}}>
-                {INSUMO_CATEGORIAS.map(c=><option key={c}>{c}</option>)}
-              </select>
-              {(isPharma)&&(
-                <button type="button" onClick={()=>setEditStockItem("new")}
-                  style={{fontSize:".78rem",padding:".4rem .85rem",display:"flex",alignItems:"center",gap:".35rem"}}>
-                  + Entrada de estoque
-                </button>
-              )}
-            </div>
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:".82rem"}}>
-                <thead>
-                  <tr style={{borderBottom:"2px solid var(--border)"}}>
-                    {["Insumo","Categoria","Unidade","Qtd Máx","Estoque atual","Situação",""].map((h,i)=>(
-                      <th key={i} style={{padding:".5rem .85rem",textAlign:"left",fontWeight:700,color:"var(--text-3)",fontSize:".72rem",textTransform:"uppercase",letterSpacing:".05em"}}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredStock.map(insumo=>{
-                    const st = stock.find(s=>s.id===insumo.id)?.qty ?? 0;
-                    const pct = insumo.qtdMax > 0 ? Math.round(st/insumo.qtdMax*100) : 0;
-                    const sit = st===0?"Sem estoque":pct<=20?"Estoque baixo":pct<=60?"Regular":"Adequado";
-                    const sitColor = st===0?"#be123c":pct<=20?"#b45309":pct<=60?"#1d4ed8":"#15803d";
-                    const sitBg = st===0?"#fff1f2":pct<=20?"#fffbeb":pct<=60?"#eff6ff":"#f0fdf4";
-                    return (
-                      <tr key={insumo.id} style={{borderBottom:"1px solid var(--border)"}} onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"} onMouseLeave={e=>e.currentTarget.style.background=""}>
-                        <td style={{padding:".55rem .85rem",fontWeight:600,color:"var(--ink)"}}>
-                          {insumo.nome}
-                          {insumo.obs&&<div style={{fontSize:".66rem",color:"#1d4ed8",marginTop:".1rem"}}>Info: {insumo.obs}</div>}
-                        </td>
-                        <td style={{padding:".55rem .85rem",color:"var(--text-2)"}}>{insumo.categoria}</td>
-                        <td style={{padding:".55rem .85rem",color:"var(--text-2)"}}>{insumo.unidade}</td>
-                        <td style={{padding:".55rem .85rem",fontFamily:"IBM Plex Mono",fontSize:".78rem"}}>{insumo.qtdMax}</td>
-                        <td style={{padding:".55rem .85rem"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
-                            <span style={{fontFamily:"IBM Plex Mono",fontWeight:700,fontSize:".85rem",color:sitColor}}>{st}</span>
-                            <div style={{flex:1,height:5,background:"var(--slate-100)",borderRadius:99,minWidth:60,overflow:"hidden"}}>
-                              <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:sitColor,borderRadius:99}}/>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{padding:".55rem .85rem"}}>
-                          <span style={{fontSize:".7rem",fontWeight:700,padding:".15rem .45rem",borderRadius:999,background:sitBg,color:sitColor}}>{sit}</span>
-                        </td>
-                        <td style={{padding:".55rem .85rem"}}>
-                          {(isPharma)&&(
-                            <button type="button" onClick={()=>{ setEditStockItem(insumo); setEditQty(""); }}
-                              style={{fontSize:".72rem",padding:".2rem .5rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",cursor:"pointer",color:"var(--text-1)"}}>
-                              + Entrada
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ── ABA: LOG DE SAÍDAS ── */}
-        {insumoTab==="log"&&(canDispense||canViewAll)&&(
-          <div>
-            <div style={{display:"flex",gap:".65rem",marginBottom:"1rem",flexWrap:"wrap",alignItems:"center"}}>
-              <input value={logSearch} onChange={e=>setLogSearch(e.target.value)} placeholder="Buscar por paciente ou profissional..." style={{flex:"1 1 220px",maxWidth:360}}/>
-              <div style={{display:"flex",gap:".35rem"}}>
-                {[["all","Todas"],["continuo","Contínuo"],["normal","Normal"]].map(([v,l])=>(
-                  <button key={v} type="button" onClick={()=>setLogFilter(v)}
-                    style={{fontSize:".73rem",padding:".3rem .65rem",borderRadius:999,border:`1px solid ${logFilter===v?"var(--teal-500)":"var(--border)"}`,background:logFilter===v?"var(--teal-50)":"var(--surface)",color:logFilter===v?"var(--teal-700)":"var(--text-2)",cursor:"pointer",fontWeight:logFilter===v?700:500}}>
-                    {l}
-                  </button>
-                ))}
+      <div style={{padding:"1rem",overflow:"auto",display:"flex",flexDirection:"column",gap:".85rem"}}>
+        {activeTab==="protocol"&&(
+          <>
+            <div className="card" style={{padding:".9rem"}}>
+              <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",fontWeight:700,marginBottom:".45rem"}}>Dados do paciente</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))",gap:".45rem .8rem",fontSize:".8rem"}}>
+                <div><strong>Nascimento:</strong> {safeFmtDate(patient?.birthDate)}</div>
+                <div><strong>Idade:</strong> {calcAge(patient?.birthDate)||"-"}</div>
+                <div><strong>Telefone:</strong> {patient?.phone||"-"}</div>
+                <div><strong>CNS:</strong> {patient?.cns||"-"}</div>
+                <div><strong>CPF:</strong> {patient?.cpf||"-"}</div>
+                {isPregnant && <div><strong>Gestacao:</strong> {g?`${g.weeks}s ${g.days}d`:"-"}</div>}
               </div>
             </div>
-            {!filteredLog.length ? (
-              <div style={{textAlign:"center",padding:"3rem",color:"var(--text-3)"}}>Nenhuma dispensação registrada.</div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
-                {filteredLog.map(d=>(
-                  <div key={d.id} style={{background:"var(--surface)",border:`1px solid ${d.continuo?"var(--teal-200)":"var(--border)"}`,borderLeft:`4px solid ${d.continuo?"var(--teal-500)":"var(--border)"}`,borderRadius:"var(--r-md)",padding:".75rem 1rem"}}>
-                    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".5rem",flexWrap:"wrap"}}>
-                      <div>
-                        <div style={{fontWeight:700,fontSize:".88rem",color:"var(--ink)",display:"flex",alignItems:"center",gap:".5rem"}}>
-                          {d.patientName}
-                          {d.continuo&&<span style={{fontSize:".67rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"#dcfce7",color:"#15803d",border:"1px solid #bbf7d0"}}>Contínuo</span>}
-                        </div>
-                        <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem"}}>
-                          {d.profissional} ({d.profRole}) · {new Date(d.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
-                        </div>
-                      </div>
-                      <span style={{fontSize:".7rem",fontFamily:"IBM Plex Mono",color:"var(--text-3)"}}>{d.date}</span>
-                    </div>
-                    <div style={{display:"flex",gap:".35rem",flexWrap:"wrap",marginTop:".5rem"}}>
-                      {d.itens.map(item=>{
-                        const cat = CATALOGO_INSUMOS.find(i=>i.id===item.id);
-                        return <span key={item.id} style={{fontSize:".72rem",padding:".15rem .45rem",borderRadius:999,background:"var(--surface-2)",border:"1px solid var(--border)",color:"var(--text-1)",fontWeight:600}}>
-                          {cat?.nome||item.id}: {item.qtd} {cat?.unidade||""}
-                        </span>;
-                      })}
-                    </div>
-                    {d.obs&&<div style={{marginTop:".4rem",fontSize:".73rem",color:"var(--text-2)",fontStyle:"italic"}}>Obs: {d.obs}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* ABA: PACIENTES CONTÍNUOS */}
-        {insumoTab==="continuos"&&(
-          <div>
-            <div style={{marginBottom:"1rem",padding:".65rem .9rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",fontSize:".76rem",color:"#1d4ed8",display:"flex",gap:".4rem"}}>
-              <span>Pacientes contínuos têm lesão ativa e retornam mensalmente para retirada de insumos. A quantidade máxima foi definida na primeira dispensação e não pode ser ultrapassada. Para encerrar, clique em "Encerrar".</span>
-            </div>
-            {!continuosAtivos.length ? (
-              <div style={{textAlign:"center",padding:"3rem",color:"var(--text-3)"}}>
-                <div style={{fontWeight:600}}>Nenhum paciente contínuo ativo</div>
-                <div style={{fontSize:".8rem",marginTop:".5rem"}}>Ao dispensar insumos, marque "Paciente contínuo" para registrá-lo aqui.</div>
-              </div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:".65rem"}}>
-                {continuosAtivos.map(c=>{
-                  const retiradas = dispensas.filter(d=>d.patientId===c.patientId&&d.continuo).length;
-                  const ultima = dispensas.filter(d=>d.patientId===c.patientId).sort((a,b)=>b.ts.localeCompare(a.ts))[0];
-                  return (
-                    <div key={c.id} style={{background:"var(--surface)",border:"1px solid var(--teal-200)",borderLeft:"4px solid var(--teal-500)",borderRadius:"var(--r-md)",padding:"1rem 1.1rem"}}>
-                      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:".75rem",flexWrap:"wrap"}}>
-                        <div>
-                          <div style={{fontWeight:800,fontSize:".9rem",color:"var(--ink)",display:"flex",alignItems:"center",gap:".5rem"}}>
-                            {c.patientName}
-                            <span style={{fontSize:".67rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"#dcfce7",color:"#15803d",border:"1px solid #bbf7d0"}}>Ativo</span>
-                          </div>
-                          <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".2rem"}}>
-                            Desde {fmtDate(c.dtInicio)} · {retiradas} retirada(s) registrada(s) · Por: {c.profissional}
-                          </div>
-                          {ultima&&<div style={{fontSize:".72rem",color:"var(--text-3)"}}>Última retirada: {fmtDate(ultima.date)}</div>}
-                        </div>
-                        {canDispense&&(
-                          <button type="button" onClick={()=>encerrarContinuo(c.id)}
-                            style={{fontSize:".73rem",padding:".3rem .7rem",background:"#fff1f2",color:"#be123c",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:700,flexShrink:0}}>
-                            Encerrar
-                          </button>
-                        )}
+            {!!patientProtocolSummary&&(
+              <div className="card" style={{padding:".9rem"}}>
+                <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",fontWeight:700,marginBottom:".55rem"}}>Indicadores do protocolo</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",gap:".6rem"}}>
+                  {protocolIndicators.map(ind=>(
+                    <div key={ind.key} style={{background:ind.bg,border:`1px solid ${ind.color}33`,borderRadius:"var(--r-md)",padding:".65rem .75rem"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".3rem"}}>
+                        <span style={{fontSize:".78rem",fontWeight:700,color:ind.color}}>{ind.label}</span>
+                        <span style={{fontSize:".72rem",fontWeight:700,color:ind.color}}>{ind.done}/{ind.target}</span>
                       </div>
-                      <div style={{marginTop:".75rem"}}>
-                        <div style={{fontSize:".7rem",fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".4rem"}}>Insumos desta prescrição (limites)</div>
-                        <div style={{display:"flex",gap:".35rem",flexWrap:"wrap"}}>
-                          {c.itens.map(item=>{
-                            const cat = CATALOGO_INSUMOS.find(i=>i.id===item.id);
-                            return <span key={item.id} style={{fontSize:".73rem",padding:".2rem .5rem",borderRadius:999,background:"var(--teal-50)",border:"1px solid var(--teal-200)",color:"var(--teal-700)",fontWeight:600}}>
-                              {cat?.nome||item.id}: até {item.qtd} {cat?.unidade}
-                            </span>;
-                          })}
-                        </div>
+                      <div style={{height:6,background:"#ffffff",borderRadius:99,overflow:"hidden",border:"1px solid #ffffff"}}>
+                        <div style={{height:"100%",width:`${ind.pct}%`,background:ind.color,borderRadius:99}} />
                       </div>
-                      {c.obs&&<div style={{marginTop:".5rem",fontSize:".73rem",color:"var(--text-2)",fontStyle:"italic"}}>Obs.: {c.obs}</div>}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Contínuos encerrados */}
-            {continuos.filter(c=>!c.ativo).length>0&&(
-              <div style={{marginTop:"1.5rem"}}>
-                <div style={{fontWeight:700,fontSize:".78rem",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".6rem"}}>Encerrados</div>
-                <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
-                  {continuos.filter(c=>!c.ativo).map(c=>(
-                    <div key={c.id} style={{background:"var(--surface-2)",border:"1px solid var(--border)",borderLeft:"4px solid var(--border)",borderRadius:"var(--r-md)",padding:".65rem .9rem",opacity:.75}}>
-                      <div style={{fontWeight:600,fontSize:".82rem",color:"var(--text-2)"}}>{c.patientName}</div>
-                      <div style={{fontSize:".7rem",color:"var(--text-3)"}}>
-                        {fmtDate(c.dtInicio)} → {fmtDate(c.dtFim)} · {dispensas.filter(d=>d.patientId===c.patientId&&d.continuo).length} retirada(s)
-                      </div>
+                      <div style={{fontSize:".7rem",color:"var(--text-3)",marginTop:".28rem"}}>{ind.pct}% concluido</div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </div>
-        )}
-      </div>
 
-      {/* Modal entrada de estoque */}
-      {editStockItem&&(
-        <div className="modal-backdrop" onClick={()=>setEditStockItem(null)}>
-          <div className="modal" style={{maxWidth:400}} onClick={e=>e.stopPropagation()}>
-            <h3 style={{margin:"0 0 1rem"}}>{editStockItem==="new"?"Nova entrada de estoque":"+ Entrada: "+editStockItem.nome}</h3>
-            {editStockItem==="new" ? (
-              <div style={{color:"var(--text-3)",fontSize:".85rem"}}>Para entrada em item específico, clique em "+ Entrada" na linha do insumo na tabela.</div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
-                <div style={{fontSize:".82rem",color:"var(--text-2)"}}>Insumo: <strong>{editStockItem.nome}</strong></div>
-                  <div style={{fontSize:".82rem",color:"var(--text-2)"}}>Estoque atual: <strong>{stock.find(s=>s.id===editStockItem.id)?.qty ?? 0} {editStockItem.unidade}</strong></div>
-                <label style={{display:"flex",flexDirection:"column",gap:".3rem",fontSize:".8rem",fontWeight:600}}>
-                  Quantidade a adicionar *
-                  <input type="number" min="1" value={editQty} onChange={e=>setEditQty(e.target.value)} placeholder="Ex: 50" autoFocus/>
-                </label>
-                <div style={{display:"flex",gap:".5rem"}}>
-                  <button type="button" onClick={()=>setEditStockItem(null)} style={{flex:1,background:"var(--surface-2)",border:"1px solid var(--border)",color:"var(--text-1)"}}>Cancelar</button>
-                  <button type="button" onClick={()=>{
-                    const n = Number(editQty); if(!n||n<=0) return;
-                    const newStock = stock.map(s=>s.id===editStockItem.id?{...s,qty:s.qty+n}:s);
-                    // Se item ainda não existe no array de stock, adiciona
-                    if (!stock.find(s=>s.id===editStockItem.id)) newStock.push({id:editStockItem.id,qty:n});
-                    setStock(newStock); saveInsumoStock(newStock);
-                    setEditStockItem(null);
-                  }} style={{flex:2}}>✓ Confirmar entrada</button>
+            <div className="card" style={{padding:".9rem"}}>
+              <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",fontWeight:700,marginBottom:".45rem"}}>Alertas</div>
+              {!sortedSpecialAlerts?.length ? (
+                <div style={{fontSize:".8rem",color:"var(--text-3)"}}>Sem alertas pendentes para este paciente.</div>
+              ) : (
+                <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
+                  {sortedSpecialAlerts.slice(0,8).map(alert=>{
+                    const tone = alertTone(alert?.severity);
+                    return (
+                      <div key={alert.id||alert.title} style={{padding:".55rem .7rem",borderRadius:"var(--r-md)",border:`1px solid ${tone.border}`,background:tone.bg}}>
+                        <div style={{display:"flex",justifyContent:"space-between",gap:".5rem",alignItems:"center"}}>
+                          <div style={{fontSize:".8rem",fontWeight:700,color:tone.title}}>{alert.title}</div>
+                          <span style={{fontSize:".62rem",fontWeight:700,padding:".08rem .35rem",borderRadius:999,background:tone.chip,color:"#fff"}}>{tone.chipText}</span>
+                        </div>
+                        {alert.detail&&<div style={{fontSize:".76rem",color:tone.detail,marginTop:".16rem"}}>{alert.detail}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab==="attendance"&&(
+          <form className="card" style={{padding:".9rem",display:"flex",flexDirection:"column",gap:".6rem"}} onSubmit={onSubmitRecord}>
+            <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",fontWeight:700}}>Novo atendimento</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".55rem"}}>
+              <label style={{fontSize:".75rem",fontWeight:600}}>Tipo
+                <select value={recordForm?.type||"consultation"} onChange={e=>handleTypeChange(e.target.value)}>
+                  <option value="consultation">Consulta</option>
+                  <option value="procedure">Procedimento</option>
+                  <option value="visit">Visita</option>
+                  <option value="vaccine">Vacinacao</option>
+                </select>
+              </label>
+              <label style={{fontSize:".75rem",fontWeight:600}}>Data
+                <input type="date" value={recordForm?.date||""} onChange={e=>updateRecord("date", e.target.value)} />
+              </label>
+            </div>
+            <label style={{fontSize:".75rem",fontWeight:600}}>Titulo
+              {titleOptions.length ? (
+                <select value={titleOptions.includes(recordForm?.title)?recordForm?.title:titleOptions[0]} onChange={e=>updateRecord("title", e.target.value)}>
+                  {titleOptions.map(opt=><option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              ) : (
+                <input value={recordForm?.title||""} onChange={e=>updateRecord("title", e.target.value)} placeholder="Ex: Curativo, Retorno, Consulta de rotina..." />
+              )}
+            </label>
+
+            {recordForm?.type==="vaccine"&&(
+              <div>
+                <div style={{fontSize:".75rem",fontWeight:700,color:"var(--text-2)",marginBottom:".3rem"}}>Vacinas aplicadas</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:".35rem"}}>
+                  {VACCINE_OPTIONS.map(v=>(
+                    <button key={v} type="button" onClick={()=>toggleVaccine(v)}
+                      style={{
+                        fontSize:".7rem",
+                        padding:".2rem .45rem",
+                        borderRadius:999,
+                        border:`1px solid ${recordVaccines.includes(v)?"#14b8a6":"var(--border)"}`,
+                        background:recordVaccines.includes(v)?"#f0fdfa":"var(--surface)",
+                        color:recordVaccines.includes(v)?"#0f766e":"var(--text-2)",
+                        cursor:"pointer",
+                        fontWeight:recordVaccines.includes(v)?700:500,
+                      }}>
+                      {v}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
+
+            <label style={{fontSize:".75rem",fontWeight:600}}>Observacoes
+              <textarea value={recordForm?.details||""} onChange={e=>updateRecord("details", e.target.value)} style={{minHeight:70}} />
+            </label>
+            <label style={{fontSize:".75rem",fontWeight:600}}>Conduta
+              <textarea value={recordForm?.conduct||""} onChange={e=>updateRecord("conduct", e.target.value)} style={{minHeight:58}} />
+            </label>
+            <label style={{fontSize:".75rem",fontWeight:600}}>Proximo passo
+              <input value={recordForm?.nextStep||""} onChange={e=>updateRecord("nextStep", e.target.value)} placeholder="Ex: Retorno em 15 dias" />
+            </label>
+            <label style={{fontSize:".75rem",fontWeight:600}}>Demanda
+              <select value={recordForm?.demandType||"scheduled"} onChange={e=>updateRecord("demandType", e.target.value)}>
+                <option value="scheduled">Programada</option>
+                <option value="spontaneous">Espontanea</option>
+                <option value="retroactive">Retroativa</option>
+              </select>
+            </label>
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              <button type="submit">Salvar atendimento</button>
+            </div>
+          </form>
+        )}
+
+        {activeTab==="chart"&&(
+          <div className="card" style={{padding:".8rem"}}>
+            {!history?.length ? (
+              <div style={{fontSize:".8rem",color:"var(--text-3)"}}>Nenhum registro no prontuario.</div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
+                {history.map(item=>(
+                  <div key={item.id} style={{padding:".55rem .65rem",borderRadius:"var(--r-md)",border:"1px solid var(--border)"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",gap:".5rem"}}>
+                      <div style={{fontSize:".82rem",fontWeight:700,color:"var(--ink)"}}>{item.title||item.type||"Registro"}</div>
+                      <div style={{fontSize:".7rem",color:"var(--text-3)"}}>{safeFmtDate(item.date)}</div>
+                    </div>
+                    {item.details&&<div style={{fontSize:".77rem",color:"var(--text-2)",marginTop:".25rem",whiteSpace:"pre-wrap"}}>{item.details}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+
+        {activeTab==="agenda"&&(
+          <div className="card" style={{padding:".8rem"}}>
+            {!appointments?.length ? (
+              <div style={{fontSize:".8rem",color:"var(--text-3)"}}>Nenhum atendimento agendado.</div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
+                {appointments.map(ap=>(
+                  <div key={ap.id} style={{padding:".5rem .6rem",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",gap:".5rem"}}>
+                      <div style={{fontSize:".8rem",fontWeight:700,color:"var(--ink)"}}>{ap.summary||"Atendimento"}</div>
+                      <div style={{fontSize:".72rem",color:"var(--text-3)"}}>{safeFmtDate(ap.date)}</div>
+                    </div>
+                    {ap.conduct&&<div style={{fontSize:".75rem",color:"var(--text-2)",marginTop:".2rem"}}>Conduta: {ap.conduct}</div>}
+                    {canManageUser&&ap.id&&(
+                      <button type="button" className="secondary" style={{marginTop:".35rem",fontSize:".72rem",padding:".2rem .45rem"}} onClick={()=>onDeleteAppointment(ap.id)}>
+                        Excluir
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab==="tasks"&&(
+          <div className="card" style={{padding:".8rem"}}>
+            {canAssignTask&&(
+              <form onSubmit={onSubmitTask} style={{display:"flex",flexDirection:"column",gap:".5rem",padding:".65rem",border:"1px solid var(--border)",borderRadius:"var(--r-md)",marginBottom:".75rem",background:"var(--surface-2)"}}>
+                <div style={{fontSize:".74rem",fontWeight:700,color:"var(--text-2)",textTransform:"uppercase"}}>Nova tarefa para ACS</div>
+                <label style={{fontSize:".75rem",fontWeight:600}}>Titulo da tarefa
+                  <input value={taskForm?.title||""} onChange={e=>updateTask("title", e.target.value)} placeholder="Ex: Visita domiciliar de acompanhamento" />
+                </label>
+                <label style={{fontSize:".75rem",fontWeight:600}}>ACS responsavel
+                  <select value={taskForm?.assigneeId||""} onChange={e=>updateTask("assigneeId", e.target.value)}>
+                    <option value="">Selecione um ACS</option>
+                    {(acsUsers||[]).map(acs=><option key={acs.id} value={acs.id}>{acs.name}</option>)}
+                  </select>
+                </label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 160px",gap:".5rem"}}>
+                  <label style={{fontSize:".75rem",fontWeight:600}}>Descricao
+                    <input value={taskForm?.notes||""} onChange={e=>updateTask("notes", e.target.value)} placeholder="Detalhes e orientacoes" />
+                  </label>
+                  <label style={{fontSize:".75rem",fontWeight:600}}>Prazo
+                    <input type="date" value={taskForm?.dueDate||""} onChange={e=>updateTask("dueDate", e.target.value)} />
+                  </label>
+                </div>
+                <div style={{display:"flex",justifyContent:"flex-end"}}>
+                  <button type="submit">Criar tarefa</button>
+                </div>
+              </form>
+            )}
+            {!tasks?.length ? (
+              <div style={{fontSize:".8rem",color:"var(--text-3)"}}>Nenhuma tarefa cadastrada.</div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
+                {tasks.map(task=>{
+                  const tone = statusTone(task.status);
+                  const assignee = users.find(u=>u.id===task.assigneeId);
+                  return (
+                    <div key={task.id} style={{padding:".55rem .65rem",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:".5rem",alignItems:"center"}}>
+                        <div style={{fontSize:".8rem",fontWeight:700,color:"var(--ink)"}}>{task.title}</div>
+                        <span style={{fontSize:".68rem",padding:".12rem .4rem",borderRadius:999,background:tone.bg,color:tone.color,border:`1px solid ${tone.border}`}}>{tone.label}</span>
+                      </div>
+                      {assignee?.name&&<div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem"}}>Responsavel: {assignee.name}</div>}
+                      {task.notes&&<div style={{fontSize:".75rem",color:"var(--text-2)",marginTop:".2rem"}}>{task.notes}</div>}
+                      {task.id&&(
+                        <div style={{display:"flex",gap:".35rem",marginTop:".35rem"}}>
+                          <button type="button" className="secondary" style={{fontSize:".7rem",padding:".15rem .4rem"}} onClick={()=>onStatusChange(task.id,"pending")}>Pendente</button>
+                          <button type="button" className="secondary" style={{fontSize:".7rem",padding:".15rem .4rem"}} onClick={()=>onStatusChange(task.id,"in_progress")}>Em andamento</button>
+                          <button type="button" className="secondary" style={{fontSize:".7rem",padding:".15rem .4rem"}} onClick={()=>onStatusChange(task.id,"done")}>Concluida</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab==="messages"&&(
+          <div className="card" style={{padding:".8rem"}}>
+            <form onSubmit={onSubmitMessage} style={{display:"flex",gap:".45rem",marginBottom:".6rem"}}>
+              <input value={messageText} onChange={e=>setMessageText(e.target.value)} placeholder="Escreva uma mensagem para a equipe..." style={{flex:1}}/>
+              <button type="submit">Enviar</button>
+            </form>
+            {!messages?.length ? (
+              <div style={{fontSize:".8rem",color:"var(--text-3)"}}>Sem mensagens registradas.</div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
+                {messages.map(msg=>(
+                  <div key={msg.id} style={{padding:".5rem .6rem",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
+                    <div style={{fontSize:".72rem",color:"var(--text-3)"}}>{msg.fromName||msg.authorName||"Equipe"} - {safeFmtDate(msg.createdAt||msg.date)}</div>
+                    <div style={{fontSize:".8rem",color:"var(--ink)",marginTop:".2rem",whiteSpace:"pre-wrap"}}>{msg.text||msg.message||msg.body||""}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-
-
-
-const PHARMACY_KEY  = "saudeubs_pharmacy_v1";
-const PHARMA_LOG_KEY = "saudeubs_pharmalog_v1";
-const PHARMA_AUTH_KEY = "saudeubs_pharmaauth_v1";
-
-// Farmacêuticos cadastrados (em produção viria do backend)
-// Usuários locais de farmácia – sem senhas em texto puro
-// Autenticação sempre via backend (/auth/login). Senhas nunca ficam no código.
-const PHARMA_USERS = [
-  { id: "ph1", name: "Ana (Administradora)", email: "ana@clinica.local",  role: "pharmacist"    },
-  { id: "ph2", name: "Farmacêutico(a)",      email: "farmacia@ubs.local", role: "pharmacist"    },
-  { id: "ph3", name: "Téc. de Farmácia",     email: "tecfarma@ubs.local", role: "pharmacy_tech" },
-];
-
-// Estoque inicial padrão UBS – Rename (Rename of Farmácia Básica Municipal)
-const DEFAULT_STOCK = [
-  // Analgésicos / Antitérmicos
-  { id:"s01", name:"Paracetamol 500mg",          category:"Analgésico",       unit:"comprimido", qty:1200, minQty:200, location:"Prateleira A1" },
-  { id:"s02", name:"Dipirona 500mg",              category:"Analgésico",       unit:"comprimido", qty:800,  minQty:150, location:"Prateleira A1" },
-  { id:"s03", name:"Ibuprofeno 600mg",            category:"Anti-inflamatório",unit:"comprimido", qty:500,  minQty:100, location:"Prateleira A2" },
-  // Antibióticos
-  { id:"s04", name:"Amoxicilina 500mg",           category:"Antibiótico",      unit:"cápsula",    qty:400,  minQty:80,  location:"Prateleira B1" },
-  { id:"s05", name:"Azitromicina 500mg",          category:"Antibiótico",      unit:"comprimido", qty:200,  minQty:50,  location:"Prateleira B1" },
-  { id:"s06", name:"Ciprofloxacino 500mg",        category:"Antibiótico",      unit:"comprimido", qty:180,  minQty:40,  location:"Prateleira B2" },
-  // Cardiovascular / HAS
-  { id:"s07", name:"Enalapril 10mg",              category:"Cardiovascular",   unit:"comprimido", qty:900,  minQty:200, location:"Prateleira C1" },
-  { id:"s08", name:"Losartana 50mg",              category:"Cardiovascular",   unit:"comprimido", qty:900,  minQty:200, location:"Prateleira C1" },
-  { id:"s09", name:"Atenolol 25mg",               category:"Cardiovascular",   unit:"comprimido", qty:600,  minQty:100, location:"Prateleira C2" },
-  { id:"s10", name:"Hidroclorotiazida 25mg",      category:"Cardiovascular",   unit:"comprimido", qty:700,  minQty:150, location:"Prateleira C2" },
-  { id:"s11", name:"Amlodipino 5mg",              category:"Cardiovascular",   unit:"comprimido", qty:500,  minQty:100, location:"Prateleira C3" },
-  // Diabetes
-  { id:"s12", name:"Metformina 850mg",            category:"Diabetes",         unit:"comprimido", qty:1000, minQty:200, location:"Prateleira D1" },
-  { id:"s13", name:"Glibenclamida 5mg",           category:"Diabetes",         unit:"comprimido", qty:500,  minQty:100, location:"Prateleira D1" },
-  { id:"s14", name:"Insulina NPH 100UI/mL",       category:"Diabetes",         unit:"frasco",     qty:80,   minQty:20,  location:"Geladeira G1"  },
-  { id:"s15", name:"Insulina Regular 100UI/mL",   category:"Diabetes",         unit:"frasco",     qty:40,   minQty:10,  location:"Geladeira G1"  },
-  // Saúde Mental
-  { id:"s16", name:"Fluoxetina 20mg",             category:"Saúde Mental",     unit:"comprimido", qty:400,  minQty:80,  location:"Prateleira E1" },
-  { id:"s17", name:"Amitriptilina 25mg",          category:"Saúde Mental",     unit:"comprimido", qty:300,  minQty:60,  location:"Prateleira E1" },
-  { id:"s18", name:"Haloperidol 5mg",             category:"Saúde Mental",     unit:"comprimido", qty:150,  minQty:30,  location:"Prateleira E2" },
-  { id:"s19", name:"Diazepam 5mg",                category:"Saúde Mental",     unit:"comprimido", qty:200,  minQty:40,  location:"Prateleira E2" },
-  // Respiratório
-  { id:"s20", name:"Salbutamol spray 100mcg",     category:"Respiratório",     unit:"frasco",     qty:60,   minQty:15,  location:"Prateleira F1" },
-  { id:"s21", name:"Budesonida spray 200mcg",     category:"Respiratório",     unit:"frasco",     qty:40,   minQty:10,  location:"Prateleira F1" },
-  { id:"s22", name:"Loratadina 10mg",             category:"Alergia",          unit:"comprimido", qty:400,  minQty:80,  location:"Prateleira F2" },
-  // Gestantes
-  { id:"s23", name:"Sulfato Ferroso 40mg",        category:"Gestante",         unit:"comprimido", qty:600,  minQty:120, location:"Prateleira G2" },
-  { id:"s24", name:"Ácido Fólico 5mg",            category:"Gestante",         unit:"comprimido", qty:600,  minQty:120, location:"Prateleira G2" },
-  // Gastrointestinal
-  { id:"s25", name:"Omeprazol 20mg",              category:"Gastrointestinal", unit:"cápsula",    qty:500,  minQty:100, location:"Prateleira A3" },
-  { id:"s26", name:"Metoclopramida 10mg",         category:"Gastrointestinal", unit:"comprimido", qty:300,  minQty:60,  location:"Prateleira A3" },
-  { id:"s27", name:"Soro Fisiológico 0,9% 500mL", category:"Soros",           unit:"bolsa",      qty:50,   minQty:10,  location:"Armário S1"   },
-  // Outros
-  { id:"s28", name:"Vitamina D3 1000UI",          category:"Suplemento",       unit:"comprimido", qty:300,  minQty:60,  location:"Prateleira H1" },
-  { id:"s29", name:"Clonazepam 2mg",              category:"Saúde Mental",     unit:"comprimido", qty:180,  minQty:30,  location:"Prateleira E3" },
-  { id:"s30", name:"Sinvastatina 20mg",           category:"Cardiovascular",   unit:"comprimido", qty:700,  minQty:150, location:"Prateleira C4" },
-];
-
 function readPharmacyStock() {
   try { const r = localStorage.getItem(PHARMACY_KEY); return r ? JSON.parse(r) : DEFAULT_STOCK.map(i=>({...i})); } catch { return DEFAULT_STOCK.map(i=>({...i})); }
 }
@@ -5705,7 +5596,7 @@ async function loadAll() {
               birthState: String(p?.birthState || ""),
               phone: String(p?.phone || ""),
               phoneAlt: String(p?.phoneAlt || ""),
-              careCategory: String(p?.careCategory || "general"),
+              careCategory: normalizeCareCategory(p?.careCategory),
               chronicConditions: Array.isArray(p?.chronicConditions) ? p.chronicConditions : [],
               assignedAcsId: String(p?.assignedAcsId || ""),
               zipCode: String(p?.zipCode || ""),
@@ -5782,7 +5673,7 @@ async function loadAll() {
     cpf:form.cpf.trim(), cns:form.cns.trim(),
     birthDate:form.birthDate||"", birthCity:form.birthCity.trim(), birthState:form.birthState.trim().toUpperCase(),
     phone:form.phone.trim(), phoneAlt:form.phoneAlt.trim(),
-    careCategory:form.careCategory||"general", chronicConditions:Array.isArray(form.chronicConditions)?form.chronicConditions:[],
+    careCategory:normalizeCareCategory(form.careCategory), chronicConditions:Array.isArray(form.chronicConditions)?form.chronicConditions:[],
     incompleteProfile:false, assignedAcsId:form.assignedAcsId||"",
     zipCode:form.zipCode.trim(), address:form.address.trim(), number:form.number.trim(),
     complement:form.complement.trim(), neighborhood:form.neighborhood.trim(),
@@ -6029,6 +5920,7 @@ async function loadAll() {
   async function submitTask(e) {
     e.preventDefault(); if(!selectedPatientId) return;
     if(!taskForm.title){setError("Título obrigatório.");return;}
+    if(!taskForm.assigneeId){setError("Selecione um ACS responsável para a tarefa.");return;}
     try {
       await createTask(token,{patientId:selectedPatientId,assigneeId:taskForm.assigneeId||"",title:taskForm.title,notes:taskForm.notes,dueDate:taskForm.dueDate});
       auditLog("TAREFA_CRIADA", { patientId:selectedPatientId, title:taskForm.title, dueDate:taskForm.dueDate }, user);
@@ -6108,7 +6000,7 @@ async function loadAll() {
   // Farmacêutico, enfermeira, médico, ACS, téc. enf., admin â†’ app clínico
   // buildNavItems limita o menu conforme o perfil
 
-  const catOpts=templates.map(t=>({value:t.category,label:t.label}));
+  const catOpts=templates.map(t=>({value:t.category,label:t.label})).filter(c=>!isHiddenCareCategory(c.value));
 
   // Todos os perfis com acesso ao módulo visualizam todos os pacientes.
   const visiblePatients = patients;
@@ -6188,13 +6080,13 @@ async function loadAll() {
           {tab==="agenda"&&<AgendaPage patients={patients} users={users} user={user} token={token} teams={publicTeams} onNewPatient={p=>setPatients(prev=>[...prev,p])} onPatientCreated={loadAll} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
           {tab==="referrals"&&<ReferralsPage patients={patients} users={users} user={user}/>}
           {tab==="acs_tasks"&&<AcsTasksPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
-          {tab==="chart"&&<ChartPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
+          {tab==="chart"&&<ProntuarioPage patients={patients} users={users} user={user} token={token} history={history} selectedPatientId={selectedPatientId} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
 
           {tab==="exams_page"&&<ExamsPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
-          {tab==="gestor"&&<GestorPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
-          {tab==="reports"&&<ReportsPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
+          {tab==="gestor"&&<GestorPageNew patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
+          {tab==="reports"&&<ReportsPageNew patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
           {tab==="diagnostics"&&(
-            <DiagnosticsPage
+            <DiagnosticsPageNew
               apiHealth={apiHealth}
               token={token}
               user={user}
@@ -6251,7 +6143,7 @@ async function loadAll() {
           )}
 
           {tab==="insumos"&&(
-            <InsumoPage patients={patients} users={users} user={user}/>
+            <InsumoPageNew patients={patients} users={users} user={user}/>
           )}
 
           {tab==="ai"&&(
@@ -6288,7 +6180,7 @@ async function loadAll() {
                 <label>Grupo / Categoria *
                   <select value={form.careCategory} onChange={e=>setForm(s=>({...s,careCategory:e.target.value}))}>
                     {(catOpts.length
-                      ? catOpts.filter(c=>c.value!=="chronic")
+                      ? catOpts.filter(c=>!isHiddenCareCategory(c.value))
                       : [{value:"general",label:"Geral"}]
                     ).map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
@@ -6793,3 +6685,4 @@ export function App() {
     </AppErrorBoundary>
   );
 }
+
