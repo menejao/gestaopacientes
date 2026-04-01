@@ -1804,6 +1804,13 @@ function getPatientOrError(db, user, patientId) {
   return { patient };
 }
 
+function isPatientProfileIncomplete(patient) {
+  if (!patient) return false;
+  if (patient.incompleteProfile === true) return true;
+  if (String(patient.id || "").startsWith("local_")) return true;
+  return false;
+}
+
 function buildPatientHistory(db, patientId) {
   const appointmentEvents = db.appointments
     .filter((a) => a.patientId === patientId)
@@ -4770,6 +4777,11 @@ app.post("/patients/:id/records", async (req, res) => {
   ensureDbShape(db);
   const lookup = getPatientOrError(db, req.user, id);
   if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
+  if (isPatientProfileIncomplete(lookup.patient)) {
+    return res.status(409).json({
+      error: "Paciente com cadastro incompleto. Complete os dados obrigatórios antes de registrar atendimento."
+    });
+  }
 
   const integrityCheck = validateClinicalRecordPayload({
     user: req.user,

@@ -796,6 +796,56 @@ const IconSignOut = () => (
   </svg>
 );
 
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  style,
+  autoComplete,
+  onFocus,
+  onBlur,
+  autoFocus,
+  inputProps = {},
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{ ...(style || {}), paddingRight: "2.2rem" }}
+        autoComplete={autoComplete}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        autoFocus={autoFocus}
+        {...inputProps}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        title={show ? "Ocultar senha" : "Mostrar senha"}
+        style={{
+          position: "absolute",
+          right: 6,
+          top: "50%",
+          transform: "translateY(-50%)",
+          border: "none",
+          background: "transparent",
+          color: "var(--text-3, #64748b)",
+          cursor: "pointer",
+          padding: ".15rem",
+          lineHeight: 1,
+          fontSize: ".95rem",
+        }}
+      >
+        {show ? "🙈" : "👁️"}
+      </button>
+    </div>
+  );
+}
+
 
 
 
@@ -880,7 +930,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
                   </div>
                   <div style={{marginBottom:"1.5rem"}}>
                     <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Senha</label>
-                    <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="current-password"/>
+                    <PasswordInput value={password} onChange={e=>setPassword(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="current-password"/>
                   </div>
                   {error && <p style={{background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:6,padding:".6rem .85rem",fontSize:".82rem",marginBottom:"1rem"}}>{error}</p>}
                   <button type="submit" disabled={busy} style={{width:"100%",padding:".6rem",background:"#6366f1",color:"#fff",border:"none",borderRadius:8,fontSize:".85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:busy?0.6:1}}>
@@ -913,11 +963,11 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
                   </div>
                   <div style={{marginBottom:"1rem"}}>
                     <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Senha</label>
-                    <input type="password" value={gestorReg.password} onChange={e=>setGestorReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
+                    <PasswordInput value={gestorReg.password} onChange={e=>setGestorReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
                   </div>
                   <div style={{marginBottom:"1.5rem"}}>
                     <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Confirmar senha</label>
-                    <input type="password" value={gestorReg.confirmPassword} onChange={e=>setGestorReg(s=>({...s,confirmPassword:e.target.value}))} placeholder="Repita a senha" style={{...inputStyle, borderColor: gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword ? "#dc2626" : "#e2e8f0"}} onFocus={focusStyle} onBlur={blurStyle}/>
+                    <PasswordInput value={gestorReg.confirmPassword} onChange={e=>setGestorReg(s=>({...s,confirmPassword:e.target.value}))} placeholder="Repita a senha" style={{...inputStyle, borderColor: gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword ? "#dc2626" : "#e2e8f0"}} onFocus={focusStyle} onBlur={blurStyle}/>
                     {gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword && (
                       <p style={{fontSize:".73rem",color:"#dc2626",marginTop:".3rem"}}>As senhas não coincidem</p>
                     )}
@@ -1009,7 +1059,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
               </label>
               <label>
                 Senha
-                <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="********" autoComplete="current-password"/>
+                <PasswordInput value={password} onChange={e=>setPassword(e.target.value)} placeholder="********" autoComplete="current-password"/>
               </label>
               {error && <p className="error">{error}</p>}
               <button type="submit" disabled={busy}>
@@ -1020,7 +1070,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
             <form className="auth-form" onSubmit={e=>{e.preventDefault();onRegister(reg);}}>
               <label>Nome completo<input value={reg.name} onChange={e=>setReg(s=>({...s,name:e.target.value}))} placeholder="Maria da Silva"/></label>
               <label>E-mail<input type="email" value={reg.email} onChange={e=>setReg(s=>({...s,email:e.target.value}))} placeholder="você@unidade.local"/></label>
-              <label>Senha<input type="password" value={reg.password} onChange={e=>setReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres"/></label>
+              <label>Senha<PasswordInput value={reg.password} onChange={e=>setReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres"/></label>
               <label>Perfil
                 <select value={reg.role} onChange={e=>setReg(s=>({...s,role:e.target.value,councilNumber:"",councilUf:"SP",teamId:""}))}>
                   <option value="nurse_manager">Enfermeira</option>
@@ -1122,7 +1172,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
               </label>
               <label>
                 Senha
-                <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="********" autoComplete="current-password"/>
+                <PasswordInput value={password} onChange={e=>setPassword(e.target.value)} placeholder="********" autoComplete="current-password"/>
               </label>
               {error && <p className="error">{error}</p>}
               <button type="submit" disabled={busy}>
@@ -1133,7 +1183,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
             <form className="auth-form" onSubmit={e=>{e.preventDefault();onRegister(reg);}}>
               <label>Nome completo<input value={reg.name} onChange={e=>setReg(s=>({...s,name:e.target.value}))} placeholder="Maria da Silva"/></label>
               <label>E-mail<input type="email" value={reg.email} onChange={e=>setReg(s=>({...s,email:e.target.value}))} placeholder="você@unidade.local"/></label>
-              <label>Senha<input type="password" value={reg.password} onChange={e=>setReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres"/></label>
+              <label>Senha<PasswordInput value={reg.password} onChange={e=>setReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres"/></label>
               <label>Perfil
                 <select value={reg.role} onChange={e=>setReg(s=>({...s,role:e.target.value,councilNumber:"",councilUf:"SP",teamId:""}))}>
                   <option value="nurse_manager">Enfermeira</option>
@@ -1251,10 +1301,10 @@ function ResetPasswordForm() {
             <input value={token} onChange={e=>setToken(e.target.value)} placeholder="Cole o token aqui"/>
           </label>
           <label>Nova senha (mín. 8 caracteres)
-            <input type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢"/>
+            <PasswordInput value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢"/>
           </label>
           <label>Confirmar nova senha
-            <input type="password" value={newPw2} onChange={e=>setNewPw2(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢"/>
+            <PasswordInput value={newPw2} onChange={e=>setNewPw2(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢"/>
           </label>
           {err&&<p className="error">{err}</p>}
           <button type="submit" disabled={busy}>{busy?"Redefinindo...":"Redefinir senha"}</button>
@@ -2965,6 +3015,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
   const acsName = users.find(u=>u.id===patient.assignedAcsId)?.name||"Nao atribuido";
   const activeTab = ["protocol","attendance","chart","agenda","tasks","messages"].includes(patientTab) ? patientTab : "protocol";
   const isPregnant = String(patient?.careCategory||"").toLowerCase()==="pregnant";
+  const profileIncomplete = isProfileIncomplete(patient);
 
   const safeFmtDate = (value) => {
     if(!value) return "-";
@@ -3125,6 +3176,11 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
         {activeTab==="attendance"&&(
           <form className="card" style={{padding:".9rem",display:"flex",flexDirection:"column",gap:".6rem"}} onSubmit={onSubmitRecord}>
             <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",fontWeight:700}}>Novo atendimento</div>
+            {profileIncomplete&&(
+              <div style={{padding:".6rem .75rem",borderRadius:"var(--r-md)",border:"1px solid #fca5a5",background:"#fef2f2",color:"#991b1b",fontSize:".77rem",fontWeight:600}}>
+                Paciente com cadastro incompleto. Complete o cadastro antes de registrar atendimento.
+              </div>
+            )}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".55rem"}}>
               <label style={{fontSize:".75rem",fontWeight:600}}>Tipo
                 <select value={recordForm?.type||"consultation"} onChange={e=>handleTypeChange(e.target.value)}>
@@ -3188,7 +3244,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
               </select>
             </label>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
-              <button type="submit">Salvar atendimento</button>
+              <button type="submit" disabled={profileIncomplete} style={profileIncomplete?{opacity:.6,cursor:"not-allowed"}:undefined}>Salvar atendimento</button>
             </div>
           </form>
         )}
@@ -3509,7 +3565,7 @@ function PharmaLoginModal({ onLogin, onClose }) {
           </label>
           <label style={{display:"flex",flexDirection:"column",gap:".25rem",fontSize:".8rem",fontWeight:600}}>
             Senha
-            <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢"/>
+            <PasswordInput value={pw} onChange={e=>setPw(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢"/>
           </label>
           {err && <p className="error" style={{margin:0}}>{err}</p>}
           <button type="submit" style={{marginTop:".25rem"}}>Entrar na Farmácia</button>
@@ -3610,7 +3666,7 @@ function DispenseModal({ item, pharmaUser, onConfirm, onClose }) {
           </div>
           <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:700,color:"var(--text-1)"}}>
             🔐 Confirmar com sua senha
-            <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Senha do farmacêutico" autoFocus/>
+            <PasswordInput value={pw} onChange={e=>setPw(e.target.value)} placeholder="Senha do farmacêutico" autoFocus/>
           </label>
           {err && <p className="error" style={{margin:0}}>{err}</p>}
           <div style={{display:"flex",gap:".5rem",marginTop:".25rem"}}>
@@ -3715,7 +3771,7 @@ function StockEditModal({ item, pharmaUser, mode, onConfirm, onClose }) {
           )}
           <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:700,color:"var(--text-1)"}}>
             🔐 Confirmar com sua senha
-            <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Senha do farmacêutico"/>
+            <PasswordInput value={pw} onChange={e=>setPw(e.target.value)} placeholder="Senha do farmacêutico"/>
           </label>
           {err && <p className="error" style={{margin:0}}>{err}</p>}
           <div style={{display:"flex",gap:".5rem",marginTop:".25rem"}}>
@@ -5812,13 +5868,17 @@ async function loadAll() {
   
   async function submitRecord(e) {
     e.preventDefault(); if(!selectedPatientId) return;
+    const selectedPatient = patients.find(p => p.id === selectedPatientId);
+    if(isProfileIncomplete(selectedPatient)){
+      setError("Nao e permitido registrar atendimento para paciente com cadastro incompleto.");
+      return;
+    }
     const type = isAcs(user)?"visit":recordForm.type;
     const title = isAcs(user)?"Visita ACS":recordForm.title;
     if(!type||!recordForm.date||(type!=="vaccine"&&!title)){setError("Preencha tipo, data e título.");return;}
     if(type==="vaccine"&&!recordVaccines.length){setError("Selecione ao menos uma vacina.");return;}
     if(type==="visit"){
-      const patient = patients.find(p => p.id === selectedPatientId);
-      if(!String(patient?.assignedAcsId||"").trim()){
+      if(!String(selectedPatient?.assignedAcsId||"").trim()){
         setError("Não é possível registrar visita sem ACS responsável vinculado ao paciente.");
         return;
       }
@@ -5846,9 +5906,8 @@ async function loadAll() {
       if(type==="vaccine"){
         for(const vaccine of recordVaccines) {
           // Inferir a dose correta com base na data de aplicação e nascimento do paciente
-          const patient = patients.find(p => p.id === selectedPatientId);
-          const resolvedTitle = patient?.birthDate
-            ? inferVaccineDoseTitle(vaccine, recordForm.date, patient.birthDate)
+          const resolvedTitle = selectedPatient?.birthDate
+            ? inferVaccineDoseTitle(vaccine, recordForm.date, selectedPatient.birthDate)
             : vaccine;
           await createRecord(token,selectedPatientId,{...basePayload,type:"vaccine",title:resolvedTitle,
             details:buildDetails("","","","",recordForm.details)});
@@ -5907,6 +5966,11 @@ async function loadAll() {
 
   async function submitAppointment(e) {
     e.preventDefault(); if(!selectedPatientId) return;
+    const selectedPatient = patients.find(p => p.id === selectedPatientId);
+    if(isProfileIncomplete(selectedPatient)){
+      setError("Nao e permitido registrar atendimento para paciente com cadastro incompleto.");
+      return;
+    }
     if(!appointmentForm.date||!appointmentForm.summary){setError("Preencha data e resumo.");return;}
     try {
       await createAppointment(token,selectedPatientId,appointmentForm);
@@ -6559,7 +6623,7 @@ async function loadAll() {
             </label>
             <label>Nome<input value={userForm.name} onChange={e=>setUserForm(s=>({...s,name:e.target.value}))}/></label>
             <label>E-mail<input type="email" value={userForm.email} onChange={e=>setUserForm(s=>({...s,email:e.target.value}))}/></label>
-            <label>Nova senha (opcional)<input type="password" value={userForm.password} onChange={e=>setUserForm(s=>({...s,password:e.target.value}))}/></label>
+            <label>Nova senha (opcional)<PasswordInput value={userForm.password} onChange={e=>setUserForm(s=>({...s,password:e.target.value}))}/></label>
             {["doctor","dentist","nurse_manager","nursing_tech","pharmacist","pharmacy_tech"].includes(userForm.role)&&<>
               <label>
                 {userForm.role==="doctor"?"CRM":userForm.role==="dentist"?"CRO":["pharmacist","pharmacy_tech"].includes(userForm.role)?"CFF":"COREN"} – Número do conselho
@@ -6634,7 +6698,7 @@ async function loadAll() {
 
               <label style={{display:"flex",flexDirection:"column",gap:".35rem",fontSize:".78rem",fontWeight:600,color:"var(--slate-700)"}}>
                 Nova senha
-                <input type="password" value={profileForm.password} onChange={e=>setProfileForm(s=>({...s,password:e.target.value}))} placeholder="Deixe em branco para manter a atual"/>
+                <PasswordInput value={profileForm.password} onChange={e=>setProfileForm(s=>({...s,password:e.target.value}))} placeholder="Deixe em branco para manter a atual"/>
                 <span style={{fontSize:".72rem",color:"var(--text-3)",fontWeight:400}}>Mínimo 8 caracteres com maiúscula, número e símbolo.</span>
               </label>
 
@@ -6686,4 +6750,3 @@ export function App() {
     </AppErrorBoundary>
   );
 }
-

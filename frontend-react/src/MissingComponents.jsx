@@ -167,6 +167,12 @@ function matchesSearch(p, q) {
     (p.cpf || "").replace(/\D/g, "").includes(nq.replace(/\D/g, "")) ||
     (p.phone || "").replace(/\D/g, "").includes(nq.replace(/\D/g, ""));
 }
+function isProfileIncomplete(p) {
+  if (!p) return false;
+  if (p.incompleteProfile === true) return true;
+  if (String(p.id || "").startsWith("local_")) return true;
+  return false;
+}
 
 const readLS = (key, def) => { try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : def; } catch { return def; } };
 const writeLS = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
@@ -498,35 +504,42 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
           <div style={{ padding: ".75rem 1.1rem", borderBottom: "1px solid var(--border, #e2e8f0)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>Notificações</span>
             <div style={{ display: "flex", alignItems: "center", gap: ".45rem" }}>
-              {alerts.length > 0 && (
+              {unreadAlerts.length > 0 && (
                 <button type="button" onClick={clearNotifications} style={{ ...css.btnGhost, fontSize: ".72rem", padding: ".2rem .45rem" }}>
-                  Limpar
+                  Limpar todas
                 </button>
               )}
               <Badge color={DS.slate[500]} bg={DS.slate[100]} border={DS.slate[200]}>{count}</Badge>
             </div>
           </div>
-          {alerts.length === 0 ? (
+          {unreadAlerts.length === 0 ? (
             <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-3, #64748b)", fontSize: ".82rem" }}>
               <div style={{ fontSize: "1.5rem", marginBottom: ".5rem" }}>🔔</div>
               Nenhuma notificação pendente
             </div>
           ) : (
             <ul style={{ listStyle: "none", margin: 0, padding: ".3rem 0", maxHeight: 360, overflowY: "auto" }}>
-              {alerts.map(a => {
+              {unreadAlerts.map(a => {
                 const s = typeStyle[a.type] || typeStyle.info;
-                const isRead = Boolean(readMap?.[a.id]);
                 return (
                   <li key={a.id}
                     onClick={() => { markRead(a.id); if (a.patientId) { onNavigate(a.patientId); setOpen(false); } }}
-                    style={{ display: "flex", alignItems: "flex-start", gap: ".7rem", padding: ".6rem 1.1rem", cursor: a.patientId ? "pointer" : "default", borderLeft: `3px solid ${isRead ? "var(--border, #e2e8f0)" : s.dot}`, transition: "background .12s", opacity: isRead ? .72 : 1 }}
+                    style={{ display: "flex", alignItems: "flex-start", gap: ".7rem", padding: ".6rem 1.1rem", cursor: a.patientId ? "pointer" : "default", borderLeft: `3px solid ${s.dot}`, transition: "background .12s", opacity: 1 }}
                     onMouseEnter={e => { if (a.patientId) e.currentTarget.style.background = "var(--surface-2, #f8fafc)"; }}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: isRead ? "var(--border, #e2e8f0)" : s.dot, marginTop: 5, flexShrink: 0 }} />
-                    <div style={{ minWidth: 0 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: s.dot, marginTop: 5, flexShrink: 0 }} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: ".8rem", color: "var(--ink, #0f172a)" }}>{a.title}</div>
                       <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.detail}</div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); markRead(a.id); }}
+                      title="Limpar notificação"
+                      style={{ ...css.btnGhost, fontSize: ".68rem", padding: ".2rem .4rem", flexShrink: 0 }}
+                    >
+                      Limpar
+                    </button>
                   </li>
                 );
               })}
@@ -2161,6 +2174,7 @@ export function TriagePage({ patients, user, token }) {
   const [form, setForm] = useState({ bp: "", temp: "", heartRate: "", weight: "", height: "", glucose: "", spo2: "", pain: "0", priority: "green", notes: "" });
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [triageError, setTriageError] = useState("");
 
   const filtered = patients.filter(p => matchesSearch(p, search));
 
@@ -2185,6 +2199,11 @@ export function TriagePage({ patients, user, token }) {
   async function submitTriage(e) {
     e.preventDefault();
     if (!selectedPatient) return;
+    if (isProfileIncomplete(selectedPatient)) {
+      setTriageError("Paciente com cadastro incompleto. Complete o cadastro antes da triagem/atendimento.");
+      return;
+    }
+    setTriageError("");
     setBusy(true);
     try {
       const details = [
@@ -2243,6 +2262,16 @@ export function TriagePage({ patients, user, token }) {
             </div>
             {saved && <div style={{ marginLeft: "auto", fontSize: ".8rem", color: DS.green[700], fontWeight: 700, background: DS.green[50], padding: ".3rem .75rem", borderRadius: 8, border: `1px solid ${DS.green[200]}` }}>✓ Triagem registrada!</div>}
           </div>
+          {!!triageError && (
+            <div style={{ background: DS.red[50], border: `1px solid ${DS.red[300]}`, borderRadius: 10, padding: ".7rem .9rem", color: DS.red[700], fontSize: ".8rem", fontWeight: 600 }}>
+              {triageError}
+            </div>
+          )}
+          {isProfileIncomplete(selectedPatient) && (
+            <div style={{ background: DS.amber[50], border: `1px solid ${DS.amber[300]}`, borderRadius: 10, padding: ".7rem .9rem", color: DS.amber[700], fontSize: ".8rem", fontWeight: 600 }}>
+              Cadastro do paciente incompleto. A triagem e o atendimento ficam bloqueados ate completar os dados obrigatorios.
+            </div>
+          )}
 
           <form onSubmit={submitTriage} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {/* Sinais vitais */}
@@ -2284,7 +2313,18 @@ export function TriagePage({ patients, user, token }) {
               </label>
             </div>
 
-            <button type="submit" disabled={busy} style={{ ...css.btnPrimary, alignSelf: "flex-start", fontSize: ".88rem", padding: ".6rem 1.4rem" }}>
+            <button
+              type="submit"
+              disabled={busy || isProfileIncomplete(selectedPatient)}
+              style={{
+                ...css.btnPrimary,
+                alignSelf: "flex-start",
+                fontSize: ".88rem",
+                padding: ".6rem 1.4rem",
+                opacity: busy || isProfileIncomplete(selectedPatient) ? .7 : 1,
+                cursor: busy || isProfileIncomplete(selectedPatient) ? "not-allowed" : "pointer",
+              }}
+            >
               {busy ? "Salvando…" : "✓ Salvar triagem"}
             </button>
           </form>
@@ -2781,6 +2821,3 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
     </div>
   );
 }
-
-
-

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * NewPages.jsx — Páginas redesenhadas · SIGUS
  * Prontuário (CFM/LGPD/Lei 13.787), Insumos (layout farmácia), Gestão à Vista (dashboard profissional)
  */
@@ -2575,6 +2575,43 @@ export function ReportsPageNew({ patients, users, templates, protocolByPatient }
     return actions;
   }, [filtered, protocolReport]);
 
+  const esusReport = useMemo(() => {
+    const fields = [
+      { key: "name", label: "Nome completo", check: (p) => String(p?.name || "").trim().length > 0 },
+      { key: "birthDate", label: "Data nascimento", check: (p) => String(p?.birthDate || "").trim().length > 0 },
+      { key: "sexAtBirth", label: "Sexo", check: (p) => String(p?.sexAtBirth || "").trim().length > 0 },
+      { key: "cpfOrCns", label: "CPF/CNS", check: (p) => String(p?.cpf || "").trim().length > 0 || String(p?.cns || "").trim().length > 0 },
+      { key: "address", label: "Endereco", check: (p) => String(p?.address || "").trim().length > 0 },
+      { key: "microArea", label: "Microarea", check: (p) => String(p?.microArea || "").trim().length > 0 },
+      { key: "teamId", label: "Equipe", check: (p) => String(p?.teamId || "").trim().length > 0 },
+      { key: "assignedAcsId", label: "ACS", check: (p) => String(p?.assignedAcsId || "").trim().length > 0 },
+    ];
+    const pendingByField = fields.reduce((acc, field) => ({ ...acc, [field.key]: 0 }), {});
+    const rows = filtered.map((p) => {
+      const missing = fields.filter((f) => !f.check(p)).map((f) => f.label);
+      fields.forEach((f) => { if (!f.check(p)) pendingByField[f.key] += 1; });
+      return {
+        id: p.id,
+        name: p.name || "Paciente sem nome",
+        cpf: p.cpf || "-",
+        cns: p.cns || "-",
+        missing,
+        missingCount: missing.length,
+      };
+    }).sort((a, b) => b.missingCount - a.missingCount || a.name.localeCompare(b.name));
+    const incompleteRows = rows.filter((row) => row.missingCount > 0);
+    return {
+      fields,
+      rows,
+      incompleteRows,
+      completeCount: rows.length - incompleteRows.length,
+      incompleteCount: incompleteRows.length,
+      totalMissing: rows.reduce((sum, row) => sum + row.missingCount, 0),
+      pendingByField,
+      topPending: incompleteRows.slice(0, 12),
+    };
+  }, [filtered]);
+
   return (
     <div style={{ padding:"1.5rem 2rem", display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:".75rem" }}>
@@ -2596,6 +2633,8 @@ export function ReportsPageNew({ patients, users, templates, protocolByPatient }
           { label:"ACS", value:users.filter(u=>u.role==="acs").length, icon:"🏃", color:T.teal, bg:T.tealL },
           { label:"Pendências protocolo", value:protocolReport.totalPending, icon:"📌", color:protocolReport.totalPending ? T.amber : T.green, bg:protocolReport.totalPending ? T.amberL : T.greenL },
           { label:"Sem resumo", value:protocolReport.withoutSummary, icon:"📄", color:protocolReport.withoutSummary ? T.amber : T.green, bg:protocolReport.withoutSummary ? T.amberL : T.greenL },
+          { label:"Cadastro e-SUS completo", value:esusReport.completeCount, icon:"ES", color:T.green, bg:T.greenL },
+          { label:"Pendencias e-SUS", value:esusReport.totalMissing, icon:"!", color:esusReport.totalMissing ? T.rose : T.green, bg:esusReport.totalMissing ? T.roseL : T.greenL },
         ].map(k => (
           <Card key={k.label} style={{ padding:".85rem 1rem", flex:"1 1 120px", minWidth:100 }}>
             <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
@@ -2649,6 +2688,57 @@ export function ReportsPageNew({ patients, users, templates, protocolByPatient }
           ) : reportActions.map((text, i) => (
             <AlertBanner key={i} type={i === 0 ? "warning" : "info"}>{text}</AlertBanner>
           ))}
+        </div>
+      </Card>
+
+      <Card style={{ padding:"1.25rem" }}>
+        <SectionHeader title="Preenchimento e-SUS APS" sub="Pendencias de cadastro para facilitar envio e consolidacao no e-SUS" icon="ESUS" />
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:".7rem" }}>
+          {[
+            { label:"Cadastros completos", value:esusReport.completeCount, color:T.green, bg:T.greenL },
+            { label:"Cadastros com pendencia", value:esusReport.incompleteCount, color:esusReport.incompleteCount?T.amber:T.green, bg:esusReport.incompleteCount?T.amberL:T.greenL },
+            { label:"Pendencias totais", value:esusReport.totalMissing, color:esusReport.totalMissing?T.rose:T.green, bg:esusReport.totalMissing?T.roseL:T.greenL },
+          ].map(item => (
+            <div key={item.label} style={{ padding:".75rem .85rem", borderRadius:T.r, border:`1px solid ${item.color}40`, background:item.bg }}>
+              <div style={{ fontSize:"1.25rem", fontWeight:900, color:item.color }}>{item.value}</div>
+              <div style={{ fontSize:".72rem", color:T.text2 }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop:".85rem", display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:".5rem" }}>
+          {esusReport.fields.map((field) => (
+            <div key={field.key} style={{ padding:".5rem .65rem", borderRadius:T.r, border:`1px solid ${T.border}`, background:T.surface2 }}>
+              <div style={{ fontSize:".7rem", color:T.text3 }}>{field.label}</div>
+              <div style={{ fontSize:".95rem", fontWeight:800, color: esusReport.pendingByField[field.key] ? T.amber : T.green }}>
+                {esusReport.pendingByField[field.key]} pendencia(s)
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop:".9rem", overflowX:"auto" }}>
+          {esusReport.topPending.length === 0 ? (
+            <AlertBanner type="success">Todos os pacientes do recorte atual estao com cadastro essencial preenchido para e-SUS.</AlertBanner>
+          ) : (
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:".8rem" }}>
+              <thead>
+                <tr style={{ background:T.surface2 }}>
+                  {["Paciente","CPF","CNS","Pendencias"].map((h)=>(
+                    <th key={h} style={{ padding:".55rem .7rem", textAlign:"left", fontWeight:700, color:T.text2, borderBottom:`1px solid ${T.border}`, whiteSpace:"nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {esusReport.topPending.map((row, i) => (
+                  <tr key={row.id} style={{ background:i%2===0?T.surface:T.surface2 }}>
+                    <td style={{ padding:".55rem .7rem", fontWeight:700, color:T.ink }}>{row.name}</td>
+                    <td style={{ padding:".55rem .7rem", color:T.text2 }}>{row.cpf}</td>
+                    <td style={{ padding:".55rem .7rem", color:T.text2 }}>{row.cns}</td>
+                    <td style={{ padding:".55rem .7rem", color:T.text3 }}>{row.missing.join(", ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </Card>
 
@@ -2761,3 +2851,4 @@ export function DiagnosticsPageNew({ apiHealth, token, user, patients, users, te
     </div>
   );
 }
+
