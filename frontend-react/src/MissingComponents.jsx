@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   listAppointments, createAppointment, deleteAppointment,
   listTasks, createTask, updateTaskStatus,
@@ -7,13 +7,13 @@ import {
   createRecord, getPatientHistory,
 } from "./api";
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   DESIGN SYSTEM â€” SIGUS v2
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — SIGUS v2
    Paleta: slate-dark + teal + tokens refinados
-   Tipografia: 'DM Sans' + 'IBM Plex Mono' (jÃ¡ carregados no App)
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   Tipografia: 'DM Sans' + 'IBM Plex Mono' (já carregados no App)
+═══════════════════════════════════════════════════════════════════════════ */
 const DS = {
-  // Cores base (lidas como CSS vars quando disponÃ­veis, fallback aqui)
+  // Cores base (lidas como CSS vars quando disponíveis, fallback aqui)
   teal: { 50: "#f0fdfa", 100: "#ccfbf1", 200: "#99f6e4", 400: "#2dd4bf", 500: "#14b8a6", 600: "#0d9488", 700: "#0f766e" },
   slate: { 50: "#f8fafc", 100: "#f1f5f9", 200: "#e2e8f0", 300: "#cbd5e1", 400: "#94a3b8", 500: "#64748b", 600: "#475569", 700: "#334155", 800: "#1e293b", 900: "#0f172a" },
   red:   { 50: "#fef2f2", 100: "#fee2e2", 300: "#fca5a5", 500: "#ef4444", 700: "#b91c1c" },
@@ -24,7 +24,7 @@ const DS = {
 };
 
 const css = {
-  // Componentes reutilizÃ¡veis como objetos de estilo
+  // Componentes reutilizáveis como objetos de estilo
   card: {
     background: "var(--surface, #fff)",
     border: "1px solid var(--border, #e2e8f0)",
@@ -100,9 +100,9 @@ const css = {
   },
 };
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ═══════════════════════════════════════════════════════════════════════════
    HELPERS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+═══════════════════════════════════════════════════════════════════════════ */
 function fmtDate(v) {
   if (!v) return "-";
   try {
@@ -144,9 +144,9 @@ function calcAge(birthDate) {
 }
 function roleLabel(role) {
   return {
-    nurse_manager: "Enfermeira", doctor: "MÃ©dico(a)", acs: "ACS",
-    pharmacist: "FarmacÃªutico(a)", pharmacy_tech: "TÃ©c. de FarmÃ¡cia",
-    nursing_tech: "TÃ©c. Enfermagem", receptionist: "Recepcionista",
+    nurse_manager: "Enfermeira", doctor: "Médico(a)", acs: "ACS",
+    pharmacist: "Farmacêutico(a)", pharmacy_tech: "Téc. de Farmácia",
+    nursing_tech: "Téc. Enfermagem", receptionist: "Recepcionista",
     dentist: "Dentista", gestor: "Gestor(a) UBS",
   }[String(role || "").toLowerCase()] || role || "-";
 }
@@ -171,9 +171,9 @@ function matchesSearch(p, q) {
 const readLS = (key, def) => { try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : def; } catch { return def; } };
 const writeLS = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ═══════════════════════════════════════════════════════════════════════════
    ATOMIC UI COMPONENTS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+═══════════════════════════════════════════════════════════════════════════ */
 
 function Avatar({ name, size = 36, color = "var(--teal-600, #0d9488)" }) {
   return (
@@ -195,7 +195,7 @@ function Badge({ children, color = DS.slate[500], bg = DS.slate[100], border = D
 function PriorityBadge({ priority }) {
   const map = {
     urgent: { label: "Urgente", color: DS.red[700], bg: DS.red[50], border: DS.red[100] },
-    high:   { label: "PrioritÃ¡rio", color: DS.amber[700], bg: DS.amber[50], border: DS.amber[100] },
+    high:   { label: "Prioritário", color: DS.amber[700], bg: DS.amber[50], border: DS.amber[100] },
     normal: { label: "Normal", color: DS.blue[700], bg: DS.blue[50], border: DS.blue[100] },
     elective:{ label: "Eletivo", color: DS.slate[600], bg: DS.slate[50], border: DS.slate[200] },
   };
@@ -210,7 +210,7 @@ function StatusBadge({ status }) {
     completed: { label: "Realizado",  color: DS.green[700], bg: DS.green[50],  border: DS.green[100] },
     cancelled: { label: "Cancelado",  color: DS.slate[500], bg: DS.slate[100], border: DS.slate[200] },
     in_progress:{ label: "Em andamento", color: DS.purple[700], bg: DS.purple[50], border: DS.purple[100] },
-    done:      { label: "ConcluÃ­do",  color: DS.green[700], bg: DS.green[50],  border: DS.green[100] },
+    done:      { label: "Concluído",  color: DS.green[700], bg: DS.green[50],  border: DS.green[100] },
     waiting:   { label: "Aguardando", color: DS.blue[700],  bg: DS.blue[50],   border: DS.blue[100] },
     called:    { label: "Em atendimento", color: DS.green[700], bg: DS.green[50], border: DS.green[100] },
   };
@@ -257,7 +257,10 @@ function Modal({ title, subtitle, onClose, children, maxWidth = 500 }) {
 function FormField({ label, required, children }) {
   return (
     <label style={css.label}>
-      {label}{required && <span style={{ color: DS.red[500] }}> *</span>}
+      <span style={{ display: "inline-flex", alignItems: "center", gap: ".2rem" }}>
+        <span>{label}</span>
+        {required && <span style={{ color: DS.red[500] }}>*</span>}
+      </span>
       {children}
     </label>
   );
@@ -299,7 +302,7 @@ function KpiCard({ icon, label, value, color, trend }) {
     <div style={{ ...css.card, padding: "1.1rem 1.25rem", display: "flex", flexDirection: "column", gap: ".5rem" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: "1.1rem" }}>{icon}</span>
-        {trend && <span style={{ fontSize: ".7rem", fontWeight: 700, color: trend > 0 ? DS.green[600] : DS.red[500], background: trend > 0 ? DS.green[50] : DS.red[50], padding: "1px 6px", borderRadius: 999 }}>{trend > 0 ? "â†‘" : "â†“"} {Math.abs(trend)}%</span>}
+        {trend && <span style={{ fontSize: ".7rem", fontWeight: 700, color: trend > 0 ? DS.green[600] : DS.red[500], background: trend > 0 ? DS.green[50] : DS.red[50], padding: "1px 6px", borderRadius: 999 }}>{trend > 0 ? "↑" : "↓"} {Math.abs(trend)}%</span>}
       </div>
       <div style={{ fontSize: "1.85rem", fontWeight: 900, color: color || "var(--ink, #0f172a)", letterSpacing: "-.03em", lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: ".72rem", fontWeight: 600, color: "var(--text-3, #64748b)", textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</div>
@@ -307,7 +310,7 @@ function KpiCard({ icon, label, value, color, trend }) {
   );
 }
 
-function SearchInput({ value, onChange, placeholder = "Buscarâ€¦" }) {
+function SearchInput({ value, onChange, placeholder = "Buscar…" }) {
   return (
     <div style={{ position: "relative" }}>
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", left: ".85rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-3, #64748b)", pointerEvents: "none" }}>
@@ -320,9 +323,14 @@ function SearchInput({ value, onChange, placeholder = "Buscarâ€¦" }) {
   );
 }
 
-function PatientAutocompleteField({ patients, search, setSearch, selectedId, onSelect, placeholder = "Nome, CPF ou telefone…", required }) {
+function PatientAutocompleteField({ patients, search, setSearch, selectedId, onSelect, placeholder = "Nome, CPF ou telefone...", required }) {
   const selectedPatient = (patients || []).find(p => p.id === selectedId) || null;
-  const options = useMemo(() => (patients || []).filter(p => matchesSearch(p, search)).slice(0, 30), [patients, search]);
+  const options = useMemo(() => {
+    const q = normalizeSearch(search);
+    return (patients || [])
+      .filter(p => !q || normalizeSearch(p.name || "").includes(q))
+      .slice(0, 30);
+  }, [patients, search]);
   const showResults = search.trim().length > 0 &&
     (!selectedPatient || normalizeSearch(search) !== normalizeSearch(selectedPatient.name || ""));
 
@@ -334,7 +342,7 @@ function PatientAutocompleteField({ patients, search, setSearch, selectedId, onS
           <Avatar name={selectedPatient.name} size={26} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--teal-700, #0f766e)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{selectedPatient.name}</div>
-            <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{selectedPatient.phone || "—"}</div>
+            <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{selectedPatient.phone || "-"}</div>
           </div>
           <button type="button" onClick={() => { onSelect(""); setSearch(""); }} style={{ ...css.btnGhost, fontSize: ".72rem", padding: ".2rem .4rem" }}>
             Limpar
@@ -351,7 +359,7 @@ function PatientAutocompleteField({ patients, search, setSearch, selectedId, onS
               <Avatar name={p.name} size={26} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--ink, #0f172a)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{p.phone || "—"}{p.cpf ? ` · ${p.cpf}` : ""}</div>
+                <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{p.phone || "-"}{p.cpf ? ` | ${p.cpf}` : ""}</div>
               </div>
             </button>
           ))}
@@ -376,9 +384,9 @@ function PageHeader({ icon, title, subtitle, actions }) {
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ═══════════════════════════════════════════════════════════════════════════
    1. NOTIFICATION BELL
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+═══════════════════════════════════════════════════════════════════════════ */
 export function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, onNavigate }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -398,7 +406,7 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
       if (!s) return;
       const pending = (s.pending?.visits || 0) + (s.pending?.consultations || 0) + (s.pending?.vaccines || 0);
       if (pending > 0) {
-        out.push({ id: "prot-" + p.id, type: "danger", title: "Protocolo pendente", detail: p.name + " â€“ " + pending + " item(s)", patientId: p.id });
+        out.push({ id: "prot-" + p.id, type: "danger", title: "Protocolo pendente", detail: p.name + " – " + pending + " item(s)", patientId: p.id });
       }
     });
     (pharmacyStock || []).forEach(s => {
@@ -426,7 +434,7 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
     <div ref={ref} style={{ position: "relative" }}>
       <button onClick={() => setOpen(o => !o)}
         style={{ position: "relative", background: open ? "var(--surface-2, #f8fafc)" : "none", border: "1px solid " + (open ? "var(--border, #e2e8f0)" : "transparent"), cursor: "pointer", padding: ".4rem", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, color: "var(--text-2, #334155)", transition: "all .15s" }}
-        title="NotificaÃ§Ãµes">
+        title="Notificações">
         <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
           <path d="M8 1a5 5 0 015 5v2.5l1 2H2l1-2V6a5 5 0 015-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
           <path d="M6.5 13a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -441,13 +449,13 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
       {open && (
         <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, width: 340, background: "var(--surface, #fff)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 16, boxShadow: "0 12px 40px rgba(0,0,0,.13)", zIndex: 1000, overflow: "hidden" }}>
           <div style={{ padding: ".75rem 1.1rem", borderBottom: "1px solid var(--border, #e2e8f0)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>NotificaÃ§Ãµes</span>
+            <span style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>Notificações</span>
             <Badge color={DS.slate[500]} bg={DS.slate[100]} border={DS.slate[200]}>{count}</Badge>
           </div>
           {count === 0 ? (
             <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-3, #64748b)", fontSize: ".82rem" }}>
-              <div style={{ fontSize: "1.5rem", marginBottom: ".5rem" }}>ðŸ””</div>
-              Nenhuma notificaÃ§Ã£o pendente
+              <div style={{ fontSize: "1.5rem", marginBottom: ".5rem" }}>🔔</div>
+              Nenhuma notificação pendente
             </div>
           ) : (
             <ul style={{ listStyle: "none", margin: 0, padding: ".3rem 0", maxHeight: 360, overflowY: "auto" }}>
@@ -475,9 +483,9 @@ export function NotificationBell({ patients, protocolByPatient, pharmacyStock, a
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   2. QUEUE PAGE â€” Fila de Espera / RecepÃ§Ã£o
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. QUEUE PAGE — Fila de Espera / Recepção
+═══════════════════════════════════════════════════════════════════════════ */
 const QUEUE_KEY = "saudeubs_queue_v1";
 
 function QueueCard({ entry, onCall, onFinish, onRemove, position, priorityColor, priorityLabel }) {
@@ -499,7 +507,7 @@ function QueueCard({ entry, onCall, onFinish, onRemove, position, priorityColor,
     onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}>
       {position !== undefined && (
         <span style={{ fontSize: ".88rem", fontWeight: 900, color: "var(--text-3, #64748b)", minWidth: 22, textAlign: "center" }}>
-          {entry.status === "called" ? "â†’" : position + 1}
+          {entry.status === "called" ? "→" : position + 1}
         </span>
       )}
       <Avatar name={entry.patientName} size={36} color={entry.status === "called" ? DS.green[600] : "var(--teal-600, #0d9488)"} />
@@ -507,7 +515,7 @@ function QueueCard({ entry, onCall, onFinish, onRemove, position, priorityColor,
         <div style={{ fontWeight: 700, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>{entry.patientName}</div>
         <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", display: "flex", gap: ".5rem", flexWrap: "wrap", marginTop: ".1rem" }}>
           <span>{entry.reason}</span>
-          <span>Â·</span>
+          <span>·</span>
           <span style={{ color: isOverdue ? DS.amber[700] : undefined, fontWeight: isOverdue ? 700 : 400 }}>{elapsed}min</span>
           {entry.incompletePatient && <Badge color={DS.amber[700]} bg={DS.amber[50]} border={DS.amber[100]}>Cadastro incompleto</Badge>}
         </div>
@@ -574,18 +582,18 @@ export function QueuePage({ patients, users, user, token, onNewPatient }) {
   const called = queue.filter(e => e.status === "called");
   const filtered = patients.filter(p => matchesSearch(p, search));
   const priorityColor = { urgent: DS.red[500], high: DS.amber[500], normal: DS.blue[500] };
-  const priorityLabel = { urgent: "Urgente", high: "PrioritÃ¡rio", normal: "Normal" };
+  const priorityLabel = { urgent: "Urgente", high: "Prioritário", normal: "Normal" };
 
   const stats = [
-    { icon: "â³", label: "Aguardando", value: waiting.length, color: DS.blue[500] },
-    { icon: "ðŸ©º", label: "Em atendimento", value: called.length, color: DS.green[600] },
-    { icon: "ðŸ‘¥", label: "Total hoje", value: queue.length, color: DS.slate[500] },
+    { icon: "⏳", label: "Aguardando", value: waiting.length, color: DS.blue[500] },
+    { icon: "🩺", label: "Em atendimento", value: called.length, color: DS.green[600] },
+    { icon: "👥", label: "Total hoje", value: queue.length, color: DS.slate[500] },
   ];
 
   return (
     <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
       <PageHeader
-        icon="ðŸ¥"
+        icon="🏥"
         title="Fila de Espera"
         subtitle={new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
         actions={
@@ -626,7 +634,7 @@ export function QueuePage({ patients, users, user, token, onNewPatient }) {
       {/* Aguardando */}
       <div style={{ ...css.sectionTitle, marginBottom: ".65rem" }}>Aguardando ({waiting.length})</div>
       {waiting.length === 0
-        ? <EmptyState icon="ðŸŽ‰" title="Fila vazia" subtitle="Nenhum paciente aguardando no momento" />
+        ? <EmptyState icon="🎉" title="Fila vazia" subtitle="Nenhum paciente aguardando no momento" />
         : waiting.map((entry, idx) => (
           <QueueCard key={entry.id} entry={entry} position={idx} priorityColor={priorityColor} priorityLabel={priorityLabel}
             onCall={() => saveQueue(queue.map(q => q.id === entry.id ? { ...q, status: "called" } : q))}
@@ -636,9 +644,9 @@ export function QueuePage({ patients, users, user, token, onNewPatient }) {
 
       {/* Modal de registro de chegada */}
       {adding && (
-        <Modal title="Registrar chegada" subtitle="Adicione um paciente Ã  fila de atendimento" onClose={() => setAdding(false)}>
+        <Modal title="Registrar chegada" subtitle="Adicione um paciente à fila de atendimento" onClose={() => setAdding(false)}>
           <Tabs
-            tabs={[["existing", "Paciente cadastrado"], ["quick", "Cadastro rÃ¡pido"]]}
+            tabs={[["existing", "Paciente cadastrado"], ["quick", "Cadastro rápido"]]}
             value={addMode}
             onChange={setAddMode}
           />
@@ -668,19 +676,19 @@ export function QueuePage({ patients, users, user, token, onNewPatient }) {
             )}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
               <FormField label="Motivo">
-                <input value={form.reason} onChange={e => setForm(s => ({ ...s, reason: e.target.value }))} style={css.input} placeholder="Ex: consulta, exameâ€¦" />
+                <input value={form.reason} onChange={e => setForm(s => ({ ...s, reason: e.target.value }))} style={css.input} placeholder="Ex: consulta, exame…" />
               </FormField>
               <FormField label="Prioridade">
                 <select value={form.priority} onChange={e => setForm(s => ({ ...s, priority: e.target.value }))} style={css.input}>
                   <option value="normal">Normal</option>
-                  <option value="high">PrioritÃ¡rio</option>
+                  <option value="high">Prioritário</option>
                   <option value="urgent">Urgente</option>
                 </select>
               </FormField>
             </div>
             <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end", paddingTop: ".5rem" }}>
               <button type="button" onClick={() => setAdding(false)} style={css.btnSecondary}>Cancelar</button>
-              <button type="submit" style={css.btnPrimary} disabled={busy}>{busy ? "Adicionandoâ€¦" : "Adicionar Ã  fila"}</button>
+              <button type="submit" style={css.btnPrimary} disabled={busy}>{busy ? "Adicionando…" : "Adicionar à fila"}</button>
             </div>
           </form>
         </Modal>
@@ -689,9 +697,9 @@ export function QueuePage({ patients, users, user, token, onNewPatient }) {
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   4. AGENDA PAGE â€” Agendamentos
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════════
+   4. AGENDA PAGE — Agendamentos
+═══════════════════════════════════════════════════════════════════════════ */
 const AGENDA_KEY = "saudeubs_agenda_v1";
 
 export function AgendaPage({ patients, users, user, token, teams, onNewPatient, onPatientCreated, onNavigatePatient }) {
@@ -730,7 +738,7 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
   async function submitForm(e) {
     e.preventDefault();
     setError("");
-    if (!form.patientId || !form.time) { setError("Selecione paciente e horÃ¡rio."); return; }
+    if (!form.patientId || !form.time) { setError("Selecione paciente e horário."); return; }
     setBusy(true);
     try {
       const patient = patients.find(p => p.id === form.patientId);
@@ -763,14 +771,14 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
   const filteredPatients = patients.filter(p => matchesSearch(p, search));
   const typeLabel = { consultation: "Consulta", return: "Retorno", exam: "Exame", procedure: "Procedimento", visit: "Visita domiciliar" };
   const typeColor = { consultation: DS.blue[500], return: DS.purple[500], exam: DS.amber[500], procedure: DS.red[500], visit: DS.green[600] };
-  const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "SÃ¡b"];
+  const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   const hours = Array.from({ length: 10 }, (_, i) => `${(7 + i).toString().padStart(2, "0")}:00`);
 
   return (
     <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
       <PageHeader
-        icon="ðŸ“…"
+        icon="📅"
         title="Agenda"
         subtitle={fmtDate(selectedDate)}
         actions={
@@ -839,7 +847,7 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
       {/* Appointment list */}
       <div style={css.card}>
         {dayAppointments.length === 0 ? (
-          <EmptyState icon="ðŸ“­" title="Nenhum agendamento" subtitle={`Nenhum evento marcado para ${fmtDate(selectedDate)}`}
+          <EmptyState icon="📭" title="Nenhum agendamento" subtitle={`Nenhum evento marcado para ${fmtDate(selectedDate)}`}
             action={<button onClick={() => setShowForm(true)} style={{ ...css.btnPrimary, margin: "0 auto" }}>+ Agendar</button>} />
         ) : (
           <div>
@@ -847,7 +855,7 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
               <span style={css.sectionTitle}>Hora</span>
               <span />
               <span style={css.sectionTitle}>Paciente</span>
-              <span style={css.sectionTitle}>Tipo Â· Profissional</span>
+              <span style={css.sectionTitle}>Tipo · Profissional</span>
               <span />
             </div>
             {dayAppointments.map((a, idx) => {
@@ -896,7 +904,7 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
               />
             </FormField>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
-              <FormField label="HorÃ¡rio" required>
+              <FormField label="Horário" required>
                 <input type="time" value={form.time} onChange={e => setForm(s => ({ ...s, time: e.target.value }))} required style={css.input} />
               </FormField>
               <FormField label="Tipo">
@@ -907,20 +915,20 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
             </div>
             <FormField label="Profissional responsável">
               <select value={form.professional} onChange={e => setForm(s => ({ ...s, professional: e.target.value }))} style={css.input}>
-                <option value="">Selecionar profissional…</option>
+                <option value="">Selecionar profissional...</option>
                 {users
                   .filter(u => ["doctor","dentist","nurse_manager","nursing_tech","acs","pharmacist","pharmacy_tech"].includes(String(u.role||"")))
-                  .map(u => <option key={u.id} value={u.name}>{u.name} — {roleLabel(u.role)}</option>)
+                  .map(u => <option key={u.id} value={u.name}>{u.name} - {roleLabel(u.role)}</option>)
                 }
               </select>
             </FormField>
-            <FormField label="ObservaÃ§Ãµes">
-              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={2} style={{ ...css.input, resize: "vertical" }} placeholder="InstruÃ§Ãµes, preparo, observaÃ§Ãµesâ€¦" />
+            <FormField label="Observações">
+              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={2} style={{ ...css.input, resize: "vertical" }} placeholder="Instruções, preparo, observações…" />
             </FormField>
             {error && <p style={{ color: DS.red[500], fontSize: ".8rem", margin: 0, padding: ".5rem .75rem", background: DS.red[50], borderRadius: 8, border: `1px solid ${DS.red[100]}` }}>{error}</p>}
             <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
               <button type="button" onClick={() => setShowForm(false)} style={css.btnSecondary}>Cancelar</button>
-              <button type="submit" disabled={busy} style={css.btnPrimary}>{busy ? "Agendandoâ€¦" : "Confirmar agendamento"}</button>
+              <button type="submit" disabled={busy} style={css.btnPrimary}>{busy ? "Agendando…" : "Confirmar agendamento"}</button>
             </div>
           </form>
         </Modal>
@@ -929,9 +937,9 @@ export function AgendaPage({ patients, users, user, token, teams, onNewPatient, 
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   7. CHART PAGE â€” ProntuÃ¡rio centralizado
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════════
+   7. CHART PAGE — Prontuário centralizado
+═══════════════════════════════════════════════════════════════════════════ */
 export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
   const authHeader = { "Authorization": `Bearer ${token}` };
   const [search, setSearch] = useState("");
@@ -959,12 +967,12 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
   const filteredHistory = history.filter(h => filterType === "all" || h.type === filterType);
 
   const typeInfo = {
-    consultation: { label: "Consulta",  color: DS.blue[500],   icon: "ðŸ©º" },
-    visit:        { label: "Visita",    color: DS.green[600],  icon: "ðŸ " },
-    vaccine:      { label: "Vacina",    color: DS.purple[500], icon: "ðŸ’‰" },
-    exam:         { label: "Exame",     color: DS.amber[500],  icon: "ðŸ”¬" },
-    task:         { label: "Tarefa",    color: DS.slate[500],  icon: "ðŸ“‹" },
-    message:      { label: "Mensagem",  color: DS.slate[400],  icon: "ðŸ’¬" },
+    consultation: { label: "Consulta",  color: DS.blue[500],   icon: "🩺" },
+    visit:        { label: "Visita",    color: DS.green[600],  icon: "🏠" },
+    vaccine:      { label: "Vacina",    color: DS.purple[500], icon: "💉" },
+    exam:         { label: "Exame",     color: DS.amber[500],  icon: "🔬" },
+    task:         { label: "Tarefa",    color: DS.slate[500],  icon: "📋" },
+    message:      { label: "Mensagem",  color: DS.slate[400],  icon: "💬" },
   };
 
   const typeCounts = useMemo(() => {
@@ -975,13 +983,13 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: "1.25rem", padding: "1.75rem", maxWidth: 1200, margin: "0 auto", minHeight: "calc(100vh - 80px)" }}>
-      {/* Sidebar â€” lista de pacientes */}
+      {/* Sidebar — lista de pacientes */}
       <div style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
         <div style={{ ...css.card, padding: "1rem" }}>
           <div style={{ fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)", marginBottom: ".75rem", display: "flex", alignItems: "center", gap: ".5rem" }}>
-            <span>ðŸ“‹</span> ProntuÃ¡rio
+            <span>📋</span> Prontuário
           </div>
-          <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar pacienteâ€¦" />
+          <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar paciente…" />
         </div>
         <div style={{ ...css.card, overflow: "hidden", flex: 1 }}>
           <div style={{ maxHeight: "calc(100vh - 260px)", overflowY: "auto" }}>
@@ -999,7 +1007,7 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
                 <Avatar name={p.name} size={32} color={selectedId === p.id ? "var(--teal-600, #0d9488)" : DS.slate[600]} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: ".82rem", color: "var(--ink, #0f172a)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                  <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{calcAge(p.birthDate) || "â€”"}{p.phone ? " Â· " + p.phone : ""}</div>
+                  <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{calcAge(p.birthDate) || "—"}{p.phone ? " · " + p.phone : ""}</div>
                 </div>
                 {selectedId === p.id && (
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: "var(--teal-600, #0d9488)", flexShrink: 0 }}>
@@ -1013,19 +1021,19 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
         </div>
       </div>
 
-      {/* Painel principal â€” prontuÃ¡rio */}
+      {/* Painel principal — prontuário */}
       {selectedPatient ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {/* CabeÃ§alho do paciente */}
+          {/* Cabeçalho do paciente */}
           <div style={{ ...css.card, padding: "1.25rem 1.5rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <Avatar name={selectedPatient.name} size={52} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 900, fontSize: "1.1rem", color: "var(--ink, #0f172a)", letterSpacing: "-.01em" }}>{selectedPatient.name}</div>
                 <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap", fontSize: ".78rem", color: "var(--text-3, #64748b)", marginTop: ".3rem" }}>
-                  {calcAge(selectedPatient.birthDate) && <span>ðŸŽ‚ {calcAge(selectedPatient.birthDate)}</span>}
+                  {calcAge(selectedPatient.birthDate) && <span>🎂 {calcAge(selectedPatient.birthDate)}</span>}
                   {selectedPatient.cpf && <span>CPF: {selectedPatient.cpf}</span>}
-                  {selectedPatient.phone && <span>ðŸ“± {selectedPatient.phone}</span>}
+                  {selectedPatient.phone && <span>📱 {selectedPatient.phone}</span>}
                   {selectedPatient.careCategory && <Badge color={DS.teal[700]} bg={DS.teal[50]} border={DS.teal[200]}>{selectedPatient.careCategory}</Badge>}
                 </div>
               </div>
@@ -1037,7 +1045,7 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
               </button>
             </div>
 
-            {/* Contadores de histÃ³rico */}
+            {/* Contadores de histórico */}
             {history.length > 0 && (
               <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border, #e2e8f0)" }}>
                 <button onClick={() => setFilterType("all")}
@@ -1060,21 +1068,21 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
           {/* Timeline de registros */}
           {loadingHistory ? (
             <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-3, #64748b)", fontSize: ".84rem" }}>
-              <div style={{ fontSize: "1.5rem", marginBottom: ".5rem", animation: "spin 1s linear infinite" }}>â³</div>
-              Carregando prontuÃ¡rioâ€¦
+              <div style={{ fontSize: "1.5rem", marginBottom: ".5rem", animation: "spin 1s linear infinite" }}>⏳</div>
+              Carregando prontuário…
             </div>
           ) : filteredHistory.length === 0 ? (
-            <EmptyState icon="ðŸ“„" title={history.length === 0 ? "ProntuÃ¡rio vazio" : "Nenhum registro para este filtro"} subtitle={history.length === 0 ? "Este paciente ainda nÃ£o possui registros clÃ­nicos" : "Remova o filtro para ver todos os registros"} />
+            <EmptyState icon="📄" title={history.length === 0 ? "Prontuário vazio" : "Nenhum registro para este filtro"} subtitle={history.length === 0 ? "Este paciente ainda não possui registros clínicos" : "Remova o filtro para ver todos os registros"} />
           ) : (
             <div style={{ position: "relative" }}>
               {/* Linha de timeline */}
               <div style={{ position: "absolute", left: "calc(1.5rem + 15px)", top: 0, bottom: 0, width: 2, background: "var(--border, #e2e8f0)", zIndex: 0 }} />
               <div style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
                 {filteredHistory.map((h, i) => {
-                  const ti = typeInfo[h.type] || { label: h.type, color: DS.slate[500], icon: "ðŸ“„" };
+                  const ti = typeInfo[h.type] || { label: h.type, color: DS.slate[500], icon: "📄" };
                   return (
                     <div key={h.id || i} style={{ display: "flex", gap: "1rem", position: "relative", zIndex: 1 }}>
-                      {/* Ãcone na timeline */}
+                      {/* Ícone na timeline */}
                       <div style={{ width: 32, height: 32, borderRadius: "50%", background: ti.color + "18", border: `2px solid ${ti.color}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".8rem", flexShrink: 0, marginLeft: ".5rem", marginTop: ".35rem" }}>
                         {ti.icon}
                       </div>
@@ -1092,7 +1100,7 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
                         {h.professionalName && (
                           <div style={{ fontSize: ".7rem", color: "var(--text-3, #64748b)", marginTop: ".4rem", display: "flex", gap: ".5rem" }}>
                             <span>Por: {h.professionalName}</span>
-                            {h.professionalCouncil && <span>Â· {h.professionalCouncil}</span>}
+                            {h.professionalCouncil && <span>· {h.professionalCouncil}</span>}
                           </div>
                         )}
                       </div>
@@ -1105,18 +1113,18 @@ export function ChartPage({ patients, users, user, token, onNavigatePatient }) {
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <EmptyState icon="ðŸ©º" title="Selecione um paciente" subtitle="Clique em um paciente na lista lateral para visualizar seu prontuÃ¡rio completo" />
+          <EmptyState icon="🩺" title="Selecione um paciente" subtitle="Clique em um paciente na lista lateral para visualizar seu prontuário completo" />
         </div>
       )}
     </div>
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   5. REFERRALS PAGE â€” Encaminhamentos
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. REFERRALS PAGE — Encaminhamentos
+═══════════════════════════════════════════════════════════════════════════ */
 const REFERRALS_KEY = "saudeubs_referrals_v1";
-const SPECIALTIES = ["Cardiologia","Neurologia","Ortopedia","Ginecologia","Urologia","Oftalmologia","Dermatologia","Psiquiatria","Endocrinologia","Gastroenterologia","Pneumologia","Nefrologia","Oncologia","Infectologia","Reumatologia","Fisioterapia","NutriÃ§Ã£o","Psicologia","Fonoaudiologia","Outro"];
+const SPECIALTIES = ["Cardiologia","Neurologia","Ortopedia","Ginecologia","Urologia","Oftalmologia","Dermatologia","Psiquiatria","Endocrinologia","Gastroenterologia","Pneumologia","Nefrologia","Oncologia","Infectologia","Reumatologia","Fisioterapia","Nutrição","Psicologia","Fonoaudiologia","Outro"];
 
 export function ReferralsPage({ patients, users, user }) {
   const [referrals, setReferrals] = useState(() => readLS(REFERRALS_KEY, []));
@@ -1175,7 +1183,7 @@ export function ReferralsPage({ patients, users, user }) {
   return (
     <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
       <PageHeader
-        icon="ðŸ“¤"
+        icon="📤"
         title="Encaminhamentos"
         subtitle={`${referrals.length} encaminhamento(s) registrado(s)`}
         actions={
@@ -1191,7 +1199,7 @@ export function ReferralsPage({ patients, users, user }) {
       {/* Filtros + busca */}
       <div style={{ display: "flex", gap: ".75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <SearchInput value={listSearch} onChange={e => setListSearch(e.target.value)} placeholder="Buscar por paciente, especialidadeâ€¦" />
+          <SearchInput value={listSearch} onChange={e => setListSearch(e.target.value)} placeholder="Buscar por paciente, especialidade…" />
         </div>
         <div style={{ display: "flex", gap: ".3rem", padding: ".3rem", background: "var(--surface-2, #f8fafc)", borderRadius: 12, border: "1px solid var(--border, #e2e8f0)", flexWrap: "wrap" }}>
           {[["all","Todos"],["pending","Pendentes"],["scheduled","Agendados"],["completed","Realizados"],["cancelled","Cancelados"]].map(([v, l]) => (
@@ -1204,7 +1212,7 @@ export function ReferralsPage({ patients, users, user }) {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState icon="ðŸ“­" title="Nenhum encaminhamento" subtitle={filterStatus === "all" ? "Clique em 'Novo encaminhamento' para registrar" : `Nenhum encaminhamento com status '${filterStatus}'`}
+        <EmptyState icon="📭" title="Nenhum encaminhamento" subtitle={filterStatus === "all" ? "Clique em 'Novo encaminhamento' para registrar" : `Nenhum encaminhamento com status '${filterStatus}'`}
           action={filterStatus !== "all" && <button onClick={() => setFilterStatus("all")} style={css.btnSecondary}>Ver todos</button>} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
@@ -1224,7 +1232,7 @@ export function ReferralsPage({ patients, users, user }) {
                   </div>
                   <div style={{ fontSize: ".82rem", color: "var(--text-2, #334155)", marginBottom: ".2rem" }}>{r.reason}</div>
                   {r.notes && <div style={{ fontSize: ".75rem", color: "var(--text-3, #64748b)", fontStyle: "italic" }}>{r.notes}</div>}
-                  <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)", marginTop: ".35rem" }}>Por {r.createdBy} Â· {fmtDate(r.createdAt?.slice(0, 10))}</div>
+                  <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)", marginTop: ".35rem" }}>Por {r.createdBy} · {fmtDate(r.createdAt?.slice(0, 10))}</div>
                 </div>
                 <div style={{ display: "flex", gap: ".3rem", flexShrink: 0, flexWrap: "wrap" }}>
                   {r.status === "pending" && (
@@ -1234,7 +1242,7 @@ export function ReferralsPage({ patients, users, user }) {
                   )}
                   {r.status === "scheduled" && (
                     <button onClick={() => updateStatus(r.id, "completed")} style={{ ...css.btnSecondary, padding: ".3rem .7rem", fontSize: ".72rem", color: DS.green[700], borderColor: DS.green[200] }}>
-                      âœ“ Realizado
+                      ✓ Realizado
                     </button>
                   )}
                   {r.status !== "cancelled" && (
@@ -1270,7 +1278,7 @@ export function ReferralsPage({ patients, users, user }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
               <FormField label="Especialidade" required>
                 <select value={form.specialty} onChange={e => setForm(s => ({ ...s, specialty: e.target.value }))} required style={css.input}>
-                  <option value="">Selecionarâ€¦</option>
+                  <option value="">Selecionar…</option>
                   {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </FormField>
@@ -1284,10 +1292,10 @@ export function ReferralsPage({ patients, users, user }) {
               </FormField>
             </div>
             <FormField label="Motivo do encaminhamento" required>
-              <input value={form.reason} onChange={e => setForm(s => ({ ...s, reason: e.target.value }))} required style={css.input} placeholder="Descreva o motivoâ€¦" />
+              <input value={form.reason} onChange={e => setForm(s => ({ ...s, reason: e.target.value }))} required style={css.input} placeholder="Descreva o motivo…" />
             </FormField>
-            <FormField label="ObservaÃ§Ãµes clÃ­nicas">
-              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={3} style={{ ...css.input, resize: "vertical" }} placeholder="HistÃ³rico relevante, exames, medicaÃ§Ãµes em usoâ€¦" />
+            <FormField label="Observações clínicas">
+              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={3} style={{ ...css.input, resize: "vertical" }} placeholder="Histórico relevante, exames, medicações em uso…" />
             </FormField>
             <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
               <button type="button" onClick={() => setShowForm(false)} style={css.btnSecondary}>Cancelar</button>
@@ -1300,9 +1308,9 @@ export function ReferralsPage({ patients, users, user }) {
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   10. REPORTS PAGE â€” RelatÃ³rios
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════════
+   10. REPORTS PAGE — Relatórios
+═══════════════════════════════════════════════════════════════════════════ */
 export function ReportsPage({ patients, users, templates, protocolByPatient }) {
   const [reportType, setReportType] = useState("protocol");
   const [filterCat, setFilterCat] = useState("");
@@ -1335,7 +1343,7 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
   }, [patients, users, protocolByPatient]);
 
   function exportCSV() {
-    let rows = ["Nome;Categoria;ACS;PendÃªncias;Realizados"];
+    let rows = ["Nome;Categoria;ACS;Pendências;Realizados"];
     protocolReport.forEach(p => rows.push([p.name, p.careCategory, p.acsName, p.pending, p.completed].join(";")));
     const a = document.createElement("a");
     a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(rows.join("\n"));
@@ -1350,8 +1358,8 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
   return (
     <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
       <PageHeader
-        icon="ðŸ“Š"
-        title="RelatÃ³rios"
+        icon="📊"
+        title="Relatórios"
         subtitle={`Gerado em ${now.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}`}
         actions={
           <button onClick={exportCSV} style={{ ...css.btnSecondary, gap: ".4rem" }}>
@@ -1363,12 +1371,12 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
         }
       />
 
-      {/* KPIs de relatÃ³rio */}
+      {/* KPIs de relatório */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: ".65rem", marginBottom: "1.5rem" }}>
-        <KpiCard icon="ðŸ‘¥" label="Total de pacientes" value={patients.length} color={DS.blue[500]} />
-        <KpiCard icon="âš ï¸" label="Com pendÃªncias" value={criticalCount} color={criticalCount > 10 ? DS.red[500] : DS.amber[500]} />
-        <KpiCard icon="âœ…" label="Realizados (total)" value={totalCompleted} color={DS.green[600]} />
-        <KpiCard icon="ðŸ“‹" label="PendÃªncias (total)" value={totalPending} color={totalPending > 20 ? DS.red[500] : DS.amber[500]} />
+        <KpiCard icon="👥" label="Total de pacientes" value={patients.length} color={DS.blue[500]} />
+        <KpiCard icon="⚠️" label="Com pendências" value={criticalCount} color={criticalCount > 10 ? DS.red[500] : DS.amber[500]} />
+        <KpiCard icon="✅" label="Realizados (total)" value={totalCompleted} color={DS.green[600]} />
+        <KpiCard icon="📋" label="Pendências (total)" value={totalPending} color={totalPending > 20 ? DS.red[500] : DS.amber[500]} />
       </div>
 
       {/* Tabs + filtros */}
@@ -1385,7 +1393,7 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
       {reportType === "protocol" && (
         <div style={css.card}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 120px 100px 100px", padding: ".65rem 1.25rem", background: "var(--surface-2, #f8fafc)", borderBottom: "1px solid var(--border, #e2e8f0)", gap: ".75rem" }}>
-            {["Paciente", "Categoria", "ACS", "PendÃªncias", "Realizados"].map((h, i) => (
+            {["Paciente", "Categoria", "ACS", "Pendências", "Realizados"].map((h, i) => (
               <span key={h} style={{ ...css.sectionTitle, textAlign: i > 2 ? "right" : undefined }}>{h}</span>
             ))}
           </div>
@@ -1416,7 +1424,7 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
           </div>
           <div style={{ padding: ".65rem 1.25rem", background: "var(--surface-2, #f8fafc)", borderTop: "1px solid var(--border, #e2e8f0)", display: "flex", gap: "1.5rem", fontSize: ".78rem" }}>
             <span>Total: <strong style={{ color: "var(--ink, #0f172a)" }}>{protocolReport.length}</strong> pacientes</span>
-            <span>PendÃªncias: <strong style={{ color: DS.red[500] }}>{totalPending}</strong></span>
+            <span>Pendências: <strong style={{ color: DS.red[500] }}>{totalPending}</strong></span>
             <span>Realizados: <strong style={{ color: DS.green[600] }}>{totalCompleted}</strong></span>
           </div>
         </div>
@@ -1425,7 +1433,7 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
       {reportType === "coverage" && (
         <div style={css.card}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 140px", padding: ".65rem 1.25rem", background: "var(--surface-2, #f8fafc)", borderBottom: "1px solid var(--border, #e2e8f0)", gap: ".75rem" }}>
-            {["ACS", "Pacientes", "PendÃªncias total"].map((h, i) => (
+            {["ACS", "Pacientes", "Pendências total"].map((h, i) => (
               <span key={h} style={{ ...css.sectionTitle, textAlign: i > 0 ? "right" : undefined }}>{h}</span>
             ))}
           </div>
@@ -1462,25 +1470,25 @@ export function ReportsPage({ patients, users, templates, protocolByPatient }) {
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   8. INSUMO PAGE â€” Materiais e Insumos
-   LÃ³gica de recorrÃªncia: enfermeira libera, farmacÃªutico controla estoque
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════════
+   8. INSUMO PAGE — Materiais e Insumos
+   Lógica de recorrência: enfermeira libera, farmacêutico controla estoque
+═══════════════════════════════════════════════════════════════════════════ */
 const INSUMOS_KEY     = "saudeubs_insumos_v1";
 const RECURRING_KEY   = "saudeubs_recurring_v1";    // { patientId: [{insumoId, qty, notes, addedBy, addedAt}] }
-const DELIVERIES_KEY  = "saudeubs_deliveries_v1";   // histÃ³rico de entregas
+const DELIVERIES_KEY  = "saudeubs_deliveries_v1";   // histórico de entregas
 
 const DEFAULT_INSUMOS = [
-  { id: "i1", name: "Luvas descartÃ¡veis (caixa)", unit: "cx", qty: 10, minQty: 3, category: "EPI" },
-  { id: "i2", name: "MÃ¡scara cirÃºrgica (caixa)", unit: "cx", qty: 5, minQty: 2, category: "EPI" },
-  { id: "i3", name: "Seringa 3mL", unit: "un", qty: 200, minQty: 50, category: "Material clÃ­nico" },
-  { id: "i4", name: "Agulha 25x7", unit: "un", qty: 150, minQty: 50, category: "Material clÃ­nico" },
-  { id: "i5", name: "AlgodÃ£o (rolo)", unit: "un", qty: 8, minQty: 3, category: "Material clÃ­nico" },
-  { id: "i6", name: "Esparadrapo", unit: "un", qty: 4, minQty: 2, category: "Material clÃ­nico" },
-  { id: "i7", name: "Ãlcool 70Â° (litro)", unit: "L", qty: 6, minQty: 2, category: "Higiene" },
-  { id: "i8", name: "SabÃ£o lÃ­quido (L)", unit: "L", qty: 3, minQty: 1, category: "Higiene" },
+  { id: "i1", name: "Luvas descartáveis (caixa)", unit: "cx", qty: 10, minQty: 3, category: "EPI" },
+  { id: "i2", name: "Máscara cirúrgica (caixa)", unit: "cx", qty: 5, minQty: 2, category: "EPI" },
+  { id: "i3", name: "Seringa 3mL", unit: "un", qty: 200, minQty: 50, category: "Material clínico" },
+  { id: "i4", name: "Agulha 25x7", unit: "un", qty: 150, minQty: 50, category: "Material clínico" },
+  { id: "i5", name: "Algodão (rolo)", unit: "un", qty: 8, minQty: 3, category: "Material clínico" },
+  { id: "i6", name: "Esparadrapo", unit: "un", qty: 4, minQty: 2, category: "Material clínico" },
+  { id: "i7", name: "Álcool 70° (litro)", unit: "L", qty: 6, minQty: 2, category: "Higiene" },
+  { id: "i8", name: "Sabão líquido (L)", unit: "L", qty: 3, minQty: 1, category: "Higiene" },
 ];
-const CATEGORIES_OPTIONS = ["EPI", "Material clÃ­nico", "Higiene", "Medicamento", "Equipamento", "Outro"];
+const CATEGORIES_OPTIONS = ["EPI", "Material clínico", "Higiene", "Medicamento", "Equipamento", "Outro"];
 
 export function InsumoPage({ patients, users, user }) {
   const [items, setItems]         = useState(() => readLS(INSUMOS_KEY, DEFAULT_INSUMOS));
@@ -1491,7 +1499,7 @@ export function InsumoPage({ patients, users, user }) {
   const [filterCat, setFilterCat] = useState("all");
   const [showForm, setShowForm]   = useState(false);
   const [editItem, setEditItem]   = useState(null);
-  const [form, setForm]           = useState({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clÃ­nico" });
+  const [form, setForm]           = useState({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clínico" });
   const [showAdjust, setShowAdjust] = useState(null);
   const [adjustDelta, setAdjustDelta] = useState(0);
   const [adjustReason, setAdjustReason] = useState("");
@@ -1518,7 +1526,7 @@ export function InsumoPage({ patients, users, user }) {
       saveItems([...items, { ...form, id: Date.now().toString(36), qty: Number(form.qty), minQty: Number(form.minQty) }]);
     }
     setShowForm(false); setEditItem(null);
-    setForm({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clÃ­nico" });
+    setForm({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clínico" });
   }
 
   function openEdit(item) {
@@ -1534,7 +1542,7 @@ export function InsumoPage({ patients, users, user }) {
     setShowAdjust(null); setAdjustDelta(0); setAdjustReason("");
   }
 
-  // Adicionar insumo ao paciente recorrente (sÃ³ enfermeira)
+  // Adicionar insumo ao paciente recorrente (só enfermeira)
   function addRecurringItem(e) {
     e.preventDefault();
     if (!recurringPatient || !recurringForm.insumoId) return;
@@ -1614,13 +1622,13 @@ export function InsumoPage({ patients, users, user }) {
   return (
     <div style={{ padding: "1.75rem", maxWidth: 1200, margin: "0 auto" }}>
       <PageHeader
-        icon="ðŸ“¦"
+        icon="📦"
         title="Insumos e Materiais"
-        subtitle="Controle de estoque e dispensaÃ§Ã£o"
+        subtitle="Controle de estoque e dispensação"
         actions={
           <div style={{ display: "flex", gap: ".5rem" }}>
             {canPharm && (
-              <button onClick={() => { setEditItem(null); setForm({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clÃ­nico" }); setShowForm(true); }}
+              <button onClick={() => { setEditItem(null); setForm({ name: "", unit: "un", qty: 0, minQty: 0, category: "Material clínico" }); setShowForm(true); }}
                 style={css.btnPrimary}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -1632,19 +1640,19 @@ export function InsumoPage({ patients, users, user }) {
         }
       />
 
-      {/* Alertas crÃ­ticos */}
+      {/* Alertas críticos */}
       {critical.length > 0 && (
         <div style={{ background: DS.red[50], border: `1px solid ${DS.red[100]}`, borderRadius: 14, padding: "1rem 1.25rem", marginBottom: "1.25rem", display: "flex", alignItems: "flex-start", gap: ".85rem" }}>
-          <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>ðŸš¨</span>
+          <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>🚨</span>
           <div>
-            <div style={{ fontWeight: 800, fontSize: ".88rem", color: DS.red[700], marginBottom: ".25rem" }}>Estoque crÃ­tico â€” {critical.length} item(s)</div>
-            <div style={{ fontSize: ".8rem", color: DS.red[700] }}>{critical.map(i => i.name).join(" Â· ")}</div>
+            <div style={{ fontWeight: 800, fontSize: ".88rem", color: DS.red[700], marginBottom: ".25rem" }}>Estoque crítico — {critical.length} item(s)</div>
+            <div style={{ fontSize: ".8rem", color: DS.red[700] }}>{critical.map(i => i.name).join(" · ")}</div>
           </div>
         </div>
       )}
       {low.length > 0 && critical.length === 0 && (
         <div style={{ background: DS.amber[50], border: `1px solid ${DS.amber[100]}`, borderRadius: 14, padding: ".85rem 1.25rem", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: ".75rem" }}>
-          <span>âš ï¸</span>
+          <span>⚠️</span>
           <span style={{ fontSize: ".82rem", fontWeight: 700, color: DS.amber[700] }}>{low.length} item(s) com estoque baixo: {low.map(i => i.name).join(", ")}</span>
         </div>
       )}
@@ -1655,20 +1663,20 @@ export function InsumoPage({ patients, users, user }) {
           tabs={[
             ["stock", "Estoque", items.length],
             ["recurring", "Pacientes Recorrentes", recurringPatients.length],
-            ["history", "HistÃ³rico de Entregas", deliveries.length],
+            ["history", "Histórico de Entregas", deliveries.length],
           ]}
           value={activeTab}
           onChange={setActiveTab}
         />
       </div>
 
-      {/* â”€â”€ ABA: ESTOQUE â”€â”€ */}
+      {/* ── ABA: ESTOQUE ── */}
       {activeTab === "stock" && (
         <>
           {/* Busca + filtros */}
           <div style={{ display: "flex", gap: ".75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ flex: 1, minWidth: 220 }}>
-              <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Pesquisar por nome do insumoâ€¦" />
+              <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Pesquisar por nome do insumo…" />
             </div>
             <div style={{ display: "flex", gap: ".3rem", padding: ".3rem", background: "var(--surface-2, #f8fafc)", borderRadius: 12, border: "1px solid var(--border, #e2e8f0)", flexWrap: "wrap" }}>
               <button onClick={() => setFilterCat("all")} style={{ padding: ".35rem .75rem", borderRadius: 9, border: "none", cursor: "pointer", fontSize: ".75rem", fontWeight: 700, background: filterCat === "all" ? "var(--teal-600, #0d9488)" : "transparent", color: filterCat === "all" ? "#fff" : "var(--text-3, #64748b)" }}>Todos</button>
@@ -1687,7 +1695,7 @@ export function InsumoPage({ patients, users, user }) {
               const isCrit = qty <= min;
               const isLow = qty <= min * 1.5 && qty > min;
               const barColor = isCrit ? DS.red[500] : isLow ? DS.amber[500] : DS.green[600];
-              const statusLabel = isCrit ? (qty === 0 ? "Zerado" : "CrÃ­tico") : isLow ? "Baixo" : "OK";
+              const statusLabel = isCrit ? (qty === 0 ? "Zerado" : "Crítico") : isLow ? "Baixo" : "OK";
 
               return (
                 <div key={item.id} style={{ ...css.card, ...css.cardHover, padding: "1.1rem 1.2rem" }}
@@ -1721,7 +1729,7 @@ export function InsumoPage({ patients, users, user }) {
                   <div style={{ display: "flex", alignItems: "baseline", gap: ".4rem", marginBottom: ".65rem" }}>
                     <span style={{ fontSize: "2rem", fontWeight: 900, color: barColor, letterSpacing: "-.02em", lineHeight: 1 }}>{qty}</span>
                     <span style={{ fontSize: ".78rem", color: "var(--text-3, #64748b)", fontWeight: 600 }}>{item.unit}</span>
-                    <span style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", marginLeft: ".25rem" }}>/ mÃ­n {min} {item.unit}</span>
+                    <span style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", marginLeft: ".25rem" }}>/ mín {min} {item.unit}</span>
                   </div>
 
                   {/* Barra de progresso */}
@@ -1729,7 +1737,7 @@ export function InsumoPage({ patients, users, user }) {
                     <div style={{ height: "100%", width: pct + "%", background: barColor, borderRadius: 999, transition: "width .3s" }} />
                   </div>
 
-                  {/* AÃ§Ãµes */}
+                  {/* Ações */}
                   {canPharm && (
                     <div style={{ display: "flex", gap: ".4rem" }}>
                       <button onClick={() => { setAdjustDelta(0); setShowAdjust(item); }}
@@ -1745,21 +1753,21 @@ export function InsumoPage({ patients, users, user }) {
         </>
       )}
 
-      {/* â”€â”€ ABA: PACIENTES RECORRENTES â”€â”€ */}
+      {/* ── ABA: PACIENTES RECORRENTES ── */}
       {activeTab === "recurring" && (
         <div>
-          {/* DescriÃ§Ã£o da funcionalidade */}
+          {/* Descrição da funcionalidade */}
           <div style={{ background: DS.teal[50], border: `1px solid ${DS.teal[200]}`, borderRadius: 14, padding: "1rem 1.25rem", marginBottom: "1.25rem", display: "flex", gap: ".85rem" }}>
-            <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>â„¹ï¸</span>
+            <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>ℹ️</span>
             <div>
               <div style={{ fontWeight: 800, fontSize: ".88rem", color: DS.teal[700], marginBottom: ".2rem" }}>Pacientes com retirada mensal de insumos</div>
               <div style={{ fontSize: ".78rem", color: DS.teal[700], lineHeight: 1.5 }}>
-                Pacientes recorrentes retiram os mesmos insumos todo mÃªs. A <strong>enfermeira</strong> configura os itens e quantidades, e pode desmarcar o paciente quando necessÃ¡rio. O <strong>farmacÃªutico</strong> registra a entrega e o estoque Ã© baixado automaticamente.
+                Pacientes recorrentes retiram os mesmos insumos todo mês. A <strong>enfermeira</strong> configura os itens e quantidades, e pode desmarcar o paciente quando necessário. O <strong>farmacêutico</strong> registra a entrega e o estoque é baixado automaticamente.
               </div>
             </div>
           </div>
 
-          {/* BotÃ£o adicionar (sÃ³ enfermeira) */}
+          {/* Botão adicionar (só enfermeira) */}
           {canNurse && (
             <div style={{ marginBottom: "1.25rem" }}>
               <button onClick={() => { setRecurringPatient(null); setPatientSearch(""); setRecurringForm({ insumoId: "", qty: 1, notes: "" }); setShowRecurringModal(true); }}
@@ -1774,7 +1782,7 @@ export function InsumoPage({ patients, users, user }) {
 
           {/* Lista de pacientes recorrentes */}
           {recurringPatients.length === 0 ? (
-            <EmptyState icon="ðŸ”„" title="Nenhum paciente recorrente" subtitle="Pacientes com retirada mensal de insumos aparecerÃ£o aqui." />
+            <EmptyState icon="🔄" title="Nenhum paciente recorrente" subtitle="Pacientes com retirada mensal de insumos aparecerão aqui." />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: ".65rem" }}>
               {recurringPatients.map(({ patient, items: ritems }) => {
@@ -1788,7 +1796,7 @@ export function InsumoPage({ patients, users, user }) {
                         <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap", marginBottom: ".3rem" }}>
                           <span style={{ fontWeight: 900, fontSize: ".95rem", color: "var(--ink, #0f172a)" }}>{patient.name}</span>
                           <Badge color={DS.teal[700]} bg={DS.teal[50]} border={DS.teal[200]}>Recorrente</Badge>
-                          {lastDate && <span style={{ fontSize: ".7rem", color: "var(--text-3, #64748b)" }}>Ãšltima entrega: {lastDate}</span>}
+                          {lastDate && <span style={{ fontSize: ".7rem", color: "var(--text-3, #64748b)" }}>Última entrega: {lastDate}</span>}
                         </div>
 
                         {/* Itens do paciente */}
@@ -1798,11 +1806,11 @@ export function InsumoPage({ patients, users, user }) {
                             return (
                               <div key={r.insumoId} style={{ display: "inline-flex", alignItems: "center", gap: ".4rem", padding: ".3rem .65rem .3rem .5rem", background: "var(--surface-2, #f8fafc)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 8, fontSize: ".78rem" }}>
                                 <span style={{ fontWeight: 700, color: "var(--ink, #0f172a)" }}>{insumo?.name || r.insumoId}</span>
-                                <span style={{ color: "var(--text-3, #64748b)" }}>Ã—{r.qty} {insumo?.unit || ""}</span>
-                                {r.notes && <span style={{ color: "var(--text-3, #64748b)", fontStyle: "italic" }}>â€” {r.notes}</span>}
+                                <span style={{ color: "var(--text-3, #64748b)" }}>×{r.qty} {insumo?.unit || ""}</span>
+                                {r.notes && <span style={{ color: "var(--text-3, #64748b)", fontStyle: "italic" }}>— {r.notes}</span>}
                                 {canNurse && (
                                   <button onClick={() => removeRecurringItem(patient.id, r.insumoId)} title="Remover este insumo"
-                                    style={{ background: "none", border: "none", cursor: "pointer", color: DS.red[400], padding: "0 0 0 .2rem", fontSize: ".7rem", lineHeight: 1 }}>âœ•</button>
+                                    style={{ background: "none", border: "none", cursor: "pointer", color: DS.red[400], padding: "0 0 0 .2rem", fontSize: ".7rem", lineHeight: 1 }}>✕</button>
                                 )}
                               </div>
                             );
@@ -1816,7 +1824,7 @@ export function InsumoPage({ patients, users, user }) {
                         </div>
                       </div>
 
-                      {/* AÃ§Ãµes */}
+                      {/* Ações */}
                       <div style={{ display: "flex", flexDirection: "column", gap: ".4rem", alignItems: "flex-end" }}>
                         {/* Enfermeira pode dispensar */}
                         {canNurse && (
@@ -1825,7 +1833,7 @@ export function InsumoPage({ patients, users, user }) {
                             Registrar entrega
                           </button>
                         )}
-                        {/* FarmacÃªutico tambÃ©m pode dispensar */}
+                        {/* Farmacêutico também pode dispensar */}
                         {isPharmacist(user) && !canNurse && (
                           <button onClick={() => { setDeliveryPatient(patient); setShowDeliveryModal(true); }}
                             style={{ ...css.btnSecondary, fontSize: ".78rem", padding: ".4rem .85rem" }}>
@@ -1849,11 +1857,11 @@ export function InsumoPage({ patients, users, user }) {
         </div>
       )}
 
-      {/* â”€â”€ ABA: HISTÃ“RICO DE ENTREGAS â”€â”€ */}
+      {/* ── ABA: HISTÓRICO DE ENTREGAS ── */}
       {activeTab === "history" && (
         <div>
           {deliveries.length === 0 ? (
-            <EmptyState icon="ðŸ“œ" title="Nenhuma entrega registrada" subtitle="O histÃ³rico de dispensaÃ§Ãµes aparecerÃ¡ aqui." />
+            <EmptyState icon="📜" title="Nenhuma entrega registrada" subtitle="O histórico de dispensações aparecerá aqui." />
           ) : (
             <div style={css.card}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 200px 120px", padding: ".65rem 1.25rem", background: "var(--surface-2, #f8fafc)", borderBottom: "1px solid var(--border, #e2e8f0)", gap: ".75rem" }}>
@@ -1873,13 +1881,13 @@ export function InsumoPage({ patients, users, user }) {
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: ".3rem" }}>
                       {d.items.map((it, ii) => (
-                        <Badge key={ii} color={DS.teal[700]} bg={DS.teal[50]} border={DS.teal[200]}>{it.name} Ã—{it.qty}</Badge>
+                        <Badge key={ii} color={DS.teal[700]} bg={DS.teal[50]} border={DS.teal[200]}>{it.name} ×{it.qty}</Badge>
                       ))}
                     </div>
                     <div style={{ textAlign: "right", fontSize: ".78rem", color: "var(--text-3, #64748b)", fontFamily: "'IBM Plex Mono', monospace" }}>
                       {fmtDate(d.deliveredAt.slice(0, 10))} {d.deliveredAt.slice(11, 16)}
                     </div>
-                    <div style={{ textAlign: "right", fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>{d.deliveredBy || "â€”"}</div>
+                    <div style={{ textAlign: "right", fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>{d.deliveredBy || "—"}</div>
                   </div>
                 ))}
               </div>
@@ -1888,7 +1896,7 @@ export function InsumoPage({ patients, users, user }) {
         </div>
       )}
 
-      {/* â”€â”€ MODAL: Adicionar/editar insumo â”€â”€ */}
+      {/* ── MODAL: Adicionar/editar insumo ── */}
       {showForm && (
         <Modal title={editItem ? "Editar insumo" : "Novo insumo"} onClose={() => { setShowForm(false); setEditItem(null); }}>
           <form onSubmit={submitForm} style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
@@ -1897,7 +1905,7 @@ export function InsumoPage({ patients, users, user }) {
             </FormField>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
               <FormField label="Unidade">
-                <input value={form.unit} onChange={e => setForm(s => ({ ...s, unit: e.target.value }))} style={css.input} placeholder="un, cx, Lâ€¦" />
+                <input value={form.unit} onChange={e => setForm(s => ({ ...s, unit: e.target.value }))} style={css.input} placeholder="un, cx, L…" />
               </FormField>
               <FormField label="Categoria">
                 <select value={form.category} onChange={e => setForm(s => ({ ...s, category: e.target.value }))} style={css.input}>
@@ -1909,19 +1917,19 @@ export function InsumoPage({ patients, users, user }) {
               <FormField label="Quantidade atual">
                 <input type="number" min="0" value={form.qty} onChange={e => setForm(s => ({ ...s, qty: e.target.value }))} style={css.input} />
               </FormField>
-              <FormField label="Quantidade mÃ­nima">
+              <FormField label="Quantidade mínima">
                 <input type="number" min="0" value={form.minQty} onChange={e => setForm(s => ({ ...s, minQty: e.target.value }))} style={css.input} />
               </FormField>
             </div>
             <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
               <button type="button" onClick={() => { setShowForm(false); setEditItem(null); }} style={css.btnSecondary}>Cancelar</button>
-              <button type="submit" style={css.btnPrimary}>{editItem ? "Salvar alteraÃ§Ãµes" : "Adicionar insumo"}</button>
+              <button type="submit" style={css.btnPrimary}>{editItem ? "Salvar alterações" : "Adicionar insumo"}</button>
             </div>
           </form>
         </Modal>
       )}
 
-      {/* â”€â”€ MODAL: Ajuste de estoque â”€â”€ */}
+      {/* ── MODAL: Ajuste de estoque ── */}
       {showAdjust && (
         <Modal title="Ajuste de estoque" subtitle={showAdjust.name} onClose={() => { setShowAdjust(null); setAdjustDelta(0); setAdjustReason(""); }}>
           <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
@@ -1930,7 +1938,7 @@ export function InsumoPage({ patients, users, user }) {
                 <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", fontWeight: 600, textTransform: "uppercase" }}>Estoque atual</div>
                 <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--ink, #0f172a)" }}>{showAdjust.qty} <span style={{ fontSize: ".9rem", fontWeight: 600, color: "var(--text-3, #64748b)" }}>{showAdjust.unit}</span></div>
               </div>
-              <div style={{ fontSize: "1.5rem", color: "var(--text-3, #64748b)" }}>â†’</div>
+              <div style={{ fontSize: "1.5rem", color: "var(--text-3, #64748b)" }}>→</div>
               <div>
                 <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", fontWeight: 600, textTransform: "uppercase" }}>Novo estoque</div>
                 <div style={{ fontSize: "2rem", fontWeight: 900, color: Number(adjustDelta) < 0 ? DS.red[500] : DS.green[600] }}>
@@ -1938,11 +1946,11 @@ export function InsumoPage({ patients, users, user }) {
                 </div>
               </div>
             </div>
-            <FormField label="Ajuste (use nÃºmero negativo para retirada)">
-              <input type="number" value={adjustDelta} onChange={e => setAdjustDelta(e.target.value)} style={css.input} placeholder="Ex: 50 (entrada) ou -10 (saÃ­da)" />
+            <FormField label="Ajuste (use número negativo para retirada)">
+              <input type="number" value={adjustDelta} onChange={e => setAdjustDelta(e.target.value)} style={css.input} placeholder="Ex: 50 (entrada) ou -10 (saída)" />
             </FormField>
             <FormField label="Motivo">
-              <input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} style={css.input} placeholder="Recebimento, vencimento, usoâ€¦" />
+              <input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} style={css.input} placeholder="Recebimento, vencimento, uso…" />
             </FormField>
             <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
               <button onClick={() => { setShowAdjust(null); setAdjustDelta(0); setAdjustReason(""); }} style={css.btnSecondary}>Cancelar</button>
@@ -1952,15 +1960,15 @@ export function InsumoPage({ patients, users, user }) {
         </Modal>
       )}
 
-      {/* â”€â”€ MODAL: Configurar insumos de paciente recorrente (ENFERMEIRA) â”€â”€ */}
+      {/* ── MODAL: Configurar insumos de paciente recorrente (ENFERMEIRA) ── */}
       {showRecurringModal && (
         <Modal title={recurringPatient ? `Insumos de ${recurringPatient.name}` : "Adicionar paciente recorrente"} subtitle="Defina os insumos que este paciente retira mensalmente" onClose={() => setShowRecurringModal(false)} maxWidth={520}>
           <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
-            {/* SeleÃ§Ã£o de paciente (se nÃ£o veio prÃ©-selecionado) */}
+            {/* Seleção de paciente (se não veio pré-selecionado) */}
             {!recurringPatient && (
               <>
                 <FormField label="Buscar paciente">
-                  <SearchInput value={patientSearch} onChange={e => setPatientSearch(e.target.value)} placeholder="Nome, CPF ou telefoneâ€¦" />
+                  <SearchInput value={patientSearch} onChange={e => setPatientSearch(e.target.value)} placeholder="Nome, CPF ou telefone…" />
                 </FormField>
                 <div style={{ maxHeight: 180, overflowY: "auto", border: "1px solid var(--border, #e2e8f0)", borderRadius: 10 }}>
                   {filteredPatients.slice(0, 20).map(p => (
@@ -1971,7 +1979,7 @@ export function InsumoPage({ patients, users, user }) {
                       <Avatar name={p.name} size={28} />
                       <div>
                         <div style={{ fontWeight: 700, fontSize: ".82rem", color: "var(--ink, #0f172a)" }}>{p.name}</div>
-                        <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{calcAge(p.birthDate) || "â€”"}</div>
+                        <div style={{ fontSize: ".68rem", color: "var(--text-3, #64748b)" }}>{calcAge(p.birthDate) || "—"}</div>
                       </div>
                     </div>
                   ))}
@@ -1986,14 +1994,14 @@ export function InsumoPage({ patients, users, user }) {
                   <Avatar name={recurringPatient.name} size={36} />
                   <div>
                     <div style={{ fontWeight: 800, fontSize: ".9rem", color: DS.teal[700] }}>{recurringPatient.name}</div>
-                    <div style={{ fontSize: ".72rem", color: DS.teal[600] }}>{calcAge(recurringPatient.birthDate) || "â€”"}</div>
+                    <div style={{ fontSize: ".72rem", color: DS.teal[600] }}>{calcAge(recurringPatient.birthDate) || "—"}</div>
                   </div>
                   {!recurring[recurringPatient.id] && (
                     <button onClick={() => setRecurringPatient(null)} style={{ ...css.btnGhost, marginLeft: "auto", fontSize: ".72rem" }}>Trocar</button>
                   )}
                 </div>
 
-                {/* Insumos jÃ¡ configurados */}
+                {/* Insumos já configurados */}
                 {(recurring[recurringPatient.id] || []).length > 0 && (
                   <div>
                     <div style={{ ...css.sectionTitle, marginBottom: ".5rem" }}>Insumos configurados</div>
@@ -2003,8 +2011,8 @@ export function InsumoPage({ patients, users, user }) {
                         return (
                           <div key={r.insumoId} style={{ display: "flex", alignItems: "center", gap: ".65rem", padding: ".5rem .85rem", background: "var(--surface-2, #f8fafc)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 9 }}>
                             <div style={{ flex: 1, fontSize: ".82rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>{insumo?.name || r.insumoId}</div>
-                            <span style={{ fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>Ã—{r.qty} {insumo?.unit || ""}</span>
-                            <button onClick={() => removeRecurringItem(recurringPatient.id, r.insumoId)} style={{ ...css.btnGhost, color: DS.red[400], padding: ".2rem .4rem" }}>âœ•</button>
+                            <span style={{ fontSize: ".78rem", color: "var(--text-3, #64748b)" }}>×{r.qty} {insumo?.unit || ""}</span>
+                            <button onClick={() => removeRecurringItem(recurringPatient.id, r.insumoId)} style={{ ...css.btnGhost, color: DS.red[400], padding: ".2rem .4rem" }}>✕</button>
                           </div>
                         );
                       })}
@@ -2018,16 +2026,16 @@ export function InsumoPage({ patients, users, user }) {
                   <form onSubmit={addRecurringItem} style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}>
                     <FormField label="Insumo" required>
                       <select value={recurringForm.insumoId} onChange={e => setRecurringForm(s => ({ ...s, insumoId: e.target.value }))} required style={css.input}>
-                        <option value="">Selecionar insumoâ€¦</option>
+                        <option value="">Selecionar insumo…</option>
                         {items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.qty} {i.unit} em estoque)</option>)}
                       </select>
                     </FormField>
                     <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: ".65rem" }}>
-                      <FormField label="Qtd/mÃªs">
+                      <FormField label="Qtd/mês">
                         <input type="number" min="1" value={recurringForm.qty} onChange={e => setRecurringForm(s => ({ ...s, qty: Number(e.target.value) }))} style={css.input} />
                       </FormField>
-                      <FormField label="ObservaÃ§Ã£o">
-                        <input value={recurringForm.notes} onChange={e => setRecurringForm(s => ({ ...s, notes: e.target.value }))} style={css.input} placeholder="Ex: uso contÃ­nuo, fracionadoâ€¦" />
+                      <FormField label="Observação">
+                        <input value={recurringForm.notes} onChange={e => setRecurringForm(s => ({ ...s, notes: e.target.value }))} style={css.input} placeholder="Ex: uso contínuo, fracionado…" />
                       </FormField>
                     </div>
                     <button type="submit" style={{ ...css.btnPrimary, alignSelf: "flex-start" }}>+ Adicionar</button>
@@ -2043,7 +2051,7 @@ export function InsumoPage({ patients, users, user }) {
         </Modal>
       )}
 
-      {/* â”€â”€ MODAL: Confirmar entrega â”€â”€ */}
+      {/* ── MODAL: Confirmar entrega ── */}
       {showDeliveryModal && deliveryPatient && (
         <Modal title="Confirmar entrega de insumos" subtitle={`Paciente: ${deliveryPatient.name}`} onClose={() => { setShowDeliveryModal(false); setDeliveryPatient(null); }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -2062,7 +2070,7 @@ export function InsumoPage({ patients, users, user }) {
                       <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)" }}>Estoque atual: {available} {insumo?.unit || ""}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
-                      <span style={{ fontWeight: 800, fontSize: ".92rem", color: insufficiente ? DS.red[500] : "var(--ink, #0f172a)" }}>Ã—{r.qty}</span>
+                      <span style={{ fontWeight: 800, fontSize: ".92rem", color: insufficiente ? DS.red[500] : "var(--ink, #0f172a)" }}>×{r.qty}</span>
                       {insufficiente && <Badge color={DS.red[700]} bg={DS.red[50]} border={DS.red[100]}>Insuficiente</Badge>}
                     </div>
                   </div>
@@ -2072,14 +2080,14 @@ export function InsumoPage({ patients, users, user }) {
 
             {(recurring[deliveryPatient.id] || []).some(r => { const insumo = items.find(i => i.id === r.insumoId); return insumo && Number(insumo.qty) < r.qty; }) && (
               <div style={{ background: DS.amber[50], border: `1px solid ${DS.amber[200]}`, borderRadius: 10, padding: ".75rem 1rem", fontSize: ".8rem", color: DS.amber[700], fontWeight: 600 }}>
-                âš ï¸ Alguns itens podem ficar abaixo do estoque mÃ­nimo apÃ³s esta entrega.
+                ⚠️ Alguns itens podem ficar abaixo do estoque mínimo após esta entrega.
               </div>
             )}
 
             <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
               <button onClick={() => { setShowDeliveryModal(false); setDeliveryPatient(null); }} style={css.btnSecondary}>Cancelar</button>
               <button onClick={() => registerDelivery(deliveryPatient)} style={{ ...css.btnPrimary, background: DS.green[600] }}>
-                âœ“ Confirmar entrega
+                ✓ Confirmar entrega
               </button>
             </div>
           </div>
@@ -2089,9 +2097,9 @@ export function InsumoPage({ patients, users, user }) {
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   3. TRIAGE PAGE â€” (mantida, mas com novo visual)
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════════
+   3. TRIAGE PAGE — (mantida, mas com novo visual)
+═══════════════════════════════════════════════════════════════════════════ */
 export function TriagePage({ patients, user, token }) {
   const authHeader = { "Authorization": `Bearer ${token}` };
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -2103,21 +2111,21 @@ export function TriagePage({ patients, user, token }) {
   const filtered = patients.filter(p => matchesSearch(p, search));
 
   const vitalsFields = [
-    { key: "bp", label: "PressÃ£o arterial", placeholder: "120/80 mmHg", icon: "ðŸ©¸" },
-    { key: "temp", label: "Temperatura", placeholder: "36.5 Â°C", icon: "ðŸŒ¡ï¸" },
-    { key: "heartRate", label: "Freq. cardÃ­aca", placeholder: "70 bpm", icon: "ðŸ’—" },
-    { key: "weight", label: "Peso", placeholder: "70 kg", icon: "âš–ï¸" },
-    { key: "height", label: "Altura", placeholder: "170 cm", icon: "ðŸ“" },
-    { key: "glucose", label: "Glicemia", placeholder: "mg/dL", icon: "ðŸ©¸" },
-    { key: "spo2", label: "SpOâ‚‚", placeholder: "99%", icon: "ðŸ«" },
+    { key: "bp", label: "Pressão arterial", placeholder: "120/80 mmHg", icon: "🩸" },
+    { key: "temp", label: "Temperatura", placeholder: "36.5 °C", icon: "🌡️" },
+    { key: "heartRate", label: "Freq. cardíaca", placeholder: "70 bpm", icon: "💗" },
+    { key: "weight", label: "Peso", placeholder: "70 kg", icon: "⚖️" },
+    { key: "height", label: "Altura", placeholder: "170 cm", icon: "📏" },
+    { key: "glucose", label: "Glicemia", placeholder: "mg/dL", icon: "🩸" },
+    { key: "spo2", label: "SpO₂", placeholder: "99%", icon: "🫁" },
   ];
 
   const priorityColors = {
-    red:    { label: "Vermelho â€” EmergÃªncia", text: DS.red[700], bg: DS.red[50], border: DS.red[300] },
-    orange: { label: "Laranja â€” Muito urgente", text: "#c2410c", bg: "#fff7ed", border: "#fed7aa" },
-    yellow: { label: "Amarelo â€” Urgente", text: DS.amber[700], bg: DS.amber[50], border: DS.amber[300] },
-    green:  { label: "Verde â€” Pouco urgente", text: DS.green[700], bg: DS.green[50], border: DS.green[300] },
-    blue:   { label: "Azul â€” NÃ£o urgente", text: DS.blue[700], bg: DS.blue[50], border: DS.blue[300] },
+    red:    { label: "Vermelho — Emergência", text: DS.red[700], bg: DS.red[50], border: DS.red[300] },
+    orange: { label: "Laranja — Muito urgente", text: "#c2410c", bg: "#fff7ed", border: "#fed7aa" },
+    yellow: { label: "Amarelo — Urgente", text: DS.amber[700], bg: DS.amber[50], border: DS.amber[300] },
+    green:  { label: "Verde — Pouco urgente", text: DS.green[700], bg: DS.green[50], border: DS.green[300] },
+    blue:   { label: "Azul — Não urgente", text: DS.blue[700], bg: DS.blue[50], border: DS.blue[300] },
   };
 
   async function submitTriage(e) {
@@ -2129,12 +2137,12 @@ export function TriagePage({ patients, user, token }) {
         form.bp && `PA: ${form.bp}`, form.temp && `Temp: ${form.temp}`,
         form.heartRate && `FC: ${form.heartRate}`, form.weight && `Peso: ${form.weight}`,
         form.height && `Altura: ${form.height}`, form.glucose && `Glicemia: ${form.glucose}`,
-        form.spo2 && `SpOâ‚‚: ${form.spo2}`, `Dor: ${form.pain}/10`,
+        form.spo2 && `SpO₂: ${form.spo2}`, `Dor: ${form.pain}/10`,
         form.notes && `Obs: ${form.notes}`,
-      ].filter(Boolean).join(" Â· ");
+      ].filter(Boolean).join(" · ");
       await createRecord(token, selectedPatient.id, {
         type: "visit", date: new Date().toISOString().slice(0, 10),
-        title: `Triagem â€” ${priorityColors[form.priority]?.label}`,
+        title: `Triagem — ${priorityColors[form.priority]?.label}`,
         details, conductedBy: user?.id,
       });
       setSaved(true);
@@ -2148,8 +2156,8 @@ export function TriagePage({ patients, user, token }) {
     <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "1.25rem", padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
       {/* Lista de pacientes */}
       <div style={{ ...css.card, padding: "1rem", display: "flex", flexDirection: "column", gap: ".75rem" }}>
-        <div style={{ fontWeight: 800, fontSize: ".9rem", color: "var(--ink, #0f172a)" }}>ðŸ©º Triagem</div>
-        <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar pacienteâ€¦" />
+        <div style={{ fontWeight: 800, fontSize: ".9rem", color: "var(--ink, #0f172a)" }}>🩺 Triagem</div>
+        <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar paciente…" />
         <div style={{ flex: 1, overflowY: "auto", maxHeight: "calc(100vh - 240px)", display: "flex", flexDirection: "column", gap: ".25rem" }}>
           {filtered.slice(0, 40).map(p => (
             <div key={p.id} onClick={() => { setSelectedPatient(p); setSaved(false); }}
@@ -2159,14 +2167,14 @@ export function TriagePage({ patients, user, token }) {
               <Avatar name={p.name} size={30} color={selectedPatient?.id === p.id ? "var(--teal-600, #0d9488)" : DS.slate[500]} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: ".8rem", color: "var(--ink, #0f172a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                <div style={{ fontSize: ".65rem", color: "var(--text-3, #64748b)" }}>{calcAge(p.birthDate) || "â€”"}</div>
+                <div style={{ fontSize: ".65rem", color: "var(--text-3, #64748b)" }}>{calcAge(p.birthDate) || "—"}</div>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* FormulÃ¡rio de triagem */}
+      {/* Formulário de triagem */}
       {selectedPatient ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {/* Header do paciente */}
@@ -2175,11 +2183,11 @@ export function TriagePage({ patients, user, token }) {
             <div>
               <div style={{ fontWeight: 900, fontSize: "1.05rem", color: "var(--ink, #0f172a)" }}>{selectedPatient.name}</div>
               <div style={{ fontSize: ".75rem", color: "var(--text-3, #64748b)", display: "flex", gap: ".65rem" }}>
-                {calcAge(selectedPatient.birthDate) && <span>ðŸŽ‚ {calcAge(selectedPatient.birthDate)}</span>}
-                {selectedPatient.phone && <span>ðŸ“± {selectedPatient.phone}</span>}
+                {calcAge(selectedPatient.birthDate) && <span>🎂 {calcAge(selectedPatient.birthDate)}</span>}
+                {selectedPatient.phone && <span>📱 {selectedPatient.phone}</span>}
               </div>
             </div>
-            {saved && <div style={{ marginLeft: "auto", fontSize: ".8rem", color: DS.green[700], fontWeight: 700, background: DS.green[50], padding: ".3rem .75rem", borderRadius: 8, border: `1px solid ${DS.green[200]}` }}>âœ“ Triagem registrada!</div>}
+            {saved && <div style={{ marginLeft: "auto", fontSize: ".8rem", color: DS.green[700], fontWeight: 700, background: DS.green[50], padding: ".3rem .75rem", borderRadius: 8, border: `1px solid ${DS.green[200]}` }}>✓ Triagem registrada!</div>}
           </div>
 
           <form onSubmit={submitTriage} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -2196,17 +2204,17 @@ export function TriagePage({ patients, user, token }) {
               </div>
             </div>
 
-            {/* Dor e classificaÃ§Ã£o */}
+            {/* Dor e classificação */}
             <div style={{ ...css.card, padding: "1.25rem" }}>
-              <div style={{ ...css.sectionTitle, marginBottom: ".9rem" }}>AvaliaÃ§Ã£o</div>
+              <div style={{ ...css.sectionTitle, marginBottom: ".9rem" }}>Avaliação</div>
               <div style={{ marginBottom: "1rem" }}>
                 <label style={css.label}>
-                  Escala de dor (0â€“10): <strong style={{ fontSize: "1.1rem", color: "var(--ink, #0f172a)" }}>{form.pain}</strong>
+                  Escala de dor (0–10): <strong style={{ fontSize: "1.1rem", color: "var(--ink, #0f172a)" }}>{form.pain}</strong>
                   <input type="range" min="0" max="10" value={form.pain} onChange={e => setForm(s => ({ ...s, pain: e.target.value }))} style={{ width: "100%", accentColor: "var(--teal-600, #0d9488)" }} />
                 </label>
               </div>
               <div>
-                <div style={{ ...css.label, marginBottom: ".5rem" }}>ClassificaÃ§Ã£o de risco (Manchester)</div>
+                <div style={{ ...css.label, marginBottom: ".5rem" }}>Classificação de risco (Manchester)</div>
                 <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
                   {Object.entries(priorityColors).map(([key, c]) => (
                     <button key={key} type="button" onClick={() => setForm(s => ({ ...s, priority: key }))}
@@ -2217,28 +2225,28 @@ export function TriagePage({ patients, user, token }) {
                 </div>
               </div>
               <label style={{ ...css.label, marginTop: "1rem" }}>
-                Queixa principal / observaÃ§Ãµes
-                <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={3} placeholder="Motivo da consulta, alergias, medicaÃ§Ãµes em usoâ€¦" style={{ ...css.input, resize: "vertical" }} />
+                Queixa principal / observações
+                <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={3} placeholder="Motivo da consulta, alergias, medicações em uso…" style={{ ...css.input, resize: "vertical" }} />
               </label>
             </div>
 
             <button type="submit" disabled={busy} style={{ ...css.btnPrimary, alignSelf: "flex-start", fontSize: ".88rem", padding: ".6rem 1.4rem" }}>
-              {busy ? "Salvandoâ€¦" : "âœ“ Salvar triagem"}
+              {busy ? "Salvando…" : "✓ Salvar triagem"}
             </button>
           </form>
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <EmptyState icon="ðŸ©º" title="Selecione um paciente" subtitle="Clique em um paciente na lista para iniciar a triagem" />
+          <EmptyState icon="🩺" title="Selecione um paciente" subtitle="Clique em um paciente na lista para iniciar a triagem" />
         </div>
       )}
     </div>
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ═══════════════════════════════════════════════════════════════════════════
    6. ACS TASKS PAGE
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+═══════════════════════════════════════════════════════════════════════════ */
 export function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
   const authHeader = { "Authorization": `Bearer ${token}` };
   const [tasks, setTasks] = useState([]);
@@ -2262,7 +2270,7 @@ export function AcsTasksPage({ patients, users, user, token, onNavigatePatient }
 
   async function submitForm(e) {
     e.preventDefault();
-    if (!form.patientId || !form.title) { setError("Preencha paciente e tÃ­tulo."); return; }
+    if (!form.patientId || !form.title) { setError("Preencha paciente e título."); return; }
     setBusy(true); setError("");
     try {
       const patient = patients.find(p => p.id === form.patientId);
@@ -2296,9 +2304,9 @@ export function AcsTasksPage({ patients, users, user, token, onNavigatePatient }
   return (
     <div style={{ padding: "1.75rem", maxWidth: 1000, margin: "0 auto" }}>
       <PageHeader
-        icon="âœ…"
+        icon="✅"
         title="Tarefas ACS"
-        subtitle={`${counts.pending} pendentes Â· ${counts.in_progress} em andamento`}
+        subtitle={`${counts.pending} pendentes · ${counts.in_progress} em andamento`}
         actions={
           <button onClick={() => setShowForm(true)} style={css.btnPrimary}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -2310,13 +2318,13 @@ export function AcsTasksPage({ patients, users, user, token, onNavigatePatient }
       />
 
       <div style={{ marginBottom: "1.25rem" }}>
-        <Tabs tabs={[["all","Todas",counts.all],["pending","Pendentes",counts.pending],["in_progress","Em andamento",counts.in_progress],["done","ConcluÃ­das",counts.done]]} value={filterStatus} onChange={setFilterStatus} />
+        <Tabs tabs={[["all","Todas",counts.all],["pending","Pendentes",counts.pending],["in_progress","Em andamento",counts.in_progress],["done","Concluídas",counts.done]]} value={filterStatus} onChange={setFilterStatus} />
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-3, #64748b)" }}>â³ Carregando tarefasâ€¦</div>
+        <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-3, #64748b)" }}>⏳ Carregando tarefas…</div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="ðŸ“‹" title="Nenhuma tarefa" subtitle={filterStatus === "all" ? "Crie a primeira tarefa clicando em 'Nova tarefa'" : `Nenhuma tarefa com status '${filterStatus}'`} />
+        <EmptyState icon="📋" title="Nenhuma tarefa" subtitle={filterStatus === "all" ? "Crie a primeira tarefa clicando em 'Nova tarefa'" : `Nenhuma tarefa com status '${filterStatus}'`} />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
           {filtered.map(t => {
@@ -2329,17 +2337,17 @@ export function AcsTasksPage({ patients, users, user, token, onNavigatePatient }
                   <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap", marginBottom: ".25rem" }}>
                     <span style={{ fontWeight: 800, fontSize: ".9rem", color: "var(--ink, #0f172a)", textDecoration: t.status === "done" ? "line-through" : "none" }}>{t.title}</span>
                     <StatusBadge status={t.status} />
-                    {overdue && <Badge color={DS.red[700]} bg={DS.red[50]} border={DS.red[100]}>âš  Atrasada</Badge>}
+                    {overdue && <Badge color={DS.red[700]} bg={DS.red[50]} border={DS.red[100]}>⚠ Atrasada</Badge>}
                   </div>
                   <div style={{ display: "flex", gap: ".65rem", fontSize: ".75rem", color: "var(--text-3, #64748b)", flexWrap: "wrap" }}>
                     {t.patientId && <button onClick={() => onNavigatePatient(t.patientId)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--teal-600, #0d9488)", fontWeight: 700, fontSize: ".75rem", padding: 0 }}>{t.patientName}</button>}
-                    {t.dueDate && <span>ðŸ“… {fmtDate(t.dueDate)}</span>}
+                    {t.dueDate && <span>📅 {fmtDate(t.dueDate)}</span>}
                     {t.notes && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{t.notes}</span>}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: ".35rem", flexShrink: 0 }}>
                   {t.status === "pending" && <button onClick={() => changeStatus(t, "in_progress")} style={{ ...css.btnSecondary, padding: ".3rem .7rem", fontSize: ".72rem", color: DS.blue[700], borderColor: DS.blue[200] }}>Iniciar</button>}
-                  {(t.status === "pending" || t.status === "in_progress") && <button onClick={() => changeStatus(t, "done")} style={{ ...css.btnSecondary, padding: ".3rem .7rem", fontSize: ".72rem", color: DS.green[700], borderColor: DS.green[200] }}>âœ“ Concluir</button>}
+                  {(t.status === "pending" || t.status === "in_progress") && <button onClick={() => changeStatus(t, "done")} style={{ ...css.btnSecondary, padding: ".3rem .7rem", fontSize: ".72rem", color: DS.green[700], borderColor: DS.green[200] }}>✓ Concluir</button>}
                 </div>
               </div>
             );
@@ -2360,27 +2368,27 @@ export function AcsTasksPage({ patients, users, user, token, onNavigatePatient }
                 required
               />
             </FormField>
-            <FormField label="TÃ­tulo da tarefa" required>
-              <input value={form.title} onChange={e => setForm(s => ({ ...s, title: e.target.value }))} required style={css.input} placeholder="Descreva a tarefaâ€¦" />
+            <FormField label="Título da tarefa" required>
+              <input value={form.title} onChange={e => setForm(s => ({ ...s, title: e.target.value }))} required style={css.input} placeholder="Descreva a tarefa…" />
             </FormField>
-            <FormField label="ObservaÃ§Ãµes">
-              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={2} style={{ ...css.input, resize: "vertical" }} placeholder="Detalhes adicionaisâ€¦" />
+            <FormField label="Observações">
+              <textarea value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} rows={2} style={{ ...css.input, resize: "vertical" }} placeholder="Detalhes adicionais…" />
             </FormField>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".65rem" }}>
               <FormField label="Prazo">
                 <input type="date" value={form.dueDate} onChange={e => setForm(s => ({ ...s, dueDate: e.target.value }))} style={css.input} />
               </FormField>
-              <FormField label="ResponsÃ¡vel">
+              <FormField label="Responsável">
                 <select value={form.assigneeId} onChange={e => setForm(s => ({ ...s, assigneeId: e.target.value }))} style={css.input}>
                   <option value="">Minha tarefa</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.name} â€“ {roleLabel(u.role)}</option>)}
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name} – {roleLabel(u.role)}</option>)}
                 </select>
               </FormField>
             </div>
             {error && <p style={{ color: DS.red[500], fontSize: ".8rem", margin: 0, padding: ".5rem .75rem", background: DS.red[50], borderRadius: 8 }}>{error}</p>}
             <div style={{ display: "flex", gap: ".65rem", justifyContent: "flex-end" }}>
               <button type="button" onClick={() => { setShowForm(false); setPatientSearch(""); }} style={css.btnSecondary}>Cancelar</button>
-              <button type="submit" disabled={busy} style={css.btnPrimary}>{busy ? "Criandoâ€¦" : "Criar tarefa"}</button>
+              <button type="submit" disabled={busy} style={css.btnPrimary}>{busy ? "Criando…" : "Criar tarefa"}</button>
             </div>
           </form>
         </Modal>
@@ -2389,9 +2397,9 @@ export function AcsTasksPage({ patients, users, user, token, onNavigatePatient }
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   9. GESTOR PAGE (stub â€” mantido funcional)
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════════
+   9. GESTOR PAGE (stub — mantido funcional)
+═══════════════════════════════════════════════════════════════════════════ */
 export function GestorPage({ patients, users, user, templates, protocolByPatient }) {
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -2423,22 +2431,22 @@ export function GestorPage({ patients, users, user, templates, protocolByPatient
   }, [patients, users, protocolByPatient]);
 
   const kpis = [
-    { icon: "ðŸ‘¥", label: "Total de pacientes", value: totalPatients, color: DS.blue[500] },
-    { icon: "âš ï¸", label: "Protocolos pendentes", value: criticalPatients.length, color: criticalPatients.length > 10 ? DS.red[500] : DS.amber[500] },
-    { icon: "ðŸ‘¤", label: "UsuÃ¡rios ativos", value: users.length, color: DS.purple[500] },
-    { icon: "ðŸ“‹", label: "Protocolos cadastrados", value: templates.length, color: DS.green[600] },
+    { icon: "👥", label: "Total de pacientes", value: totalPatients, color: DS.blue[500] },
+    { icon: "⚠️", label: "Protocolos pendentes", value: criticalPatients.length, color: criticalPatients.length > 10 ? DS.red[500] : DS.amber[500] },
+    { icon: "👤", label: "Usuários ativos", value: users.length, color: DS.purple[500] },
+    { icon: "📋", label: "Protocolos cadastrados", value: templates.length, color: DS.green[600] },
   ];
 
   return (
     <div style={{ padding: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
-      <PageHeader icon="ðŸ›ï¸" title="Painel do Gestor" subtitle="VisÃ£o gerencial da unidade de saÃºde" />
+      <PageHeader icon="🏛️" title="Painel do Gestor" subtitle="Visão gerencial da unidade de saúde" />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: ".65rem", marginBottom: "1.5rem" }}>
         {kpis.map(k => <KpiCard key={k.label} {...k} />)}
       </div>
 
       <div style={{ marginBottom: "1.25rem" }}>
-        <Tabs tabs={[["overview","VisÃ£o geral"],["coverage","Cobertura ACS"],["categories","Categorias"]]} value={activeTab} onChange={setActiveTab} />
+        <Tabs tabs={[["overview","Visão geral"],["coverage","Cobertura ACS"],["categories","Categorias"]]} value={activeTab} onChange={setActiveTab} />
       </div>
 
       {activeTab === "overview" && (
@@ -2447,7 +2455,7 @@ export function GestorPage({ patients, users, user, templates, protocolByPatient
             <div style={{ padding: ".85rem 1.25rem", borderBottom: "1px solid var(--border, #e2e8f0)", fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>Pacientes com protocolos pendentes</div>
             <div style={{ padding: ".5rem", maxHeight: 300, overflowY: "auto" }}>
               {criticalPatients.length === 0 ? (
-                <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-3, #64748b)", fontSize: ".8rem" }}>âœ… Nenhum protocolo pendente</div>
+                <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-3, #64748b)", fontSize: ".8rem" }}>✅ Nenhum protocolo pendente</div>
               ) : criticalPatients.slice(0, 15).map(p => {
                 const s = protocolByPatient?.[p.id];
                 const pending = (s?.pending?.visits || 0) + (s?.pending?.consultations || 0) + (s?.pending?.vaccines || 0);
@@ -2497,7 +2505,7 @@ export function GestorPage({ patients, users, user, templates, protocolByPatient
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontWeight: 900, fontSize: ".92rem", color: "var(--ink, #0f172a)" }}>{row.count}</div>
-                {row.critical > 0 && <div style={{ fontSize: ".65rem", color: DS.red[500], fontWeight: 700 }}>{row.critical} crÃ­tico(s)</div>}
+                {row.critical > 0 && <div style={{ fontSize: ".65rem", color: DS.red[500], fontWeight: 700 }}>{row.critical} crítico(s)</div>}
               </div>
             </div>
           ))}
@@ -2506,7 +2514,7 @@ export function GestorPage({ patients, users, user, templates, protocolByPatient
 
       {activeTab === "categories" && (
         <div style={css.card}>
-          <div style={{ padding: ".85rem 1.25rem", borderBottom: "1px solid var(--border, #e2e8f0)", fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>DistribuiÃ§Ã£o por categoria</div>
+          <div style={{ padding: ".85rem 1.25rem", borderBottom: "1px solid var(--border, #e2e8f0)", fontWeight: 800, fontSize: ".88rem", color: "var(--ink, #0f172a)" }}>Distribuição por categoria</div>
           {byCategory.map(([cat, count]) => {
             const tpl = templates.find(t => t.category === cat);
             const pct = totalPatients > 0 ? (count / totalPatients) * 100 : 0;
@@ -2528,9 +2536,9 @@ export function GestorPage({ patients, users, user, templates, protocolByPatient
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   11. RECEPTIONIST APP â€” App dedicado de recepÃ§Ã£o (redesenhado)
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════════════════════════════════════════════════════════
+   11. RECEPTIONIST APP — App dedicado de recepção (redesenhado)
+═══════════════════════════════════════════════════════════════════════════ */
 export function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
   const [activeTab, setActiveTab] = useState("queue");
   const [queue, setQueue] = useState(() => readLS(QUEUE_KEY, []));
@@ -2568,11 +2576,11 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
 
   async function registerQuick(e) {
     e.preventDefault();
-    if (!quickForm.name.trim() || !quickForm.phone.trim()) { setError("Nome e telefone obrigatÃ³rios."); return; }
+    if (!quickForm.name.trim() || !quickForm.phone.trim()) { setError("Nome e telefone obrigatórios."); return; }
     setBusy(true); setError("");
     try {
       const localId = "local_" + Date.now().toString(36);
-      const entry = { id: Date.now().toString(36), patientId: localId, patientName: quickForm.name.trim(), phone: quickForm.phone.trim(), reason: "Cadastro rÃ¡pido", priority: "normal", arrivedAt: new Date().toISOString(), status: "waiting", incompletePatient: true };
+      const entry = { id: Date.now().toString(36), patientId: localId, patientName: quickForm.name.trim(), phone: quickForm.phone.trim(), reason: "Cadastro rápido", priority: "normal", arrivedAt: new Date().toISOString(), status: "waiting", incompletePatient: true };
       saveQueue([...queue, entry]);
       setShowQuickReg(false);
       setQuickForm({ name: "", cpf: "", phone: "", birthDate: "" });
@@ -2581,15 +2589,15 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
   }
 
   const priorityColor = { urgent: DS.red[500], high: DS.amber[500], normal: DS.blue[500] };
-  const priorityLabel = { urgent: "Urgente", high: "PrioritÃ¡rio", normal: "Normal" };
+  const priorityLabel = { urgent: "Urgente", high: "Prioritário", normal: "Normal" };
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--surface, #f8fafc)", fontFamily: "var(--font-sans, system-ui, sans-serif)" }}>
       {/* Header */}
       <div style={{ background: DS.slate[900], color: "#fff", padding: ".85rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `3px solid var(--teal-600, #0d9488)` }}>
         <div>
-          <div style={{ fontWeight: 900, fontSize: "1rem", letterSpacing: "-.01em" }}>SIGUS Â· RecepÃ§Ã£o</div>
-          <div style={{ fontSize: ".72rem", color: DS.slate[400] }}>{recUser?.name} Â· {waiting.length} aguardando</div>
+          <div style={{ fontWeight: 900, fontSize: "1rem", letterSpacing: "-.01em" }}>SIGUS · Recepção</div>
+          <div style={{ fontSize: ".72rem", color: DS.slate[400] }}>{recUser?.name} · {waiting.length} aguardando</div>
         </div>
         <button onClick={onLogout} style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.15)", color: "#fff", padding: ".35rem .85rem", borderRadius: 8, cursor: "pointer", fontSize: ".75rem", fontWeight: 600 }}>Sair</button>
       </div>
@@ -2604,7 +2612,7 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
         ))}
       </div>
 
-      {/* ConteÃºdo */}
+      {/* Conteúdo */}
       <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
         {error && <div style={{ background: DS.red[50], border: `1px solid ${DS.red[100]}`, borderRadius: 9, padding: ".5rem .85rem", color: DS.red[700], fontSize: ".8rem", marginBottom: ".75rem", fontWeight: 600 }}>{error}</div>}
 
@@ -2625,11 +2633,11 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: ".5rem" }}>
                   <input placeholder="Motivo" value={queueForm.reason} onChange={e => setQueueForm(s => ({ ...s, reason: e.target.value }))} style={css.input} />
                   <select value={queueForm.priority} onChange={e => setQueueForm(s => ({ ...s, priority: e.target.value }))} style={{ ...css.input, width: "auto" }}>
-                    <option value="normal">Normal</option><option value="high">PrioritÃ¡rio</option><option value="urgent">Urgente</option>
+                    <option value="normal">Normal</option><option value="high">Prioritário</option><option value="urgent">Urgente</option>
                   </select>
                 </div>
                 <div style={{ display: "flex", gap: ".5rem" }}>
-                  <button type="submit" style={{ ...css.btnPrimary, flex: 1, justifyContent: "center" }}>+ Adicionar Ã  fila</button>
+                  <button type="submit" style={{ ...css.btnPrimary, flex: 1, justifyContent: "center" }}>+ Adicionar à fila</button>
                   <button type="button" onClick={() => setShowQuickReg(true)} style={css.btnSecondary}>Novo paciente</button>
                 </div>
               </form>
@@ -2649,7 +2657,7 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
             {/* Aguardando */}
             <div style={{ ...css.sectionTitle, marginBottom: ".5rem" }}>Aguardando ({waiting.length})</div>
             {waiting.length === 0
-              ? <EmptyState icon="âœ¨" title="Fila vazia" subtitle="Nenhum paciente aguardando" />
+              ? <EmptyState icon="✨" title="Fila vazia" subtitle="Nenhum paciente aguardando" />
               : waiting.map((entry, idx) => (
                 <QueueCard key={entry.id} entry={entry} position={idx} priorityColor={priorityColor} priorityLabel={priorityLabel}
                   onCall={() => saveQueue(queue.map(q => q.id === entry.id ? { ...q, status: "called" } : q))}
@@ -2661,14 +2669,14 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
 
         {activeTab === "patients" && (
           <div>
-            <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar pacienteâ€¦" />
+            <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar paciente…" />
             <div style={{ marginTop: ".75rem", display: "flex", flexDirection: "column", gap: ".35rem" }}>
               {filtered.slice(0, 25).map(p => (
                 <div key={p.id} style={{ ...css.card, padding: ".7rem .9rem", display: "flex", alignItems: "center", gap: ".65rem" }}>
                   <Avatar name={p.name} size={34} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: ".84rem" }}>{p.name}</div>
-                    <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)" }}>{p.phone || "â€”"} Â· {calcAge(p.birthDate) || "â€”"}</div>
+                    <div style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)" }}>{p.phone || "—"} · {calcAge(p.birthDate) || "—"}</div>
                   </div>
                   <button onClick={() => { setQueueForm(s => ({ ...s, patientId: p.id })); setSearch(p.name); setActiveTab("queue"); }} style={{ ...css.btnPrimary, padding: ".3rem .7rem", fontSize: ".72rem" }}>+ Fila</button>
                 </div>
@@ -2679,7 +2687,7 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
 
         {activeTab === "register" && (
           <div style={{ ...css.card, padding: "1.25rem" }}>
-            <div style={{ fontWeight: 800, fontSize: ".92rem", marginBottom: "1rem" }}>Cadastro rÃ¡pido de paciente</div>
+            <div style={{ fontWeight: 800, fontSize: ".92rem", marginBottom: "1rem" }}>Cadastro rápido de paciente</div>
             <form onSubmit={registerQuick} style={{ display: "flex", flexDirection: "column", gap: ".65rem" }}>
               <FormField label="Nome completo" required>
                 <input value={quickForm.name} onChange={e => setQuickForm(s => ({ ...s, name: e.target.value }))} required style={css.input} placeholder="Nome completo" />
@@ -2693,8 +2701,8 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
               <FormField label="Data de nascimento">
                 <input type="date" value={quickForm.birthDate} onChange={e => setQuickForm(s => ({ ...s, birthDate: e.target.value }))} style={css.input} />
               </FormField>
-              <p style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", margin: 0, lineHeight: 1.5 }}>âš  Cadastro simplificado â€” perfil deverÃ¡ ser completado pela equipe clÃ­nica.</p>
-              <button type="submit" disabled={busy} style={{ ...css.btnPrimary, justifyContent: "center" }}>{busy ? "Salvandoâ€¦" : "Cadastrar e adicionar Ã  fila"}</button>
+              <p style={{ fontSize: ".72rem", color: "var(--text-3, #64748b)", margin: 0, lineHeight: 1.5 }}>⚠ Cadastro simplificado — perfil deverá ser completado pela equipe clínica.</p>
+              <button type="submit" disabled={busy} style={{ ...css.btnPrimary, justifyContent: "center" }}>{busy ? "Salvando…" : "Cadastrar e adicionar à fila"}</button>
             </form>
           </div>
         )}
@@ -2706,12 +2714,12 @@ export function ReceptionistApp({ recUser, patients, users, templates, onLogout 
           <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "1.5rem", width: "100%" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.1rem" }}>
               <strong style={{ fontSize: ".95rem", fontWeight: 800 }}>Novo paciente</strong>
-              <button onClick={() => setShowQuickReg(false)} style={{ ...css.btnGhost, padding: ".2rem .5rem" }}>âœ•</button>
+              <button onClick={() => setShowQuickReg(false)} style={{ ...css.btnGhost, padding: ".2rem .5rem" }}>✕</button>
             </div>
             <form onSubmit={registerQuick} style={{ display: "flex", flexDirection: "column", gap: ".55rem" }}>
               <input placeholder="Nome *" value={quickForm.name} onChange={e => setQuickForm(s => ({ ...s, name: e.target.value }))} required style={css.input} />
               <input placeholder="Telefone *" value={quickForm.phone} onChange={e => setQuickForm(s => ({ ...s, phone: e.target.value }))} required style={css.input} />
-              <button type="submit" disabled={busy} style={{ ...css.btnPrimary, justifyContent: "center" }}>{busy ? "â€¦" : "Cadastrar"}</button>
+              <button type="submit" disabled={busy} style={{ ...css.btnPrimary, justifyContent: "center" }}>{busy ? "…" : "Cadastrar"}</button>
             </form>
           </div>
         </div>
