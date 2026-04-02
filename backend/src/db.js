@@ -7,9 +7,11 @@ const DB_PATH = path.resolve(process.cwd(), "data", "db.json");
 const DATABASE_URL = String(process.env.DATABASE_URL || "").trim();
 const DB_DRIVER = DATABASE_URL ? "postgres" : "file";
 const DATA_ENCRYPTION_KEY = String(process.env.DATA_ENCRYPTION_KEY || "").trim();
+const DATA_ENCRYPTION_STRICT = String(process.env.DATA_ENCRYPTION_STRICT || "").trim().toLowerCase() === "true";
 const ENC_PREFIX = "enc1:";
 const SENSITIVE_PATIENT_FIELDS = ["cpf", "cns", "cnsCpf"];
 const SENSITIVE_USER_FIELDS = ["twoFactorSecret", "twoFactorPendingSecret"];
+const decryptWarningCache = new Set();
 
 const pool = DATABASE_URL
   ? new Pool({
@@ -46,19 +48,34 @@ function decryptText(value, key) {
   const raw = String(value || "");
   if (!raw) return "";
   if (!isEncryptedText(raw)) return raw;
-  if (!key) throw new Error("DATA_ENCRYPTION_KEY ausente para descriptografar dados sensíveis");
+  if (!key) {
+    if (DATA_ENCRYPTION_STRICT) {
+      throw new Error("DATA_ENCRYPTION_KEY ausente para descriptografar dados sensíveis");
+    }
+    return raw;
+  }
 
-  const [, payload] = raw.split(ENC_PREFIX);
-  const [ivB64, encB64, tagB64] = String(payload || "").split(":");
-  if (!ivB64 || !encB64 || !tagB64) throw new Error("Formato inválido de dado criptografado");
-  const iv = Buffer.from(ivB64, "base64");
-  const encrypted = Buffer.from(encB64, "base64");
-  const tag = Buffer.from(tagB64, "base64");
+  try {
+    const [, payload] = raw.split(ENC_PREFIX);
+    const [ivB64, encB64, tagB64] = String(payload || "").split(":");
+    if (!ivB64 || !encB64 || !tagB64) throw new Error("Formato inválido de dado criptografado");
+    const iv = Buffer.from(ivB64, "base64");
+    const encrypted = Buffer.from(encB64, "base64");
+    const tag = Buffer.from(tagB64, "base64");
 
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(tag);
-  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-  return decrypted.toString("utf8");
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    return decrypted.toString("utf8");
+  } catch (error) {
+    if (DATA_ENCRYPTION_STRICT) throw error;
+    const signature = String(raw).slice(0, 96);
+    if (!decryptWarningCache.has(signature)) {
+      decryptWarningCache.add(signature);
+      console.warn("Aviso: dado sensível com criptografia inválida. Aplicando fallback para manter a API ativa.");
+    }
+    return raw;
+  }
 }
 
 function cloneState(value) {
