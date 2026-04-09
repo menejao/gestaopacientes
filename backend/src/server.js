@@ -158,7 +158,7 @@ const DEFAULT_TEAM_COLORS = [
   "Marrom",
   "Amarela"
 ];
-const DEMO_POPULATE_SIZE_COMPLETE = 50;
+const DEMO_POPULATE_SIZE_COMPLETE = 90;
 const DEMO_POPULATE_SIZE_INCOMPLETE = 10;
 
 function randomInt(min, max) {
@@ -219,7 +219,7 @@ function buildSeedPatient({
   const districts = ["Centro", "Jardim Primavera", "Vila Nova", "Bela Vista", "Alvorada", "São José"];
   const cities = ["São Paulo", "Guarulhos", "Campinas", "Santo André", "Osasco", "Sorocaba"];
   const ufs = ["SP", "RJ", "MG", "BA", "PE", "PR"];
-  const categories = ["pregnant", "puerperal", "child_followup", "elderly", "general"];
+  const categories = ["general", "pregnant", "puerperal", "child_followup", "elderly", "chronic"];
   const category = normalizeSeedCategory(categories[index % categories.length]);
   const teamId = pickRandom(teamIds) || "team-ana";
   const acsId = chance(82) ? (pickRandom(acsIds) || "") : "";
@@ -838,7 +838,9 @@ function ensureDbShape(db) {
     usgDate2: p.usgDate2 ? String(p.usgDate2) : "",
     usgDate3: p.usgDate3 ? String(p.usgDate3) : "",
     prenatalStartDate: p.prenatalStartDate ? String(p.prenatalStartDate) : "",
-    postpartumStartDate: p.postpartumStartDate ? String(p.postpartumStartDate) : ""
+    postpartumStartDate: p.postpartumStartDate ? String(p.postpartumStartDate) : "",
+    specialCondition: Boolean(p.specialCondition),
+    specialConditionDescription: p.specialConditionDescription ? String(p.specialConditionDescription) : ""
   }));
 
   db.appointments = db.appointments.map((a) => ({
@@ -1158,7 +1160,9 @@ function buildPatientAccessReport(db, patient) {
       assignedAcsId: patient.assignedAcsId || "",
       comorbidities: patient.comorbidities || "",
       medications: patient.medications || "",
-      allergies: patient.allergies || ""
+      allergies: patient.allergies || "",
+      specialCondition: Boolean(patient.specialCondition),
+      specialConditionDescription: patient.specialConditionDescription || ""
     },
     summary: {
       appointments: appointments.length,
@@ -1234,7 +1238,9 @@ function applyPatientCorrection(db, user, patient, corrections = {}) {
     "postpartumStartDate",
     "comorbidities",
     "medications",
-    "allergies"
+    "allergies",
+    "specialCondition",
+    "specialConditionDescription"
   ]);
   const next = { ...patient };
   const changedFields = [];
@@ -1253,6 +1259,14 @@ function applyPatientCorrection(db, user, patient, corrections = {}) {
       const normalized = normalizeChronicConditions(value);
       const current = normalizeChronicConditions(next[key]);
       if (JSON.stringify(current) !== JSON.stringify(normalized)) {
+        next[key] = normalized;
+        changedFields.push(key);
+      }
+      continue;
+    }
+    if (key === "specialCondition") {
+      const normalized = Boolean(value);
+      if (Boolean(next[key]) !== normalized) {
         next[key] = normalized;
         changedFields.push(key);
       }
@@ -1309,6 +1323,8 @@ function anonymizePatientBundle(db, user, patient, reason = "", requestId = "") 
     comorbidities: "",
     medications: "",
     allergies: "",
+    specialCondition: false,
+    specialConditionDescription: "",
     updatedAt: now,
     updatedBy: user.id,
     privacy: {
@@ -4464,6 +4480,8 @@ app.post("/patients", requireManagerOrDoctor, async (req, res) => {
     comorbidities: payload.comorbidities ? String(payload.comorbidities).trim() : "",
     medications: payload.medications ? String(payload.medications).trim() : "",
     allergies: payload.allergies ? String(payload.allergies).trim() : "",
+    specialCondition: Boolean(payload.specialCondition),
+    specialConditionDescription: payload.specialConditionDescription ? String(payload.specialConditionDescription).trim() : "",
     createdAt: new Date().toISOString(),
     createdBy: req.user.id
   };
@@ -4519,6 +4537,8 @@ app.put("/patients/:id", async (req, res) => {
       "prenatalStartDate",
       "postpartumStartDate"
       ,
+      "specialCondition",
+      "specialConditionDescription",
       "incompleteProfile"
     ]);
     const safePayload = isDoctor(req.user)
@@ -4590,6 +4610,12 @@ app.put("/patients/:id", async (req, res) => {
       usgDate3: safePayload?.usgDate3 !== undefined
         ? String(safePayload.usgDate3 || "").trim()
         : String(current.usgDate3 || ""),
+      specialCondition: safePayload?.specialCondition !== undefined
+        ? Boolean(safePayload.specialCondition)
+        : Boolean(current.specialCondition),
+      specialConditionDescription: safePayload?.specialConditionDescription !== undefined
+        ? String(safePayload.specialConditionDescription || "").trim()
+        : String(current.specialConditionDescription || ""),
       id,
       updatedAt: new Date().toISOString(),
       updatedBy: req.user.id
