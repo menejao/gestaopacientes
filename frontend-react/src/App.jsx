@@ -10,20 +10,23 @@ import {
   updateProtocolTemplate, updatePatient, updateUser, updateTaskStatus,
 } from "./api";
 
-import {
-  NotificationBell, QueuePage, TriagePage, AgendaPage,
-  ReferralsPage, AcsTasksPage, ChartPage, InsumoPage,
-  GestorPage, ReportsPage, ReceptionistApp,
-} from "./MissingComponents";
+import { NotificationBell } from "./components/feedback/NotificationBell";
+import { QueuePage } from "./pages/QueuePage";
+import { TriagePage } from "./pages/TriagePage";
+import { AgendaPage } from "./pages/AgendaPage";
+import { ReferralsPage } from "./pages/ReferralsPage";
+import { AcsTasksPage } from "./pages/AcsTasksPage";
+import { ChartPage } from "./pages/ChartPage";
+import { InsumoPage } from "./pages/InsumoPage";
+import { GestorPage } from "./pages/GestorPage";
+import { ReportsPage } from "./pages/ReportsPage";
+import { ReceptionistApp } from "./pages/ReceptionistApp";
+import { ProntuarioPage } from "./pages/ProntuarioPage";
+import { InsumoPageNew } from "./pages/InsumoPageNew";
+import { GestorPageNew } from "./pages/GestorPageNew";
+import { ReportsPageNew } from "./pages/ReportsPageNew";
+import { DiagnosticsPageNew } from "./pages/DiagnosticsPageNew";
 
-import {
-  ProntuarioPage, InsumoPageNew, GestorPageNew, ReportsPageNew, DiagnosticsPageNew,
-} from "./NewPages";
-
-import {
-  QueuePageNew, AgendaPageNew, ReferralsPageNew,
-  ReportsPageNew2, InsumoPageNew2
-} from "./NewPages2";
 
 /* -- Limpeza de Codificação (Anti-Mojibake) -- */
 function cleanEncoding(str) {
@@ -160,6 +163,7 @@ const PHARMA_USERS = [
 ];
 const PHARMACY_KEY = "saudeubs_pharmacy_stock_v1";
 const PHARMA_LOG_KEY = "saudeubs_pharmacy_log_v1";
+const PHARMA_PRESCRIPTION_QUEUE_KEY = "saudeubs_pharmacy_prescriptions_v1";
 const PHARMA_AUTH_KEY = "saudeubs_pharmacy_auth_v1";
 const DEFAULT_STOCK = [
   { id:"med_1", name:"Paracetamol 500mg", category:"Analgésico", unit:"comprimido", qty:180, minQty:50, location:"Prateleira A1" },
@@ -917,11 +921,10 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
               ))}
             </div>
 
-            {gestorTab === "login" ? (
               <>
                 <div style={{marginBottom:"1.5rem"}}>
                   <h2 style={{fontSize:"1.3rem",fontWeight:700,color:"#1e293b",letterSpacing:"-.02em",marginBottom:".25rem"}}>Bem-vindo de volta</h2>
-                  <p style={{fontSize:".82rem",color:"#64748b"}}>Entre com suas credenciais de gestão.</p>
+                  <p style={{fontSize:".82rem",color:"#64748b"}}>Entre com suas credenciais de gest?o.</p>
                 </div>
                 <form onSubmit={e=>{e.preventDefault();onLogin(email,password);}}>
                   <div style={{marginBottom:"1rem"}}>
@@ -930,14 +933,14 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
                   </div>
                   <div style={{marginBottom:"1.5rem"}}>
                     <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Senha</label>
-                    <PasswordInput value={password} onChange={e=>setPassword(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="current-password"/>
+                    <PasswordInput value={password} onChange={e=>setPassword(e.target.value)} placeholder="********" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="current-password"/>
                   </div>
                   {error && <p style={{background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:6,padding:".6rem .85rem",fontSize:".82rem",marginBottom:"1rem"}}>{error}</p>}
                   <button type="submit" disabled={busy} style={{width:"100%",padding:".6rem",background:"#6366f1",color:"#fff",border:"none",borderRadius:8,fontSize:".85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:busy?0.6:1}}>
-                    {busy ? "Entrando..." : "Acessar painel de gestão →"}
+                    {busy ? "Entrando..." : "Acessar painel de gest?o"}
                   </button>
                   <p style={{textAlign:"center",fontSize:".75rem",color:"#94a3b8",marginTop:".85rem"}}>
-                    Não tem conta?{" "}
+                    N?o tem conta?{" "}
                     <button type="button" onClick={()=>setGestorTab("register")} style={{background:"none",border:"none",color:"#6366f1",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem"}}>Criar cadastro</button>
                   </p>
                 </form>
@@ -955,7 +958,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
                 }}>
                   <div style={{marginBottom:"1rem"}}>
                     <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Nome completo</label>
-                    <input value={gestorReg.name} onChange={e=>setGestorReg(s=>({...s,name:e.target.value}))} placeholder="João da Silva" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
+                    <input value={gestorReg.name} onChange={e=>setGestorReg(s=>({...s,name:e.target.value}))} placeholder="Jo?o da Silva" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
                   </div>
                   <div style={{marginBottom:"1rem"}}>
                     <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>E-mail</label>
@@ -963,22 +966,22 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
                   </div>
                   <div style={{marginBottom:"1rem"}}>
                     <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Senha</label>
-                    <PasswordInput value={gestorReg.password} onChange={e=>setGestorReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
+                    <PasswordInput value={gestorReg.password} onChange={e=>setGestorReg(s=>({...s,password:e.target.value}))} placeholder="M?nimo 8 caracteres" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
                   </div>
                   <div style={{marginBottom:"1.5rem"}}>
                     <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Confirmar senha</label>
                     <PasswordInput value={gestorReg.confirmPassword} onChange={e=>setGestorReg(s=>({...s,confirmPassword:e.target.value}))} placeholder="Repita a senha" style={{...inputStyle, borderColor: gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword ? "#dc2626" : "#e2e8f0"}} onFocus={focusStyle} onBlur={blurStyle}/>
                     {gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword && (
-                      <p style={{fontSize:".73rem",color:"#dc2626",marginTop:".3rem"}}>As senhas não coincidem</p>
+                      <p style={{fontSize:".73rem",color:"#dc2626",marginTop:".3rem"}}>As senhas n?o coincidem</p>
                     )}
                   </div>
                   {error && <p style={{background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:6,padding:".6rem .85rem",fontSize:".82rem",marginBottom:"1rem"}}>{error}</p>}
                   <button type="submit" disabled={busy||!gestorReg.name||!gestorReg.email||!gestorReg.password||gestorReg.password!==gestorReg.confirmPassword}
                     style={{width:"100%",padding:".6rem",background:"#6366f1",color:"#fff",border:"none",borderRadius:8,fontSize:".85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:(busy||!gestorReg.name||!gestorReg.email||!gestorReg.password||gestorReg.password!==gestorReg.confirmPassword)?0.5:1}}>
-                    {busy ? "Criando..." : "Criar conta de gestor →"}
+                    {busy ? "Criando..." : "Criar conta de gestor"}
                   </button>
                   <p style={{textAlign:"center",fontSize:".75rem",color:"#94a3b8",marginTop:".85rem"}}>
-                    Já tem conta?{" "}
+                    J? tem conta?{" "}
                     <button type="button" onClick={()=>setGestorTab("login")} style={{background:"none",border:"none",color:"#6366f1",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem"}}>Fazer login</button>
                   </p>
                 </form>
@@ -1569,23 +1572,6 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
 
   return (
     <div className="workspace-home">
-      {/* Hero */}
-      <section className="home-hero">
-        <div>
-          <p className="home-kicker">Workspace da equipe</p>
-          <h1 className="home-title">Gestão de Pacientes - UBS</h1>
-          <p className="home-sub">Acompanhe pacientes, protocolos e pendências da equipe em tempo real.</p>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:".5rem",alignItems:"flex-end",flexShrink:0}}>
-          <div style={{display:"flex",gap:".5rem"}}>
-            <Chip tone={pc.critical>0?"danger":pc.attention>0?"warn":"ok"}>
-              {pc.critical} crítico{pc.critical!==1?"s":""}
-            </Chip>
-            <Chip tone="muted">{pc.ok} em dia</Chip>
-          </div>
-        </div>
-      </section>
-
       {/* KPIs */}
       <section className="home-kpi-grid">
         <KpiCard label="Pacientes ativos"    value={patients.length} foot="Total cadastrado"/>
@@ -2173,6 +2159,155 @@ function PrescriptionModal({ patient, user, token, onClose }) {
   );
 }
 
+
+function EnhancedPrescriptionModal({ patient, user, token, onClose }) {
+  const today = new Date().toISOString().slice(0,10);
+  const [meds, setMeds] = useState([{ name:"", custom:"", dosage:"", frequency:"", duration:"", route:"", notes:"" }]);
+  const [validity, setValidity] = useState("30");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  function addMed() { setMeds(s=>[...s,{name:"",custom:"",dosage:"",frequency:"",duration:"",route:"",notes:""}]); }
+  function removeMed(i) { setMeds(s=>s.filter((_,idx)=>idx!==i)); }
+  function updateMed(i,k,v) { setMeds(s=>s.map((m,idx)=>idx===i?{...m,[k]:v}:m)); }
+
+  async function submit(e) {
+    e.preventDefault();
+    const valid = meds.filter(m=>(m.name&&m.name!=="Outros (digitar)")||m.custom.trim());
+    if (!valid.length) { setErr("Adicione ao menos um medicamento."); return; }
+    const missingDose = valid.find(m=>!m.dosage.trim()||!m.frequency.trim());
+    if (missingDose) { setErr("Preencha dose e frequência para todos os medicamentos."); return; }
+    setBusy(true); setErr("");
+    try {
+      const medicationItems = valid.map((m)=>({
+        name: m.name==="Outros (digitar)" ? m.custom.trim() : m.name,
+        dosage: m.dosage.trim(),
+        frequency: m.frequency.trim(),
+        duration: m.duration.trim(),
+        route: m.route || "",
+        notes: m.notes.trim(),
+      }));
+      const title = medicationItems.map(m=>m.name).join(", ");
+      const details = [
+        `PRESCRIÇÃO MÉDICA - emitida em ${new Date().toLocaleDateString("pt-BR")}`,
+        `Validade: ${validity} dias`,
+        `Profissional: ${user?.name||""} ${user?.councilNumber?`(${user.role==="doctor"?"CRM":user.role==="dentist"?"CRO":"COREN"} ${user.councilNumber}/${user.councilUf||""})` : ""}`,
+        `Paciente: ${patient.name}`,
+        "",
+        ...medicationItems.map((m,i)=>`${i+1}. ${m.name} ${m.dosage}${m.route?` - Via: ${m.route}`:""}
+   Frequência: ${m.frequency}${m.duration?` por ${m.duration}`:""}${m.notes?`\n   Observação: ${m.notes}`:""}`),
+      ].join("\n");
+
+      await fetch(`/patients/${patient.id}/records`, {
+        method:"POST",
+        headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},
+        body: JSON.stringify({
+          type:"prescription", date:today, time:new Date().toTimeString().slice(0,5),
+          title:`Prescrição: ${title}`,
+          details, immutable:true,
+          professionalName:user?.name||"",
+          professionalCouncil: user?.councilNumber
+            ? `${user.role==="doctor"?"CRM":user.role==="dentist"?"CRO":"COREN"} ${user.councilNumber}/${user.councilUf||""}` : "",
+        }),
+      });
+
+      const queue = readPharmaPrescriptionQueue();
+      const pendingPrescription = {
+        id: `rx_${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`,
+        ts: new Date().toISOString(),
+        patientId: patient.id,
+        patientName: patient.name,
+        prescriber: user?.name || "",
+        prescriberCouncil: user?.councilNumber
+          ? `${user.role==="doctor"?"CRM":user.role==="dentist"?"CRO":"COREN"} ${user.councilNumber}/${user.councilUf||""}`
+          : "",
+        validityDays: Number(validity),
+        medications: medicationItems,
+        status: "pending",
+      };
+      savePharmaPrescriptionQueue([pendingPrescription, ...queue]);
+      window.dispatchEvent(new Event("pharmacy-prescriptions-updated"));
+
+      auditLog("PRESCRICAO_EMITIDA", { patientId:patient.id, patientName:patient.name, medicamentos:title }, user);
+      onClose(true);
+    } catch(ex) { setErr(ex.message||"Erro ao salvar."); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={()=>onClose(false)}>
+      <div className="modal" style={{maxWidth:580}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
+          <div>
+            <h3 style={{margin:0,fontSize:"1rem"}}>Prescrição de medicamentos</h3>
+            <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem"}}>{patient.name}</div>
+          </div>
+          <button className="icon-btn" onClick={()=>onClose(false)}><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
+        </div>
+        <form onSubmit={submit} style={{display:"flex",flexDirection:"column",gap:".75rem"}}>
+          {meds.map((m,i)=>(
+            <div key={i} style={{padding:".75rem",background:"var(--surface-2)",borderRadius:"var(--r-md)",border:"1px solid var(--border)",display:"flex",flexDirection:"column",gap:".45rem"}}>
+              <div style={{display:"flex",gap:".5rem",alignItems:"flex-end"}}>
+                <label style={{flex:2,fontSize:".75rem",fontWeight:600,display:"flex",flexDirection:"column",gap:".2rem"}}>Medicamento
+                  <select value={m.name} onChange={e=>updateMed(i,"name",e.target.value)}>
+                    <option value="">Selecione...</option>
+                    {MEDICATIONS_COMMON.map(med=><option key={med} value={med}>{med}</option>)}
+                  </select>
+                </label>
+                {meds.length>1&&<button type="button" onClick={()=>removeMed(i)} style={{padding:".3rem .5rem",background:"#fff1f2",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"#be123c",cursor:"pointer",fontSize:".75rem",flexShrink:0,marginBottom:0}}>Remover</button>}
+              </div>
+              {m.name==="Outros (digitar)"&&<input value={m.custom} onChange={e=>updateMed(i,"custom",e.target.value)} placeholder="Nome do medicamento com concentração"/>}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".4rem"}}>
+                <label style={{fontSize:".73rem",fontWeight:600,display:"flex",flexDirection:"column",gap:".2rem"}}>Dose *
+                  <input value={m.dosage} onChange={e=>updateMed(i,"dosage",e.target.value)} placeholder="Ex: 500mg"/>
+                </label>
+                <label style={{fontSize:".73rem",fontWeight:600,display:"flex",flexDirection:"column",gap:".2rem"}}>Frequência *
+                  <input value={m.frequency} onChange={e=>updateMed(i,"frequency",e.target.value)} placeholder="Ex: 1x ao dia"/>
+                </label>
+                <label style={{fontSize:".73rem",fontWeight:600,display:"flex",flexDirection:"column",gap:".2rem"}}>Duração
+                  <input value={m.duration} onChange={e=>updateMed(i,"duration",e.target.value)} placeholder="Ex: 7 dias"/>
+                </label>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:".4rem"}}>
+                <label style={{fontSize:".73rem",fontWeight:600,display:"flex",flexDirection:"column",gap:".2rem"}}>Via
+                  <select value={m.route} onChange={e=>updateMed(i,"route",e.target.value)}>
+                    <option value="">-</option>
+                    <option>Oral</option><option>Sublingual</option><option>Inalatória</option>
+                    <option>Tópica</option><option>Intramuscular</option><option>Subcutânea</option>
+                    <option>Intravenosa</option><option>Retal</option><option>Ocular</option>
+                  </select>
+                </label>
+                <label style={{fontSize:".73rem",fontWeight:600,display:"flex",flexDirection:"column",gap:".2rem"}}>Observação
+                  <input value={m.notes} onChange={e=>updateMed(i,"notes",e.target.value)} placeholder="Ex: tomar em jejum, com alimentos..."/>
+                </label>
+              </div>
+            </div>
+          ))}
+          <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+            <button type="button" onClick={addMed} style={{fontSize:".78rem",padding:".3rem .75rem",background:"var(--surface-2)",border:"1px dashed var(--border)",borderRadius:"var(--r-md)",cursor:"pointer",color:"var(--teal-700)",fontWeight:600}}>+ Adicionar medicamento</button>
+            <label style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".75rem",fontWeight:600,marginLeft:"auto"}}>
+              Validade da receita:
+              <select value={validity} onChange={e=>setValidity(e.target.value)} style={{width:90}}>
+                <option value="30">30 dias</option>
+                <option value="60">60 dias</option>
+                <option value="90">90 dias</option>
+              </select>
+            </label>
+          </div>
+          <div style={{fontSize:".72rem",padding:".55rem .7rem",background:"#ecfeff",border:"1px solid #a5f3fc",borderRadius:"var(--r-md)",color:"#155e75"}}>
+            Ao emitir a receita, ela também entra automaticamente no controle da farmácia.
+          </div>
+          {err&&<p className="error" style={{margin:0}}>{err}</p>}
+          <div style={{display:"flex",gap:".5rem",justifyContent:"flex-end"}}>
+            <button type="button" className="secondary" onClick={()=>onClose(false)}>Cancelar</button>
+            <button type="submit" disabled={busy}>{busy?"Registrando...":"Emitir prescrição"}</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  );
+}
 
 function InternalReferralModal({ patient, user, users, token, onClose }) {
   const today = new Date().toISOString().slice(0,10);
@@ -3010,12 +3145,17 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
   );
 }
 
-function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appointments,tasks,messages,history,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,taskForm,setTaskForm,acsUsers,userObj,messageText,setMessageText,onSubmitRecord,onSubmitTask,onSubmitMessage,onDeleteAppointment,onStatusChange,canManageUser }) {
+function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appointments,tasks,messages,history,patientProtocolSummary,sortedSpecialAlerts,recordForm,setRecordForm,recordVaccines,setRecordVaccines,taskForm,setTaskForm,acsUsers,userObj,messageText,setMessageText,onSubmitRecord,onSubmitTask,onSubmitMessage,onDeleteAppointment,onStatusChange,canManageUser,canWriteRecords,token }) {
   const g = gestationalAgeInfo(patient);
   const acsName = users.find(u=>u.id===patient.assignedAcsId)?.name||"Nao atribuido";
   const activeTab = ["protocol","attendance","chart","agenda","tasks","messages"].includes(patientTab) ? patientTab : "protocol";
   const isPregnant = String(patient?.careCategory||"").toLowerCase()==="pregnant";
   const profileIncomplete = isProfileIncomplete(patient);
+  const [showPatientCard, setShowPatientCard] = useState(false);
+  const [documentPreview, setDocumentPreview] = useState(null);
+  const [showExamReq, setShowExamReq] = useState(false);
+  const [showPrescription, setShowPrescription] = useState(false);
+  const [showReferral, setShowReferral] = useState(false);
 
   const safeFmtDate = (value) => {
     if(!value) return "-";
@@ -3057,6 +3197,9 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
     return { ...item, done, target, pct };
   });
   const canAssignTask = ["nurse_manager","doctor"].includes(String(userObj?.role||""));
+  const canRequestExam = Boolean(canManageUser || canWriteRecords);
+  const canPrescribe = canManageUser || ["doctor","dentist","nurse_manager"].includes(String(userObj?.role||""));
+  const canRefer = String(userObj?.role||"")==="nurse_manager";
   const titleOptionsByType = {
     consultation: ["Consulta medica","Consulta enfermagem","Consulta odontologica"],
     visit: ["Visita ACS","Visita medica","Visita enfermagem"],
@@ -3086,12 +3229,70 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
     setRecordVaccines(prev => prev.includes(vaccine) ? prev.filter(v=>v!==vaccine) : [...prev, vaccine]);
   }
 
+  function openDocument(type) {
+    setDocumentPreview(buildPatientDocument(type, patient, userObj, templates, users));
+  }
+
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      <div style={{padding:"1rem 1rem .6rem",borderBottom:"1px solid var(--border)"}}>
-        <div style={{fontWeight:800,fontSize:"1rem",color:"var(--ink)"}}>{patient?.name||"Paciente"}</div>
-        <div style={{fontSize:".75rem",color:"var(--text-3)",marginTop:".2rem"}}>
-          {catLabel(templates, patient?.careCategory)} - ACS: {acsName}
+      <div style={{padding:"1rem 1.1rem",borderBottom:"1px solid var(--border)",background:"var(--surface)"}}>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"1rem"}}>
+          {/* Left: avatar + identity */}
+          <div style={{display:"flex",alignItems:"flex-start",gap:".85rem",flex:1,minWidth:0}}>
+            <div className="user-avatar" style={{width:46,height:46,background:"var(--teal-600)",color:"#fff",fontSize:"1rem",flexShrink:0,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800}}>
+              {initials(patient?.name||"P")}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:".55rem",flexWrap:"wrap"}}>
+                <span style={{fontWeight:800,fontSize:"1.05rem",color:"var(--ink)"}}>{patient?.name||"Paciente"}</span>
+                <span style={{fontSize:".68rem",padding:".12rem .5rem",borderRadius:999,background:"var(--teal-50)",border:"1px solid var(--teal-200)",color:"var(--teal-700)",fontWeight:700}}>{catLabel(templates, patient?.careCategory)}</span>
+                {isPregnant && <span style={{fontSize:".68rem",padding:".12rem .5rem",borderRadius:999,background:"#fdf2f8",border:"1px solid #fbcfe8",color:"#9d174d",fontWeight:700}}>Gestação: {g?`${g.weeks}s ${g.days}d`:"-"}</span>}
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:".55rem",marginTop:".55rem"}}>
+                <span style={{display:"flex",alignItems:"center",gap:".3rem",fontSize:".73rem",color:"var(--text-2)"}}>
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="13" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M4.5 1.5v2M11.5 1.5v2M1.5 6.5h13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                  Nasc. {safeFmtDate(patient?.birthDate)}
+                </span>
+                <span style={{color:"var(--border)"}}>·</span>
+                <span style={{fontSize:".73rem",color:"var(--text-2)",fontWeight:600}}>{calcAge(patient?.birthDate)||"-"}</span>
+                {patient?.phone && <>
+                  <span style={{color:"var(--border)"}}>·</span>
+                  <span style={{display:"flex",alignItems:"center",gap:".3rem",fontSize:".73rem",color:"var(--text-2)"}}>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h3l1 2.5-1.5 1a8.5 8.5 0 004 4l1-1.5 2.5 1v3C13 13.8 12 14 11 14 5.5 14 2 8.5 2 5c0-1 .2-2 1-2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
+                    {patient.phone}
+                  </span>
+                </>}
+                <span style={{color:"var(--border)"}}>·</span>
+                <span style={{fontSize:".73rem",color:"var(--text-2)"}}>ACS: <strong>{acsName}</strong></span>
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:".55rem",marginTop:".4rem"}}>
+                {patient?.cns && <span style={{fontSize:".71rem",color:"var(--text-3)"}}>CNS: <span style={{fontFamily:"IBM Plex Mono",color:"var(--text-2)"}}>{patient.cns}</span></span>}
+                {patient?.cpf && <span style={{fontSize:".71rem",color:"var(--text-3)"}}>CPF: <span style={{fontFamily:"IBM Plex Mono",color:"var(--text-2)"}}>{patient.cpf}</span></span>}
+              </div>
+            </div>
+          </div>
+          {/* Right: Ver cartão button */}
+          <button
+            type="button"
+            onClick={()=>setShowPatientCard(true)}
+            style={{
+              display:"inline-flex",alignItems:"center",gap:".38rem",
+              padding:".38rem .76rem",flexShrink:0,
+              borderRadius:999,
+              border:"1px solid var(--border)",
+              background:"#fff",
+              color:"var(--text-2)",
+              fontSize:".74rem",fontWeight:600,cursor:"pointer",
+              whiteSpace:"nowrap",
+              boxShadow:"0 1px 2px rgba(15,23,42,.04)",
+              transition:"border-color .15s, background .15s, color .15s",
+            }}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--teal-200)";e.currentTarget.style.background="#f8fffe";e.currentTarget.style.color="var(--teal-700)";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="#fff";e.currentTarget.style.color="var(--text-2)";}}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 6.5h6M5 9h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            Ver cart?o
+          </button>
         </div>
       </div>
 
@@ -3117,18 +3318,6 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
       <div style={{padding:"1rem",overflow:"auto",display:"flex",flexDirection:"column",gap:".85rem"}}>
         {activeTab==="protocol"&&(
           <>
-            <div className="card" style={{padding:".9rem"}}>
-              <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",fontWeight:700,marginBottom:".45rem"}}>Dados do paciente</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))",gap:".45rem .8rem",fontSize:".8rem"}}>
-                <div><strong>Nascimento:</strong> {safeFmtDate(patient?.birthDate)}</div>
-                <div><strong>Idade:</strong> {calcAge(patient?.birthDate)||"-"}</div>
-                <div><strong>Telefone:</strong> {patient?.phone||"-"}</div>
-                <div><strong>CNS:</strong> {patient?.cns||"-"}</div>
-                <div><strong>CPF:</strong> {patient?.cpf||"-"}</div>
-                {isPregnant && <div><strong>Gestacao:</strong> {g?`${g.weeks}s ${g.days}d`:"-"}</div>}
-              </div>
-            </div>
-
             {!!patientProtocolSummary&&(
               <div className="card" style={{padding:".9rem"}}>
                 <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",fontWeight:700,marginBottom:".55rem"}}>Indicadores do protocolo</div>
@@ -3172,8 +3361,70 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
             </div>
           </>
         )}
-
         {activeTab==="attendance"&&(
+          <>
+            <div className="card" style={{padding:".9rem 1rem"}}>
+              <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",fontWeight:700,marginBottom:".75rem",letterSpacing:".04em"}}>A??es do atendimento</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:".5rem"}}>
+                {canRequestExam && (
+                  <button
+                    type="button"
+                    onClick={()=>setShowExamReq(true)}
+                    style={{display:"inline-flex",alignItems:"center",gap:".42rem",padding:".4rem .66rem",borderRadius:999,border:"1px solid var(--border)",background:"#fff",cursor:"pointer",transition:"border-color .15s,background .15s,color .15s",fontFamily:"inherit",fontSize:".74rem",fontWeight:600,color:"var(--text-2)",boxShadow:"0 1px 2px rgba(15,23,42,.03)"}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor="#bfdbfe";e.currentTarget.style.background="#f8fbff";e.currentTarget.style.color="#1d4ed8";}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="#fff";e.currentTarget.style.color="var(--text-2)";}}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2H5a2 2 0 00-2 2v16a2 2 0 002 2h14a2 2 0 002-2V8L15 2H9z"/><path d="M15 2v6h6M12 12v4M10 14h4"/></svg>
+                    <span>Solicitar exame</span>
+                  </button>
+                )}
+                {canPrescribe && (
+                  <button
+                    type="button"
+                    onClick={()=>setShowPrescription(true)}
+                    style={{display:"inline-flex",alignItems:"center",gap:".42rem",padding:".4rem .66rem",borderRadius:999,border:"1px solid var(--border)",background:"#fff",cursor:"pointer",transition:"border-color .15s,background .15s,color .15s",fontFamily:"inherit",fontSize:".74rem",fontWeight:600,color:"var(--text-2)",boxShadow:"0 1px 2px rgba(15,23,42,.03)"}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor="#bbf7d0";e.currentTarget.style.background="#f7fef8";e.currentTarget.style.color="#15803d";}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="#fff";e.currentTarget.style.color="var(--text-2)";}}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v3h6V3M12 10v4M10 12h4"/></svg>
+                    <span>Receitar medicamento</span>
+                  </button>
+                )}
+                {canRefer && (
+                  <button
+                    type="button"
+                    onClick={()=>setShowReferral(true)}
+                    style={{display:"inline-flex",alignItems:"center",gap:".42rem",padding:".4rem .66rem",borderRadius:999,border:"1px solid var(--border)",background:"#fff",cursor:"pointer",transition:"border-color .15s,background .15s,color .15s",fontFamily:"inherit",fontSize:".74rem",fontWeight:600,color:"var(--text-2)",boxShadow:"0 1px 2px rgba(15,23,42,.03)"}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor="#fed7aa";e.currentTarget.style.background="#fffaf5";e.currentTarget.style.color="#c2410c";}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="#fff";e.currentTarget.style.color="var(--text-2)";}}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M14 6l6 6-6 6"/></svg>
+                    <span>Encaminhar atendimento</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={()=>openDocument("medical")}
+                  style={{display:"inline-flex",alignItems:"center",gap:".42rem",padding:".4rem .66rem",borderRadius:999,border:"1px solid var(--border)",background:"#fff",cursor:"pointer",transition:"border-color .15s,background .15s,color .15s",fontFamily:"inherit",fontSize:".74rem",fontWeight:600,color:"var(--text-2)",boxShadow:"0 1px 2px rgba(15,23,42,.03)"}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#e9d5ff";e.currentTarget.style.background="#fcfaff";e.currentTarget.style.color="#9333ea";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="#fff";e.currentTarget.style.color="var(--text-2)";}}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2H5a2 2 0 00-2 2v16a2 2 0 002 2h14a2 2 0 002-2V8L15 2H9z"/><path d="M15 2v6h6M9 12h6M9 16h4"/></svg>
+                  <span>Atestado m?dico</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={()=>openDocument("attendance")}
+                  style={{display:"inline-flex",alignItems:"center",gap:".42rem",padding:".4rem .66rem",borderRadius:999,border:"1px solid var(--border)",background:"#fff",cursor:"pointer",transition:"border-color .15s,background .15s,color .15s",fontFamily:"inherit",fontSize:".74rem",fontWeight:600,color:"var(--text-2)",boxShadow:"0 1px 2px rgba(15,23,42,.03)"}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#fde68a";e.currentTarget.style.background="#fffdf7";e.currentTarget.style.color="#a16207";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="#fff";e.currentTarget.style.color="var(--text-2)";}}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2H5a2 2 0 00-2 2v16a2 2 0 002 2h14a2 2 0 002-2V8L15 2H9z"/><path d="M15 2v6h6"/><circle cx="12" cy="14" r="2"/><path d="M12 16v2"/></svg>
+                  <span>Atestado de comparecimento</span>
+                </button>
+              </div>
+            </div>
+
           <form className="card" style={{padding:".9rem",display:"flex",flexDirection:"column",gap:".6rem"}} onSubmit={onSubmitRecord}>
             <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",fontWeight:700}}>Novo atendimento</div>
             {profileIncomplete&&(
@@ -3247,6 +3498,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
               <button type="submit" disabled={profileIncomplete} style={profileIncomplete?{opacity:.6,cursor:"not-allowed"}:undefined}>Salvar atendimento</button>
             </div>
           </form>
+          </>
         )}
 
         {activeTab==="chart"&&(
@@ -3372,9 +3624,91 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
           </div>
         )}
       </div>
+      {showPatientCard && <PatientCardModal patient={patient} users={users} templates={templates} history={history} onClose={()=>setShowPatientCard(false)} />}
+      {documentPreview && <DocumentPrintModal document={documentPreview} onClose={()=>setDocumentPreview(null)} />}
+      {showExamReq && <ExamRequestModal patient={patient} user={userObj} users={users} token={token} onClose={()=>setShowExamReq(false)} />}
+      {showPrescription && <EnhancedPrescriptionModal patient={patient} user={userObj} token={token} onClose={()=>setShowPrescription(false)} />}
+      {showReferral && <InternalReferralModal patient={patient} user={userObj} users={users} token={token} onClose={()=>setShowReferral(false)} />}
     </div>
   );
 }
+function buildPatientDocument(type, patient, user, templates, users) {
+  const today = new Date();
+  const acsName = users.find(u=>u.id===patient.assignedAcsId)?.name || "Não atribuído";
+  const categoryName = templates.find(t=>t.category===patient.careCategory)?.label || patient.careCategory || "Geral";
+  const issueDate = today.toLocaleDateString("pt-BR");
+  const professional = user?.name || "Profissional responsável";
+  const council = user?.councilNumber
+    ? `${user.role==="doctor"?"CRM":user.role==="dentist"?"CRO":"COREN"} ${user.councilNumber}/${user.councilUf||""}`
+    : "";
+
+  if (type === "attendance") {
+    return {
+      title: "Atestado de comparecimento",
+      subtitle: "Declaração pronta para impressão",
+      lines: [
+        "ATESTADO DE COMPARECIMENTO",
+        "",
+        `Declaro, para os devidos fins, que o(a) paciente ${patient.name}${patient.cpf ? `, CPF ${patient.cpf}` : ""}${patient.cns ? `, CNS ${patient.cns}` : ""} compareceu a esta unidade de saúde em ${issueDate} para atendimento em atenção primária.`,
+        "",
+        `Categoria de cuidado: ${categoryName}`,
+        `ACS responsável: ${acsName}`,
+        "",
+        "Documento emitido para fins de comprovação de presença na unidade.",
+        "",
+        `Profissional responsável: ${professional}${council ? ` - ${council}` : ""}`,
+      ],
+      footer: `Emitido em ${issueDate}`,
+    };
+  }
+
+  return {
+    title: "Atestado médico automático",
+    subtitle: "Modelo automático para impressão imediata",
+    lines: [
+      "ATESTADO MÉDICO",
+      "",
+      `Atesto que o(a) paciente ${patient.name}${patient.cpf ? `, CPF ${patient.cpf}` : ""}${patient.cns ? `, CNS ${patient.cns}` : ""} esteve em avaliação nesta unidade de saúde em ${issueDate}, necessitando afastamento de suas atividades nesta data, conforme avaliação clínica registrada em prontuário.`,
+      "",
+      "Se necessário, o período de afastamento poderá ser complementado na conduta do atendimento.",
+      "",
+      `Profissional responsável: ${professional}${council ? ` - ${council}` : ""}`,
+    ],
+    footer: `Emitido em ${issueDate}`,
+  };
+}
+
+function DocumentPrintModal({ document, onClose }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" style={{maxWidth:720,maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
+          <div>
+            <h3 style={{margin:0}}>{document.title}</h3>
+            {document.subtitle && <div style={{fontSize:".74rem",color:"var(--text-3)",marginTop:".15rem"}}>{document.subtitle}</div>}
+          </div>
+          <div style={{display:"flex",gap:".45rem"}}>
+            <button onClick={()=>window.print()} style={{fontSize:".78rem",padding:".35rem .75rem"}}>Imprimir</button>
+            <button className="icon-btn" onClick={onClose}><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
+          </div>
+        </div>
+        <div style={{padding:"1.35rem",background:"var(--surface-2)",borderRadius:"var(--r-md)",border:"1px solid var(--border)",lineHeight:1.7}}>
+          {document.lines.map((line, idx)=>(
+            <div key={idx} style={{minHeight:"1.3em",fontSize:".88rem",color:line===line.toUpperCase()?"var(--ink)":"var(--text-2)",fontWeight:line===line.toUpperCase()?700:400}}>
+              {line || "\u00A0"}
+            </div>
+          ))}
+          {document.footer && (
+            <div style={{marginTop:"1.25rem",paddingTop:".75rem",borderTop:"1px solid var(--border)",fontSize:".75rem",color:"var(--text-3)"}}>
+              {document.footer}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function readPharmacyStock() {
   try { const r = localStorage.getItem(PHARMACY_KEY); return r ? JSON.parse(r) : DEFAULT_STOCK.map(i=>({...i})); } catch { return DEFAULT_STOCK.map(i=>({...i})); }
 }
@@ -3383,6 +3717,8 @@ function readPharmaLog() {
   try { const r = localStorage.getItem(PHARMA_LOG_KEY); return r ? JSON.parse(r) : []; } catch { return []; }
 }
 function savePharmaLog(log) { writeLS(PHARMA_LOG_KEY, log); }
+function readPharmaPrescriptionQueue() { return readLS(PHARMA_PRESCRIPTION_QUEUE_KEY, []); }
+function savePharmaPrescriptionQueue(queue) { writeLS(PHARMA_PRESCRIPTION_QUEUE_KEY, queue); }
 function readPharmaSession() {
   try { const r = localStorage.getItem(PHARMA_AUTH_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
 }
@@ -3802,6 +4138,7 @@ function PharmacyPage({ user }) {
   const [showLogin,    setShowLogin]    = useState(false);
   const [stock,        setStock]        = useState(readPharmacyStock);
   const [log,          setLog]          = useState(readPharmaLog);
+  const [pendingPrescriptions, setPendingPrescriptions] = useState(() => readPharmaPrescriptionQueue().filter(item=>item.status!=="dispensed"));
   const [pharmaTab,    setPharmaTab]    = useState("stock"); // stock | log
   const [catFilter,    setCatFilter]    = useState("Todas");
   const [search,       setSearch]       = useState("");
@@ -3820,6 +4157,32 @@ function PharmacyPage({ user }) {
   function doLogout() {
     setPharmaUser(null);
     savePharmaSession(null);
+  }
+
+  useEffect(() => {
+    function syncPendingPrescriptions() {
+      setPendingPrescriptions(readPharmaPrescriptionQueue().filter(item=>item.status!=="dispensed"));
+    }
+    syncPendingPrescriptions();
+    window.addEventListener("storage", syncPendingPrescriptions);
+    window.addEventListener("pharmacy-prescriptions-updated", syncPendingPrescriptions);
+    return () => {
+      window.removeEventListener("storage", syncPendingPrescriptions);
+      window.removeEventListener("pharmacy-prescriptions-updated", syncPendingPrescriptions);
+    };
+  }, []);
+
+  function handlePrescriptionDispensed(id) {
+    const queue = readPharmaPrescriptionQueue();
+    const updated = queue.map(item=>item.id===id ? {
+      ...item,
+      status: "dispensed",
+      dispensedAt: new Date().toISOString(),
+      dispensedBy: pharmaUser?.name || "",
+    } : item);
+    savePharmaPrescriptionQueue(updated);
+    setPendingPrescriptions(updated.filter(item=>item.status!=="dispensed"));
+    auditLog("PRESCRICAO_ENVIADA_FARMACIA", { prescriptionId:id, farmaceutico: pharmaUser?.name || "" }, user);
   }
 
   function addLogEntry(entry) {
@@ -3884,6 +4247,7 @@ function PharmacyPage({ user }) {
   const lowStock   = stock.filter(s => s.qty <= s.minQty);
   const outStock   = stock.filter(s => s.qty === 0);
   const totalItems = stock.length;
+  const pendingRxCount = pendingPrescriptions.length;
 
   const filtered = stock.filter(s => {
     if (catFilter !== "Todas" && s.category !== catFilter) return false;
@@ -3929,32 +4293,24 @@ function PharmacyPage({ user }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      {/* Header */}
-      <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div style={{flex:1}}>
-          <p className="home-kicker">💊 Gestão de Medicamentos</p>
-          <h1 className="home-title">💊 Farmácia UBS</h1>
-          <p className="home-sub">Controle de estoque, dispensação e rastreabilidade de medicamentos.</p>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:".75rem",flexShrink:0}}>
-          {isAuthenticated ? (
-            <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontSize:".78rem",fontWeight:700,color:"var(--teal-700)"}}>{pharmaUser.name}</div>
-                <div style={{fontSize:".68rem",color:"var(--text-3)"}}>Farmacêutico(a) · sessão ativa</div>
-              </div>
-              <button onClick={doLogout} style={{fontSize:".75rem",padding:".3rem .65rem",background:"var(--surface-2)",border:"1px solid var(--border)",color:"var(--text-2)"}}>
-                Sair
-              </button>
+      <div style={{display:"flex",justifyContent:"flex-end",padding:"0 1.5rem .75rem"}}>
+        {isAuthenticated ? (
+          <div className="card" style={{display:"flex",alignItems:"center",gap:".75rem",padding:".7rem .9rem"}}>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:".78rem",fontWeight:700,color:"var(--teal-700)"}}>{pharmaUser.name}</div>
+              <div style={{fontSize:".68rem",color:"var(--text-3)"}}>Farmacêutico(a) · sessão ativa</div>
             </div>
-          ) : (
-            <button onClick={()=>setShowLogin(true)} style={{display:"flex",alignItems:"center",gap:".4rem"}}>
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 7v3M8 5.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              Entrar como Farmacêutico
+            <button onClick={doLogout} style={{fontSize:".75rem",padding:".3rem .65rem",background:"var(--surface-2)",border:"1px solid var(--border)",color:"var(--text-2)"}}>
+              Sair
             </button>
-          )}
-        </div>
-      </section>
+          </div>
+        ) : (
+          <button onClick={()=>setShowLogin(true)} style={{display:"flex",alignItems:"center",gap:".4rem"}}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 7v3M8 5.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+            Entrar como Farmacêutico
+          </button>
+        )}
+      </div>
 
       {/* KPI Cards */}
       <div style={{display:"flex",gap:".75rem",padding:"0 1.5rem .75rem",flexWrap:"wrap"}}>
@@ -3993,6 +4349,43 @@ function PharmacyPage({ user }) {
 
         {pharmaTab === "stock" && (
           <>
+            {pendingPrescriptions.length > 0 && (
+              <div className="card" style={{padding:"1rem",marginBottom:"1rem",border:"1px solid #bfdbfe",background:"#eff6ff"}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:"1rem",alignItems:"center",marginBottom:".75rem",flexWrap:"wrap"}}>
+                  <div>
+                    <div style={{fontSize:".72rem",fontWeight:700,textTransform:"uppercase",color:"#1d4ed8"}}>Receitas enviadas para a farmácia</div>
+                    <div style={{fontSize:".78rem",color:"#1e3a8a",marginTop:".15rem"}}>{pendingPrescriptions.length} prescrição(ões) aguardando atendimento.</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:".75rem"}}>
+                  {pendingPrescriptions.slice(0,6).map(item=>(
+                    <div key={item.id} style={{padding:".8rem .85rem",borderRadius:"var(--r-md)",background:"#fff",border:"1px solid #bfdbfe"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:".5rem",alignItems:"flex-start"}}>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:".82rem",color:"var(--ink)"}}>{item.patientName}</div>
+                          <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem"}}>{fmtTs(item.ts)}</div>
+                        </div>
+                        <span style={{fontSize:".68rem",padding:".12rem .42rem",borderRadius:999,background:"#dbeafe",color:"#1d4ed8",fontWeight:700}}>Pendente</span>
+                      </div>
+                      <div style={{fontSize:".74rem",color:"var(--text-2)",marginTop:".55rem",display:"flex",flexDirection:"column",gap:".2rem"}}>
+                        {(item.medications||[]).map((med, idx)=>(
+                          <span key={`${item.id}_${idx}`}>{med.name} {med.dosage ? `- ${med.dosage}` : ""}{med.frequency ? `, ${med.frequency}` : ""}</span>
+                        ))}
+                      </div>
+                      <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".55rem"}}>Prescritor: {item.prescriber || "-"}</div>
+                      {isAuthenticated && (
+                        <div style={{display:"flex",justifyContent:"flex-end",marginTop:".7rem"}}>
+                          <button type="button" className="secondary" style={{fontSize:".72rem",padding:".28rem .6rem"}} onClick={()=>handlePrescriptionDispensed(item.id)}>
+                            Marcar atendida
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Toolbar */}
             <div style={{display:"flex",gap:".6rem",marginBottom:"1rem",flexWrap:"wrap",alignItems:"center"}}>
               <div style={{position:"relative",flex:"1 1 200px"}}>
@@ -4431,19 +4824,19 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      {/* Header */}
-      <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div>
-          <p className="home-kicker">💉 Calendário Nacional de Vacinação</p>
-          <h1 className="home-title" style={{display:"flex",alignItems:"center",gap:".6rem",flexWrap:"wrap"}}>
-            Carteira de Vacinas
-            {isEquipeRosa&&<span style={{fontSize:".65rem",fontWeight:700,padding:".2rem .6rem",borderRadius:999,background:"#fdf2f8",color:"#9d174d",border:"1px solid #fbcfe8",letterSpacing:".04em"}}>🌸 Indicador – Equipe Rosa</span>}
-          </h1>
-          <p className="home-sub">{isEquipeRosa
-            ? "Exibindo vacinas do indicador: crianças (calendário completo do indicador), gestantes (dTpa ≥20s), idosos (Influenza) e meninas 9–14a (HPV)."
-            : "Indicações baseadas no Calendário Nacional de Vacinação – Ministério da Saúde."}</p>
+      {isEquipeRosa && (
+        <div style={{padding:"0 1.5rem 1rem"}}>
+          <div className="card" style={{padding:".85rem 1rem",background:"#fdf2f8",border:"1px solid #fbcfe8"}}>
+            <div style={{display:"flex",alignItems:"center",gap:".5rem",fontSize:".76rem",fontWeight:700,color:"#9d174d",marginBottom:".25rem"}}>
+              <span>🌸</span>
+              <span>Indicador da Equipe Rosa</span>
+            </div>
+            <p style={{margin:0,fontSize:".78rem",color:"#831843",lineHeight:1.55}}>
+              Exibindo vacinas do indicador: crianças, gestantes com dTpa a partir de 20 semanas, idosos com Influenza e meninas de 9 a 14 anos com HPV.
+            </p>
+          </div>
         </div>
-      </section>
+      )}
 
       <div style={{display:"flex",gap:"1.25rem",padding:"0 1.5rem 1.5rem",flex:1,alignItems:"flex-start",minHeight:0}}>
 
@@ -4843,14 +5236,6 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
 function AiTab({ aiView, aiData, aiQuestion, setAiQuestion, onPriorities, onQuality, onReport, onAsk, busy }) {
   return (
     <div className="workspace-home">
-      <div className="home-hero">
-        <div>
-          <p className="home-kicker">IA Assistida</p>
-          <h1 className="home-title">Assistente da Equipe</h1>
-          <p className="home-sub">Prioridades do dia, qualidade de dados e perguntas operacionais em linguagem natural.</p>
-        </div>
-      </div>
-
       <div className="card">
         <div className="card-header">
           <span className="card-title">Ações rápidas</span>
@@ -5193,6 +5578,7 @@ function AppInner() {
   const [apiHealth, setApiHealth] = useState({ status:"checking", label:"Verificando...", latencyMs:0, checkedAt:null });
   const [lastLoadAt, setLastLoadAt] = useState(null);
   const [demandMonthly, setDemandMonthly] = useState(null);
+  const [teamTasks, setTeamTasks] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [publicTeams,  setPublicTeams]  = useState([]);
   const [query,          setQuery]          = useState("");
@@ -5592,6 +5978,8 @@ async function loadAll() {
     setPatients(pts);
     setUsers(Array.isArray(us) ? us : []);
     setTemplates(Array.isArray(tpls) ? tpls : []);
+    setTeamTasks(Array.isArray(boot?.tasks) ? boot.tasks : []);
+    setDemandMonthly(boot?.demandMonthly || null);
 
     Promise.resolve().then(async () => {
       try {
@@ -5632,6 +6020,7 @@ async function loadAll() {
   function logout() {
     auditLog("LOGOUT", { email: user?.email }, user);
     setToken(""); setUser(null); setPatients([]); setUsers([]); setTemplates([]); setProtocolByPatient({}); setSelectedPatientId("");
+    setTeamTasks([]); setDemandMonthly(null);
     sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(UI_STATE_KEY); localStorage.removeItem(RECEPTION_KEY);
   }
 
@@ -6111,6 +6500,30 @@ async function loadAll() {
     }
   }
 
+  const defaultHeroByTab = {
+    dashboard: { kicker: "Visão geral • unidade", title: "Gestão de Pacientes", sub: "Acompanhe pacientes, protocolos e pendências da equipe em tempo real." },
+    queue: { kicker: "Fila e recepção • unidade", title: "Fluxo de Atendimento", sub: "Chegada, chamada e organização do acolhimento em tempo real." },
+    triage: { kicker: "Triagem • unidade", title: "Avaliação Inicial", sub: "Classificação de risco e sinais vitais com foco clínico." },
+    agenda: { kicker: "Agenda • unidade", title: "Compromissos da Equipe", sub: "Consultas, encaixes e disponibilidade organizados por dia." },
+    referrals: { kicker: "Encaminhamentos • unidade", title: "Rede de Referência", sub: "Solicitações clínicas com rastreabilidade e contexto assistencial." },
+    acs_tasks: { kicker: "ACS • unidade", title: "Tarefas do Território", sub: "Acompanhamento das ações de campo e prioridades do dia." },
+    chart: { kicker: "Prontuário • unidade", title: "Histórico Clínico", sub: "Registros integrados para consulta rápida da equipe." },
+    exams_page: { kicker: "Exames • unidade", title: "Central de Exames", sub: "Pedidos, resultados e documentos reunidos em um só fluxo." },
+    gestor: { kicker: "Gestão • unidade", title: "Visão Gerencial", sub: "Indicadores operacionais e assistenciais para apoiar decisões." },
+    reports: { kicker: "Relatórios • unidade", title: "Leitura Executiva", sub: "Exportações e consolidados com foco em acompanhamento da unidade." },
+    diagnostics: { kicker: "Diagnósticos • unidade", title: "Saúde do Sistema", sub: "Monitoramento técnico, API e consistência operacional." },
+    patients: { kicker: "Pacientes • unidade", title: "Cadastro Assistencial", sub: "Busca, filtros e visão longitudinal da população cadastrada." },
+    protocols: { kicker: "Protocolos • unidade", title: "Regras de Cuidado", sub: "Modelos assistenciais e metas por perfil acompanhadas pela equipe." },
+    acs: { kicker: "Equipe ACS • unidade", title: "Agentes Comunitários", sub: "Gestão dos profissionais, cobertura territorial e apoio à rotina." },
+    doctors: { kicker: "Equipe clínica • unidade", title: "Profissionais Assistenciais", sub: "Médicos e técnicos organizados em uma visão operacional única." },
+    pharmacy: { kicker: "Farmácia • unidade", title: "Gestão de Medicamentos", sub: "Controle de estoque, dispensação e rastreabilidade com visão operacional única." },
+    vaccines: { kicker: "Vacinação • unidade", title: "Carteira de Vacinas", sub: "Indicações e histórico vacinal organizados em um cabeçalho único do sistema." },
+    insumos: { kicker: "Insumos • unidade", title: "Abastecimento e Dispensa", sub: "Controle de estoque com foco em continuidade do cuidado." },
+    ai: { kicker: "IA assistida • unidade", title: "Assistente da Equipe", sub: "Prioridades do dia, qualidade de dados e perguntas operacionais em linguagem natural." },
+  };
+  const defaultHero = defaultHeroByTab[tab] || null;
+  const showDefaultHero = Boolean(defaultHero);
+
   return (
     <main className="app">
       <OfflineBanner/>
@@ -6138,6 +6551,16 @@ async function loadAll() {
         <section className="main-area">
           {error&&<div className="error" style={{margin:"1rem 2rem 0"}}>{error}<button className="icon-btn" style={{marginLeft:".5rem"}} onClick={()=>setError("")}><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button></div>}
 
+          {showDefaultHero && (
+            <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
+              <div>
+                <p className="home-kicker">{defaultHero.kicker}</p>
+                <h1 className="home-title">{defaultHero.title}</h1>
+                <p className="home-sub">{defaultHero.sub}</p>
+              </div>
+            </section>
+          )}
+
           {tab==="dashboard"&&<Dashboard patients={patients} users={users} allUsers={allUsers||[]} templates={templates} protocolByPatient={protocolByPatient} demandMonthly={demandMonthly} currentUser={user} onNavigate={(id)=>{ setTab("patients"); setSelectedPatientId(id); }} setTab={setTab}/>}
 
           {tab==="queue"&&<QueuePage patients={patients} users={users} user={user} token={token} onNewPatient={p=>setPatients(prev=>[...prev,p])}/>}
@@ -6148,8 +6571,8 @@ async function loadAll() {
           {tab==="chart"&&<ProntuarioPage patients={patients} users={users} user={user} token={token} history={history} selectedPatientId={selectedPatientId} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
 
           {tab==="exams_page"&&<ExamsPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
-          {tab==="gestor"&&<GestorPageNew patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
-          {tab==="reports"&&<ReportsPageNew patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
+          {tab==="gestor"&&<GestorPageNew patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient} teams={publicTeams} tasks={teamTasks} agenda={readLS(AGENDA_KEY,[])} stock={readPharmacyStock()} demandMonthly={demandMonthly} proactiveAlerts={buildProactiveAlerts(patients, protocolByPatient, readPharmacyStock(), readLS(AGENDA_KEY,[]))}/>}
+          {tab==="reports"&&<ReportsPageNew patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient} teams={publicTeams} tasks={teamTasks} agenda={readLS(AGENDA_KEY,[])} stock={readPharmacyStock()} demandMonthly={demandMonthly}/>}
           {tab==="diagnostics"&&(
             <DiagnosticsPageNew
               apiHealth={apiHealth}

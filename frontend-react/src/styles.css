@@ -4,7 +4,7 @@
    Paleta: Teal clínico · Slate escuro · Branco limpo
 ───────────────────────────────────────────────────────────────── */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 /* ── Tokens ──────────────────────────────────────────────────────── */
 :root {
@@ -654,6 +654,51 @@ body {
 .main-area::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 3px; }
 
 /* ── Page wrapper ────────────────────────────────────────────────── */
+.unit-page {
+  width: 100%;
+  min-height: 100%;
+}
+
+.unit-head {
+  background: linear-gradient(135deg, var(--slate-900) 0%, #0f2f56 100%);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  padding: 1.1rem 1.6rem 1rem;
+}
+
+.unit-kicker {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--teal-400);
+  margin-bottom: .35rem;
+}
+
+.unit-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.12;
+  letter-spacing: -.02em;
+  margin: 0;
+}
+
+.unit-sub {
+  margin: .35rem 0 0;
+  font-size: .86rem;
+  color: var(--slate-300);
+}
+
+.unit-body {
+  width: 100%;
+  padding: 0;
+}
+
+.unit-body > * {
+  width: 100%;
+  max-width: 100%;
+}
+
 .page { padding: 1.75rem 2rem; }
 
 .page-header {
@@ -679,14 +724,24 @@ body {
 
 /* ── Workspace home ──────────────────────────────────────────────── */
 .workspace-home {
+  width: 100%;
+  min-width: 0;
   padding: 1.75rem 2rem;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 1.5rem;
+  box-sizing: border-box;
+}
+
+.workspace-home > * {
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Hero card */
 .home-hero {
+  width: 100%;
   background: linear-gradient(135deg, var(--slate-900) 0%, var(--slate-800) 50%, #0d3d38 100%);
   border-radius: var(--r-xl);
   padding: 1.75rem 2rem;
@@ -746,6 +801,7 @@ body {
 
 /* KPI grid */
 .home-kpi-grid {
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
