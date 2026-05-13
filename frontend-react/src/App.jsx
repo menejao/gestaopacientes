@@ -3409,15 +3409,6 @@ function buildProactiveAlerts(patients, protocolByPatient, pharmacyStock, agenda
       alerts.push({ id:"dpp-"+p.id, type:"danger", title:"DPP ultrapassada", detail:`${p.name} — ${days}d além da DPP`, patientId:p.id, createdAt });
     }
   });
-  const canAssignTask = ["nurse_manager","doctor"].includes(String(userObj?.role||""));
-  const canRequestExam = Boolean(canManageUser || canWriteRecords);
-  const canPrescribe = canManageUser || ["doctor","dentist","nurse_manager"].includes(String(userObj?.role||""));
-  const canRefer = String(userObj?.role||"")==="nurse_manager";
-  const titleOptionsByType = {
-    consultation: ["Consulta medica","Consulta enfermagem","Consulta odontologica"],
-    visit: ["Visita ACS","Visita medica","Visita enfermagem"],
-  };
-  const titleOptions = titleOptionsByType[recordForm?.type] || [];
 
   // Visitas de puericultura: alertas de prazo perdido NÃO aparecem no sino/dashboard.
   // Indicadores perdidos são exibidos apenas no painel do próprio paciente (aba Protocolo).
