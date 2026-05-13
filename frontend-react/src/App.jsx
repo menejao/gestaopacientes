@@ -1600,13 +1600,16 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
   };
 
   return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      <PageHero
+        badge="Gestão de Pacientes"
+        title="Pacientes"
+        subtitle={`${filtered.length} paciente${filtered.length!==1?"s":""} cadastrado${filtered.length!==1?"s":""}`}
+        style={{margin:"1.5rem 1.5rem .75rem"}}
+        actions={canManageUser&&<button onClick={onEdit(null)}>+ Novo paciente</button>}
+      />
     <div className={`patients-layout ${selectedPatient ? "with-detail" : "without-detail"}`}>
       <div className="card">
-        <SectionHeader
-          title="Pacientes"
-          count={filtered.length}
-          action={canManageUser&&<button onClick={onEdit(null)}>+ Novo paciente</button>}
-        />
         <div className="filters">
           <input placeholder="Buscar por nome ou telefone..." value={query} onChange={e=>setQuery(e.target.value)}/>
           <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}>
@@ -1716,6 +1719,7 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
         </div>
       )}
     </div>
+  </div>
   );
 }
 
@@ -2460,7 +2464,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      <PageHero badge="Exames · Unidade" title="Exames dos Pacientes" subtitle="Exames realizados na unidade e exames externos trazidos pelos pacientes." />
+      <PageHero badge="Exames · Unidade" title="Exames dos Pacientes" subtitle="Exames realizados na unidade e exames externos trazidos pelos pacientes." style={{margin:"1.5rem 1.5rem .75rem"}} />
 
       <div style={{display:"flex",flex:1,minHeight:0}}>
         {/* Lista de pacientes */}
@@ -5766,6 +5770,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
         badge="Prontuário Eletrônico · Res. CFM 1638/2002 · LGPD"
         title={patSelected&&unlocked ? patSelected.name : "Prontuário Eletrônico do Paciente"}
         subtitle={!(patSelected&&unlocked) ? "Documento legal e sigiloso — acesso registrado conforme LGPD." : undefined}
+        style={{margin:"1.5rem 1.5rem .75rem"}}
         actions={
           <div style={{display:"flex",flexDirection:"column",gap:".6rem",alignItems:"flex-end",flexShrink:0}}>
             <div style={{position:"relative",width:340}}>
@@ -8011,7 +8016,7 @@ function InsumoPage({ patients, users, user }) {
         badge="Gestão de Insumos"
         title="Dispensação de Insumos ao Paciente"
         subtitle="Controle de saída, estoque e pacientes contínuos — baseado no formulário DAF/Osasco."
-        style={{flexShrink:0}}
+        style={{margin:"1.5rem 1.5rem .75rem",flexShrink:0}}
         actions={
           <div style={{display:"flex",gap:".75rem",flexWrap:"wrap",alignItems:"center"}}>
             <div style={{textAlign:"right"}}>
