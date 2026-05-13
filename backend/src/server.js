@@ -427,17 +427,11 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (!FRONTEND_ORIGINS.length) {
-      if (!IS_PROD || CORS_ALLOW_ALL) return callback(null, true);
-      return callback(new Error("Origem não permitida por CORS"));
-    }
-    if (CORS_ALLOW_ALL) return callback(null, true);
-    if (FRONTEND_ORIGINS.includes(origin)) return callback(null, true);
-    return callback(new Error("Origem não permitida por CORS"));
-  }
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
+app.options("*", cors());
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
