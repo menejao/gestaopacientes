@@ -1,0 +1,17 @@
+@layer utilities {
+.muted { color: var(--color-text-secondary); }
+.small { font-size: .75rem; }
+
+.error {
+  background: var(--red-50);
+  color: var(--red-700);
+  border: 1px solid var(--red-100);
+  border-radius: var(--r-md);
+  padding: .65rem 1rem;
+  font-size: .82rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+}

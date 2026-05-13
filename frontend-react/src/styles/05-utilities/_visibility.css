@@ -1,0 +1,10 @@
+/* !important is intentional here: visibility utilities must override
+   component display rules at any specificity. */
+@layer utilities {
+.show-mobile { display: none !important; }
+}
+
+@media (max-width: 768px) {
+  .hide-mobile  { display: none !important; }
+  .show-mobile  { display: flex !important; }
+}

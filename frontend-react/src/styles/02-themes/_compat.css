@@ -1,0 +1,18 @@
+/* Legacy aliases — point to canonical semantic tokens.
+   New code: use --color-* and --sp-* directly.
+   These exist only for backward compat with existing classes. */
+@layer tokens {
+  :root {
+    --bg:           var(--color-surface-app);
+    --surface:      var(--color-surface);
+    --surface-2:    var(--color-surface-2);
+    --surface-3:    var(--color-surface-3);
+    --border:       var(--color-border);
+    --border-soft:  var(--color-border-soft);
+    --border-focus: var(--color-focus-ring);
+    --text-1: var(--color-text-primary);
+    --text-2: var(--color-text-secondary);
+    --text-3: var(--color-text-muted);
+    --ink:    var(--color-text-primary);
+  }
+}

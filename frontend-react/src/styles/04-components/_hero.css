@@ -1,0 +1,96 @@
+/* PR #2 fix: replaced structural slot selectors
+   (.home-hero > :first-child:not(:last-child)) with
+   explicit class slots (.hero-body / .home-hero-actions).
+   HomeHero.jsx must add class="hero-body" to the inner <div>. */
+@layer components {
+.home-hero {
+  background: linear-gradient(135deg, var(--slate-900) 0%, var(--slate-800) 50%, #0d3d38 100%);
+  border-radius: var(--r-xl);
+  padding: 1.75rem 2rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.06);
+  width: 100%;
+  box-sizing: border-box;
+}
+.home-hero-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .5rem;
+  flex-shrink: 0;
+}
+/* Named slot for hero body content */
+.hero-body { flex: 1; min-width: 0; }
+/* Legacy structural fallback (kept until App.jsx migrated) */
+.home-hero > :first-child:not(:last-child) { flex: 1; min-width: 0; }
+.home-hero > :last-child:not(:first-child)  { margin-left: auto; display: flex; align-items: center; justify-content: flex-end; gap: .5rem; flex-shrink: 0; }
+
+.home-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 240px; height: 240px;
+  background: radial-gradient(circle, rgba(20,184,166,.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.home-kicker {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--teal-400);
+  margin-bottom: .6rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.home-kicker::before { content: ''; display: inline-block; width: 6px; height: 6px; background: var(--teal-500); border-radius: 50%; }
+
+.home-title { font-size: 1.5rem; font-weight: 700; color: #fff; line-height: 1.2; letter-spacing: -.03em; margin-bottom: .5rem; }
+.home-sub   { font-size: .85rem; color: var(--slate-400); max-width: 480px; line-height: 1.6; }
+
+/* KPI grid */
+.home-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 1rem;
+}
+
+.home-kpi-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  padding: 1.25rem;
+  box-shadow: var(--sh-xs);
+  transition: box-shadow .2s, transform .2s;
+  position: relative;
+  overflow: hidden;
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+}
+.home-kpi-card:hover { box-shadow: var(--sh-md); transform: translateY(-1px); }
+.home-kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--teal-500);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.home-kpi-card:nth-child(2)::before { background: var(--violet-500); }
+.home-kpi-card:nth-child(3)::before { background: var(--amber-500); }
+.home-kpi-card:nth-child(4)::before { background: var(--green-500); }
+
+.home-kpi-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--color-text-muted); margin-bottom: .65rem; }
+.home-kpi-value { font-size: 2rem; font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--color-text-primary); line-height: 1; margin-bottom: .4rem; letter-spacing: -.02em; }
+.home-kpi-foot  { font-size: .75rem; color: var(--color-text-muted); }
+}

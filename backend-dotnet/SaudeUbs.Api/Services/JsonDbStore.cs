@@ -46,8 +46,20 @@ public sealed class JsonDbStore
                 Directory.CreateDirectory(dir);
             }
 
-            await using var fs = File.Create(_dbPath);
-            await JsonSerializer.SerializeAsync(fs, state, JsonOptions);
+            var tempPath = $"{_dbPath}.tmp";
+            var backupPath = $"{_dbPath}.bak";
+
+            await using (var fs = File.Create(tempPath))
+            {
+                await JsonSerializer.SerializeAsync(fs, state, JsonOptions);
+            }
+
+            if (File.Exists(_dbPath))
+            {
+                File.Copy(_dbPath, backupPath, overwrite: true);
+            }
+
+            File.Move(tempPath, _dbPath, overwrite: true);
         }
         finally
         {
@@ -62,8 +74,30 @@ public sealed class JsonDbStore
             return new AppDb();
         }
 
-        await using var fs = File.OpenRead(_dbPath);
-        var state = await JsonSerializer.DeserializeAsync<AppDb>(fs, JsonOptions) ?? new AppDb();
+        try
+        {
+            await using var fs = File.OpenRead(_dbPath);
+            return EnsureCollections(await JsonSerializer.DeserializeAsync<AppDb>(fs, JsonOptions) ?? new AppDb());
+        }
+        catch (Exception ex)
+        {
+            var corruptedPath = $"{_dbPath}.corrupt-{DateTime.UtcNow:yyyyMMddHHmmss}.json";
+            try
+            {
+                File.Copy(_dbPath, corruptedPath, overwrite: true);
+            }
+            catch
+            {
+                // Mantém o erro original como aviso no console e segue com base vazia.
+            }
+
+            Console.Error.WriteLine($"[ERRO] Falha ao ler JSON de persistência em '{_dbPath}': {ex.Message}");
+            return new AppDb();
+        }
+    }
+
+    private static AppDb EnsureCollections(AppDb state)
+    {
         state.Teams ??= new();
         state.Users ??= new();
         state.Patients ??= new();

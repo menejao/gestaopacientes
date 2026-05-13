@@ -1,0 +1,14 @@
+@layer tokens {
+  :root {
+    --sidebar-w: 240px;
+    --topbar-h:  56px;
+
+    --sb-bg:            var(--slate-900);
+    --sb-bg-2:          var(--slate-800);
+    --sb-border:        rgba(255,255,255,.07);
+    --sb-text:          #cbd5e1;
+    --sb-muted:         #64748b;
+    --sb-active:        rgba(20,184,166,.15);
+    --sb-active-border: var(--teal-500);
+  }
+}

@@ -1,0 +1,78 @@
+@layer components {
+.exam-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--teal-400);
+  border-radius: var(--r-md);
+  padding: .65rem .85rem;
+  margin-bottom: .4rem;
+}
+.exam-card--external {
+  border-color: #e0e7ff;
+  border-left-color: #6366f1;
+}
+
+.exam-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: .5rem;
+}
+.exam-card-title {
+  font-weight: 600;
+  font-size: .84rem;
+  color: var(--color-text-primary);
+}
+.exam-card-date {
+  font-size: .72rem;
+  color: var(--color-text-muted);
+  margin-top: .1rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+.exam-card-actions {
+  display: flex;
+  gap: .3rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+.exam-attachment-count {
+  font-size: .68rem;
+  color: var(--teal-700);
+  background: var(--teal-50);
+  border: 1px solid var(--teal-100);
+  padding: .1rem .4rem;
+  border-radius: 999px;
+}
+.exam-attachment-count--external {
+  color: #6366f1;
+  background: #eff6ff;
+  border-color: #c7d2fe;
+}
+.exam-card-details {
+  margin: .35rem 0 0;
+  font-family: inherit;
+  font-size: .78rem;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+.exam-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .45rem;
+}
+
+.attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .25rem .55rem;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-size: .73rem;
+  color: var(--color-text-primary);
+}
+}

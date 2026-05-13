@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "PowerShell(\\(Get-Content \"C:\\\\Users\\\\joão.benedito\\\\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\\\\Documentos\\\\Playground\\\\frontend-react\\\\src\\\\styles.css\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\joão.benedito\\\\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\\\\Documentos\\\\Playground\\\\frontend-react\\\\src\" -Recurse | Where-Object { !$_.PSIsContainer } | Select-Object Name, Length)",
+      "PowerShell($content = Get-Content \"C:\\\\Users\\\\joão.benedito\\\\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\\\\Documentos\\\\Playground\\\\frontend-react\\\\src\\\\App.jsx\" -Raw; $matches = [regex]::Matches\\($content, 'style=\\\\{\\\\{'\\); Write-Host \"inline style count: $\\($matches.Count\\)\"; $lines = $content -split \"`n\"; Write-Host \"total lines: $\\($lines.Count\\)\")",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\joão.benedito\\\\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\\\\Documentos\\\\Playground\\\\frontend-react\\\\src\" -Recurse | Where-Object {!$_.PSIsContainer} | Select-Object Name | Sort-Object Name)",
+      "Bash(npm run *)",
+      "Bash(powershell.exe *)"
+    ]
+  }
+}

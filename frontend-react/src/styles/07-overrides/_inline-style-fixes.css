@@ -1,0 +1,41 @@
+/* Section 17 — overrides for App.jsx inline styles.
+   These exist because style={{}} bypasses media queries.
+   Migrate inline styles to CSS classes (PR #5) to eliminate this file. */
+@layer overrides {
+
+/* Toast: prevent overflow on mobile */
+@media (max-width: 480px) {
+  .app > [style*="position"][style*="fixed"][style*="right"] {
+    max-width: calc(100vw - 1rem) !important;
+    right: .5rem !important;
+    left: .5rem !important;
+    top: calc(var(--topbar-h) + .5rem) !important;
+  }
+}
+
+/* Modals with inline maxWidth: force full width on mobile */
+@media (max-width: 520px) {
+  .modal-backdrop .modal[style*="maxWidth"] {
+    max-width: calc(100vw - 0px) !important;
+  }
+}
+@media (max-width: 768px) {
+  .modal[style*="maxWidth: 580"],
+  .modal[style*="maxWidth: 560"],
+  .modal[style*="maxWidth: 540"],
+  .modal[style*="maxWidth: 520"],
+  .modal[style*="maxWidth: 500"],
+  .modal[style*="maxWidth: 480"],
+  .modal[style*="maxWidth: 460"],
+  .modal[style*="maxWidth: 440"],
+  .modal[style*="maxWidth: 420"],
+  .modal[style*="maxWidth: 400"],
+  .modal[style*="maxWidth: 380"],
+  .modal[style*="maxWidth: 620"],
+  .modal[style*="maxWidth: 680"],
+  .modal[style*="maxWidth: 720"] {
+    max-width: 100% !important;
+  }
+}
+
+}

@@ -6,10 +6,14 @@ namespace SaudeUbs.Api.Models;
 
 public sealed class AppConfig
 {
-    public string JwtSecret { get; init; } = "dev-only-jwt-secret-change-me";
+    public string JwtSecret { get; init; } = "";
     public string JwtIssuer { get; init; } = "saudeubs-backend";
     public string JwtAudience { get; init; } = "saudeubs-client";
     public int JwtExpiresHours { get; init; } = 12;
+    public bool ExposeResetTokenInResponse { get; init; }
+    public bool AllowInsecureJwtSecret { get; init; }
+    public string CookieName { get; init; } = "saudeubs_session";
+    public string RefreshCookieName { get; init; } = "saudeubs_refresh";
 }
 
 public sealed class AppDb
@@ -34,6 +38,9 @@ public sealed class AppDb
 
     [JsonPropertyName("auditLogs")]
     public List<AuditLogItem> AuditLogs { get; set; } = new();
+
+    [JsonPropertyName("refreshSessions")]
+    public List<RefreshSession> RefreshSessions { get; set; } = new();
 
     [JsonPropertyName("clinicalRecords")]
     public List<ClinicalRecord> ClinicalRecords { get; set; } = new();
@@ -91,6 +98,51 @@ public sealed class Patient
     [JsonPropertyName("createdBy")] public string? CreatedBy { get; set; }
     [JsonPropertyName("updatedAt")] public string? UpdatedAt { get; set; }
 
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public sealed class PatientListItemDto
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("teamId")] public string TeamId { get; set; } = "";
+    [JsonPropertyName("name")] public string Name { get; set; } = "";
+    [JsonPropertyName("motherName")] public string? MotherName { get; set; }
+    [JsonPropertyName("cpf")] public string? Cpf { get; set; }
+    [JsonPropertyName("cns")] public string? Cns { get; set; }
+    [JsonPropertyName("cnsCpf")] public string? CnsCpf { get; set; }
+    [JsonPropertyName("phone")] public string? Phone { get; set; }
+    [JsonPropertyName("phoneAlt")] public string? PhoneAlt { get; set; }
+    [JsonPropertyName("microArea")] public string? MicroArea { get; set; }
+    [JsonPropertyName("assignedAcsId")] public string? AssignedAcsId { get; set; }
+    [JsonPropertyName("careCategory")] public string? CareCategory { get; set; }
+    [JsonPropertyName("chronicConditions")] public List<string>? ChronicConditions { get; set; }
+    [JsonPropertyName("birthDate")] public string? BirthDate { get; set; }
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; set; }
+    [JsonPropertyName("createdBy")] public string? CreatedBy { get; set; }
+    [JsonPropertyName("updatedAt")] public string? UpdatedAt { get; set; }
+}
+
+public sealed class PatientDetailDto
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("teamId")] public string TeamId { get; set; } = "";
+    [JsonPropertyName("name")] public string Name { get; set; } = "";
+    [JsonPropertyName("motherName")] public string? MotherName { get; set; }
+    [JsonPropertyName("cpf")] public string? Cpf { get; set; }
+    [JsonPropertyName("cns")] public string? Cns { get; set; }
+    [JsonPropertyName("cnsCpf")] public string? CnsCpf { get; set; }
+    [JsonPropertyName("address")] public string? Address { get; set; }
+    [JsonPropertyName("phone")] public string Phone { get; set; } = "";
+    [JsonPropertyName("phoneAlt")] public string? PhoneAlt { get; set; }
+    [JsonPropertyName("microArea")] public string? MicroArea { get; set; }
+    [JsonPropertyName("assignedAcsId")] public string? AssignedAcsId { get; set; }
+    [JsonPropertyName("careCategory")] public string? CareCategory { get; set; }
+    [JsonPropertyName("chronicConditions")] public List<string>? ChronicConditions { get; set; }
+    [JsonPropertyName("birthDate")] public string? BirthDate { get; set; }
+    [JsonPropertyName("createdAt")] public string? CreatedAt { get; set; }
+    [JsonPropertyName("createdBy")] public string? CreatedBy { get; set; }
+    [JsonPropertyName("updatedAt")] public string? UpdatedAt { get; set; }
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
@@ -154,6 +206,20 @@ public sealed class AuditLogItem
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
+public sealed class RefreshSession
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("userId")] public string UserId { get; set; } = "";
+    [JsonPropertyName("tokenHash")] public string TokenHash { get; set; } = "";
+    [JsonPropertyName("createdAt")] public string CreatedAt { get; set; } = "";
+    [JsonPropertyName("expiresAt")] public string ExpiresAt { get; set; } = "";
+    [JsonPropertyName("rotatedAt")] public string? RotatedAt { get; set; }
+    [JsonPropertyName("revokedAt")] public string? RevokedAt { get; set; }
+    [JsonPropertyName("replacedBySessionId")] public string? ReplacedBySessionId { get; set; }
+    [JsonPropertyName("createdByIp")] public string? CreatedByIp { get; set; }
+    [JsonPropertyName("userAgent")] public string? UserAgent { get; set; }
+}
+
 public sealed class ClinicalRecord
 {
     [JsonPropertyName("id")] public string Id { get; set; } = "";
@@ -173,6 +239,10 @@ public sealed class ClinicalRecordRequest
     [JsonPropertyName("title")] public string Title { get; set; } = "";
     [JsonPropertyName("details")] public string? Details { get; set; }
     [JsonPropertyName("date")] public string Date { get; set; } = "";
+    [JsonPropertyName("time")] public string? Time { get; set; }
+    [JsonPropertyName("professionalCouncil")] public string? ProfessionalCouncil { get; set; }
+    [JsonPropertyName("professionalName")] public string? ProfessionalName { get; set; }
+    [JsonPropertyName("cid")] public string? Cid { get; set; }
     [JsonPropertyName("protocolTag")] public string? ProtocolTag { get; set; }
     [JsonPropertyName("metadata")] public Dictionary<string, JsonElement>? Metadata { get; set; }
 }

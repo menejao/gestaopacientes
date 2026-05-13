@@ -1,6 +1,8 @@
-﻿export const API_URL = import.meta.env.VITE_API_URL || "https://saude-backend-gkj7.onrender.com";
+﻿export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5030";
 
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+const COOKIE_SESSION_TOKEN = "__cookie_session__";
+const CSRF_COOKIE_NAME = "saudeubs_csrf";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -22,12 +24,39 @@ function shouldRetryStatus(status, customStatuses) {
   return RETRYABLE_STATUSES.has(status);
 }
 
+function readCookie(name) {
+  if (typeof document === "undefined") return "";
+  const prefix = `${name}=`;
+  return document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix))
+    ?.slice(prefix.length) || "";
+}
+
+async function refreshSession() {
+  const csrfToken = readCookie(CSRF_COOKIE_NAME);
+  const headers = {};
+  if (csrfToken) {
+    headers["X-CSRF-Token"] = csrfToken;
+  }
+  const response = await fetch(`${API_URL}/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    headers
+  });
+  if (!response.ok) {
+    throw new Error("Sessão expirada");
+  }
+  return response.json().catch(() => ({}));
+}
+
 export async function api(path, options = {}, token = "") {
   const {
     retryCount = 0,
     retryDelayMs = 350,
     retryStatuses,
-    timeoutMs = 20000,
+    skipAuthRefresh = false,
     ...fetchOptions
   } = options || {};
 
@@ -36,7 +65,14 @@ export async function api(path, options = {}, token = "") {
   if (!isFormData && !headers["Content-Type"] && !headers["content-type"]) {
     headers["Content-Type"] = "application/json";
   }
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (token && token !== COOKIE_SESSION_TOKEN) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const csrfToken = readCookie(CSRF_COOKIE_NAME);
+  const method = String(fetchOptions.method || "GET").toUpperCase();
+  if (csrfToken && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+    headers["X-CSRF-Token"] = csrfToken;
+  }
 
   for (let attempt = 0; attempt <= retryCount; attempt += 1) {
     let response;
@@ -46,8 +82,8 @@ export async function api(path, options = {}, token = "") {
     try {
       response = await fetch(`${API_URL}${path}`, {
         ...fetchOptions,
-        headers,
-        signal: controller.signal
+        credentials: "include",
+        headers
       });
     } catch (err) {
       clearTimeout(timeoutId);
@@ -78,11 +114,27 @@ export async function api(path, options = {}, token = "") {
         await sleep(waitMs);
         continue;
       }
-      const body = await readJsonWithTimeout(response, Math.max(1000, Number(timeoutMs) || 20000));
-      throw new Error(body?.error || "Erro na API");
+      const body = await response.json().catch(() => ({}));
+      if (response.status === 401 && !skipAuthRefresh && path !== "/auth/refresh") {
+        try {
+          await refreshSession();
+          return api(path, { ...options, skipAuthRefresh: true }, COOKIE_SESSION_TOKEN);
+        } catch {
+          window.dispatchEvent(new CustomEvent("sigus:auth-expired", { detail: { path, message: "Sessão expirada" } }));
+          throw new Error("Sessão expirada");
+        }
+      }
+
+      const error = new Error(body?.error || "Erro na API");
+      error.status = response.status;
+      error.payload = body;
+      if (response.status === 401) {
+        window.dispatchEvent(new CustomEvent("sigus:auth-expired", { detail: { path, message: error.message } }));
+      }
+      throw error;
     }
 
-    return readJsonWithTimeout(response, Math.max(1000, Number(timeoutMs) || 20000));
+    return response.json().catch(() => ({}));
   }
 
   throw new Error("Erro na API");
@@ -95,6 +147,15 @@ export async function login(email, password) {
     retryCount: 1,
     retryDelayMs: 600,
     timeoutMs: 45000
+  });
+}
+
+export const verifyCredentials = login;
+
+export async function verifyLogin2fa(challengeId, code) {
+  return api("/auth/login/verify", {
+    method: "POST",
+    body: JSON.stringify({ challengeId, code })
   });
 }
 
@@ -117,6 +178,10 @@ export async function listPatients(token) {
   return api("/patients", { method: "GET", retryCount: 2 }, token);
 }
 
+export async function getPatient(token, id) {
+  return api(`/patients/${id}`, { method: "GET", retryCount: 2 }, token);
+}
+
 export async function createPatient(token, payload) {
   return api("/patients", { method: "POST", body: JSON.stringify(payload) }, token);
 }
@@ -127,6 +192,10 @@ export async function updatePatient(token, id, payload) {
 
 export async function deletePatient(token, id) {
   return api(`/patients/${id}`, { method: "DELETE" }, token);
+}
+
+export async function inactivatePatient(token, id, reason) {
+  return api(`/patients/${id}`, { method: "DELETE", body: JSON.stringify({ reason }) }, token);
 }
 
 export async function listProtocolTemplates(token) {
@@ -198,6 +267,13 @@ export async function deleteRecord(token, patientId, recordId) {
   return api(`/patients/${patientId}/records/${recordId}`, { method: "DELETE" }, token);
 }
 
+export async function inactivateRecord(token, patientId, recordId, reason) {
+  return api(`/patients/${patientId}/records/${recordId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ inactive: true, inactivationReason: reason })
+  }, token);
+}
+
 export async function listUsers(token) {
   return api("/users", { method: "GET", retryCount: 2 }, token);
 }
@@ -210,12 +286,19 @@ export async function updateUser(token, userId, payload) {
   return api(`/users/${userId}`, { method: "PUT", body: JSON.stringify(payload) }, token);
 }
 
+export async function updateMe(token, payload) {
+  return api("/me", { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
 export async function getUserUsage(token, userId) {
   return api(`/users/${userId}/usage`, { method: "GET" }, token);
 }
 
-export async function deleteUser(token, userId) {
-  return api(`/users/${userId}`, { method: "DELETE" }, token);
+export async function deleteUser(token, userId, payload = {}) {
+  return api(`/users/${userId}`, {
+    method: "DELETE",
+    body: JSON.stringify(payload)
+  }, token);
 }
 
 export async function aiTeamPriorities(token) {
@@ -238,13 +321,79 @@ export async function getApiHealth() {
   return api("/health", { method: "GET", retryCount: 1, retryDelayMs: 250 });
 }
 
+export async function listAuditLogs(token, params = {}) {
+  const search = new URLSearchParams();
+  if (params.limit) search.set("limit", String(params.limit));
+  if (params.entity) search.set("entity", String(params.entity));
+  if (params.action) search.set("action", String(params.action));
+  if (params.userId) search.set("userId", String(params.userId));
+  const qs = search.toString();
+  return api(`/audit/logs${qs ? `?${qs}` : ""}`, { method: "GET", retryCount: 2 }, token);
+}
+
+export async function reactivatePatientRecord(token, id) {
+  return api(`/patients/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      inactive: false,
+      inactivationReason: null,
+      inactivatedBy: null,
+      inactivatedAt: null
+    })
+  }, token);
+}
+
 export async function pingPresence(token) {
   try {
-    const res = await fetch(`${API_URL}/me/presence`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    // 404 = endpoint não disponível neste deploy, ignora silenciosamente
-    if (!res.ok && res.status !== 404) throw new Error("presence failed");
-  } catch {}
+    await api("/me/presence", { method: "POST", skipAuthRefresh: true, retryStatuses: [] }, token);
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.debug("[pingPresence] falha não-crítica:", err?.message);
+    }
+  }
 }
+
+export async function logout() {
+  return api("/auth/logout", { method: "POST" });
+}
+
+export async function requestPasswordReset(email) {
+  return api("/auth/password-reset/request", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+}
+
+export async function confirmPasswordReset(token, newPassword) {
+  return api("/auth/password-reset/confirm", {
+    method: "POST",
+    body: JSON.stringify({ token, newPassword })
+  });
+}
+
+export async function createExam(token, patientId, payload) {
+  return api(`/patients/${patientId}/exams`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }, token);
+}
+
+export async function listExams(token, patientId) {
+  return api(`/patients/${patientId}/exams`, { method: "GET", retryCount: 2 }, token);
+}
+
+export async function uploadExamAttachment(token, patientId, examId, formData) {
+  return api(`/patients/${patientId}/exams/${examId}/attachments`, {
+    method: "POST",
+    body: formData
+  }, token);
+}
+
+export async function deleteExam(token, patientId, examId, reason = "") {
+  return api(`/patients/${patientId}/exams/${examId}`, {
+    method: "DELETE",
+    body: reason ? JSON.stringify({ reason }) : undefined
+  }, token);
+}
+
+
