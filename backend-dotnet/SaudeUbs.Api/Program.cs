@@ -204,28 +204,14 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// CORS â€” permite o frontend (Cloudflare + localhost dev)
-var allowedOrigins = (Environment.GetEnvironmentVariable("ALLOWED_ORIGINS") ?? "")
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AppPolicy", policy =>
+    options.AddDefaultPolicy(policy =>
     {
-        var origins = new[]
-        {
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:3000",
-            "http://localhost:4173",
-            "https://gestaopacientes.meneguccijao.workers.dev"
-        }.Concat(allowedOrigins).Distinct().ToArray();
-
         policy
-            .WithOrigins(origins)
+            .AllowAnyOrigin()
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
     });
 });
 
@@ -798,8 +784,8 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// CORS â€” deve vir antes de Authentication/Authorization
-app.UseCors("AppPolicy");
+// CORS — deve vir antes de Authentication/Authorization
+app.UseCors();
 
 // Serve static files (wwwroot/)
 app.UseStaticFiles();
