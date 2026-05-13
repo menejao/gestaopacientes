@@ -423,17 +423,29 @@ function buildSeedTasks(patient, acsIds = [], createdBy = "seed-system") {
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 
+const allowedOrigins = [
+  "https://gestaopacientes.meneguccijao.workers.dev",
+  "http://localhost:5174"
+];
+
 app.use(cors({
-  origin: true,
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.options("*", cors());
 
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  if (req.headers.origin && allowedOrigins.includes(req.headers.origin)) {
+    res.header("Access-Control-Allow-Origin", req.headers.origin);
+  }
   res.header("Vary", "Origin");
+  res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.sendStatus(204);
