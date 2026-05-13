@@ -921,6 +921,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
               ))}
             </div>
 
+            {gestorTab === "login" ? (
               <>
                 <div style={{marginBottom:"1.5rem"}}>
                   <h2 style={{fontSize:"1.3rem",fontWeight:700,color:"#1e293b",letterSpacing:"-.02em",marginBottom:".25rem"}}>Bem-vindo de volta</h2>
