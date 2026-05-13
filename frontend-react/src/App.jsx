@@ -160,6 +160,7 @@ const NAV_ICON = {
   ai:         <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 3h3l-2.5 2 1 3L8 7.5 5 9l1-3L3.5 4h3L8 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M3 12h10M5 14h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
   exams_page: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4"/><path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="11.5" cy="11.5" r="2.8" fill="var(--surface)" stroke="currentColor" strokeWidth="1.3"/><path d="M10.5 11.5h2M11.5 10.5v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
   diagnostics:<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 2h12v12H2z" stroke="currentColor" strokeWidth="1.4"/><path d="M4.5 11V8.5M8 11V5M11.5 11V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M4 4h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+  acs_tasks:  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 3h10v10H3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M5.5 8l2 2 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>,
 };
 
 /* ââ€â‚¬ââ€â‚¬ Helpers ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ */
@@ -518,11 +519,11 @@ function buildNavItems(user, canManageUser) {
 
   // Gestor: menu exclusivo de gestão
   if (isGestor(user) && !admin) {
-    items.push({ id:"gestor",   label:"📊 Gestão à Vista",  section:"" });
-    items.push({ id:"reports",  label:"📊 Relatórios",       section:"" });
-    items.push({ id:"diagnostics", label:"🔍 Diagnósticos",   section:"" });
-    items.push({ id:"patients", label:"👥 Pacientes",        section:"Visualização" });
-    items.push({ id:"ai",       label:"✨ IA Assistida",     section:"" });
+    items.push({ id:"gestor",   label:"Gestão à Vista",  section:"" });
+    items.push({ id:"reports",  label:"Relatórios",       section:"" });
+    items.push({ id:"diagnostics", label:"Diagnósticos",   section:"" });
+    items.push({ id:"patients", label:"Pacientes",        section:"Visualização" });
+    items.push({ id:"ai",       label:"IA Assistida",     section:"" });
     return items;
   }
 
@@ -530,36 +531,36 @@ function buildNavItems(user, canManageUser) {
   if (isReceptionist(user) && !admin) return items;
 
   // 1. Visão geral
-  if (!isPharmacist(user) || admin) items.push({ id:"dashboard", label:"🏠 Painel", section:"" });
+  if (!isPharmacist(user) || admin) items.push({ id:"dashboard", label:"Painel", section:"" });
 
   // 2. Atendimento diário
-  if (admin) items.push({ id:"queue",   label:"🏥 Fila / Recepção", section:"Atendimento" });
-  if (admin) items.push({ id:"agenda",  label:"📅 Agenda",          section: admin ? "" : "Atendimento" });
-  if (isNursingTech(user) || admin) items.push({ id:"triage", label:"📈 Monitoramento", section: admin ? "" : "Atendimento" });
+  if (admin) items.push({ id:"queue",   label:"Fila / Recepção", section:"Atendimento" });
+  if (admin) items.push({ id:"agenda",  label:"Agenda",          section: admin ? "" : "Atendimento" });
+  if (isNursingTech(user) || admin) items.push({ id:"triage", label:"Monitoramento", section: admin ? "" : "Atendimento" });
 
   // 3. Clínico
-  if (!isPharmacist(user) || admin) items.push({ id:"patients",  label:"👥 Pacientes",       section:"Clínico" });
-  if (!isPharmacist(user) || admin) items.push({ id:"exams_page", label:"🔬 Exames", section:"" });
-  if (canManageUser && !isNursingTech(user)) items.push({ id:"protocols", label:"📋 Protocolos", section:"" });
-  if (canAccessChart(user) || admin) items.push({ id:"chart", label:"📝 Prontuário", section:"" });
-  if (!isPharmacist(user) || admin) items.push({ id:"referrals", label:"📤 Encaminhamentos",  section:"" });
+  if (!isPharmacist(user) || admin) items.push({ id:"patients",  label:"Pacientes",       section:"Clínico" });
+  if (!isPharmacist(user) || admin) items.push({ id:"exams_page", label:"Exames", section:"" });
+  if (canManageUser && !isNursingTech(user)) items.push({ id:"protocols", label:"Protocolos", section:"" });
+  if (canAccessChart(user) || admin) items.push({ id:"chart", label:"Prontuário", section:"" });
+  if (!isPharmacist(user) || admin) items.push({ id:"referrals", label:"Encaminhamentos",  section:"" });
   // Página de tarefas exclusiva para ACS
-  if (role === "acs") items.push({ id:"acs_tasks", label:"✅ Minhas tarefas", section:"" });
+  if (role === "acs") items.push({ id:"acs_tasks", label:"Minhas tarefas", section:"" });
 
   // 4. Saúde preventiva
-  if (!isPharmacist(user) || admin) items.push({ id:"vaccines",  label:"💉 Vacinas",    section:"Preventivo" });
-  items.push({ id:"pharmacy", label:"💊 Farmácia", section:"" });
+  if (!isPharmacist(user) || admin) items.push({ id:"vaccines",  label:"Vacinas",    section:"Preventivo" });
+  items.push({ id:"pharmacy", label:"Farmácia", section:"" });
   if (["nurse_manager","nursing_tech","pharmacist","pharmacy_tech"].includes(role) || admin)
-    items.push({ id:"insumos", label:"📦 Insumos", section:"" });
+    items.push({ id:"insumos", label:"Insumos", section:"" });
 
   // 5. Equipe
-  if (canManageUser && !isNursingTech(user)) { items.push({ id:"acs", label:"🏘️ ACS", section:"Equipe" }); items.push({ id:"doctors", label:"🩺 Médicos", section:"" }); }
+  if (canManageUser && !isNursingTech(user)) { items.push({ id:"acs", label:"ACS", section:"Equipe" }); items.push({ id:"doctors", label:"Médicos", section:"" }); }
 
   // 6. Gestão & IA
-  if (canManageUser || admin) items.push({ id:"gestor", label:"📊 Gestão à Vista", section:"Gestão" });
-  if (canManageUser || admin) items.push({ id:"reports", label:"📊 Relatórios", section:"" });
-  if (canManageUser || admin || isGestor(user)) items.push({ id:"diagnostics", label:"🔍 Diagnósticos", section:"" });
-  if (canAccessAI(user)) items.push({ id:"ai", label:"✨ IA Assistida", section:"" });
+  if (canManageUser || admin) items.push({ id:"gestor", label:"Gestão à Vista", section:"Gestão" });
+  if (canManageUser || admin) items.push({ id:"reports", label:"Relatórios", section:"" });
+  if (canManageUser || admin || isGestor(user)) items.push({ id:"diagnostics", label:"Diagnósticos", section:"" });
+  if (canAccessAI(user)) items.push({ id:"ai", label:"IA Assistida", section:"" });
 
   return items;
 }
