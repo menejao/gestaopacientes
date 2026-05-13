@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useMemo, useRef, useState, Component } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, Component } from "react";
 import {
   aiTeamAsk, aiTeamDataQuality, aiTeamPriorities, aiTeamReport,
   bootstrap, createProtocolTemplate, createAppointment, createPatient,
@@ -75,17 +75,6 @@ function TenantProvider({ children }) {
 
 function useTenant() { return useContext(TenantContext); }
 
-import { NotificationBell } from "./components/feedback/NotificationBell";
-import { QueuePage } from "./pages/QueuePage";
-import { TriagePage } from "./pages/TriagePage";
-import { AgendaPage } from "./pages/AgendaPage";
-import { ReferralsPage } from "./pages/ReferralsPage";
-import { AcsTasksPage } from "./pages/AcsTasksPage";
-import { ChartPage } from "./pages/ChartPage";
-import { InsumoPage } from "./pages/InsumoPage";
-import { GestorPage } from "./pages/GestorPage";
-import { ReportsPage } from "./pages/ReportsPage";
-import { ReceptionistApp } from "./pages/ReceptionistApp";
 import { ProntuarioPage } from "./pages/ProntuarioPage";
 import { InsumoPageNew } from "./pages/InsumoPageNew";
 import { GestorPageNew } from "./pages/GestorPageNew";
@@ -961,6 +950,27 @@ function ResetPasswordForm() {
     </div>
   );
 }
+
+const NAV_ICON = {
+  dashboard:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
+  queue:       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>,
+  agenda:      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  triage:      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+  patients:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  exams_page:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>,
+  protocols:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+  chart:       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  referrals:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+  acs_tasks:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+  vaccines:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 2v4M14 2v4M8 12h8M8 16h8M6 6h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>,
+  pharmacy:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>,
+  insumos:     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>,
+  team:        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  gestor:      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  reports:     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+  diagnostics: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  ai:          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+};
 
 /* ================================================================
    SIDEBAR
@@ -2848,7 +2858,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
   const isPregnant = String(patient?.careCategory||"").toLowerCase()==="pregnant";
   const profileIncomplete = isProfileIncomplete(patient);
   const [showPatientCard, setShowPatientCard] = useState(false);
-  const [documentPreview, setDocumentPreview] = useState(null);
+  const [docType, setDocType] = useState(null);
   const [showExamReq, setShowExamReq] = useState(false);
   const [showPrescription, setShowPrescription] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
@@ -3490,22 +3500,47 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
     });
   }
 
-  function toggleVaccine(vaccine) {
-    setRecordVaccines(prev => prev.includes(vaccine) ? prev.filter(v=>v!==vaccine) : [...prev, vaccine]);
+  function clearAllSeen() {
+    const allIds = new Set(allAlerts.map(a => a.id));
+    setSeenIds(allIds);
+    writeLS(NOTIF_SEEN_KEY, [...allIds]);
+    const nowIso = new Date().toISOString();
+    setClearedAt(nowIso);
+    writeLS(NOTIF_CLEARED_AT_KEY, nowIso);
   }
 
-  function openDocument(type) {
-    setDocumentPreview(buildPatientDocument(type, patient, userObj, templates, users));
-  }
+  const unseenCount = unseenAlerts.length;
+  const hasDanger = unseenAlerts.some(a => a.type === "danger");
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      <div style={{padding:"1rem 1.1rem",borderBottom:"1px solid var(--border)",background:"var(--surface)"}}>
-        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"1rem"}}>
-          {/* Left: avatar + identity */}
-          <div style={{display:"flex",alignItems:"flex-start",gap:".85rem",flex:1,minWidth:0}}>
-            <div className="user-avatar" style={{width:46,height:46,background:"var(--teal-600)",color:"#fff",fontSize:"1rem",flexShrink:0,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800}}>
-              {initials(patient?.name||"P")}
+    <div ref={ref} style={{position:"relative",flexShrink:0,overflow:"visible"}}>
+      <button onClick={()=>setOpen(v=>!v)}
+        style={{position:"relative",width:34,height:34,borderRadius:"var(--r-md)",background:"var(--surface-2)",border:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,overflow:"visible",padding:0}}>
+        <svg viewBox="0 0 20 20" fill="none" style={{width:20,height:20,color:"var(--text-1)",display:"block",flexShrink:0}}>
+          <path d="M10 2a6 6 0 00-6 6v3.5L2.5 14h15L16 11.5V8a6 6 0 00-6-6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+          <path d="M8 14.5a2 2 0 004 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        </svg>
+        {unseenCount > 0 && (
+          <span style={{position:"absolute",top:-4,right:-4,minWidth:16,height:16,borderRadius:999,background:hasDanger?"#dc2626":"var(--amber-500)",color:"#fff",fontSize:".6rem",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",lineHeight:1}}>
+            {unseenCount > 9 ? "9+" : unseenCount}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,width:330,maxHeight:440,overflowY:"auto",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--r-lg)",boxShadow:"0 8px 30px rgba(0,0,0,.12)",zIndex:600}}>
+          <div style={{padding:".7rem 1rem",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",position:"sticky",top:0,background:"var(--surface)",zIndex:1}}>
+            <span style={{fontWeight:700,fontSize:".82rem",color:"var(--ink)"}}>Alertas do sistema</span>
+            <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+              {unseenCount > 0 && (
+                <span style={{fontSize:".7rem",color:"var(--text-3)"}}>{unseenCount} não visto{unseenCount!==1?"s":""}</span>
+              )}
+              {unseenCount > 1 && (
+                <button onClick={clearAllSeen}
+                  style={{fontSize:".68rem",color:"var(--teal-600)",background:"none",border:"none",cursor:"pointer",padding:"0 .25rem",fontWeight:600,whiteSpace:"nowrap"}}
+                  title="Marcar todos como vistos">
+                  Limpar todos
+                </button>
+              )}
             </div>
           </div>
           {!unseenCount && (
@@ -8750,6 +8785,9 @@ function InsumoPage({ patients, users, user, readOnly = false }) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+      </div>
 
       {/* Modal entrada de estoque */}
       {editStockItem&&(
@@ -8779,158 +8817,9 @@ function InsumoPage({ patients, users, user, readOnly = false }) {
                 </div>
               </div>
             )}
-
-            <label style={{fontSize:".75rem",fontWeight:600}}>Observacoes
-              <textarea value={recordForm?.details||""} onChange={e=>updateRecord("details", e.target.value)} style={{minHeight:70}} />
-            </label>
-            <label style={{fontSize:".75rem",fontWeight:600}}>Conduta
-              <textarea value={recordForm?.conduct||""} onChange={e=>updateRecord("conduct", e.target.value)} style={{minHeight:58}} />
-            </label>
-            <label style={{fontSize:".75rem",fontWeight:600}}>Proximo passo
-              <input value={recordForm?.nextStep||""} onChange={e=>updateRecord("nextStep", e.target.value)} placeholder="Ex: Retorno em 15 dias" />
-            </label>
-            <label style={{fontSize:".75rem",fontWeight:600}}>Demanda
-              <select value={recordForm?.demandType||"scheduled"} onChange={e=>updateRecord("demandType", e.target.value)}>
-                <option value="scheduled">Programada</option>
-                <option value="spontaneous">Espontanea</option>
-                <option value="retroactive">Retroativa</option>
-              </select>
-            </label>
-            <div style={{display:"flex",justifyContent:"flex-end"}}>
-              <button type="submit" disabled={profileIncomplete} style={profileIncomplete?{opacity:.6,cursor:"not-allowed"}:undefined}>Salvar atendimento</button>
-            </div>
-          </form>
-          </>
-        )}
-
-        {activeTab==="chart"&&(
-          <div className="card" style={{padding:".8rem"}}>
-            {!history?.length ? (
-              <div style={{fontSize:".8rem",color:"var(--text-3)"}}>Nenhum registro no prontuario.</div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
-                {history.map(item=>(
-                  <div key={item.id} style={{padding:".55rem .65rem",borderRadius:"var(--r-md)",border:"1px solid var(--border)"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",gap:".5rem"}}>
-                      <div style={{fontSize:".82rem",fontWeight:700,color:"var(--ink)"}}>{item.title||item.type||"Registro"}</div>
-                      <div style={{fontSize:".7rem",color:"var(--text-3)"}}>{safeFmtDate(item.date)}</div>
-                    </div>
-                    {item.details&&<div style={{fontSize:".77rem",color:"var(--text-2)",marginTop:".25rem",whiteSpace:"pre-wrap"}}>{item.details}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        )}
-
-        {activeTab==="agenda"&&(
-          <div className="card" style={{padding:".8rem"}}>
-            {!appointments?.length ? (
-              <div style={{fontSize:".8rem",color:"var(--text-3)"}}>Nenhum atendimento agendado.</div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
-                {appointments.map(ap=>(
-                  <div key={ap.id} style={{padding:".5rem .6rem",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",gap:".5rem"}}>
-                      <div style={{fontSize:".8rem",fontWeight:700,color:"var(--ink)"}}>{ap.summary||"Atendimento"}</div>
-                      <div style={{fontSize:".72rem",color:"var(--text-3)"}}>{safeFmtDate(ap.date)}</div>
-                    </div>
-                    {ap.conduct&&<div style={{fontSize:".75rem",color:"var(--text-2)",marginTop:".2rem"}}>Conduta: {ap.conduct}</div>}
-                    {canManageUser&&ap.id&&(
-                      <button type="button" className="secondary" style={{marginTop:".35rem",fontSize:".72rem",padding:".2rem .45rem"}} onClick={()=>onDeleteAppointment(ap.id)}>
-                        Excluir
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab==="tasks"&&(
-          <div className="card" style={{padding:".8rem"}}>
-            {canAssignTask&&(
-              <form onSubmit={onSubmitTask} style={{display:"flex",flexDirection:"column",gap:".5rem",padding:".65rem",border:"1px solid var(--border)",borderRadius:"var(--r-md)",marginBottom:".75rem",background:"var(--surface-2)"}}>
-                <div style={{fontSize:".74rem",fontWeight:700,color:"var(--text-2)",textTransform:"uppercase"}}>Nova tarefa para ACS</div>
-                <label style={{fontSize:".75rem",fontWeight:600}}>Titulo da tarefa
-                  <input value={taskForm?.title||""} onChange={e=>updateTask("title", e.target.value)} placeholder="Ex: Visita domiciliar de acompanhamento" />
-                </label>
-                <label style={{fontSize:".75rem",fontWeight:600}}>ACS responsavel
-                  <select value={taskForm?.assigneeId||""} onChange={e=>updateTask("assigneeId", e.target.value)}>
-                    <option value="">Selecione um ACS</option>
-                    {(acsUsers||[]).map(acs=><option key={acs.id} value={acs.id}>{acs.name}</option>)}
-                  </select>
-                </label>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 160px",gap:".5rem"}}>
-                  <label style={{fontSize:".75rem",fontWeight:600}}>Descricao
-                    <input value={taskForm?.notes||""} onChange={e=>updateTask("notes", e.target.value)} placeholder="Detalhes e orientacoes" />
-                  </label>
-                  <label style={{fontSize:".75rem",fontWeight:600}}>Prazo
-                    <input type="date" value={taskForm?.dueDate||""} onChange={e=>updateTask("dueDate", e.target.value)} />
-                  </label>
-                </div>
-                <div style={{display:"flex",justifyContent:"flex-end"}}>
-                  <button type="submit">Criar tarefa</button>
-                </div>
-              </form>
-            )}
-            {!tasks?.length ? (
-              <div style={{fontSize:".8rem",color:"var(--text-3)"}}>Nenhuma tarefa cadastrada.</div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
-                {tasks.map(task=>{
-                  const tone = statusTone(task.status);
-                  const assignee = users.find(u=>u.id===task.assigneeId);
-                  return (
-                    <div key={task.id} style={{padding:".55rem .65rem",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",gap:".5rem",alignItems:"center"}}>
-                        <div style={{fontSize:".8rem",fontWeight:700,color:"var(--ink)"}}>{task.title}</div>
-                        <span style={{fontSize:".68rem",padding:".12rem .4rem",borderRadius:999,background:tone.bg,color:tone.color,border:`1px solid ${tone.border}`}}>{tone.label}</span>
-                      </div>
-                      {assignee?.name&&<div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem"}}>Responsavel: {assignee.name}</div>}
-                      {task.notes&&<div style={{fontSize:".75rem",color:"var(--text-2)",marginTop:".2rem"}}>{task.notes}</div>}
-                      {task.id&&(
-                        <div style={{display:"flex",gap:".35rem",marginTop:".35rem"}}>
-                          <button type="button" className="secondary" style={{fontSize:".7rem",padding:".15rem .4rem"}} onClick={()=>onStatusChange(task.id,"pending")}>Pendente</button>
-                          <button type="button" className="secondary" style={{fontSize:".7rem",padding:".15rem .4rem"}} onClick={()=>onStatusChange(task.id,"in_progress")}>Em andamento</button>
-                          <button type="button" className="secondary" style={{fontSize:".7rem",padding:".15rem .4rem"}} onClick={()=>onStatusChange(task.id,"done")}>Concluida</button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab==="messages"&&(
-          <div className="card" style={{padding:".8rem"}}>
-            <form onSubmit={onSubmitMessage} style={{display:"flex",gap:".45rem",marginBottom:".6rem"}}>
-              <input value={messageText} onChange={e=>setMessageText(e.target.value)} placeholder="Escreva uma mensagem para a equipe..." style={{flex:1}}/>
-              <button type="submit">Enviar</button>
-            </form>
-            {!messages?.length ? (
-              <div style={{fontSize:".8rem",color:"var(--text-3)"}}>Sem mensagens registradas.</div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:".45rem"}}>
-                {messages.map(msg=>(
-                  <div key={msg.id} style={{padding:".5rem .6rem",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
-                    <div style={{fontSize:".72rem",color:"var(--text-3)"}}>{msg.fromName||msg.authorName||"Equipe"} - {safeFmtDate(msg.createdAt||msg.date)}</div>
-                    <div style={{fontSize:".8rem",color:"var(--ink)",marginTop:".2rem",whiteSpace:"pre-wrap"}}>{msg.text||msg.message||msg.body||""}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      {showPatientCard && <PatientCardModal patient={patient} users={users} templates={templates} history={history} onClose={()=>setShowPatientCard(false)} />}
-      {documentPreview && <DocumentPrintModal document={documentPreview} onClose={()=>setDocumentPreview(null)} />}
-      {showExamReq && <ExamRequestModal patient={patient} user={userObj} users={users} token={token} onClose={()=>setShowExamReq(false)} />}
-      {showPrescription && <EnhancedPrescriptionModal patient={patient} user={userObj} token={token} onClose={()=>setShowPrescription(false)} />}
-      {showReferral && <InternalReferralModal patient={patient} user={userObj} users={users} token={token} onClose={()=>setShowReferral(false)} />}
+        </div>
+      )}
     </div>
   );
 }
@@ -8943,6 +8832,8 @@ function buildPatientDocument(type, patient, user, templates, users) {
   const council = user?.councilNumber
     ? `${user.role==="doctor"?"CRM":user.role==="dentist"?"CRO":"COREN"} ${user.councilNumber}/${user.councilUf||""}`
     : "";
+  return null;
+}
 
 /* ..................................................................
    PHARMACY — Controle de Farmácia da Unidade
