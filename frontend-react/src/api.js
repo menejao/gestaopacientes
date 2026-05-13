@@ -73,6 +73,7 @@ export async function api(path, options = {}, token = "") {
   if (token && token !== COOKIE_SESSION_TOKEN) {
     headers.Authorization = `Bearer ${token}`;
   }
+  console.log("REQUEST AUTH HEADER", headers.Authorization || "(sem token)");
   const csrfToken = readCookie(CSRF_COOKIE_NAME);
   const method = String(fetchOptions.method || "GET").toUpperCase();
   if (csrfToken && !["GET", "HEAD", "OPTIONS"].includes(method)) {
@@ -150,8 +151,8 @@ export async function login(email, password) {
   return api("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
-    retryCount: 1,
-    retryDelayMs: 600,
+    skipAuthRefresh: true,
+    retryCount: 0,
     timeoutMs: 45000
   });
 }

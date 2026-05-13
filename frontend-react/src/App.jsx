@@ -11368,6 +11368,7 @@ function AppInner() {
     setError(""); setBusy(true);
     try {
       let payload=await login(email.trim(),password);
+      console.log("LOGIN RESPONSE", payload);
       if (payload?.mfaSetupRequired) {
         setError("Seu perfil exige MFA obrigatório. Ative 2FA antes de concluir acesso.");
         return;
@@ -11377,15 +11378,17 @@ function AppInner() {
         if(!code || !code.trim()) return;
         payload = await verifyLogin2fa(payload.challengeId, code.trim());
       }
-      setToken(COOKIE_SESSION_TOKEN); setUser(payload.user);
+      const jwtToken = payload.token || payload.accessToken || "";
+      console.log("TOKEN SALVO", jwtToken ? jwtToken.slice(0,20)+"..." : "(vazio)");
+      setToken(jwtToken); setUser(payload.user);
       auditLog("LOGIN", { email: email.trim().toLowerCase(), success: true }, payload.user);
-      // Gestor vai direto para o painel de gestão
       if(String(payload.user?.role||"")==="gestor") setTab("gestor");
     } catch(err) {
       auditLog("LOGIN_FAILED", { email: email.trim().toLowerCase(), success: false });
       const msg = String(err?.message || "");
       if (msg.toLowerCase().includes("mfa obrigatório")) setError("Seu perfil exige MFA obrigatório. Ative 2FA antes de concluir acesso.");
-      else setError("E-mail ou senha incorretos.");
+      else if (msg.toLowerCase().includes("credenciais") || msg.toLowerCase().includes("inválid") || msg.toLowerCase().includes("invalid")) setError("E-mail ou senha incorretos.");
+      else setError(msg || "E-mail ou senha incorretos.");
     } finally { setBusy(false); }
   }
 
@@ -11396,7 +11399,7 @@ function AppInner() {
         throw new Error("Cadastro público permitido apenas para recepção.");
       }
       const payload=await register({name:reg.name.trim(),email:reg.email.trim(),password:reg.password,role:reg.role,teamId:reg.teamId,councilNumber:onlyDigits(reg.councilNumber),councilUf:String(reg.councilUf||"").toUpperCase()});
-      setToken(COOKIE_SESSION_TOKEN); setUser(payload.user);
+      setToken(payload.token || payload.accessToken || ""); setUser(payload.user);
       auditLog("USUARIO_CADASTRADO", { name:reg.name.trim(), email:reg.email.trim(), role:reg.role }, payload.user);
     } catch(e){ if(!handleApiError(e)) setError(e.message||"Falha no cadastro"); } finally{ setBusy(false); }
   }
