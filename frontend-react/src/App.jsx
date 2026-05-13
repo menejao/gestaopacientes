@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, Component } from "react";
+import PageHero from "./components/layout/PageHero";
 import {
   aiTeamAsk, aiTeamDataQuality, aiTeamPriorities, aiTeamReport,
   bootstrap, createProtocolTemplate, createAppointment, createPatient,
@@ -1348,21 +1349,21 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
   return (
     <div className="workspace-home">
       {/* Hero */}
-      <section className="home-hero">
-        <div>
-          <p className="home-kicker">Workspace da equipe</p>
-          <h1 className="home-title">🏥 Gestão de Pacientes - UBS</h1>
-          <p className="home-sub">Acompanhe pacientes, protocolos e pendências da equipe em tempo real.</p>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:".5rem",alignItems:"flex-end",flexShrink:0}}>
-          <div style={{display:"flex",gap:".5rem"}}>
-            <Chip tone={pc.critical>0?"danger":pc.attention>0?"warn":"ok"}>
-              {pc.critical} crítico{pc.critical!==1?"s":""}
-            </Chip>
-            <Chip tone="muted">{pc.ok} em dia</Chip>
+      <PageHero
+        badge="Workspace da equipe"
+        title="Gestão de Pacientes — UBS"
+        subtitle="Acompanhe pacientes, protocolos e pendências da equipe em tempo real."
+        actions={
+          <div style={{display:"flex",flexDirection:"column",gap:".5rem",alignItems:"flex-end",flexShrink:0}}>
+            <div style={{display:"flex",gap:".5rem"}}>
+              <Chip tone={pc.critical>0?"danger":pc.attention>0?"warn":"ok"}>
+                {pc.critical} crítico{pc.critical!==1?"s":""}
+              </Chip>
+              <Chip tone="muted">{pc.ok} em dia</Chip>
+            </div>
           </div>
-        </div>
-      </section>
+        }
+      />
 
       {/* KPIs */}
       <section className="home-kpi-grid">
@@ -4287,13 +4288,18 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div><p className="home-kicker">📅 Gestão de Horários</p><h1 className="home-title">📅 Agenda</h1><p className="home-sub">Agendamentos, confirmações e controle de presença.</p></div>
-        <button onClick={()=>openNew()} style={{flexShrink:0,display:"flex",alignItems:"center",gap:".4rem"}}>
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-          Novo agendamento
-        </button>
-      </section>
+      <PageHero
+        badge="Gestão de Horários"
+        title="Agenda"
+        subtitle="Agendamentos, confirmações e controle de presença."
+        style={{margin:"1.5rem 1.5rem .75rem"}}
+        actions={
+          <button onClick={()=>openNew()} style={{flexShrink:0,display:"flex",alignItems:"center",gap:".4rem"}}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            Novo agendamento
+          </button>
+        }
+      />
 
       {/* Week strip */}
       <div style={{display:"flex",gap:".3rem",padding:"0 1.5rem .75rem",overflowX:"auto"}}>
@@ -4645,18 +4651,23 @@ function TriagePage({ patients, users, user }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div><p className="home-kicker">Téc. de Enfermagem</p><h1 className="home-title">Monitoramento e Triagem</h1><p className="home-sub">Aferição de sinais vitais antes do atendimento.</p></div>
-        <div style={{display:"flex",alignItems:"center",gap:".5rem",flexShrink:0}}>
-          <span style={{fontSize:".72rem",color:"var(--text-3)"}}>Online:</span>
-          {onlineTechs.length===0?<span style={{fontSize:".72rem",color:"var(--text-3)"}}>nenhum</span>:onlineTechs.map(u=>(
-            <span key={u.id} style={{fontSize:".72rem",padding:".18rem .5rem",borderRadius:999,background:"#dcfce7",color:"#15803d",fontWeight:600,display:"flex",alignItems:"center",gap:".25rem"}}>
-              <span style={{width:6,height:6,borderRadius:"50%",background:"#16a34a",display:"inline-block"}}/>
-              {shortName(u.name)}
-            </span>
-          ))}
-        </div>
-      </section>
+      <PageHero
+        badge="Téc. de Enfermagem"
+        title="Monitoramento e Triagem"
+        subtitle="Aferição de sinais vitais antes do atendimento."
+        style={{margin:"1.5rem 1.5rem .75rem"}}
+        actions={
+          <div style={{display:"flex",alignItems:"center",gap:".5rem",flexShrink:0}}>
+            <span style={{fontSize:".72rem",color:"var(--text-3)"}}>Online:</span>
+            {onlineTechs.length===0?<span style={{fontSize:".72rem",color:"var(--text-3)"}}>nenhum</span>:onlineTechs.map(u=>(
+              <span key={u.id} style={{fontSize:".72rem",padding:".18rem .5rem",borderRadius:999,background:"#dcfce7",color:"#15803d",fontWeight:600,display:"flex",alignItems:"center",gap:".25rem"}}>
+                <span style={{width:6,height:6,borderRadius:"50%",background:"#16a34a",display:"inline-block"}}/>
+                {shortName(u.name)}
+              </span>
+            ))}
+          </div>
+        }
+      />
       <div style={{display:"flex",gap:"1.25rem",padding:"0 1.5rem 1.5rem",flex:1,minHeight:0}}>
         {/* Left: waiting list */}
         <div style={{flex:"0 0 300px",display:"flex",flexDirection:"column",gap:".5rem",overflowY:"auto"}}>
@@ -4947,13 +4958,18 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div><p className="home-kicker">🏥 Recepção</p><h1 className="home-title">🏥 Fila de Atendimento</h1><p className="home-sub">Triagem, prioridade e fluxo de pacientes no dia.</p></div>
-        <button onClick={()=>{resetForm();setShowForm(true);}} style={{flexShrink:0,display:"flex",alignItems:"center",gap:".4rem"}}>
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-          Dar entrada
-        </button>
-      </section>
+      <PageHero
+        badge="Recepção"
+        title="Fila de Atendimento"
+        subtitle="Triagem, prioridade e fluxo de pacientes no dia."
+        style={{margin:"1.5rem 1.5rem .75rem"}}
+        actions={
+          <button onClick={()=>{resetForm();setShowForm(true);}} style={{flexShrink:0,display:"flex",alignItems:"center",gap:".4rem"}}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            Dar entrada
+          </button>
+        }
+      />
 
       {/* KPIs */}
       <div style={{display:"flex",gap:".75rem",padding:"0 1.5rem .75rem"}}>
@@ -6237,13 +6253,18 @@ function ReferralsPage({ patients, users, user }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div><p className="home-kicker">📤 Referência e Contrarreferência</p><h1 className="home-title">📤 Encaminhamentos</h1><p className="home-sub">Controle de encaminhamentos para especialistas e serviços.</p></div>
-        <button onClick={openNew} style={{flexShrink:0,display:"flex",alignItems:"center",gap:".4rem"}}>
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-          Novo encaminhamento
-        </button>
-      </section>
+      <PageHero
+        badge="Referência e Contrarreferência"
+        title="Encaminhamentos"
+        subtitle="Controle de encaminhamentos para especialistas e serviços."
+        style={{margin:"1.5rem 1.5rem .75rem"}}
+        actions={
+          <button onClick={openNew} style={{flexShrink:0,display:"flex",alignItems:"center",gap:".4rem"}}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            Novo encaminhamento
+          </button>
+        }
+      />
 
       {/* Status filter tabs */}
       <div style={{display:"flex",gap:0,padding:"0 1.5rem",borderBottom:"1px solid var(--border)",marginBottom:"1rem"}}>
@@ -6935,17 +6956,22 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div><p className="home-kicker">📊 Gestão e Monitoramento</p><h1 className="home-title">📊 Relatórios</h1><p className="home-sub">Indicadores operacionais e de saúde para prestação de contas.</p></div>
-        <div style={{display:"flex",gap:".4rem",flexShrink:0}}>
-          {[["month","Mês"],["quarter","Trimestre"],["year","Ano"]].map(([k,l])=>(
-            <button key={k} onClick={()=>setPeriod(k)} style={{fontSize:".75rem",padding:".3rem .65rem",background:period===k?"var(--teal-600)":"var(--surface-2)",color:period===k?"#fff":"var(--text-2)",border:period===k?"none":"1px solid var(--border)"}}>
-              {l}
-            </button>
-          ))}
-          <button onClick={()=>window.print()} style={{fontSize:".75rem",padding:".3rem .65rem",marginLeft:".25rem"}}>🖨️ Exportar</button>
-        </div>
-      </section>
+      <PageHero
+        badge="Gestão e Monitoramento"
+        title="Relatórios"
+        subtitle="Indicadores operacionais e de saúde para prestação de contas."
+        style={{margin:"1.5rem 1.5rem .75rem"}}
+        actions={
+          <div style={{display:"flex",gap:".4rem",flexShrink:0}}>
+            {[["month","Mês"],["quarter","Trimestre"],["year","Ano"]].map(([k,l])=>(
+              <button key={k} onClick={()=>setPeriod(k)} style={{fontSize:".75rem",padding:".3rem .65rem",background:period===k?"var(--teal-600)":"var(--surface-2)",color:period===k?"#fff":"var(--text-2)",border:period===k?"none":"1px solid var(--border)"}}>
+                {l}
+              </button>
+            ))}
+            <button onClick={()=>window.print()} style={{fontSize:".75rem",padding:".3rem .65rem",marginLeft:".25rem"}}>🖨️ Exportar</button>
+          </div>
+        }
+      />
 
       {/* Sub tabs */}
       <div style={{display:"flex",gap:0,padding:"0 1.5rem",borderBottom:"1px solid var(--border)",marginBottom:"1rem"}}>
@@ -8007,19 +8033,20 @@ function InsumoPage({ patients, users, user }) {
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
 
       {/* Header */}
-      <section className="home-hero" style={{flexShrink:0}}>
-        <div>
-          <p className="home-kicker">Gestão de Insumos</p>
-          <h1 className="home-title">Dispensação de Insumos ao Paciente</h1>
-          <p className="home-sub">Controle de saída, estoque e pacientes contínuos — baseado no formulário DAF/Osasco.</p>
-        </div>
-        <div style={{display:"flex",gap:".75rem",flexWrap:"wrap",alignItems:"center"}}>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:".75rem",fontWeight:700,color:"var(--teal-700)"}}>{user?.name}</div>
-            <div style={{fontSize:".68rem",color:"var(--text-3)"}}>{roleLabel(user?.role)}</div>
+      <PageHero
+        badge="Gestão de Insumos"
+        title="Dispensação de Insumos ao Paciente"
+        subtitle="Controle de saída, estoque e pacientes contínuos — baseado no formulário DAF/Osasco."
+        style={{flexShrink:0}}
+        actions={
+          <div style={{display:"flex",gap:".75rem",flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:".75rem",fontWeight:700,color:"var(--teal-700)"}}>{user?.name}</div>
+              <div style={{fontSize:".68rem",color:"var(--text-3)"}}>{roleLabel(user?.role)}</div>
+            </div>
           </div>
-        </div>
-      </section>
+        }
+      />
 
       {/* KPIs */}
       <div style={{display:"flex",gap:".65rem",padding:"0 1.5rem .75rem",flexWrap:"wrap",flexShrink:0}}>
@@ -9052,31 +9079,32 @@ function PharmacyPage({ user }) {
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
       {/* Header */}
-      <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div style={{flex:1}}>
-          <p className="home-kicker">💊 Gestão de Medicamentos</p>
-          <h1 className="home-title">💊 Farmácia UBS</h1>
-          <p className="home-sub">Controle de estoque, dispensação e rastreabilidade de medicamentos.</p>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:".75rem",flexShrink:0}}>
-          {isAuthenticated ? (
-            <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontSize:".78rem",fontWeight:700,color:"var(--teal-700)"}}>{pharmaUser.name}</div>
-                <div style={{fontSize:".68rem",color:"var(--text-3)"}}>Farmacêutico(a) · sessão ativa</div>
+      <PageHero
+        badge="Gestão de Medicamentos"
+        title="Farmácia UBS"
+        subtitle="Controle de estoque, dispensação e rastreabilidade de medicamentos."
+        style={{margin:"1.5rem 1.5rem .75rem"}}
+        actions={
+          <div style={{display:"flex",alignItems:"center",gap:".75rem",flexShrink:0}}>
+            {isAuthenticated ? (
+              <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:".78rem",fontWeight:700,color:"var(--teal-700)"}}>{pharmaUser.name}</div>
+                  <div style={{fontSize:".68rem",color:"var(--text-3)"}}>Farmacêutico(a) · sessão ativa</div>
+                </div>
+                <button onClick={doLogout} style={{fontSize:".75rem",padding:".3rem .65rem",background:"var(--surface-2)",border:"1px solid var(--border)",color:"var(--text-2)"}}>
+                  Sair
+                </button>
               </div>
-              <button onClick={doLogout} style={{fontSize:".75rem",padding:".3rem .65rem",background:"var(--surface-2)",border:"1px solid var(--border)",color:"var(--text-2)"}}>
-                Sair
+            ) : (
+              <button onClick={()=>setShowLogin(true)} style={{display:"flex",alignItems:"center",gap:".4rem"}}>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 7v3M8 5.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                Entrar como Farmacêutico
               </button>
-            </div>
-          ) : (
-            <button onClick={()=>setShowLogin(true)} style={{display:"flex",alignItems:"center",gap:".4rem"}}>
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 7v3M8 5.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              Entrar como Farmacêutico
-            </button>
-          )}
-        </div>
-      </section>
+            )}
+          </div>
+        }
+      />
 
       {/* KPI Cards */}
       <div style={{display:"flex",gap:".75rem",padding:"0 1.5rem .75rem",flexWrap:"wrap"}}>
@@ -9469,18 +9497,19 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
       {/* Header */}
-      <section className="home-hero" style={{margin:"1.5rem 1.5rem .75rem"}}>
-        <div>
-          <p className="home-kicker">💉 Calendário Nacional de Vacinação</p>
-          <h1 className="home-title" style={{display:"flex",alignItems:"center",gap:".6rem",flexWrap:"wrap"}}>
+      <PageHero
+        badge="Calendário Nacional de Vacinação"
+        title={
+          <span style={{display:"flex",alignItems:"center",gap:".6rem",flexWrap:"wrap"}}>
             Carteira de Vacinas
-            {isEquipeRosa&&<span style={{fontSize:".65rem",fontWeight:700,padding:".2rem .6rem",borderRadius:999,background:"#fdf2f8",color:"#9d174d",border:"1px solid #fbcfe8",letterSpacing:".04em"}}>🌸 Indicador — Equipe Rosa</span>}
-          </h1>
-          <p className="home-sub">{isEquipeRosa
-            ? "Exibindo vacinas do indicador: crianças (calendário completo do indicador), gestantes (dTpa ≥20s), idosos (Influenza) e meninas 9–14a (HPV)."
-            : "Indicações baseadas no Calendário Nacional de Vacinação — Ministério da Saúde."}</p>
-        </div>
-      </section>
+            {isEquipeRosa&&<span style={{fontSize:".65rem",fontWeight:700,padding:".2rem .6rem",borderRadius:999,background:"#fdf2f8",color:"#9d174d",border:"1px solid #fbcfe8",letterSpacing:".04em"}}>Indicador — Equipe Rosa</span>}
+          </span>
+        }
+        subtitle={isEquipeRosa
+          ? "Exibindo vacinas do indicador: crianças (calendário completo do indicador), gestantes (dTpa ≥20s), idosos (Influenza) e meninas 9–14a (HPV)."
+          : "Indicações baseadas no Calendário Nacional de Vacinação — Ministério da Saúde."}
+        style={{margin:"1.5rem 1.5rem .75rem"}}
+      />
 
       <div style={{display:"flex",gap:"1.25rem",padding:"0 1.5rem 1.5rem",flex:1,alignItems:"flex-start",minHeight:0}}>
 
@@ -9880,13 +9909,11 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
 function AiTab({ aiView, aiData, aiQuestion, setAiQuestion, onPriorities, onQuality, onReport, onAsk, busy }) {
   return (
     <div className="workspace-home">
-      <div className="home-hero">
-        <div>
-          <p className="home-kicker">IA Assistida</p>
-          <h1 className="home-title">Assistente da Equipe</h1>
-          <p className="home-sub">Prioridades do dia, qualidade de dados e perguntas operacionais em linguagem natural.</p>
-        </div>
-      </div>
+      <PageHero
+        badge="IA Assistida"
+        title="Assistente da Equipe"
+        subtitle="Prioridades do dia, qualidade de dados e perguntas operacionais em linguagem natural."
+      />
 
       <div className="card">
         <div className="card-header">
