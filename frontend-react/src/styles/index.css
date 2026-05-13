@@ -1,0 +1,39 @@
+/* SIGUS Design System v4.0 — single entry point */
+/* @layer declaration must precede @imports so order is established before any
+   layer block is encountered. Per spec, empty @layer is allowed before @import. */
+@layer reset, tokens, base, components, utilities, overrides;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import "./01-tokens/_raw.css";
+@import "./01-tokens/_semantic.css";
+@import "./01-tokens/_spacing.css";
+@import "./01-tokens/_radius.css";
+@import "./01-tokens/_shadow.css";
+@import "./01-tokens/_motion.css";
+@import "./01-tokens/_layout.css";
+@import "./02-themes/_ubs.css";
+@import "./02-themes/_gestor.css";
+@import "./02-themes/_dark.css";
+@import "./02-themes/_compat.css";
+@import "./03-base/_reset.css";
+@import "./03-base/_base.css";
+@import "./03-base/_typography.css";
+@import "./03-base/_media.css";
+@import "./04-components/_auth.css";
+@import "./04-components/_tabs.css";
+@import "./04-components/_buttons.css";
+@import "./04-components/_app-shell.css";
+@import "./04-components/_pages.css";
+@import "./04-components/_hero.css";
+@import "./04-components/_cards.css";
+@import "./04-components/_patients.css";
+@import "./04-components/_exams.css";
+@import "./04-components/_preview.css";
+@import "./04-components/_offline.css";
+@import "./04-components/_modal.css";
+@import "./04-components/_forms.css";
+@import "./04-components/_chips.css";
+@import "./05-utilities/_hover.css";
+@import "./05-utilities/_visibility.css";
+@import "./05-utilities/_misc.css";
+@import "./06-responsive/_breakpoints.css";
+@import "./07-overrides/_inline-style-fixes.css";

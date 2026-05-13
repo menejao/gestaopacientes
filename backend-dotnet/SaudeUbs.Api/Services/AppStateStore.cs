@@ -38,6 +38,23 @@ public sealed class AppStateStore
         await _gate.WaitAsync();
         try
         {
+            // Purge stale sessions to prevent unbounded JSON/DB growth.
+            // Keep sessions that are active OR revoked/rotated within the last 7 days (audit window).
+            var cutoff = DateTime.UtcNow.AddDays(-7);
+            state.RefreshSessions?.RemoveAll(s =>
+            {
+                if (!DateTime.TryParse(s.ExpiresAt, null, System.Globalization.DateTimeStyles.RoundtripKind, out var exp))
+                    return true; // malformed — remove
+                if (exp < DateTime.UtcNow)
+                {
+                    // Expired: keep briefly for audit, then remove
+                    if (!string.IsNullOrWhiteSpace(s.RevokedAt) || !string.IsNullOrWhiteSpace(s.RotatedAt))
+                        return exp < cutoff;
+                    return exp < cutoff;
+                }
+                return false;
+            });
+
             if (await IsPgAvailableAsync())
             {
                 await _pgStore!.WriteAsync(state);

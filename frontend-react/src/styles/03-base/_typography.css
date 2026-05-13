@@ -1,0 +1,18 @@
+@layer base {
+  p, li,
+  .page-subtitle, .home-sub, .chart-entry-details, .empty {
+    orphans: 3;
+    widows: 3;
+    hyphens: none;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  h1, h2, h3, h4, h5,
+  .page-title, .home-title, .card-title,
+  .auth-hero h1, .auth-card-header h2, .auth-card-header p,
+  .auth-hero p, .auth-eyebrow {
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+}

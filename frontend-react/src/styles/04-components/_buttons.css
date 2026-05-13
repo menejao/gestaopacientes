@@ -1,0 +1,111 @@
+/* Button system — canonical variants:
+     .btn-primary    solid teal (default)
+     .btn-secondary  outlined / neutral
+     .btn-danger     destructive
+     .btn-ghost      link-text
+     .btn-ghost-outline  ghost with border
+     .icon-btn       icon only
+     .btn-outline-dashed  add-item dashed
+   Modifier: .btn-sm (smaller)
+   Legacy: .secondary, .danger-btn */
+@layer components {
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .45rem .9rem;
+  background: var(--teal-600);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-md);
+  font-size: .8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--t-normal), box-shadow var(--t-normal), transform .1s;
+  white-space: nowrap;
+}
+button:active   { transform: scale(.97); }
+button:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+button:not([class]):hover,
+button.btn-primary:hover:not(:disabled) {
+  background: var(--teal-700);
+  box-shadow: 0 2px 8px rgba(20,184,166,.3);
+}
+
+button.btn-primary { background: var(--teal-600); color: #fff; border: none; }
+button.btn-primary:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+button.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1.5px solid var(--color-border);
+  box-shadow: var(--sh-xs);
+}
+button.btn-secondary:hover:not(:disabled) { background: var(--color-surface-2); border-color: var(--slate-300); box-shadow: var(--sh-sm); }
+button.btn-secondary:disabled             { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+button.btn-danger { background: var(--red-50); color: var(--red-600); border: 1.5px solid var(--red-100); box-shadow: none; }
+button.btn-danger:hover:not(:disabled) { background: var(--red-100); box-shadow: none; }
+button.btn-danger:disabled             { opacity: .5; cursor: not-allowed; }
+
+button.icon-btn { padding: .35rem .55rem; background: transparent; border: none; color: var(--color-text-muted); box-shadow: none; }
+button.icon-btn:hover { background: var(--color-surface-3); color: var(--color-text-primary); box-shadow: none; }
+
+button.btn-ghost {
+  background: none;
+  border: none;
+  color: var(--teal-600);
+  font-weight: 600;
+  padding: 0;
+  box-shadow: none;
+  white-space: normal;
+  display: inline;
+}
+button.btn-ghost:hover { background: none; color: var(--teal-700); box-shadow: none; text-decoration: underline; }
+
+.btn-ghost-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .4rem .8rem;
+  background: transparent;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--r-md);
+  color: var(--color-text-secondary);
+  font-size: .78rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--t-normal);
+}
+.btn-ghost-outline:hover { background: var(--color-surface-3); border-color: var(--slate-300); color: var(--color-text-primary); }
+
+button.btn-outline-dashed {
+  background: var(--color-surface-2);
+  color: var(--teal-700);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--r-md);
+  font-size: .78rem;
+  font-weight: 600;
+  padding: .3rem .75rem;
+  box-shadow: none;
+}
+button.btn-outline-dashed:hover { border-color: var(--teal-400); background: var(--teal-50); box-shadow: none; }
+
+button.btn-sm { padding: .28rem .65rem; font-size: .75rem; }
+
+/* Legacy compat */
+button.secondary   { background: var(--color-surface); color: var(--color-text-primary); border: 1.5px solid var(--color-border); box-shadow: var(--sh-xs); }
+button.secondary:hover { background: var(--color-surface-2); border-color: var(--slate-300); box-shadow: var(--sh-sm); }
+button.danger-btn  { background: var(--red-50); color: var(--red-600); border: 1.5px solid var(--red-100); box-shadow: none; }
+button.danger-btn:hover { background: var(--red-100); box-shadow: none; }
+
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--teal-400);
+  outline-offset: 2px;
+}
+}

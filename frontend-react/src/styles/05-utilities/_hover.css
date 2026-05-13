@@ -1,0 +1,21 @@
+/* PR #2 fix: removed !important — @layer utilities wins over @layer components
+   without needing !important. Only add !important if a rule is unlayered. */
+@layer utilities {
+.hv-row        { transition: background var(--t-fast); }
+.hv-row:hover  { background: var(--color-surface-2); }
+
+.hv-menu       { transition: background var(--t-fast); }
+.hv-menu:hover { background: var(--color-surface-3); }
+
+.hv-danger       { transition: background var(--t-fast); }
+.hv-danger:hover { background: var(--red-50); }
+
+.hv-card       { transition: border-color var(--t-fast), background var(--t-fast); }
+.hv-card:hover { border-color: var(--teal-400); background: var(--teal-50); }
+
+.hv-card-tinted       { transition: filter var(--t-fast); }
+.hv-card-tinted:hover { filter: brightness(.97); }
+
+.hv-login-gestor       { transition: background var(--t-normal); }
+.hv-login-gestor:hover { background: var(--color-primary-weak); }
+}

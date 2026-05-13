@@ -1,0 +1,7 @@
+@layer components {
+.chip { display: inline-flex; align-items: center; gap: .25rem; padding: .22em .65em; border-radius: var(--r-full); font-size: .72rem; font-weight: 600; white-space: nowrap; }
+.chip.ok     { background: var(--green-50);  color: var(--green-700);  border: 1px solid var(--green-100); }
+.chip.warn   { background: var(--amber-50);  color: var(--amber-700);  border: 1px solid var(--amber-100); }
+.chip.danger { background: var(--red-50);    color: var(--red-700);    border: 1px solid var(--red-100); }
+.chip.muted  { background: var(--slate-100); color: var(--slate-600);  border: 1px solid var(--slate-200); }
+}

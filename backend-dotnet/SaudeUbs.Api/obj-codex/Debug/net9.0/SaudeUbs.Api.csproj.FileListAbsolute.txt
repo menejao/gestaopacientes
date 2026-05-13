@@ -1,0 +1,7 @@
+C:\Users\joão.benedito\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\Documentos\Playground\backend-dotnet\SaudeUbs.Api\obj-codex\Debug\net9.0\SaudeUbs.Api.csproj.AssemblyReference.cache
+C:\Users\joão.benedito\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\Documentos\Playground\backend-dotnet\SaudeUbs.Api\obj-codex\Debug\net9.0\SaudeUbs.Api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\joão.benedito\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\Documentos\Playground\backend-dotnet\SaudeUbs.Api\obj-codex\Debug\net9.0\SaudeUbs.Api.AssemblyInfoInputs.cache
+C:\Users\joão.benedito\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\Documentos\Playground\backend-dotnet\SaudeUbs.Api\obj-codex\Debug\net9.0\SaudeUbs.Api.AssemblyInfo.cs
+C:\Users\joão.benedito\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\Documentos\Playground\backend-dotnet\SaudeUbs.Api\obj-codex\Debug\net9.0\SaudeUbs.Api.csproj.CoreCompileInputs.cache
+C:\Users\joão.benedito\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\Documentos\Playground\backend-dotnet\SaudeUbs.Api\obj-codex\Debug\net9.0\SaudeUbs.Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\joão.benedito\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\Documentos\Playground\backend-dotnet\SaudeUbs.Api\obj-codex\Debug\net9.0\SaudeUbs.Api.sourcelink.json

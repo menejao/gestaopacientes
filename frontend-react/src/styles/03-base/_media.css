@@ -1,0 +1,9 @@
+@layer base {
+  img,
+  svg,
+  canvas,
+  video,
+  iframe {
+    max-width: 100%;
+  }
+}

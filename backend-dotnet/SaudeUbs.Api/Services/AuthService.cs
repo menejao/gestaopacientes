@@ -11,7 +11,7 @@ namespace SaudeUbs.Api.Services;
 public sealed class AuthService
 {
     private readonly AppConfig _config;
-    private const string BcryptPrefix = "$2a$";
+    private const string Pbkdf2Prefix = "pbkdf2$";
     private const string ScryptPrefix = "s1$";
 
     public AuthService(AppConfig config) => _config = config;
@@ -32,11 +32,13 @@ public sealed class AuthService
             "pharmacist"                            => "pharmacist",
             "pharmacy_tech"                         => "pharmacy_tech",
             "receptionist"                          => "receptionist",
-            _                                       => input
+            "gestor"                                => "gestor",
+            _                                       => ""
         };
     }
 
-    public bool IsManager(User user)      => CanonicalRole(user.Role) == "nurse_manager";
+    public bool IsGestor(User user)       => CanonicalRole(user.Role) == "gestor";
+    public bool IsManager(User user)      => CanonicalRole(user.Role) is "nurse_manager" or "gestor";
     public bool IsDoctor(User user)       => CanonicalRole(user.Role) == "doctor";
     public bool IsDentist(User user)      => CanonicalRole(user.Role) == "dentist";
     public bool IsAcs(User user)          => CanonicalRole(user.Role) == "acs";
@@ -44,6 +46,14 @@ public sealed class AuthService
     public bool IsPharmacist(User user)   => CanonicalRole(user.Role) is "pharmacist" or "pharmacy_tech";
     public bool IsReceptionist(User user) => CanonicalRole(user.Role) == "receptionist";
     public bool IsFullClinical(User user) => IsManager(user) || IsDoctor(user) || IsDentist(user);
+    public bool IsPrivilegedRole(string? role) => CanonicalRole(role) is "gestor" or "nurse_manager";
+    public bool RequiresMandatoryMfa(string? role) => CanonicalRole(role) is
+        "gestor" or
+        "nurse_manager" or
+        "doctor" or
+        "dentist" or
+        "pharmacist" or
+        "pharmacy_tech";
 
     // ── Acesso a pacientes ────────────────────────────────────────
     public bool CanAccessPatient(User user, Patient patient)
@@ -64,7 +74,15 @@ public sealed class AuthService
     {
         if (string.IsNullOrWhiteSpace(plainPassword))
             throw new ArgumentException("Senha não pode ser vazia");
-        return BCrypt.Net.BCrypt.HashPassword(plainPassword, workFactor: 12);
+        var salt = RandomNumberGenerator.GetBytes(16);
+        const int iterations = 210_000;
+        var hash = Rfc2898DeriveBytes.Pbkdf2(
+            Encoding.UTF8.GetBytes(plainPassword),
+            salt,
+            iterations,
+            HashAlgorithmName.SHA512,
+            32);
+        return $"{Pbkdf2Prefix}{iterations}${Convert.ToHexString(salt)}${Convert.ToHexString(hash)}";
     }
 
     /// <summary>
@@ -77,9 +95,9 @@ public sealed class AuthService
         var value = stored ?? "";
         if (string.IsNullOrWhiteSpace(value)) return false;
 
-        if (value.StartsWith(BcryptPrefix, StringComparison.OrdinalIgnoreCase))
+        if (value.StartsWith(Pbkdf2Prefix, StringComparison.OrdinalIgnoreCase))
         {
-            try { return BCrypt.Net.BCrypt.Verify(input, value); }
+            try { return VerifyPbkdf2Hash(input, value); }
             catch { return false; }
         }
 
@@ -94,9 +112,15 @@ public sealed class AuthService
     // ── Dados clínicos ────────────────────────────────────────────
     public static List<string> NormalizeChronicConditions(IEnumerable<string>? values)
     {
+        var known = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "hypertension", "diabetes", "asthma", "obesity", "ckd",
+            "heart_failure", "copd", "mental_health", "cancer", "stroke",
+            "hypothyroidism", "hyperthyroidism", "epilepsy", "aids_hiv"
+        };
         return (values ?? Array.Empty<string>())
             .Select(v => (v ?? "").Trim().ToLowerInvariant())
-            .Where(v => v is "hypertension" or "diabetes")
+            .Where(v => known.Contains(v))
             .Distinct().ToList();
     }
 
@@ -129,7 +153,7 @@ public sealed class AuthService
     }
 
     // ── JWT ───────────────────────────────────────────────────────
-    public string CreateToken(User user)
+    public string CreateToken(User user, string? sessionId = null)
     {
         var now    = DateTime.UtcNow;
         var claims = new List<Claim>
@@ -141,6 +165,10 @@ public sealed class AuthService
             new("email",  user.Email ?? ""),
             new("teamId", user.TeamId ?? "")
         };
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            claims.Add(new Claim("sid", sessionId));
+        }
         var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config.JwtSecret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var jwt   = new JwtSecurityToken(
@@ -151,6 +179,20 @@ public sealed class AuthService
             expires:            now.AddHours(_config.JwtExpiresHours),
             signingCredentials: creds);
         return new JwtSecurityTokenHandler().WriteToken(jwt);
+    }
+
+    public string GenerateRefreshToken()
+    {
+        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+    }
+
+    public string HashOpaqueToken(string value)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value ?? ""));
+        return Convert.ToHexString(bytes);
     }
 
     public async Task<User?> GetAuthUserAsync(ClaimsPrincipal principal, AppStateStore store)
@@ -209,5 +251,130 @@ public sealed class AuthService
             return CryptographicOperations.FixedTimeEquals(derived, expected);
         }
         catch { return false; }
+    }
+
+    private static bool VerifyPbkdf2Hash(string password, string stored)
+    {
+        var parts = stored.Split('$', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 4 || !string.Equals(parts[0], "pbkdf2", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!int.TryParse(parts[1], out var iterations) || iterations < 100_000)
+        {
+            return false;
+        }
+
+        var salt = Convert.FromHexString(parts[2]);
+        var expected = Convert.FromHexString(parts[3]);
+        var actual = Rfc2898DeriveBytes.Pbkdf2(
+            Encoding.UTF8.GetBytes(password ?? ""),
+            salt,
+            iterations,
+            HashAlgorithmName.SHA512,
+            expected.Length);
+        return CryptographicOperations.FixedTimeEquals(actual, expected);
+    }
+
+    public bool VerifyTotpCode(string? secret, string? code, DateTime? utcNow = null)
+    {
+        var normalizedCode = (code ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(secret) || normalizedCode.Length != 6 || !normalizedCode.All(char.IsDigit))
+        {
+            return false;
+        }
+
+        byte[] secretBytes;
+        try
+        {
+            secretBytes = DecodeBase32(secret);
+        }
+        catch
+        {
+            return false;
+        }
+
+        var now = utcNow ?? DateTime.UtcNow;
+        var timestep = GetCurrentTotpTimestepNumber(now);
+        for (var offset = -1; offset <= 1; offset += 1)
+        {
+            var candidate = GenerateTotpCode(secretBytes, timestep + offset);
+            if (CryptographicOperations.FixedTimeEquals(
+                Encoding.ASCII.GetBytes(candidate),
+                Encoding.ASCII.GetBytes(normalizedCode)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static long GetCurrentTotpTimestepNumber(DateTime utcNow)
+    {
+        var unixTime = new DateTimeOffset(utcNow).ToUnixTimeSeconds();
+        return unixTime / 30L;
+    }
+
+    private static string GenerateTotpCode(byte[] secretBytes, long timestepNumber)
+    {
+        Span<byte> timestepAsBytes = stackalloc byte[8];
+        for (var i = 7; i >= 0; i -= 1)
+        {
+            timestepAsBytes[i] = (byte)(timestepNumber & 0xFF);
+            timestepNumber >>= 8;
+        }
+
+        using var hmac = new HMACSHA1(secretBytes);
+        var hash = hmac.ComputeHash(timestepAsBytes.ToArray());
+        var offset = hash[^1] & 0x0F;
+        var binaryCode =
+            ((hash[offset] & 0x7F) << 24) |
+            ((hash[offset + 1] & 0xFF) << 16) |
+            ((hash[offset + 2] & 0xFF) << 8) |
+            (hash[offset + 3] & 0xFF);
+
+        var otp = binaryCode % 1_000_000;
+        return otp.ToString("D6");
+    }
+
+    private static byte[] DecodeBase32(string secret)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        var sanitized = new string((secret ?? "")
+            .Trim()
+            .ToUpperInvariant()
+            .Where(c => !char.IsWhiteSpace(c) && c != '=')
+            .ToArray());
+
+        if (sanitized.Length == 0)
+        {
+            return Array.Empty<byte>();
+        }
+
+        var output = new List<byte>((sanitized.Length * 5) / 8);
+        var buffer = 0;
+        var bitsLeft = 0;
+
+        foreach (var c in sanitized)
+        {
+            var value = alphabet.IndexOf(c);
+            if (value < 0)
+            {
+                throw new FormatException("Base32 inválido.");
+            }
+
+            buffer = (buffer << 5) | value;
+            bitsLeft += 5;
+
+            if (bitsLeft >= 8)
+            {
+                output.Add((byte)((buffer >> (bitsLeft - 8)) & 0xFF));
+                bitsLeft -= 8;
+            }
+        }
+
+        return output.ToArray();
     }
 }

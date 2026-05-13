@@ -1,0 +1,16 @@
+@layer tokens {
+  [data-tenant="gestor"],
+  .auth-screen[data-mode="gestor"] {
+    --color-primary:             #6366f1;
+    --color-primary-hover:       #4f46e5;
+    --color-primary-soft:        var(--violet-50);
+    --color-primary-weak:        rgba(99,102,241,.15);
+    --color-primary-ring:        rgba(99,102,241,.12);
+    --color-auth-accent:         #818cf8;
+    --color-auth-eyebrow-bg:     rgba(99,102,241,.15);
+    --color-auth-eyebrow-border: rgba(99,102,241,.3);
+    --color-auth-eyebrow-text:   #a5b4fc;
+    --color-auth-panel-start:    #0f172a;
+    --color-auth-panel-end:      #1e1b4b;
+  }
+}

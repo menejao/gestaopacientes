@@ -1,0 +1,13 @@
+@layer base {
+  body {
+    background: var(--color-surface-app);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+}

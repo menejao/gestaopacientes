@@ -1,0 +1,36 @@
+@layer tokens {
+  :root {
+    --color-primary:        var(--teal-600);
+    --color-primary-hover:  var(--teal-700);
+    --color-primary-soft:   var(--teal-50);
+    --color-primary-weak:   rgba(20,184,166,.15);
+    --color-primary-ring:   rgba(20,184,166,.12);
+
+    --color-surface:     #ffffff;
+    --color-surface-2:   #f8fafc;
+    --color-surface-3:   #f1f5f9;
+    --color-surface-app: #f1f5f9;
+
+    --color-text-primary:   var(--slate-900);
+    --color-text-secondary: var(--slate-600);
+    --color-text-muted:     var(--slate-400);
+
+    --color-border:        #e2e8f0;
+    --color-border-soft:   #f1f5f9;
+    --color-border-strong: var(--slate-300);
+    --color-focus-ring:    var(--color-primary);
+
+    --color-success: var(--green-600);
+    --color-warning: var(--amber-600);
+    --color-danger:  var(--red-600);
+
+    --color-auth-accent:          var(--teal-400);
+    --color-auth-eyebrow-bg:      rgba(20,184,166,.15);
+    --color-auth-eyebrow-border:  rgba(20,184,166,.3);
+    --color-auth-eyebrow-text:    var(--teal-400);
+    --color-auth-panel-start:     var(--slate-900);
+    --color-auth-panel-end:       #1e293b;
+    --color-auth-orb-1:           rgba(20,184,166,.18);
+    --color-auth-orb-2:           rgba(139,92,246,.1);
+  }
+}

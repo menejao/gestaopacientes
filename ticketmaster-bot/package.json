@@ -1,0 +1,19 @@
+{
+  "name": "ticketmaster-personal-ticket-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bot pessoal para aguardar fila, monitorar disponibilidade e avisar via WhatsApp.",
+  "scripts": {
+    "start": "node src/index.js",
+    "login": "node src/login.js",
+    "doctor": "node src/doctor.js",
+    "inspect": "node src/inspect.js"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
