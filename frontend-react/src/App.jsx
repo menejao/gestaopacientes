@@ -1600,7 +1600,7 @@ function PatientsTab({ patients,users,templates,protocolByPatient,query,setQuery
   };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+    <div style={{display:"flex",flexDirection:"column"}}>
       <PageHero
         badge="Gestão de Pacientes"
         title="Pacientes"
@@ -10001,11 +10001,8 @@ function AiTab({ aiView, aiData, aiQuestion, setAiQuestion, onPriorities, onQual
 function UserList({ title, users, isManagerUser, onEdit, onDelete }) {
   return (
     <div className="workspace-home">
+      <PageHero badge="Gestão da Equipe" title={title} subtitle={`${users.length} membro${users.length!==1?"s":""} cadastrado${users.length!==1?"s":""}`} />
       <div className="card">
-        <SectionHeader
-          title={title}
-          count={users.length}
-        />
         {!users.length
           ? <EmptyState message={`Nenhum ${title.toLowerCase()} cadastrado.`}/>
           : <ul className="stack-list" style={{padding:"0 1.25rem"}}>
@@ -10040,12 +10037,8 @@ function UserList({ title, users, isManagerUser, onEdit, onDelete }) {
 function ProtocolsTab({ templates, canManageUser, onEdit, onDelete }) {
   return (
     <div className="workspace-home">
+      <PageHero badge="Protocolos Clínicos" title="Protocolos" subtitle="Metas e etapas de acompanhamento por categoria de paciente." actions={canManageUser&&<button onClick={onEdit(null)}>+ Novo protocolo</button>} />
       <div className="card">
-        <SectionHeader
-          title="Protocolos"
-          count={templates.length}
-          action={canManageUser&&<button onClick={onEdit(null)}>+ Novo protocolo</button>}
-        />
         {!templates.length
           ? <EmptyState message="Nenhum protocolo cadastrado."/>
           : <div style={{padding:"0 1.25rem"}}>
@@ -10126,11 +10119,9 @@ function DiagnosticsPage({ apiHealth, token, user, patients, users, templates, l
   }, [patients]);
 
   return (
-    <div style={{padding:"1.15rem 1.2rem",display:"grid",gap:"1rem"}}>
-      <section className="panel-card">
-        <div className="panel-card-hd">Diagnósticos do sistema</div>
-        <p className="home-task-meta">Visão técnica para suporte: conectividade, sessão, carga e consistência básica.</p>
-      </section>
+    <div className="workspace-home">
+      <PageHero badge="Sistema" title="Diagnósticos" subtitle="Visão técnica: conectividade, sessão, carga e consistência básica." />
+      <div style={{display:"grid",gap:"1rem"}}>
 
       <section className="grid-cards" style={{gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))"}}>
         <div className="panel-card">
@@ -10160,6 +10151,7 @@ function DiagnosticsPage({ apiHealth, token, user, patients, users, templates, l
           <div className="muted small">Agendados: {Number(demandMonthly?.totals?.scheduled ?? 0)} · Espontâneos: {Number(demandMonthly?.totals?.walkin ?? 0)}</div>
         </div>
       </section>
+      </div>
     </div>
   );
 }
