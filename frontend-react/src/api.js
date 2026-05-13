@@ -1,4 +1,8 @@
-﻿export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5030";
+﻿export const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? "https://saude-backend-gkj7.onrender.com"
+    : "http://localhost:5030");
 
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 const COOKIE_SESSION_TOKEN = "__cookie_session__";
