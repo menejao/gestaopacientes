@@ -57,6 +57,7 @@ export async function api(path, options = {}, token = "") {
     retryDelayMs = 350,
     retryStatuses,
     skipAuthRefresh = false,
+    timeoutMs = 20000,
     ...fetchOptions
   } = options || {};
 
@@ -83,6 +84,7 @@ export async function api(path, options = {}, token = "") {
       response = await fetch(`${API_URL}${path}`, {
         ...fetchOptions,
         credentials: "include",
+        signal: controller.signal,
         headers
       });
     } catch (err) {

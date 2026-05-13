@@ -8,6 +8,7 @@ import {
   getApiHealth, inactivatePatient, inactivateRecord, listAppointments, listAuditLogs, listExams, listMessages, listPatients, listProtocolTemplates,
   listTasks, listUsers, login, logout as logoutRequest, listPublicTeams, pingPresence, reactivatePatientRecord, register, requestPasswordReset, confirmPasswordReset, sendMessage, uploadExamAttachment, createExam, verifyCredentials, verifyLogin2fa,
   updateMe, updateProtocolTemplate, updatePatient, updateUser, updateTaskStatus,
+  API_URL,
 } from "./api";
 import { OfflineBanner as SharedOfflineBanner } from "./components/OfflineBanner";
 import { ExamCard as SharedExamCard } from "./components/ExamCard";
@@ -11370,6 +11371,9 @@ function AppInner() {
 
   /* s¬ */
   async function handleLogin(email,password) {
+    console.log("submit login chamado");
+    console.log("email", email);
+    console.log("api login url", API_URL);
     setError(""); setBusy(true);
     try {
       let payload=await login(email.trim(),password);
