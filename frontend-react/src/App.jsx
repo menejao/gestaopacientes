@@ -12009,6 +12009,7 @@ function AppInner() {
   // Farmacêutico, enfermeira, médico, ACS, téc. enf., admin â†’ app clínico
   // buildNavItems limita o menu conforme o perfil
 
+  const isHiddenCareCategory = () => false;
   const catOpts=templates.map(t=>({value:t.category,label:t.label})).filter(c=>!isHiddenCareCategory(c.value));
 
   // Todos os perfis com acesso ao módulo visualizam todos os pacientes.
