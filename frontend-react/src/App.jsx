@@ -10120,37 +10120,65 @@ function DiagnosticsPage({ apiHealth, token, user, patients, users, templates, l
 
   return (
     <div className="workspace-home">
-      <PageHero badge="Sistema" title="Diagnósticos" subtitle="Visão técnica: conectividade, sessão, carga e consistência básica." />
-      <div style={{display:"grid",gap:"1rem"}}>
-
-      <section className="grid-cards" style={{gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))"}}>
-        <div className="panel-card">
-          <div className="muted tiny" style={{textTransform:"uppercase",letterSpacing:".08em"}}>API</div>
-          <div style={{fontSize:"1.2rem",fontWeight:800,color:healthColor}}>
-            {apiHealth?.label || "Indefinido"}
+      <PageHero
+        badge="Sistema"
+        title="Diagnósticos"
+        subtitle="Visão técnica: conectividade, sessão, carga e consistência básica."
+        actions={
+          <div style={{display:"flex",flexDirection:"column",gap:".35rem",alignItems:"flex-end",flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:".5rem",background:"rgba(255,255,255,.07)",border:"1px solid rgba(255,255,255,.12)",borderRadius:"var(--r-md)",padding:".4rem .85rem"}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:healthColor,flexShrink:0}}/>
+              <span style={{fontSize:".78rem",fontWeight:700,color:"#e2e8f0"}}>{apiHealth?.label || "Verificando..."}</span>
+            </div>
+            {latency>0&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>Latência: {latency} ms</span>}
           </div>
-          <div className="muted small">Última verificação: {updatedAt}</div>
-          <div className="muted small">Latência: {latency ? `${latency} ms` : "-"}</div>
+        }
+      />
+
+      {/* KPIs */}
+      <div className="home-kpi-grid">
+        <div className="home-kpi-card">
+          <p className="home-kpi-label">API</p>
+          <p className="home-kpi-value" style={{color:healthColor}}>{apiHealth?.label||"—"}</p>
+          <p className="home-kpi-foot">Verificado: {updatedAt}</p>
         </div>
-        <div className="panel-card">
-          <div className="muted tiny" style={{textTransform:"uppercase",letterSpacing:".08em"}}>Sessão</div>
-          <div style={{fontSize:"1.2rem",fontWeight:800}}>{token ? "Ativa" : "Inativa"}</div>
-          <div className="muted small">Perfil: {roleLabel(user?.role)}</div>
-          <div className="muted small">Tempo de sessão: {sessionAgeMin === null ? "-" : `${sessionAgeMin} min`}</div>
+        <div className="home-kpi-card">
+          <p className="home-kpi-label">Sessão</p>
+          <p className="home-kpi-value">{token?"Ativa":"—"}</p>
+          <p className="home-kpi-foot">{roleLabel(user?.role)} · {sessionAgeMin===null?"—":`${sessionAgeMin} min`}</p>
         </div>
-        <div className="panel-card">
-          <div className="muted tiny" style={{textTransform:"uppercase",letterSpacing:".08em"}}>Carga local</div>
-          <div style={{fontSize:"1.2rem",fontWeight:800}}>{patients?.length || 0} pacientes</div>
-          <div className="muted small">{users?.length || 0} usuários · {templates?.length || 0} protocolos</div>
-          <div className="muted small">Histórico agregado: {totalRecords}</div>
+        <div className="home-kpi-card">
+          <p className="home-kpi-label">Carga local</p>
+          <p className="home-kpi-value">{patients?.length||0}</p>
+          <p className="home-kpi-foot">{users?.length||0} usuários · {templates?.length||0} protocolos · {totalRecords} registros</p>
         </div>
-        <div className="panel-card">
-          <div className="muted tiny" style={{textTransform:"uppercase",letterSpacing:".08em"}}>Última carga</div>
-          <div style={{fontSize:"1.2rem",fontWeight:800}}>{lastLoadAt ? new Date(lastLoadAt).toLocaleTimeString("pt-BR") : "-"}</div>
-          <div className="muted small">Demanda total: {Number(demandMonthly?.totals?.total ?? 0)}</div>
-          <div className="muted small">Agendados: {Number(demandMonthly?.totals?.scheduled ?? 0)} · Espontâneos: {Number(demandMonthly?.totals?.walkin ?? 0)}</div>
+        <div className="home-kpi-card">
+          <p className="home-kpi-label">Última carga</p>
+          <p className="home-kpi-value" style={{fontSize:"1.25rem"}}>{lastLoadAt?new Date(lastLoadAt).toLocaleTimeString("pt-BR"):"—"}</p>
+          <p className="home-kpi-foot">Demanda: {Number(demandMonthly?.totals?.total??0)} · Agend. {Number(demandMonthly?.totals?.scheduled??0)} · Esp. {Number(demandMonthly?.totals?.walkin??0)}</p>
         </div>
-      </section>
+      </div>
+
+      {/* Detalhes */}
+      <div className="card">
+        <div className="card-header"><span className="card-title">Detalhes da sessão</span></div>
+        <div className="card-body">
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:".75rem 2rem"}}>
+            {[
+              ["Perfil",roleLabel(user?.role)],
+              ["Usuário",user?.name||"—"],
+              ["Tempo de sessão",sessionAgeMin===null?"—":`${sessionAgeMin} min`],
+              ["API URL",apiHealth?.url||"—"],
+              ["Latência",latency?`${latency} ms`:"—"],
+              ["Verificado em",updatedAt],
+            ].map(([label,value])=>(
+              <div key={label}>
+                <p style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:"var(--text-3)",marginBottom:".2rem"}}>{label}</p>
+                <p style={{fontSize:".88rem",fontWeight:600,color:"var(--text-1)",wordBreak:"break-all"}}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
