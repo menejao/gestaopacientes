@@ -2460,15 +2460,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      {/* Header */}
-      <div style={{background:"linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)",padding:"1.25rem 2rem",flexShrink:0}}>
-        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".3rem"}}>
-          <div style={{width:7,height:7,borderRadius:"50%",background:"#34d399"}}/>
-          <span style={{fontSize:".65rem",fontWeight:700,color:"#34d399",textTransform:"uppercase",letterSpacing:".1em"}}>Exames · Unidade</span>
-        </div>
-        <h1 style={{margin:0,fontSize:"1.25rem",fontWeight:800,color:"#fff"}}>Exames dos Pacientes</h1>
-        <p style={{margin:".25rem 0 0",fontSize:".75rem",color:"#94a3b8"}}>Exames realizados na unidade e exames externos trazidos pelos pacientes.</p>
-      </div>
+      <PageHero badge="Exames · Unidade" title="Exames dos Pacientes" subtitle="Exames realizados na unidade e exames externos trazidos pelos pacientes." />
 
       <div style={{display:"flex",flex:1,minHeight:0}}>
         {/* Lista de pacientes */}
@@ -5770,81 +5762,72 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
 
-      {/* ── Topbar de busca ── */}
-      <div style={{background:"linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)",padding:"1.25rem 2rem",flexShrink:0}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"1rem",flexWrap:"wrap",marginBottom:"1rem"}}>
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".2rem"}}>
-              <div style={{width:7,height:7,borderRadius:"50%",background:"#34d399"}}/>
-              <span style={{fontSize:".65rem",fontWeight:700,color:"#34d399",textTransform:"uppercase",letterSpacing:".1em"}}>Prontuário Eletrônico · Res. CFM 1638/2002 · LGPD</span>
+      <PageHero
+        badge="Prontuário Eletrônico · Res. CFM 1638/2002 · LGPD"
+        title={patSelected&&unlocked ? patSelected.name : "Prontuário Eletrônico do Paciente"}
+        subtitle={!(patSelected&&unlocked) ? "Documento legal e sigiloso — acesso registrado conforme LGPD." : undefined}
+        actions={
+          <div style={{display:"flex",flexDirection:"column",gap:".6rem",alignItems:"flex-end",flexShrink:0}}>
+            <div style={{position:"relative",width:340}}>
+              <div style={{position:"absolute",left:".75rem",top:"50%",transform:"translateY(-50%)",color:"#64748b",pointerEvents:"none"}}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              </div>
+              <input value={patSearch}
+                onChange={e=>{ setPatSearch(e.target.value); if(patSelected&&e.target.value!==patSelected.name){setPatSelected(null);setUnlocked(false);setRecords([]);} }}
+                placeholder="Buscar paciente por nome, CPF ou CNS..."
+                style={{width:"100%",boxSizing:"border-box",paddingLeft:"2.2rem",paddingRight:patSelected?"2.2rem":".75rem",background:"rgba(255,255,255,.1)",border:`1px solid ${patSelected?"rgba(52,211,153,.6)":"rgba(255,255,255,.2)"}`,borderRadius:"var(--r-md)",color:"#fff",fontSize:".85rem",height:38}}/>
+              {patSelected&&<div style={{position:"absolute",right:".65rem",top:"50%",transform:"translateY(-50%)",width:18,height:18,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>}
+              {patResults.length>0&&!patSelected&&(
+                <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:50,background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",boxShadow:"0 8px 24px rgba(0,0,0,.15)",maxHeight:260,overflowY:"auto"}}>
+                  {patResults.map(p=>{
+                    const age = p.birthDate ? Math.floor((new Date()-(parseLocalDate(p.birthDate)||new Date()))/31557600000) : null;
+                    const acsN = users.find(u=>u.id===p.assignedAcsId)?.name;
+                    return (
+                      <button key={p.id} type="button" onClick={()=>selectPatient(p)}
+                        style={{display:"flex",alignItems:"center",gap:".75rem",width:"100%",padding:".65rem 1rem",background:"none",border:"none",borderBottom:"1px solid var(--border-soft)",cursor:"pointer",textAlign:"left",color:"var(--text-1)"}}
+                        onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"}
+                        onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                        <div style={{width:36,height:36,borderRadius:"50%",background:"var(--teal-100)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".8rem",fontWeight:700,color:"var(--teal-700)",flexShrink:0}}>{initials(p.name)}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:700,fontSize:".88rem",color:"var(--ink)"}}>{p.name}</div>
+                          <div style={{display:"flex",gap:".6rem",fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem",flexWrap:"wrap"}}>
+                            {age!==null&&<span>{age} anos</span>}
+                            {p.cpf&&<span>CPF: {p.cpf}</span>}
+                            {p.cns&&<span>CNS: {p.cns}</span>}
+                            {acsN&&<span>ACS: {acsN}</span>}
+                            <span style={{color:"var(--teal-600)",fontWeight:600}}>{catLabel([],p.careCategory)}</span>
+                          </div>
+                        </div>
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{color:"var(--text-3)",flexShrink:0}}><path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <h1 style={{margin:0,fontSize:"1.25rem",fontWeight:800,color:"#fff"}}>
-              {patSelected&&unlocked ? patSelected.name : "Prontuário Eletrônico do Paciente"}
-            </h1>
             {patSelected&&unlocked&&(
-              <div style={{display:"flex",gap:".75rem",marginTop:".3rem",flexWrap:"wrap"}}>
-                {patSelected.birthDate&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Nasc.: {fmtDate(patSelected.birthDate)}</span>}
-                {patSelected.cpf&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>CPF: {patSelected.cpf}</span>}
-                {patSelected.cns&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>CNS: {patSelected.cns}</span>}
-                {patSelected.sex&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Sexo: {patSelected.sex}</span>}
-                {patSelected.birthDate&&(()=>{const a=Math.floor((new Date()-(parseLocalDate(patSelected.birthDate)||new Date()))/31557600000);return <span style={{fontSize:".72rem",color:"#94a3b8"}}>{a} anos</span>;})()}
+              <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
+                {onNavigatePatient&&<button type="button" onClick={()=>onNavigatePatient(patSelected.id)}
+                  style={{fontSize:".73rem",padding:".35rem .7rem",background:"rgba(255,255,255,.1)",color:"#e2e8f0",border:"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:600}}>
+                  Perfil →
+                </button>}
               </div>
             )}
           </div>
-          {patSelected&&unlocked&&(
-            <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
-              {onNavigatePatient&&<button type="button" onClick={()=>onNavigatePatient(patSelected.id)}
-                style={{fontSize:".73rem",padding:".35rem .7rem",background:"rgba(255,255,255,.1)",color:"#e2e8f0",border:"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:600}}>
-                Perfil →
-              </button>}
-              <span style={{fontSize:".7rem",color:"#64748b",fontStyle:"italic"}}>
-                📋 Somente leitura — registros criados via tab Atendimento do paciente
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Campo de busca */}
-        <div style={{position:"relative",maxWidth:500}}>
-          <div style={{position:"absolute",left:".75rem",top:"50%",transform:"translateY(-50%)",color:"#64748b",pointerEvents:"none"}}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+        }
+      >
+        {patSelected&&unlocked&&(
+          <div style={{display:"flex",gap:".75rem",marginTop:".3rem",flexWrap:"wrap"}}>
+            {patSelected.birthDate&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Nasc.: {fmtDate(patSelected.birthDate)}</span>}
+            {patSelected.cpf&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>CPF: {patSelected.cpf}</span>}
+            {patSelected.cns&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>CNS: {patSelected.cns}</span>}
+            {patSelected.sex&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Sexo: {patSelected.sex}</span>}
+            {patSelected.birthDate&&(()=>{const a=Math.floor((new Date()-(parseLocalDate(patSelected.birthDate)||new Date()))/31557600000);return <span style={{fontSize:".72rem",color:"#94a3b8"}}>{a} anos</span>;})()}
           </div>
-          <input value={patSearch}
-            onChange={e=>{ setPatSearch(e.target.value); if(patSelected&&e.target.value!==patSelected.name){setPatSelected(null);setUnlocked(false);setRecords([]);} }}
-            placeholder="Buscar paciente por nome, CPF ou CNS..."
-            style={{width:"100%",boxSizing:"border-box",paddingLeft:"2.2rem",paddingRight:patSelected?"2.2rem":".75rem",background:"rgba(255,255,255,.1)",border:`1px solid ${patSelected?"rgba(52,211,153,.6)":"rgba(255,255,255,.2)"}`,borderRadius:"var(--r-md)",color:"#fff",fontSize:".85rem",height:38}}/>
-          {patSelected&&<div style={{position:"absolute",right:".65rem",top:"50%",transform:"translateY(-50%)",width:18,height:18,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </div>}
-          {patResults.length>0&&!patSelected&&(
-            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:50,background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",boxShadow:"0 8px 24px rgba(0,0,0,.15)",maxHeight:260,overflowY:"auto"}}>
-              {patResults.map(p=>{
-                const age = p.birthDate ? Math.floor((new Date()-(parseLocalDate(p.birthDate)||new Date()))/31557600000) : null;
-                const acsN = users.find(u=>u.id===p.assignedAcsId)?.name;
-                return (
-                  <button key={p.id} type="button" onClick={()=>selectPatient(p)}
-                    style={{display:"flex",alignItems:"center",gap:".75rem",width:"100%",padding:".65rem 1rem",background:"none",border:"none",borderBottom:"1px solid var(--border-soft)",cursor:"pointer",textAlign:"left",color:"var(--text-1)"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"}
-                    onMouseLeave={e=>e.currentTarget.style.background="none"}>
-                    <div style={{width:36,height:36,borderRadius:"50%",background:"var(--teal-100)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".8rem",fontWeight:700,color:"var(--teal-700)",flexShrink:0}}>{initials(p.name)}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:700,fontSize:".88rem",color:"var(--ink)"}}>{p.name}</div>
-                      <div style={{display:"flex",gap:".6rem",fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem",flexWrap:"wrap"}}>
-                        {age!==null&&<span>{age} anos</span>}
-                        {p.cpf&&<span>CPF: {p.cpf}</span>}
-                        {p.cns&&<span>CNS: {p.cns}</span>}
-                        {acsN&&<span>ACS: {acsN}</span>}
-                        <span style={{color:"var(--teal-600)",fontWeight:600}}>{catLabel([],p.careCategory)}</span>
-                      </div>
-                    </div>
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{color:"var(--text-3)",flexShrink:0}}><path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
+        )}
+      </PageHero>
 
       {/* ── Conteúdo ── */}
       {!patSelected ? (
@@ -6114,12 +6097,7 @@ function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
 
   return (
     <div style={{padding:"1.5rem",maxWidth:760,margin:"0 auto"}}>
-      {/* Header */}
-      <div style={{marginBottom:"1.25rem"}}>
-        <p style={{fontSize:".7rem",fontWeight:700,color:"var(--teal-600)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".25rem"}}>Minha área</p>
-        <h1 style={{fontSize:"1.25rem",fontWeight:800,color:"var(--ink)",margin:0}}>Tarefas</h1>
-        <p style={{fontSize:".8rem",color:"var(--text-3)",marginTop:".2rem"}}>Atividades atribuídas a você pela equipe de enfermagem</p>
-      </div>
+      <PageHero badge="Minha área" title="Tarefas" subtitle="Atividades atribuídas a você pela equipe de enfermagem" />
 
       {/* KPIs rápidos */}
       <div style={{display:"flex",gap:".75rem",marginBottom:"1.25rem",flexWrap:"wrap"}}>
@@ -6586,27 +6564,23 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
   return (
     <div style={{padding:"1.5rem 2rem",display:"flex",flexDirection:"column",gap:"1.25rem",maxWidth:1200}}>
 
-      {/* ── Cabeçalho ── */}
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:"1rem"}}>
-        <div>
-          <p style={{fontSize:".7rem",fontWeight:700,letterSpacing:".12em",textTransform:"uppercase",color:TEAL,marginBottom:".3rem",display:"flex",alignItems:"center",gap:".4rem"}}>
-            <span style={{display:"inline-block",width:6,height:6,background:TEAL,borderRadius:"50%"}}/>
-            Painel de Gestão
-          </p>
-          <h1 style={{fontSize:"1.6rem",fontWeight:800,color:"var(--ink)",letterSpacing:"-.03em",lineHeight:1.15}}>Indicadores à Vista</h1>
-          <p style={{fontSize:".85rem",color:"var(--text-2)",marginTop:".3rem"}}>Visão executiva da UBS, atualizada em tempo real com os dados da equipe.</p>
-        </div>
-        <div style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
-          {[["month","Mês"],["quarter","Trimestre"],["year","Ano"]].map(([k,l])=>(
-            <button key={k} onClick={()=>setPeriod(k)} style={{fontSize:".75rem",padding:".35rem .8rem",background:period===k?TEAL:"var(--surface-2)",color:period===k?"#fff":"var(--text-2)",border:period===k?"none":"1px solid var(--border)",borderRadius:"var(--r-md)",fontWeight:600,cursor:"pointer"}}>
-              {l}
+      <PageHero
+        badge="Painel de Gestão"
+        title="Indicadores à Vista"
+        subtitle="Visão executiva da UBS, atualizada em tempo real com os dados da equipe."
+        actions={
+          <div style={{display:"flex",gap:".4rem",flexWrap:"wrap",flexShrink:0}}>
+            {[["month","Mês"],["quarter","Trimestre"],["year","Ano"]].map(([k,l])=>(
+              <button key={k} onClick={()=>setPeriod(k)} style={{fontSize:".75rem",padding:".35rem .8rem",background:period===k?TEAL:"rgba(255,255,255,.1)",color:period===k?"var(--teal-900)":"#e2e8f0",border:period===k?"none":"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",fontWeight:600,cursor:"pointer"}}>
+                {l}
+              </button>
+            ))}
+            <button onClick={()=>window.print()} style={{fontSize:".75rem",padding:".35rem .8rem",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",color:"#e2e8f0",cursor:"pointer"}}>
+              Exportar
             </button>
-          ))}
-          <button onClick={()=>window.print()} style={{fontSize:".75rem",padding:".35rem .8rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",color:"var(--text-2)",cursor:"pointer"}}>
-            Exportar
-          </button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* KPIs principais */}
       <div style={{display:"grid",gridTemplateColumns:"1fr",gap:"1rem"}}>
