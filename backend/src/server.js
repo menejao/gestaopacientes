@@ -49,6 +49,8 @@ if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-c
 if (IS_PROD && !FRONTEND_ORIGINS.length && !CORS_ALLOW_ALL) {
   console.warn("[cors] AVISO: FRONTEND_ORIGINS não definido e CORS_ALLOW_ALL não ativo — CORS aberto para todas origens via origin:'*'");
 }
+console.log("FRONTEND_ORIGINS =", process.env.FRONTEND_ORIGINS);
+console.log("CORS_ALLOW_ALL =", process.env.CORS_ALLOW_ALL);
 
 const DEFAULT_CARE_PROTOCOLS = {
   general: {
@@ -422,11 +424,21 @@ app.set("trust proxy", 1);
 app.disable("x-powered-by");
 
 app.use(cors({
-  origin: "*",
+  origin: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false
 }));
 app.options("*", cors());
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Vary", "Origin");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
 
 app.use(helmet({
   crossOriginResourcePolicy: false,
