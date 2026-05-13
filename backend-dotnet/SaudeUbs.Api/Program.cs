@@ -212,13 +212,17 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AppPolicy", policy =>
     {
+        var origins = new[]
+        {
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:3000",
+            "http://localhost:4173",
+            "https://gestaopacientes.meneguccijao.workers.dev"
+        }.Concat(allowedOrigins).Distinct().ToArray();
+
         policy
-            .WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "http://localhost:4173"
-            )
-            .WithOrigins(allowedOrigins)   // produção e extras via ALLOWED_ORIGINS env var
+            .WithOrigins(origins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
