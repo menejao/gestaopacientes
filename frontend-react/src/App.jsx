@@ -2816,13 +2816,13 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
   const [showPatientCard, setShowPatientCard] = useState(false);
 
   const TABS = [
-    {id:"protocol",     label:"📋 Protocolo",    icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4"/><path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4"/></svg>},
-    {id:"followup",     label:"🩺 Atendimento",  icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>},
+    {id:"protocol",     label:"Protocolo",    icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4"/><path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.4"/></svg>},
+    {id:"followup",     label:"Atendimento",  icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>},
     {id:"appointments", label:"Histórico",    icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.3"/><path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.3"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
-    {id:"tasks",        label:"✅ Tarefas",      icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>},
+    {id:"tasks",        label:"Tarefas",      icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>},
 
     {id:"exams",        label:"Ações clínicas", icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>},
-    {id:"messages",     label:"💬 Mensagens",    icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v8H9l-3 2v-2H2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>},
+    {id:"messages",     label:"Mensagens",    icon:<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v8H9l-3 2v-2H2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>},
   ];
 
   return (
