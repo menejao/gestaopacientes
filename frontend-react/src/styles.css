@@ -62,9 +62,11 @@
   --surface:      #ffffff;
   --surface-2:    #f8fafc;
   --surface-3:    #f1f5f9;
+  --surface-hover: rgba(0,0,0,.04);
   --border:       #e2e8f0;
   --border-soft:  #f1f5f9;
   --border-focus: var(--teal-500);
+  --color-primary: var(--teal-600);
 
   --text-1: var(--slate-900);
   --text-2: var(--slate-600);
@@ -300,6 +302,7 @@ body {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
+  border-radius: 0;
   margin-bottom: -1px;
   font-size: .82rem;
   font-weight: 600;
@@ -310,7 +313,7 @@ body {
 }
 
 .auth-tab:hover  { color: var(--text-2); }
-.auth-tab.active { color: var(--teal-600); border-bottom-color: var(--teal-600); }
+.auth-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
 
 .auth-form {
   padding: 1.5rem 1.75rem 1.75rem;
@@ -598,7 +601,7 @@ body {
   width: 100%;
   text-align: left;
   padding: .55rem .75rem;
-  border-radius: var(--r-md);
+  border-radius: 4px;
   background: transparent;
   border: none;
   color: var(--sb-text);
@@ -763,8 +766,8 @@ body {
 }
 
 .home-kpi-card:hover {
-  box-shadow: var(--sh-md);
-  transform: translateY(-1px);
+  box-shadow: var(--sh-sm);
+  background: var(--surface-2);
 }
 
 .home-kpi-card::before {
@@ -996,7 +999,7 @@ button {
   white-space: nowrap;
 }
 
-button:hover { background: var(--teal-700); box-shadow: 0 2px 8px rgba(20,184,166,.3); }
+button:hover { background: var(--teal-700); }
 button:active { transform: scale(.97); }
 button:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
 
@@ -1006,7 +1009,7 @@ button.secondary {
   border: 1.5px solid var(--border);
   box-shadow: var(--sh-xs);
 }
-button.secondary:hover { background: var(--surface-2); border-color: var(--slate-300); box-shadow: var(--sh-sm); }
+button.secondary:hover { background: var(--surface-2); border-color: var(--slate-300); }
 
 button.danger-btn {
   background: var(--red-50);
@@ -1101,7 +1104,8 @@ select {
   padding: .7rem .9rem;
   background: none;
   border: none;
-  border-bottom: 2.5px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   margin-bottom: -1px;
   font-size: .8rem;
   font-weight: 600;
@@ -1109,11 +1113,11 @@ select {
   color: var(--text-3);
   cursor: pointer;
   white-space: nowrap;
-  transition: color .12s, border-color .12s;
+  transition: color .12s, border-color .12s, background .12s;
   box-shadow: none;
 }
-.tab:hover { color: var(--text-2); background: none; box-shadow: none; }
-.tab.active { color: var(--teal-600); border-bottom-color: var(--teal-600); }
+.tab:hover { color: var(--text-2); background: var(--surface-hover); box-shadow: none; }
+.tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
 .tab-ico {
   display: inline-flex;
   align-items: center;

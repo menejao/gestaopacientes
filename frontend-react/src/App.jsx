@@ -5931,14 +5931,14 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
             {/* Filtros por tipo */}
             <div style={{display:"flex",gap:".4rem",flexWrap:"wrap",marginBottom:"1rem",alignItems:"center"}}>
               <button type="button" onClick={()=>setFilterType("all")}
-                style={{fontSize:".72rem",padding:".3rem .65rem",borderRadius:999,border:`1px solid ${filterType==="all"?"#0f172a":"var(--border)"}`,background:filterType==="all"?"#0f172a":"var(--surface)",color:filterType==="all"?"#fff":"var(--text-2)",cursor:"pointer",fontWeight:600}}>
+                style={{fontSize:".72rem",padding:".3rem .65rem",borderRadius:4,border:`1px solid ${filterType==="all"?"#0f172a":"var(--border)"}`,background:filterType==="all"?"#0f172a":"var(--surface)",color:filterType==="all"?"#fff":"var(--text-2)",cursor:"pointer",fontWeight:600}}>
                 Todos ({records.length})
               </button>
               {Object.entries(ENTRY_TYPE).map(([type,meta])=>{
                 const cnt=typeCounts[type]||0; if(!cnt) return null;
                 const active=filterType===type;
                 return <button key={type} type="button" onClick={()=>setFilterType(active?"all":type)}
-                  style={{fontSize:".72rem",padding:".3rem .65rem",borderRadius:999,border:`1px solid ${active?meta.color:meta.border}`,background:active?meta.bg:"var(--surface)",color:active?meta.color:"var(--text-2)",cursor:"pointer",fontWeight:600}}>
+                  style={{fontSize:".72rem",padding:".3rem .65rem",borderRadius:4,border:`1px solid ${active?meta.color:meta.border}`,background:active?meta.bg:"var(--surface)",color:active?meta.color:"var(--text-2)",cursor:"pointer",fontWeight:600}}>
                   {meta.ico} {meta.label} ({cnt})
                 </button>;
               })}
@@ -8169,7 +8169,7 @@ function InsumoPage({ patients, users, user }) {
               <div style={{display:"flex",gap:".4rem",flexWrap:"wrap",marginBottom:".85rem"}}>
                 {INSUMO_CATEGORIAS.map(c=>(
                   <button key={c} type="button" onClick={()=>setCatFilter(c)}
-                    style={{fontSize:".72rem",padding:".28rem .65rem",borderRadius:999,border:`1px solid ${catFilter===c?"var(--teal-500)":"var(--border)"}`,background:catFilter===c?"var(--teal-50)":"var(--surface)",color:catFilter===c?"var(--teal-700)":"var(--text-2)",cursor:"pointer",fontWeight:catFilter===c?700:500}}>
+                    style={{fontSize:".72rem",padding:".28rem .65rem",borderRadius:4,border:`1px solid ${catFilter===c?"var(--teal-500)":"var(--border)"}`,background:catFilter===c?"var(--teal-50)":"var(--surface)",color:catFilter===c?"var(--teal-700)":"var(--text-2)",cursor:"pointer",fontWeight:catFilter===c?700:500}}>
                     {c}
                   </button>
                 ))}
@@ -8311,7 +8311,7 @@ function InsumoPage({ patients, users, user }) {
               <div style={{display:"flex",gap:".35rem"}}>
                 {[["all","Todas"],["continuo","🔄 Contínuo"],["normal","Normal"]].map(([v,l])=>(
                   <button key={v} type="button" onClick={()=>setLogFilter(v)}
-                    style={{fontSize:".73rem",padding:".3rem .65rem",borderRadius:999,border:`1px solid ${logFilter===v?"var(--teal-500)":"var(--border)"}`,background:logFilter===v?"var(--teal-50)":"var(--surface)",color:logFilter===v?"var(--teal-700)":"var(--text-2)",cursor:"pointer",fontWeight:logFilter===v?700:500}}>
+                    style={{fontSize:".73rem",padding:".3rem .65rem",borderRadius:4,border:`1px solid ${logFilter===v?"var(--teal-500)":"var(--border)"}`,background:logFilter===v?"var(--teal-50)":"var(--surface)",color:logFilter===v?"var(--teal-700)":"var(--text-2)",cursor:"pointer",fontWeight:logFilter===v?700:500}}>
                     {l}
                   </button>
                 ))}
