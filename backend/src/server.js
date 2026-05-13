@@ -47,7 +47,7 @@ if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-c
   throw new Error("JWT_SECRET obrigatório em produção");
 }
 if (IS_PROD && !FRONTEND_ORIGINS.length && !CORS_ALLOW_ALL) {
-  throw new Error("FRONTEND_ORIGINS obrigatório em produção (ou defina CORS_ALLOW_ALL=true por sua conta e risco)");
+  console.warn("[cors] AVISO: FRONTEND_ORIGINS não definido e CORS_ALLOW_ALL não ativo — CORS aberto para todas origens via origin:'*'");
 }
 
 const DEFAULT_CARE_PROTOCOLS = {
@@ -421,17 +421,17 @@ function buildSeedTasks(patient, acsIds = [], createdBy = "seed-system") {
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "same-site" },
-  contentSecurityPolicy: false
-}));
-
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.options("*", cors());
+
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: false
+}));
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
