@@ -49,6 +49,15 @@ if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-c
 if (IS_PROD && !FRONTEND_ORIGINS.length && !CORS_ALLOW_ALL) {
   throw new Error("FRONTEND_ORIGINS obrigatório em produção (ou defina CORS_ALLOW_ALL=true por sua conta e risco)");
 }
+if (IS_PROD && !process.env.DATA_ENCRYPTION_KEY) {
+  throw new Error("DATA_ENCRYPTION_KEY obrigatório em produção — dados sensíveis (CPF, CNS) não podem ser armazenados sem criptografia");
+}
+if (IS_PROD && !BACKUP_EXPORT_KEY) {
+  console.warn("[aviso] BACKUP_EXPORT_KEY não definido — exportação de backup desabilitada");
+}
+if (IS_PROD && (!process.env.JWT_EXPIRES_IN || JWT_EXPIRES_IN === "12h")) {
+  console.warn("[aviso] JWT_EXPIRES_IN não definido — usando padrão de 12h");
+}
 
 const DEFAULT_CARE_PROTOCOLS = {
   general: {

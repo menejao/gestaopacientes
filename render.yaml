@@ -10,9 +10,19 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22
+      - key: NODE_ENV
+        value: production
       - key: JWT_SECRET
         sync: false
+      - key: JWT_EXPIRES_IN
+        value: 12h
       - key: DATABASE_URL
+        sync: false
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: BACKUP_EXPORT_KEY
         sync: false
       - key: COUNCIL_VERIFY_MODE
         value: required
