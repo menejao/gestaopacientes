@@ -444,7 +444,15 @@ app.disable("x-powered-by");
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "same-site" },
-  contentSecurityPolicy: false
+  contentSecurityPolicy: {
+    useDefaults: false,
+    reportOnly: true,
+    directives: {
+      "default-src": ["'none'"],
+      "frame-ancestors": ["'none'"],
+      "report-uri": ["/csp-report"]
+    }
+  }
 }));
 
 app.use(cors({
@@ -3386,6 +3394,12 @@ function validateClinicalRecordPayload({ user, patient, type, title, date, detai
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+app.post("/csp-report", express.json({ type: ["application/json", "application/csp-report"] }), (req, res) => {
+  const report = req.body?.["csp-report"] || req.body;
+  if (report) console.warn("[csp-violation]", JSON.stringify(report));
+  res.status(204).end();
 });
 
 app.get("/admin/backup/export", async (req, res) => {
