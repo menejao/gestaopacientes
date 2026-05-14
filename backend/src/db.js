@@ -3,7 +3,9 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { Pool } from "pg";
 
-const DB_PATH = path.resolve(process.cwd(), "data", "db.json");
+const DB_PATH = process.env.TEST_DB_PATH
+  ? path.resolve(process.env.TEST_DB_PATH)
+  : path.resolve(process.cwd(), "data", "db.json");
 const DATABASE_URL = String(process.env.DATABASE_URL || "").trim();
 const DB_DRIVER = DATABASE_URL ? "postgres" : "file";
 const DATA_ENCRYPTION_KEY = String(process.env.DATA_ENCRYPTION_KEY || "").trim();

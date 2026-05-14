@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node src/ai.test.js"
+    "test": "node --test test/health.test.js && node --test test/auth.test.js && node --test test/patients.test.js && node --test test/twofa.test.js && node --test test/backup.test.js",
+    "test:legacy": "node src/ai.test.js"
   },
   "dependencies": {
     "@upstash/ratelimit": "^2.0.8",
