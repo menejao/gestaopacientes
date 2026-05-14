@@ -4,6 +4,7 @@ import helmet from "helmet";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import { v4 as uuidv4 } from "uuid";
+import { rateLimit } from "express-rate-limit";
 import { readDb, readDbForBackup, withDb } from "./db.js";
 import {
   patientSummary,
@@ -40,8 +41,6 @@ const TWOFA_ISSUER = String(process.env.TWOFA_ISSUER || "SaudeUBS").trim() || "S
 const TWOFA_CHALLENGE_TTL_MS = Number(process.env.TWOFA_CHALLENGE_TTL_MS || 5 * 60 * 1000);
 const TWOFA_MAX_ATTEMPTS = Number(process.env.TWOFA_MAX_ATTEMPTS || 5);
 const BACKUP_EXPORT_KEY = String(process.env.BACKUP_EXPORT_KEY || "").trim();
-const authRateMap = new Map();
-const globalRateMap = new Map();
 
 if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
   throw new Error("JWT_SECRET obrigatório em produção");
@@ -653,52 +652,24 @@ function getClientIp(req) {
   return headerIp || String(req.ip || req.socket?.remoteAddress || "unknown");
 }
 
-function cleanupRateMap(now = Date.now()) {
-  for (const [key, value] of authRateMap.entries()) {
-    if (now - value.firstAt > AUTH_WINDOW_MS) authRateMap.delete(key);
-  }
-}
+const authRateLimit = rateLimit({
+  windowMs: AUTH_WINDOW_MS,
+  limit: AUTH_MAX_ATTEMPTS,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Muitas tentativas. Aguarde alguns minutos." },
+  keyGenerator: (req) => getClientIp(req)
+});
 
-function cleanupNamedRateMap(map, windowMs, now = Date.now()) {
-  for (const [key, value] of map.entries()) {
-    if (now - value.firstAt > windowMs) map.delete(key);
-  }
-}
-
-function authRateLimit(req, res, next) {
-  const now = Date.now();
-  cleanupRateMap(now);
-  const ip = getClientIp(req);
-  const bucket = authRateMap.get(ip) || { count: 0, firstAt: now };
-  if (now - bucket.firstAt > AUTH_WINDOW_MS) {
-    bucket.count = 0;
-    bucket.firstAt = now;
-  }
-  bucket.count += 1;
-  authRateMap.set(ip, bucket);
-  if (bucket.count > AUTH_MAX_ATTEMPTS) {
-    return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos." });
-  }
-  return next();
-}
-
-function globalRateLimit(req, res, next) {
-  if (req.path === "/health") return next();
-  const now = Date.now();
-  cleanupNamedRateMap(globalRateMap, GLOBAL_RATE_LIMIT_WINDOW_MS, now);
-  const ip = getClientIp(req);
-  const bucket = globalRateMap.get(ip) || { count: 0, firstAt: now };
-  if (now - bucket.firstAt > GLOBAL_RATE_LIMIT_WINDOW_MS) {
-    bucket.count = 0;
-    bucket.firstAt = now;
-  }
-  bucket.count += 1;
-  globalRateMap.set(ip, bucket);
-  if (bucket.count > GLOBAL_RATE_LIMIT_MAX_REQUESTS) {
-    return res.status(429).json({ error: "Muitas requisições. Tente novamente em instantes." });
-  }
-  return next();
-}
+const globalRateLimit = rateLimit({
+  windowMs: GLOBAL_RATE_LIMIT_WINDOW_MS,
+  limit: GLOBAL_RATE_LIMIT_MAX_REQUESTS,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Muitas requisições. Tente novamente em instantes." },
+  skip: (req) => req.path === "/health",
+  keyGenerator: (req) => getClientIp(req)
+});
 
 function isSequentialDigits(input) {
   const chars = [...input].map((c) => Number(c));

@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "nurse-patient-manager-backend",
   "version": "1.0.0",
   "private": true,
@@ -11,6 +11,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.5.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.13.1",
