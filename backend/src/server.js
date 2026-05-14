@@ -3354,7 +3354,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.get("/admin/backup/export", async (req, res) => {
-  const providedKey = String(req.headers["x-backup-key"] || req.query.key || "").trim();
+  const providedKey = String(req.headers["x-backup-key"] || "").trim();
   if (!BACKUP_EXPORT_KEY || providedKey !== BACKUP_EXPORT_KEY) {
     return res.status(403).json({ error: "Acesso negado para exportação de backup" });
   }
