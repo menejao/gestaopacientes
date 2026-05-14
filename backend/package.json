@@ -9,6 +9,8 @@
     "test": "node src/ai.test.js"
   },
   "dependencies": {
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.1",

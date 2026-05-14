@@ -31,10 +31,12 @@ const FRONTEND_ORIGINS = String(process.env.FRONTEND_ORIGINS || "")
   .map((value) => value.trim())
   .filter(Boolean);
 const CORS_ALLOW_ALL = String(process.env.CORS_ALLOW_ALL || "").trim().toLowerCase() === "true";
-const AUTH_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
-const AUTH_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 20);
+const AUTH_WINDOW_MS = Number(process.env.AUTH_WINDOW_MS || process.env.AUTH_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
+const AUTH_MAX_ATTEMPTS = Number(process.env.AUTH_MAX_ATTEMPTS || process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 20);
 const GLOBAL_RATE_LIMIT_WINDOW_MS = Number(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || 60 * 1000);
-const GLOBAL_RATE_LIMIT_MAX_REQUESTS = Number(process.env.GLOBAL_RATE_LIMIT_MAX_REQUESTS || 600);
+const GLOBAL_RATE_LIMIT_MAX_REQUESTS = Number(process.env.GLOBAL_RATE_LIMIT_MAX || process.env.GLOBAL_RATE_LIMIT_MAX_REQUESTS || 600);
+const UPSTASH_URL = String(process.env.UPSTASH_REDIS_REST_URL || "").trim();
+const UPSTASH_TOKEN = String(process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
 const USER_ONLINE_THRESHOLD_MS = Number(process.env.USER_ONLINE_THRESHOLD_MS || 2 * 60 * 1000);
 const REQUEST_LOG_ENABLED = String(process.env.REQUEST_LOG_ENABLED || "true").trim().toLowerCase() !== "false";
 const TWOFA_ISSUER = String(process.env.TWOFA_ISSUER || "SaudeUBS").trim() || "SaudeUBS";
@@ -507,6 +509,21 @@ app.use((req, res, next) => {
   next();
 });
 
+const authRateLimit = buildRateLimitMiddleware({
+  prefix: "auth",
+  maxRequests: AUTH_MAX_ATTEMPTS,
+  windowMs: AUTH_WINDOW_MS,
+  message: "Muitas tentativas. Aguarde alguns minutos."
+});
+
+const globalRateLimit = buildRateLimitMiddleware({
+  prefix: "global",
+  maxRequests: GLOBAL_RATE_LIMIT_MAX_REQUESTS,
+  windowMs: GLOBAL_RATE_LIMIT_WINDOW_MS,
+  message: "Muitas requisições. Tente novamente em instantes.",
+  skip: (req) => req.path === "/health"
+});
+
 app.use(globalRateLimit);
 
 function canonicalRole(role) {
@@ -655,24 +672,58 @@ function getClientIp(req) {
   return headerIp || String(req.ip || req.socket?.remoteAddress || "unknown");
 }
 
-const authRateLimit = rateLimit({
-  windowMs: AUTH_WINDOW_MS,
-  limit: AUTH_MAX_ATTEMPTS,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: "Muitas tentativas. Aguarde alguns minutos." },
-  keyGenerator: (req) => getClientIp(req)
-});
+function buildRateLimitMiddleware({ prefix, maxRequests, windowMs, message, skip }) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+    if (IS_PROD) {
+      console.warn(`[aviso] rate-limit "${prefix}" usando MemoryStore em produção — configure UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN para persistência entre restarts`);
+    }
+    return rateLimit({
+      windowMs,
+      limit: maxRequests,
+      standardHeaders: "draft-7",
+      legacyHeaders: false,
+      message: { error: message },
+      skip,
+      keyGenerator: (req) => getClientIp(req)
+    });
+  }
 
-const globalRateLimit = rateLimit({
-  windowMs: GLOBAL_RATE_LIMIT_WINDOW_MS,
-  limit: GLOBAL_RATE_LIMIT_MAX_REQUESTS,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: "Muitas requisições. Tente novamente em instantes." },
-  skip: (req) => req.path === "/health",
-  keyGenerator: (req) => getClientIp(req)
-});
+  let limiter = null;
+  let initPromise = null;
+
+  async function initLimiter() {
+    const { Ratelimit } = await import("@upstash/ratelimit");
+    const { Redis } = await import("@upstash/redis");
+    const redis = new Redis({ url: UPSTASH_URL, token: UPSTASH_TOKEN });
+    limiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(maxRequests, `${Math.ceil(windowMs / 1000)} s`),
+      prefix: `rl:${prefix}`
+    });
+    console.log(`[rate-limit] "${prefix}" usando Upstash Redis`);
+  }
+
+  return async (req, res, next) => {
+    if (skip?.(req)) return next();
+    if (!limiter) {
+      if (!initPromise) {
+        initPromise = initLimiter().catch((err) => {
+          console.error(`[rate-limit] Upstash init falhou (${prefix}):`, err.message);
+          initPromise = null;
+        });
+      }
+      await initPromise;
+    }
+    if (!limiter) return next();
+    try {
+      const { success } = await limiter.limit(getClientIp(req));
+      if (!success) return res.status(429).json({ error: message });
+    } catch (err) {
+      console.error(`[rate-limit] Upstash erro (${prefix}):`, err.message);
+    }
+    next();
+  };
+}
 
 function isSequentialDigits(input) {
   const chars = [...input].map((c) => Number(c));
