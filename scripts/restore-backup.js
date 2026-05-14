@@ -144,16 +144,26 @@ async function confirmInteractive(targetEnv) {
 }
 
 async function performRestore(backupData, dbUrl) {
-  // Dynamic import of pg (not bundled — must be available in the environment)
+  // Try local scripts/node_modules first, then fall back to backend/node_modules
   let pg;
-  try {
-    const mod = await import("pg");
-    pg = mod.default;
-  } catch {
+  const pgCandidates = [
+    "pg",
+    new URL("../backend/node_modules/pg/lib/index.js", import.meta.url).href
+  ];
+  for (const candidate of pgCandidates) {
+    try {
+      const mod = await import(candidate);
+      pg = mod.default ?? mod;
+      break;
+    } catch {
+      // try next
+    }
+  }
+  if (!pg) {
     fatal(
       "Módulo 'pg' não encontrado.\n" +
-      "  Instale: npm install pg\n" +
-      "  Ou execute dentro do diretório backend: cd backend && node ../scripts/restore-backup.js ..."
+      "  Opção A: cd scripts && npm install\n" +
+      "  Opção B: cd backend && node ../scripts/restore-backup.js ..."
     );
   }
 
