@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import { v4 as uuidv4 } from "uuid";
 import { rateLimit } from "express-rate-limit";
+import { generateSecret as otpGenerateSecret, verifySync as otpVerifySync } from "otplib";
 import { readDb, readDbForBackup, withDb } from "./db.js";
 import {
   patientSummary,
@@ -606,47 +607,6 @@ function verifyPassword(password, stored) {
   return crypto.timingSafeEqual(left, right);
 }
 
-const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-
-function base32Encode(buffer) {
-  let bits = 0;
-  let value = 0;
-  let output = "";
-
-  for (const byte of buffer) {
-    value = (value << 8) | byte;
-    bits += 8;
-    while (bits >= 5) {
-      output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
-      bits -= 5;
-    }
-  }
-
-  if (bits > 0) {
-    output += BASE32_ALPHABET[(value << (5 - bits)) & 31];
-  }
-
-  return output;
-}
-
-function base32Decode(value) {
-  const clean = String(value || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
-  let bits = 0;
-  let current = 0;
-  const out = [];
-  for (const char of clean) {
-    const idx = BASE32_ALPHABET.indexOf(char);
-    if (idx < 0) continue;
-    current = (current << 5) | idx;
-    bits += 5;
-    if (bits >= 8) {
-      out.push((current >>> (bits - 8)) & 0xff);
-      bits -= 8;
-    }
-  }
-  return Buffer.from(out);
-}
-
 function normalizeTotpSecret(secret) {
   return String(secret || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
 }
@@ -681,31 +641,19 @@ function createRefreshToken(userId, ip, db) {
 }
 
 function generateTotpSecret() {
-  return base32Encode(crypto.randomBytes(20));
-}
-
-function generateTotpCode(secret, nowMs = Date.now()) {
-  const key = base32Decode(secret);
-  const counter = Math.floor(nowMs / 1000 / 30);
-  const counterBuf = Buffer.alloc(8);
-  counterBuf.writeBigUInt64BE(BigInt(counter));
-  const digest = crypto.createHmac("sha1", key).update(counterBuf).digest();
-  const offset = digest[digest.length - 1] & 0x0f;
-  const binCode = ((digest[offset] & 0x7f) << 24)
-    | (digest[offset + 1] << 16)
-    | (digest[offset + 2] << 8)
-    | digest[offset + 3];
-  const code = String(binCode % 1_000_000).padStart(6, "0");
-  return code;
+  return otpGenerateSecret();
 }
 
 function verifyTotpCode(secret, code) {
   const normalizedSecret = normalizeTotpSecret(secret);
   const normalizedCode = String(code || "").replace(/\D+/g, "");
   if (normalizedSecret.length < 16 || normalizedCode.length !== 6) return false;
-  const now = Date.now();
-  const windows = [-1, 0, 1];
-  return windows.some((step) => generateTotpCode(normalizedSecret, now + step * 30_000) === normalizedCode);
+  try {
+    const result = otpVerifySync({ type: "totp", token: normalizedCode, secret: normalizedSecret, options: { window: 1 } });
+    return result?.valid === true;
+  } catch {
+    return false;
+  }
 }
 
 function buildOtpAuthUrl(user, secret) {
