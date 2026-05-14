@@ -16,6 +16,7 @@ import { verifyTotpCode } from "../services/totp.js";
 import { createToken, createRefreshToken } from "../services/tokens.js";
 import { addAuditLog } from "../services/audit.js";
 import { ensureDemoManagerIfNeeded } from "../services/startup.js";
+import { trackLoginAttempt } from "../middlewares/logging.js";
 
 const router = express.Router();
 
@@ -161,7 +162,10 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
       db = recovered.db;
     }
   }
-  if (!user) return res.status(401).json({ error: "Credenciais inválidas" });
+  if (!user) {
+    trackLoginAttempt(false);
+    return res.status(401).json({ error: "Credenciais inválidas" });
+  }
 
   if (!isHashedPassword(user.password)) {
     await withDb((mutableDb) => {
@@ -234,6 +238,7 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
     db = latestDb;
   }
 
+  trackLoginAttempt(true);
   const safeUser = sanitizeUser(user, db);
   const token = createToken(user, db);
   return res.json({ user: safeUser, token, refreshToken: loginRefreshToken });
@@ -284,7 +289,11 @@ router.post("/auth/login/verify", authRateLimit, async (req, res) => {
     return { user: db.users[userIndex], db, raw: rtResult.raw };
   });
 
-  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  if (result?.error) {
+    trackLoginAttempt(false);
+    return res.status(result.error.status).json({ error: result.error.message });
+  }
+  trackLoginAttempt(true);
   const safeUser = sanitizeUser(result.user, result.db);
   const token = createToken(result.user, result.db);
   return res.json({ user: safeUser, token, refreshToken: result.raw });

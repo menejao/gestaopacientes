@@ -15,6 +15,7 @@ import {
 import { addAuditLog } from "../services/audit.js";
 import { getCouncilIntegrationConfig } from "../utils/council.js";
 import { requireAuth } from "../middlewares/auth.js";
+import { getMetrics } from "../middlewares/logging.js";
 
 
 const router = express.Router();
@@ -174,6 +175,14 @@ router.post("/admin/patients/reset-populate", requireAuth, async (req, res) => {
   });
 
   return res.json({ ok: true, ...result });
+});
+
+router.get("/metrics/internal", requireAuth, (req, res) => {
+  const role = canonicalRole(req.user?.role);
+  if (!["gestor", "nurse_manager"].includes(role)) {
+    return res.status(403).json({ error: "Acesso restrito a gestores" });
+  }
+  return res.json(getMetrics());
 });
 
 export default router;
