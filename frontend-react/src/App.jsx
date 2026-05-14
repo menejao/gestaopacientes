@@ -45,7 +45,7 @@ function OfflineBanner() {
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1 1l14 14M10.5 5A5 5 0 0114 9M6 3a7 7 0 018 8M3 6a5 5 0 011 7" stroke="#f59e0b" strokeWidth="1.4" strokeLinecap="round"/><circle cx="8" cy="13" r="1" fill="#f59e0b"/></svg>
         <span>Modo offline — dados locais disponíveis. Alterações serão sincronizadas ao reconectar.</span>
       </div>
-      <span style={{fontSize:".7rem",color:"#94a3b8",flexShrink:0}}>SIGUS · Offline</span>
+      <span style={{fontSize:".7rem",color:"#94a3b8",flexShrink:0}}>SIGUNS · Offline</span>
     </div>
   );
 }
@@ -648,8 +648,8 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
             <div style={{width:32,height:32,background:"#6366f1",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center"}}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
             </div>
-            <span style={{fontSize:"1rem",fontWeight:700,color:"#fff",letterSpacing:"-.01em"}}>SIGUS</span>
-            <span style={{fontSize:".7rem",background:"rgba(99,102,241,.25)",color:"#a5b4fc",border:"1px solid rgba(99,102,241,.4)",padding:".15em .5em",borderRadius:99,fontFamily:"monospace",marginLeft:".25rem"}}>GESTÒO</span>
+            <span style={{fontSize:"1rem",fontWeight:700,color:"#fff",letterSpacing:"-.01em"}}>SIGUNS</span>
+            <span style={{fontSize:".7rem",background:"rgba(99,102,241,.25)",color:"#a5b4fc",border:"1px solid rgba(99,102,241,.4)",padding:".15em .5em",borderRadius:99,fontFamily:"monospace",marginLeft:".25rem"}}>GESTÃO</span>
           </div>
           <div style={{position:"relative",zIndex:1}}>
             <div style={{display:"inline-flex",alignItems:"center",gap:".4rem",background:"rgba(99,102,241,.15)",border:"1px solid rgba(99,102,241,.3)",color:"#a5b4fc",fontSize:".72rem",fontWeight:600,letterSpacing:".08em",textTransform:"uppercase",padding:".3rem .75rem",borderRadius:99,marginBottom:"1.25rem"}}>
@@ -769,7 +769,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
       <section className="auth-left">
         <div className="auth-brand">
           <div className="auth-brand-icon"><IconLogo/></div>
-          <span className="brand-name">SIGUS</span>
+          <span className="brand-name">SIGUNS</span>
         </div>
 
         <div className="auth-hero">
@@ -895,7 +895,7 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
       <section className="auth-left">
         <div className="auth-brand">
           <div className="auth-brand-icon"><IconLogo/></div>
-          <span className="brand-name">SIGUS</span>
+          <span className="brand-name">SIGUNS</span>
         </div>
 
         <div className="auth-hero">
@@ -1155,8 +1155,8 @@ function Topbar({ user, selectedPatient, templates, mobileOpen, setMobileOpen, o
         </div>
         {/* Wordmark: sigla grande + nome discreto */}
         <div style={{display:"flex",flexDirection:"column",lineHeight:1.1,gap:0}}>
-          <span style={{fontSize:"1.15rem",fontWeight:800,color:"var(--teal-600)",letterSpacing:"0.08em",fontFamily:"Georgia,serif"}}>SIGUS</span>
-          <span style={{fontSize:"0.52rem",fontWeight:400,color:"var(--text-3)",letterSpacing:"0.04em",textTransform:"uppercase",whiteSpace:"nowrap"}}>Gestão Única de Saúde</span>
+          <span style={{fontSize:"1.15rem",fontWeight:800,color:"var(--teal-600)",letterSpacing:"0.08em",fontFamily:"Georgia,serif"}}>SIGUNS</span>
+          <span style={{fontSize:"0.52rem",fontWeight:400,color:"var(--text-3)",letterSpacing:"0.04em",textTransform:"uppercase",whiteSpace:"nowrap"}}>Gestão de Unidades de Saúde</span>
         </div>
       </div>
 
@@ -7417,7 +7417,7 @@ Dispensações: ${dispensas}
 
         {/* Aviso */}
         <div style={{padding:".75rem 1rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",fontSize:".75rem",color:"var(--text-3)",lineHeight:1.6}}>
-          <strong style={{color:"var(--text-2)"}}>âš ï¸ Importante:</strong> Este espelho é gerado automaticamente a partir dos dados registrados no SaudeUBS e serve como <strong>referência de apoio</strong> para o lançamento no e-SUS APS, RNDS e outros sistemas federais. Sempre confira os dados com a equipe antes do envio oficial.
+          <strong style={{color:"var(--text-2)"}}>âš ï¸ Importante:</strong> Este espelho é gerado automaticamente a partir dos dados registrados no SIGUNS e serve como<strong>referência de apoio</strong> para o lançamento no e-SUS APS, RNDS e outros sistemas federais. Sempre confira os dados com a equipe antes do envio oficial.
         </div>
       </div>
     </div>
