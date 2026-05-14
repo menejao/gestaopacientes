@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { v4 as uuidv4 } from "uuid";
 import { rateLimit } from "express-rate-limit";
 import { generateSecret as otpGenerateSecret, verifySync as otpVerifySync } from "otplib";
+import { z } from "zod";
 import { readDb, readDbForBackup, withDb } from "./db.js";
 import {
   patientSummary,
@@ -70,6 +71,72 @@ if (IS_PROD && !BACKUP_EXPORT_KEY) {
 }
 if (IS_PROD && (!process.env.JWT_EXPIRES_IN || JWT_EXPIRES_IN === "12h")) {
   console.warn("[aviso] JWT_EXPIRES_IN não definido — usando padrão de 12h");
+}
+
+/* ── Zod schemas ── */
+const LoginSchema = z.object({
+  email: z.string().min(1).max(255),
+  password: z.string().min(1).max(1024)
+});
+
+const RegisterSchema = z.object({
+  name: z.string().min(1).max(200),
+  email: z.string().min(1).max(255),
+  password: z.string().min(1).max(1024),
+  role: z.string().min(1).max(50),
+  teamId: z.string().max(100).optional(),
+  councilNumber: z.string().max(30).optional(),
+  councilUf: z.string().max(2).optional()
+});
+
+const PatientCreateSchema = z.object({
+  name: z.string().min(1).max(300),
+  phone: z.string().min(1).max(30)
+}).passthrough();
+
+const PatientUpdateSchema = z.object({}).passthrough();
+
+const TaskCreateSchema = z.object({
+  patientId: z.string().min(1).max(100),
+  assigneeId: z.string().min(1).max(100),
+  title: z.string().min(1).max(500)
+}).passthrough();
+
+const TaskPatchSchema = z.object({
+  status: z.string().min(1).max(50)
+}).passthrough();
+
+const AppointmentCreateSchema = z.object({
+  date: z.string().min(1).max(50),
+  summary: z.string().min(1).max(10000)
+}).passthrough();
+
+const RecordCreateSchema = z.object({
+  type: z.enum(["visit", "consultation", "vaccine", "procedure", "note"]),
+  date: z.string().min(1).max(50),
+  title: z.string().min(1).max(500)
+}).passthrough();
+
+const PrivacyRequestCreateSchema = z.object({
+  patientId: z.string().min(1).max(100),
+  type: z.enum(["access", "correction", "deletion"])
+}).passthrough();
+
+function validate(schema) {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.body || {});
+    if (!result.success) {
+      return res.status(400).json({
+        error: "Dados inválidos",
+        details: result.error.issues.map((i) => {
+          const path = i.path.length ? i.path.join(".") : "body";
+          return `${path}: ${i.message}`;
+        })
+      });
+    }
+    req.body = result.data;
+    next();
+  };
 }
 
 const DEFAULT_CARE_PROTOCOLS = {
@@ -3469,7 +3536,7 @@ app.get("/integrations/council/status", requireAuth, (_req, res) => {
   });
 });
 
-app.post("/auth/register", authRateLimit, async (req, res) => {
+app.post("/auth/register", authRateLimit, validate(RegisterSchema), async (req, res) => {
   const payload = req.body || {};
   const name = String(payload.name || "").trim();
   const email = String(payload.email || "").trim().toLowerCase();
@@ -3594,7 +3661,7 @@ app.post("/auth/register/confirm", authRateLimit, async (_req, res) => {
   return res.status(410).json({ error: "Fluxo de código desativado. Use /auth/register." });
 });
 
-app.post("/auth/login", authRateLimit, async (req, res) => {
+app.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res) => {
   const { email, password } = req.body || {};
   let db = await readDb();
   ensureDbShape(db);
@@ -4622,7 +4689,7 @@ app.get("/patients/protocol-summaries", requireAuth, async (req, res) => {
   });
 });
 
-app.post("/patients", requireAuth, requireManagerOrDoctor, async (req, res) => {
+app.post("/patients", requireAuth, requireManagerOrDoctor, validate(PatientCreateSchema), async (req, res) => {
   const payload = req.body;
   const db = await readDb();
   ensureDbShape(db);
@@ -4705,7 +4772,7 @@ app.post("/patients", requireAuth, requireManagerOrDoctor, async (req, res) => {
   return res.status(201).json(patient);
 });
 
-app.put("/patients/:id", requireAuth, async (req, res) => {
+app.put("/patients/:id", requireAuth, validate(PatientUpdateSchema), async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
@@ -4910,7 +4977,7 @@ app.get("/patients/:id/appointments", requireAuth, async (req, res) => {
   return res.json(appointments);
 });
 
-app.post("/patients/:id/appointments", requireAuth, async (req, res) => {
+app.post("/patients/:id/appointments", requireAuth, validate(AppointmentCreateSchema), async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
@@ -4980,7 +5047,7 @@ app.delete("/patients/:id/appointments/:appointmentId", requireAuth, async (req,
   return res.json({ ok: true });
 });
 
-app.post("/patients/:id/records", requireAuth, async (req, res) => {
+app.post("/patients/:id/records", requireAuth, validate(RecordCreateSchema), async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
@@ -5155,7 +5222,7 @@ app.get("/tasks", requireAuth, async (req, res) => {
   return res.json(filtered);
 });
 
-app.post("/tasks", requireAuth, requireManagerOrDoctor, async (req, res) => {
+app.post("/tasks", requireAuth, requireManagerOrDoctor, validate(TaskCreateSchema), async (req, res) => {
   const payload = req.body;
 
   if (!payload.patientId || !payload.assigneeId || !payload.title) {
@@ -5197,7 +5264,7 @@ app.post("/tasks", requireAuth, requireManagerOrDoctor, async (req, res) => {
   return res.status(201).json(task);
 });
 
-app.patch("/tasks/:id", requireAuth, async (req, res) => {
+app.patch("/tasks/:id", requireAuth, validate(TaskPatchSchema), async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
@@ -5373,7 +5440,7 @@ app.get("/privacy/requests", requireAuth, requireManager, async (req, res) => {
   return res.json(items.slice(0, 300));
 });
 
-app.post("/privacy/requests", requireAuth, requireManager, async (req, res) => {
+app.post("/privacy/requests", requireAuth, requireManager, validate(PrivacyRequestCreateSchema), async (req, res) => {
   const payload = req.body || {};
   const patientId = String(payload.patientId || "").trim();
   const type = String(payload.type || "").trim().toLowerCase();
