@@ -3702,7 +3702,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/me", async (req, res) => {
+app.get("/me", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const user = db.users.find((u) => u.id === req.user.id);
@@ -3710,7 +3710,7 @@ app.get("/me", async (req, res) => {
   return res.json(sanitizeUser(user, db));
 });
 
-app.get("/me/2fa/status", async (req, res) => {
+app.get("/me/2fa/status", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const user = db.users.find((u) => u.id === req.user.id);
@@ -3721,7 +3721,7 @@ app.get("/me/2fa/status", async (req, res) => {
   });
 });
 
-app.post("/me/2fa/setup", async (req, res) => {
+app.post("/me/2fa/setup", requireAuth, async (req, res) => {
   const result = await withDb((db) => {
     ensureDbShape(db);
     const index = db.users.findIndex((u) => u.id === req.user.id);
@@ -3741,7 +3741,7 @@ app.post("/me/2fa/setup", async (req, res) => {
   return res.json(result);
 });
 
-app.post("/me/2fa/enable", async (req, res) => {
+app.post("/me/2fa/enable", requireAuth, async (req, res) => {
   const code = String(req.body?.code || "").replace(/\D+/g, "");
   if (code.length !== 6) return res.status(400).json({ error: "Código 2FA inválido" });
 
@@ -3770,7 +3770,7 @@ app.post("/me/2fa/enable", async (req, res) => {
   return res.json({ user: sanitizeUser(result.user, result.db), token });
 });
 
-app.post("/me/2fa/disable", async (req, res) => {
+app.post("/me/2fa/disable", requireAuth, async (req, res) => {
   const code = String(req.body?.code || "").replace(/\D+/g, "");
   if (code.length !== 6) return res.status(400).json({ error: "Código 2FA inválido" });
 
@@ -3800,7 +3800,7 @@ app.post("/me/2fa/disable", async (req, res) => {
   return res.json({ user: sanitizeUser(result.user, result.db), token });
 });
 
-app.post("/me/presence", async (req, res) => {
+app.post("/me/presence", requireAuth, async (req, res) => {
   const nowIso = new Date().toISOString();
   await withDb((db) => {
     ensureDbShape(db);
@@ -3814,7 +3814,7 @@ app.post("/me/presence", async (req, res) => {
   return res.json({ ok: true, lastSeenAt: nowIso });
 });
 
-app.patch("/me", async (req, res) => {
+app.patch("/me", requireAuth, async (req, res) => {
   const payload = req.body || {};
 
   const result = await withDb(async (db) => {
@@ -3915,7 +3915,7 @@ app.patch("/me", async (req, res) => {
   return res.json(result);
 });
 
-app.get("/protocol/templates/:category/usage", requireManagerOrDoctor, async (req, res) => {
+app.get("/protocol/templates/:category/usage", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const category = String(req.params.category || "").trim();
   const db = await readDb();
   ensureDbShape(db);
@@ -3941,7 +3941,7 @@ app.get("/protocol/templates/:category/usage", requireManagerOrDoctor, async (re
   });
 });
 
-app.get("/protocol/templates/:category/history", requireManagerOrDoctor, async (req, res) => {
+app.get("/protocol/templates/:category/history", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const category = String(req.params.category || "").trim();
   const db = await readDb();
   ensureDbShape(db);
@@ -3953,7 +3953,7 @@ app.get("/protocol/templates/:category/history", requireManagerOrDoctor, async (
   return res.json({ items });
 });
 
-app.post("/protocol/templates", requireManagerOrDoctor, async (req, res) => {
+app.post("/protocol/templates", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const payloadCheck = sanitizeProtocolTemplatePayload(req.body || {});
   if (!payloadCheck.ok) return res.status(400).json({ error: payloadCheck.error });
 
@@ -3979,7 +3979,7 @@ app.post("/protocol/templates", requireManagerOrDoctor, async (req, res) => {
   return res.status(201).json(result);
 });
 
-app.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, res) => {
+app.put("/protocol/templates/:category", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const category = String(req.params.category || "").trim();
   const payloadCheck = sanitizeProtocolTemplatePayload(req.body || {}, category);
   if (!payloadCheck.ok) return res.status(400).json({ error: payloadCheck.error });
@@ -4027,7 +4027,7 @@ app.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, res
   return res.json(result);
 });
 
-app.delete("/protocol/templates/:category", requireManagerOrDoctor, async (req, res) => {
+app.delete("/protocol/templates/:category", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const category = String(req.params.category || "").trim();
   if (category === "general") {
     return res.status(400).json({ error: "A categoria geral não pode ser excluída" });
@@ -4090,7 +4090,7 @@ app.delete("/protocol/templates/:category", requireManagerOrDoctor, async (req, 
   return res.json({ ok: true });
 });
 
-app.get("/users", async (req, res) => {
+app.get("/users", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const isGestorUser = canonicalRole(req.user?.role) === "gestor";
@@ -4102,7 +4102,7 @@ app.get("/users", async (req, res) => {
   return res.json(safeUsers.map(({ password, ...u }) => u));
 });
 
-app.get("/users/activity-log", requireManager, async (req, res) => {
+app.get("/users/activity-log", requireAuth, requireManager, async (req, res) => {
   if (!isAnaAdminUser(req.user)) {
     return res.status(403).json({ error: "Apenas a conta administrativa de teste pode acessar este painel" });
   }
@@ -4140,7 +4140,7 @@ app.get("/users/activity-log", requireManager, async (req, res) => {
   });
 });
 
-app.post("/users", requireManager, async (req, res) => {
+app.post("/users", requireAuth, requireManager, async (req, res) => {
   const payload = req.body || {};
   const name = String(payload.name || "").trim();
   const email = String(payload.email || "").trim().toLowerCase();
@@ -4251,7 +4251,7 @@ function getTeamUserUsage(db, userId, teamId) {
   };
 }
 
-app.get("/users/:id/usage", requireManager, async (req, res) => {
+app.get("/users/:id/usage", requireAuth, requireManager, async (req, res) => {
   const id = String(req.params.id || "").trim();
   const db = await readDb();
   ensureDbShape(db);
@@ -4269,7 +4269,7 @@ app.get("/users/:id/usage", requireManager, async (req, res) => {
   });
 });
 
-app.put("/users/:id", requireManager, async (req, res) => {
+app.put("/users/:id", requireAuth, requireManager, async (req, res) => {
   const id = String(req.params.id || "").trim();
   const payload = req.body || {};
   const result = await withDb(async (db) => {
@@ -4358,7 +4358,7 @@ app.put("/users/:id", requireManager, async (req, res) => {
   return res.json(result.user);
 });
 
-app.delete("/users/:id", requireManager, async (req, res) => {
+app.delete("/users/:id", requireAuth, requireManager, async (req, res) => {
   const id = String(req.params.id || "").trim();
   if (id === req.user.id) {
     return res.status(400).json({ error: "Não é permitido excluir o próprio usuário" });
@@ -4394,7 +4394,7 @@ app.delete("/users/:id", requireManager, async (req, res) => {
   return res.json({ ok: true });
 });
 
-app.get("/patients", async (req, res) => {
+app.get("/patients", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const patients = getAllowedPatients(db, req.user, req.query);
@@ -4496,7 +4496,7 @@ app.post("/admin/patients/reset-populate", requireAuth, async (req, res) => {
   return res.json({ ok: true, ...result });
 });
 
-app.get("/patients/protocol-summaries", async (req, res) => {
+app.get("/patients/protocol-summaries", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
 
@@ -4524,7 +4524,7 @@ app.get("/patients/protocol-summaries", async (req, res) => {
   });
 });
 
-app.post("/patients", requireManagerOrDoctor, async (req, res) => {
+app.post("/patients", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const payload = req.body;
   const db = await readDb();
   ensureDbShape(db);
@@ -4607,7 +4607,7 @@ app.post("/patients", requireManagerOrDoctor, async (req, res) => {
   return res.status(201).json(patient);
 });
 
-app.put("/patients/:id", async (req, res) => {
+app.put("/patients/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
@@ -4737,7 +4737,7 @@ app.put("/patients/:id", async (req, res) => {
   return res.json(updated);
 });
 
-app.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
+app.delete("/patients/:id", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const { id } = req.params;
 
   const result = await withDb((db) => {
@@ -4793,7 +4793,7 @@ app.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
   return res.json(result);
 });
 
-app.get("/patients/:id/appointments", async (req, res) => {
+app.get("/patients/:id/appointments", requireAuth, async (req, res) => {
   const { id } = req.params;
   const db = await readDb();
   ensureDbShape(db);
@@ -4812,7 +4812,7 @@ app.get("/patients/:id/appointments", async (req, res) => {
   return res.json(appointments);
 });
 
-app.post("/patients/:id/appointments", async (req, res) => {
+app.post("/patients/:id/appointments", requireAuth, async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
@@ -4852,7 +4852,7 @@ app.post("/patients/:id/appointments", async (req, res) => {
   return res.status(201).json(appointment);
 });
 
-app.delete("/patients/:id/appointments/:appointmentId", async (req, res) => {
+app.delete("/patients/:id/appointments/:appointmentId", requireAuth, async (req, res) => {
   const patientId = String(req.params.id || "").trim();
   const appointmentId = String(req.params.appointmentId || "").trim();
 
@@ -4882,7 +4882,7 @@ app.delete("/patients/:id/appointments/:appointmentId", async (req, res) => {
   return res.json({ ok: true });
 });
 
-app.post("/patients/:id/records", async (req, res) => {
+app.post("/patients/:id/records", requireAuth, async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
@@ -4957,7 +4957,7 @@ app.post("/patients/:id/records", async (req, res) => {
   });
 });
 
-app.delete("/patients/:id/records/:recordId", async (req, res) => {
+app.delete("/patients/:id/records/:recordId", requireAuth, async (req, res) => {
   const patientId = String(req.params.id || "").trim();
   const recordId = String(req.params.recordId || "").trim();
 
@@ -4992,7 +4992,7 @@ app.delete("/patients/:id/records/:recordId", async (req, res) => {
   return res.json({ ok: true });
 });
 
-app.get("/patients/:id/history", async (req, res) => {
+app.get("/patients/:id/history", requireAuth, async (req, res) => {
   const { id } = req.params;
   const db = await readDb();
   ensureDbShape(db);
@@ -5003,7 +5003,7 @@ app.get("/patients/:id/history", async (req, res) => {
   return res.json(buildPatientHistory(db, id));
 });
 
-app.get("/patients/:id/protocol-summary", async (req, res) => {
+app.get("/patients/:id/protocol-summary", requireAuth, async (req, res) => {
   const { id } = req.params;
   const db = await readDb();
   ensureDbShape(db);
@@ -5019,7 +5019,7 @@ app.get("/patients/:id/protocol-summary", async (req, res) => {
   return res.json(summary);
 });
 
-app.get("/metrics/demand/monthly", async (req, res) => {
+app.get("/metrics/demand/monthly", requireAuth, async (req, res) => {
   if (!(isManager(req.user) || isDoctor(req.user))) {
     return res.status(403).json({ error: "Apenas enfermeira e médica podem acessar este indicador" });
   }
@@ -5033,13 +5033,13 @@ app.get("/metrics/demand/monthly", async (req, res) => {
   return res.json(metric);
 });
 
-app.get("/metrics/data-quality", requireRoles(["nurse_manager", "doctor"], "Apenas enfermeira e médica podem acessar qualidade de dados"), async (req, res) => {
+app.get("/metrics/data-quality", requireAuth, requireRoles(["nurse_manager", "doctor"], "Apenas enfermeira e médica podem acessar qualidade de dados"), async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   return res.json(buildDataQualityMetric(db, req.user.teamId));
 });
 
-app.get("/tasks", async (req, res) => {
+app.get("/tasks", requireAuth, async (req, res) => {
   const { patientId, assigneeId } = req.query;
   const db = await readDb();
   ensureDbShape(db);
@@ -5057,7 +5057,7 @@ app.get("/tasks", async (req, res) => {
   return res.json(filtered);
 });
 
-app.post("/tasks", requireManagerOrDoctor, async (req, res) => {
+app.post("/tasks", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const payload = req.body;
 
   if (!payload.patientId || !payload.assigneeId || !payload.title) {
@@ -5099,7 +5099,7 @@ app.post("/tasks", requireManagerOrDoctor, async (req, res) => {
   return res.status(201).json(task);
 });
 
-app.patch("/tasks/:id", async (req, res) => {
+app.patch("/tasks/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
@@ -5146,7 +5146,7 @@ app.patch("/tasks/:id", async (req, res) => {
   return res.json(updated);
 });
 
-app.get("/patients/:id/messages", async (req, res) => {
+app.get("/patients/:id/messages", requireAuth, async (req, res) => {
   const { id } = req.params;
   const db = await readDb();
   ensureDbShape(db);
@@ -5161,7 +5161,7 @@ app.get("/patients/:id/messages", async (req, res) => {
   return res.json(messages);
 });
 
-app.post("/patients/:id/messages", async (req, res) => {
+app.post("/patients/:id/messages", requireAuth, async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
 
@@ -5198,7 +5198,7 @@ app.post("/patients/:id/messages", async (req, res) => {
   return res.status(201).json(message);
 });
 
-app.get("/audit-logs", requireManagerOrDoctor, async (req, res) => {
+app.get("/audit-logs", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
 
@@ -5216,7 +5216,7 @@ app.get("/audit-logs", requireManagerOrDoctor, async (req, res) => {
   return res.json(logs.slice(0, 200));
 });
 
-app.get("/audit-logs/export", requireManagerOrDoctor, async (req, res) => {
+app.get("/audit-logs/export", requireAuth, requireManagerOrDoctor, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const format = String(req.query.format || "json").trim().toLowerCase();
@@ -5258,7 +5258,7 @@ app.get("/audit-logs/export", requireManagerOrDoctor, async (req, res) => {
   });
 });
 
-app.get("/privacy/requests", requireManager, async (req, res) => {
+app.get("/privacy/requests", requireAuth, requireManager, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const status = String(req.query.status || "").trim();
@@ -5275,7 +5275,7 @@ app.get("/privacy/requests", requireManager, async (req, res) => {
   return res.json(items.slice(0, 300));
 });
 
-app.post("/privacy/requests", requireManager, async (req, res) => {
+app.post("/privacy/requests", requireAuth, requireManager, async (req, res) => {
   const payload = req.body || {};
   const patientId = String(payload.patientId || "").trim();
   const type = String(payload.type || "").trim().toLowerCase();
@@ -5326,7 +5326,7 @@ app.post("/privacy/requests", requireManager, async (req, res) => {
   return res.status(201).json(created);
 });
 
-app.patch("/privacy/requests/:id", requireManager, async (req, res) => {
+app.patch("/privacy/requests/:id", requireAuth, requireManager, async (req, res) => {
   const id = String(req.params.id || "").trim();
   const payload = req.body || {};
   const nextStatus = payload.status !== undefined ? String(payload.status || "").trim().toLowerCase() : "";
@@ -5374,7 +5374,7 @@ app.patch("/privacy/requests/:id", requireManager, async (req, res) => {
   return res.json(result);
 });
 
-app.post("/privacy/requests/:id/execute", requireManager, async (req, res) => {
+app.post("/privacy/requests/:id/execute", requireAuth, requireManager, async (req, res) => {
   const id = String(req.params.id || "").trim();
   const payload = req.body || {};
 
@@ -5469,7 +5469,7 @@ app.post("/privacy/requests/:id/execute", requireManager, async (req, res) => {
   return res.json(outcome);
 });
 
-app.post("/privacy/retention/anonymize", requireManager, async (req, res) => {
+app.post("/privacy/retention/anonymize", requireAuth, requireManager, async (req, res) => {
   const payload = req.body || {};
   const olderThanDays = Number(payload.olderThanDays || 365 * 5);
   const dryRun = Boolean(payload.dryRun);
@@ -5572,7 +5572,7 @@ app.get("/ai/status", requireAuth, (_req, res) => {
   });
 });
 
-app.post("/ai/patients/:id/summary", async (req, res) => {
+app.post("/ai/patients/:id/summary", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const lookup = getPatientOrError(db, req.user, req.params.id);
@@ -5581,7 +5581,7 @@ app.post("/ai/patients/:id/summary", async (req, res) => {
   return res.json(patientSummary(context));
 });
 
-app.post("/ai/patients/:id/protocol-highlights", async (req, res) => {
+app.post("/ai/patients/:id/protocol-highlights", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const lookup = getPatientOrError(db, req.user, req.params.id);
@@ -5590,7 +5590,7 @@ app.post("/ai/patients/:id/protocol-highlights", async (req, res) => {
   return res.json(protocolHighlights(context));
 });
 
-app.post("/ai/patients/:id/evolution-draft", async (req, res) => {
+app.post("/ai/patients/:id/evolution-draft", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const lookup = getPatientOrError(db, req.user, req.params.id);
@@ -5599,7 +5599,7 @@ app.post("/ai/patients/:id/evolution-draft", async (req, res) => {
   return res.json(evolutionDraft(context, req.body || {}));
 });
 
-app.post("/ai/patients/:id/acs-message", async (req, res) => {
+app.post("/ai/patients/:id/acs-message", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const lookup = getPatientOrError(db, req.user, req.params.id);
@@ -5608,7 +5608,7 @@ app.post("/ai/patients/:id/acs-message", async (req, res) => {
   return res.json(acsMessage(context));
 });
 
-app.post("/ai/patients/:id/suggest-category", async (req, res) => {
+app.post("/ai/patients/:id/suggest-category", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const lookup = getPatientOrError(db, req.user, req.params.id);
@@ -5617,7 +5617,7 @@ app.post("/ai/patients/:id/suggest-category", async (req, res) => {
   return res.json(suggestProtocolCategory(context));
 });
 
-app.post("/ai/patients/:id/transcribe", async (req, res) => {
+app.post("/ai/patients/:id/transcribe", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const lookup = getPatientOrError(db, req.user, req.params.id);
@@ -5625,21 +5625,21 @@ app.post("/ai/patients/:id/transcribe", async (req, res) => {
   return res.json(transcribePayload(req.body || {}));
 });
 
-app.post("/ai/team/priorities", async (req, res) => {
+app.post("/ai/team/priorities", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const contexts = buildAiTeamContexts(db, req.user);
   return res.json({ items: teamPriorities(contexts) });
 });
 
-app.post("/ai/team/data-quality", async (req, res) => {
+app.post("/ai/team/data-quality", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const contexts = buildAiTeamContexts(db, req.user);
   return res.json({ findings: dataQualityChecks(contexts) });
 });
 
-app.post("/ai/team/report", async (req, res) => {
+app.post("/ai/team/report", requireAuth, async (req, res) => {
   if (!isManager(req.user)) {
     return res.status(403).json({ error: "Somente enfermeira pode gerar relat?rio executivo" });
   }
@@ -5650,7 +5650,7 @@ app.post("/ai/team/report", async (req, res) => {
   return res.json(teamReport(contexts, { month }));
 });
 
-app.post("/ai/chat", async (req, res) => {
+app.post("/ai/chat", requireAuth, async (req, res) => {
   const question = String(req.body?.question || "").trim();
   const db = await readDb();
   ensureDbShape(db);
