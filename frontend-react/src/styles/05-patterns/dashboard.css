@@ -1,0 +1,51 @@
+/* 05-patterns/dashboard.css
+   Layout-padrão de página de gestão: sidebar dark + topbar + main.
+   Use junto com .app, .sidebar, .topbar, .main-area (03-layout +
+   04-components).
+
+   Markup completo:
+     <div class="app">
+       <div class="app-body">
+         <aside class="sidebar">…</aside>
+         <main class="main-area">
+           <header class="topbar">…</header>
+           <div class="dashboard">
+             <section class="hero hero--compact">…</section>
+             <div class="dashboard__kpis grid grid--4">…</div>
+             <div class="dashboard__grid">
+               <div class="card">…</div>
+               <div class="card">…</div>
+             </div>
+           </div>
+         </main>
+       </div>
+     </div>
+*/
+
+.dashboard {
+  padding: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.dashboard__kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s-3);
+}
+
+.dashboard__grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--s-3);
+  min-height: 280px;
+}
+
+@media (max-width: 1280px) {
+  .dashboard__kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .dashboard__kpis { grid-template-columns: 1fr; }
+  .dashboard__grid { grid-template-columns: 1fr; }
+}

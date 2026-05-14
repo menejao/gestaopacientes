@@ -1,0 +1,6 @@
+/* 05-patterns/index.css */
+
+@import './dashboard.css';
+@import './form.css';
+@import './empty-state.css';
+@import './auth.css';

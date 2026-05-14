@@ -40,19 +40,19 @@ function OfflineBanner() {
   const online = useOnlineStatus();
   if (online) return null;
   return (
-    <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:9999,background:"#1e3a5f",color:"#e2e8f0",padding:".55rem 1.25rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"1rem",fontSize:".78rem",fontWeight:600,boxShadow:"0 -2px 12px rgba(0,0,0,.2)"}}>
+    <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:9999,background:"#1e3a5f",color:"var(--slate-200)",padding:".55rem 1.25rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"1rem",fontSize:".78rem",fontWeight:600,boxShadow:"0 -2px 12px rgba(0,0,0,.2)"}}>
       <div style={{display:"flex",alignItems:"center",gap:".6rem"}}>
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1 1l14 14M10.5 5A5 5 0 0114 9M6 3a7 7 0 018 8M3 6a5 5 0 011 7" stroke="#f59e0b" strokeWidth="1.4" strokeLinecap="round"/><circle cx="8" cy="13" r="1" fill="#f59e0b"/></svg>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1 1l14 14M10.5 5A5 5 0 0114 9M6 3a7 7 0 018 8M3 6a5 5 0 011 7" stroke="var(--amber-500)" strokeWidth="1.4" strokeLinecap="round"/><circle cx="8" cy="13" r="1" fill="var(--amber-500)"/></svg>
         <span>Modo offline — dados locais disponíveis. Alterações serão sincronizadas ao reconectar.</span>
       </div>
-      <span style={{fontSize:".7rem",color:"#94a3b8",flexShrink:0}}>SIGUNS · Offline</span>
+      <span style={{fontSize:".7rem",color:"var(--slate-400)",flexShrink:0}}>SIGUNS · Offline</span>
     </div>
   );
 }
 
 function ComplianceBadge() {
   return (
-    <div style={{position:"fixed",bottom:0,right:0,zIndex:9990,background:"rgba(15,23,42,.85)",backdropFilter:"blur(4px)",padding:".3rem .75rem",borderTopLeftRadius:"var(--r-md)",display:"flex",alignItems:"center",gap:".5rem",fontSize:".62rem",color:"#94a3b8",pointerEvents:"none"}}>
+    <div style={{position:"fixed",bottom:0,right:0,zIndex:9990,background:"rgba(15,23,42,.85)",backdropFilter:"blur(4px)",padding:".3rem .75rem",borderTopLeftRadius:"var(--r-md)",display:"flex",alignItems:"center",gap:".5rem",fontSize:".62rem",color:"var(--slate-400)",pointerEvents:"none"}}>
       <span style={{color:"#34d399",fontWeight:700}}>✓</span>
       <span>CFM 1638/2002 · Lei 13.787/2018 · LGPD · ANVISA RDC 20/2011 · PNAB 2.436/2017</span>
     </div>
@@ -634,32 +634,52 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
   const [gestorReg, setGestorReg] = useState({name:"",email:"",password:"",confirmPassword:""});
 
   if (loginMode === "gestor") {
-    const inputStyle = {width:"100%",padding:".65rem .85rem",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".88rem",fontFamily:"inherit",outline:"none",background:"#fff",color:"#1e293b",boxSizing:"border-box"};
-    const focusStyle = (e)=>e.target.style.borderColor="#6366f1";
-    const blurStyle  = (e)=>e.target.style.borderColor="#e2e8f0";
+    const C = {
+      accent:      "var(--indigo-500)",
+      accentLight: "var(--indigo-400)",
+      accentPale:  "var(--indigo-300)",
+      accentSoft:  "rgb(var(--indigo-500-rgb) / .15)",
+      accentMid:   "rgb(var(--indigo-500-rgb) / .25)",
+      accentBorder:"rgb(var(--indigo-500-rgb) / .3)",
+      accentGlow:  "rgb(var(--indigo-500-rgb) / .4)",
+      bg:          "var(--slate-900)",
+      bgEnd:       "var(--indigo-800)",
+      bgCard:      "var(--slate-50)",
+      border:      "var(--slate-200)",
+      muted:       "var(--slate-500)",
+      dim:         "var(--slate-400)",
+      text:        "var(--slate-800)",
+      label:       "var(--slate-700)",
+      danger:      "var(--red-600)",
+      dangerBg:    "var(--red-50)",
+      dangerBorder:"var(--red-100)",
+    };
+    const inputStyle = {width:"100%",padding:".65rem .85rem",border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:".88rem",fontFamily:"inherit",outline:"none",background:"#fff",color:C.text,boxSizing:"border-box"};
+    const focusStyle = (e)=>e.target.style.borderColor=C.accent;
+    const blurStyle  = (e)=>e.target.style.borderColor=C.border;
 
     return (
-      <main style={{minHeight:"100vh",display:"flex",background:"#0f172a"}}>
+      <main style={{minHeight:"100vh",display:"flex",background:C.bg}}>
         {/* Painel esquerdo */}
-        <section style={{flex:1,background:"linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"3rem",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",top:-80,right:-80,width:320,height:320,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,.15) 0%,transparent 70%)",pointerEvents:"none"}}/>
-          <div style={{position:"absolute",bottom:-60,left:-60,width:240,height:240,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,.1) 0%,transparent 70%)",pointerEvents:"none"}}/>
+        <section style={{flex:1,background:`linear-gradient(135deg,${C.bg} 0%,${C.bgEnd} 100%)`,display:"flex",flexDirection:"column",justifyContent:"space-between",padding:"3rem",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:-80,right:-80,width:320,height:320,borderRadius:"50%",background:`radial-gradient(circle,${C.accentSoft} 0%,transparent 70%)`,pointerEvents:"none"}}/>
+          <div style={{position:"absolute",bottom:-60,left:-60,width:240,height:240,borderRadius:"50%",background:"radial-gradient(circle,rgb(var(--violet-500,139 92 246) / .1) 0%,transparent 70%)",pointerEvents:"none"}}/>
           <div style={{display:"flex",alignItems:"center",gap:".6rem",position:"relative",zIndex:1}}>
-            <div style={{width:32,height:32,background:"#6366f1",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{width:32,height:32,background:C.accent,borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center"}}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
             </div>
             <span style={{fontSize:"1rem",fontWeight:700,color:"#fff",letterSpacing:"-.01em"}}>SIGUNS</span>
-            <span style={{fontSize:".7rem",background:"rgba(99,102,241,.25)",color:"#a5b4fc",border:"1px solid rgba(99,102,241,.4)",padding:".15em .5em",borderRadius:99,fontFamily:"monospace",marginLeft:".25rem"}}>GESTÃO</span>
+            <span style={{fontSize:".7rem",background:C.accentMid,color:C.accentPale,border:`1px solid ${C.accentGlow}`,padding:".15em .5em",borderRadius:99,fontFamily:"monospace",marginLeft:".25rem"}}>GESTÃO</span>
           </div>
           <div style={{position:"relative",zIndex:1}}>
-            <div style={{display:"inline-flex",alignItems:"center",gap:".4rem",background:"rgba(99,102,241,.15)",border:"1px solid rgba(99,102,241,.3)",color:"#a5b4fc",fontSize:".72rem",fontWeight:600,letterSpacing:".08em",textTransform:"uppercase",padding:".3rem .75rem",borderRadius:99,marginBottom:"1.25rem"}}>
+            <div style={{display:"inline-flex",alignItems:"center",gap:".4rem",background:C.accentSoft,border:`1px solid ${C.accentBorder}`,color:C.accentPale,fontSize:".72rem",fontWeight:600,letterSpacing:".08em",textTransform:"uppercase",padding:".3rem .75rem",borderRadius:99,marginBottom:"1.25rem"}}>
               <svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor"><circle cx="4.5" cy="4.5" r="4.5"/></svg>
               Painel Executivo
             </div>
             <h1 style={{fontSize:"2.4rem",fontWeight:700,color:"#fff",lineHeight:1.15,letterSpacing:"-.04em",marginBottom:"1rem"}}>
-              Indicadores de<br/><span style={{color:"#818cf8"}}>Gestão à Vista</span>
+              Indicadores de<br/><span style={{color:C.accentLight}}>Gestão à Vista</span>
             </h1>
-            <p style={{fontSize:".9rem",color:"#94a3b8",lineHeight:1.7,maxWidth:380}}>
+            <p style={{fontSize:".9rem",color:C.dim,lineHeight:1.7,maxWidth:380}}>
               Visão executiva completa da UBS — produção, protocolos, equipe e farmácia em um único painel.
             </p>
           </div>
@@ -667,24 +687,24 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
             {[["KPIs","Tempo real"],["Produção","Por período"],["Equipe","Performance"]].map(([v,l])=>(
               <div key={v} style={{background:"rgba(255,255,255,.03)",padding:"1rem"}}>
                 <div style={{fontSize:"1rem",fontWeight:700,color:"#fff",marginBottom:".2rem"}}>{v}</div>
-                <div style={{fontSize:".68rem",color:"#64748b",textTransform:"uppercase",letterSpacing:".07em"}}>{l}</div>
+                <div style={{fontSize:".68rem",color:C.muted,textTransform:"uppercase",letterSpacing:".07em"}}>{l}</div>
               </div>
             ))}
           </div>
         </section>
 
         {/* Painel direito */}
-        <section style={{width:520,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",padding:"2rem",overflowY:"auto"}}>
+        <section style={{width:520,background:C.bgCard,display:"flex",alignItems:"center",justifyContent:"center",padding:"2rem",overflowY:"auto"}}>
           <div style={{width:"100%",maxWidth:390}}>
-            <button onClick={()=>setLoginMode("saude")} style={{display:"flex",alignItems:"center",gap:".4rem",background:"none",border:"none",color:"#64748b",fontSize:".78rem",cursor:"pointer",padding:"0 0 1.25rem",fontFamily:"inherit"}}>
+            <button onClick={()=>setLoginMode("saude")} style={{display:"flex",alignItems:"center",gap:".4rem",background:"none",border:"none",color:C.muted,fontSize:".78rem",cursor:"pointer",padding:"0 0 1.25rem",fontFamily:"inherit"}}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               Voltar ao login clínico
             </button>
 
             {/* Tabs */}
-            <div style={{display:"flex",borderBottom:"1.5px solid #e2e8f0",marginBottom:"1.75rem",gap:0}}>
+            <div style={{display:"flex",borderBottom:`1.5px solid ${C.border}`,marginBottom:"1.75rem",gap:0}}>
               {[["login","Entrar"],["register","Criar conta"]].map(([k,l])=>(
-                <button key={k} onClick={()=>setGestorTab(k)} style={{flex:1,padding:".5rem 0",background:"none",border:"none",borderBottom:gestorTab===k?"2.5px solid #6366f1":"2.5px solid transparent",marginBottom:-1.5,fontSize:".82rem",fontWeight:gestorTab===k?700:500,color:gestorTab===k?"#6366f1":"#64748b",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
+                <button key={k} onClick={()=>setGestorTab(k)} style={{flex:1,padding:".5rem 0",background:"none",border:"none",borderBottom:gestorTab===k?`2.5px solid ${C.accent}`:"2.5px solid transparent",marginBottom:-1.5,fontSize:".82rem",fontWeight:gestorTab===k?700:500,color:gestorTab===k?C.accent:C.muted,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
                   {l}
                 </button>
               ))}
@@ -693,33 +713,33 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
             {gestorTab === "login" ? (
               <>
                 <div style={{marginBottom:"1.5rem"}}>
-                  <h2 style={{fontSize:"1.3rem",fontWeight:700,color:"#1e293b",letterSpacing:"-.02em",marginBottom:".25rem"}}>Bem-vindo de volta</h2>
-                  <p style={{fontSize:".82rem",color:"#64748b"}}>Entre com suas credenciais de gestão.</p>
+                  <h2 style={{fontSize:"1.3rem",fontWeight:700,color:C.text,letterSpacing:"-.02em",marginBottom:".25rem"}}>Bem-vindo de volta</h2>
+                  <p style={{fontSize:".82rem",color:C.muted}}>Entre com suas credenciais de gestão.</p>
                 </div>
                 <form onSubmit={e=>{e.preventDefault();onLogin(email,password);}}>
                   <div style={{marginBottom:"1rem"}}>
-                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>E-mail</label>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:C.label,marginBottom:".35rem"}}>E-mail</label>
                     <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="gestor@prefeitura.gov.br" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="email"/>
                   </div>
                   <div style={{marginBottom:"1.5rem"}}>
-                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Senha</label>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:C.label,marginBottom:".35rem"}}>Senha</label>
                     <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="⬢⬢⬢⬢⬢⬢⬢⬢" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="current-password"/>
                   </div>
-                  {error && <p style={{background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:6,padding:".6rem .85rem",fontSize:".82rem",marginBottom:"1rem"}}>{error}</p>}
-                  <button type="submit" disabled={busy} style={{width:"100%",padding:".6rem",background:"#6366f1",color:"#fff",border:"none",borderRadius:8,fontSize:".85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:busy?0.6:1}}>
+                  {error && <p style={{background:C.dangerBg,color:C.danger,border:`1px solid ${C.dangerBorder}`,borderRadius:6,padding:".6rem .85rem",fontSize:".82rem",marginBottom:"1rem"}}>{error}</p>}
+                  <button type="submit" disabled={busy} style={{width:"100%",padding:".6rem",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:".85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:busy?0.6:1}}>
                     {busy ? "Entrando..." : "Acessar painel de gestão →"}
                   </button>
-                  <p style={{textAlign:"center",fontSize:".75rem",color:"#94a3b8",marginTop:".85rem"}}>
+                  <p style={{textAlign:"center",fontSize:".75rem",color:C.dim,marginTop:".85rem"}}>
                     Não tem conta?{" "}
-                    <button type="button" onClick={()=>setGestorTab("register")} style={{background:"none",border:"none",color:"#6366f1",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem"}}>Criar cadastro</button>
+                    <button type="button" onClick={()=>setGestorTab("register")} style={{background:"none",border:"none",color:C.accent,fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem"}}>Criar cadastro</button>
                   </p>
                 </form>
               </>
             ) : (
               <>
                 <div style={{marginBottom:"1.5rem"}}>
-                  <h2 style={{fontSize:"1.3rem",fontWeight:700,color:"#1e293b",letterSpacing:"-.02em",marginBottom:".25rem"}}>Criar conta de gestor</h2>
-                  <p style={{fontSize:".82rem",color:"#64748b"}}>Acesso exclusivo ao painel executivo da UBS.</p>
+                  <h2 style={{fontSize:"1.3rem",fontWeight:700,color:C.text,letterSpacing:"-.02em",marginBottom:".25rem"}}>Criar conta de gestor</h2>
+                  <p style={{fontSize:".82rem",color:C.muted}}>Acesso exclusivo ao painel executivo da UBS.</p>
                 </div>
                 <form onSubmit={e=>{
                   e.preventDefault();
@@ -727,32 +747,32 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
                   onRegister({...gestorReg, role:"gestor", teamId:"", councilNumber:"", councilUf:""});
                 }}>
                   <div style={{marginBottom:"1rem"}}>
-                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Nome completo</label>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:C.label,marginBottom:".35rem"}}>Nome completo</label>
                     <input value={gestorReg.name} onChange={e=>setGestorReg(s=>({...s,name:e.target.value}))} placeholder="João da Silva" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
                   </div>
                   <div style={{marginBottom:"1rem"}}>
-                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>E-mail</label>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:C.label,marginBottom:".35rem"}}>E-mail</label>
                     <input type="email" value={gestorReg.email} onChange={e=>setGestorReg(s=>({...s,email:e.target.value}))} placeholder="gestor@prefeitura.gov.br" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} autoComplete="email"/>
                   </div>
                   <div style={{marginBottom:"1rem"}}>
-                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Senha</label>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:C.label,marginBottom:".35rem"}}>Senha</label>
                     <input type="password" value={gestorReg.password} onChange={e=>setGestorReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres" style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}/>
                   </div>
                   <div style={{marginBottom:"1.5rem"}}>
-                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:"#374151",marginBottom:".35rem"}}>Confirmar senha</label>
-                    <input type="password" value={gestorReg.confirmPassword} onChange={e=>setGestorReg(s=>({...s,confirmPassword:e.target.value}))} placeholder="Repita a senha" style={{...inputStyle, borderColor: gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword ? "#dc2626" : "#e2e8f0"}} onFocus={focusStyle} onBlur={blurStyle}/>
+                    <label style={{display:"block",fontSize:".75rem",fontWeight:600,color:C.label,marginBottom:".35rem"}}>Confirmar senha</label>
+                    <input type="password" value={gestorReg.confirmPassword} onChange={e=>setGestorReg(s=>({...s,confirmPassword:e.target.value}))} placeholder="Repita a senha" style={{...inputStyle, borderColor: gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword ? C.danger : C.border}} onFocus={focusStyle} onBlur={blurStyle}/>
                     {gestorReg.confirmPassword && gestorReg.password !== gestorReg.confirmPassword && (
-                      <p style={{fontSize:".73rem",color:"#dc2626",marginTop:".3rem"}}>As senhas não coincidem</p>
+                      <p style={{fontSize:".73rem",color:C.danger,marginTop:".3rem"}}>As senhas não coincidem</p>
                     )}
                   </div>
-                  {error && <p style={{background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:6,padding:".6rem .85rem",fontSize:".82rem",marginBottom:"1rem"}}>{error}</p>}
+                  {error && <p style={{background:C.dangerBg,color:C.danger,border:`1px solid ${C.dangerBorder}`,borderRadius:6,padding:".6rem .85rem",fontSize:".82rem",marginBottom:"1rem"}}>{error}</p>}
                   <button type="submit" disabled={busy||!gestorReg.name||!gestorReg.email||!gestorReg.password||gestorReg.password!==gestorReg.confirmPassword}
-                    style={{width:"100%",padding:".6rem",background:"#6366f1",color:"#fff",border:"none",borderRadius:8,fontSize:".85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:(busy||!gestorReg.name||!gestorReg.email||!gestorReg.password||gestorReg.password!==gestorReg.confirmPassword)?0.5:1}}>
+                    style={{width:"100%",padding:".6rem",background:C.accent,color:"#fff",border:"none",borderRadius:8,fontSize:".85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:(busy||!gestorReg.name||!gestorReg.email||!gestorReg.password||gestorReg.password!==gestorReg.confirmPassword)?0.5:1}}>
                     {busy ? "Criando..." : "Criar conta de gestor →"}
                   </button>
-                  <p style={{textAlign:"center",fontSize:".75rem",color:"#94a3b8",marginTop:".85rem"}}>
+                  <p style={{textAlign:"center",fontSize:".75rem",color:C.dim,marginTop:".85rem"}}>
                     Já tem conta?{" "}
-                    <button type="button" onClick={()=>setGestorTab("login")} style={{background:"none",border:"none",color:"#6366f1",fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem"}}>Fazer login</button>
+                    <button type="button" onClick={()=>setGestorTab("login")} style={{background:"none",border:"none",color:C.accent,fontWeight:600,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem"}}>Fazer login</button>
                   </p>
                 </form>
               </>
@@ -784,21 +804,21 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
         {/* Botão de acesso gestor */}
         <button onClick={()=>setLoginMode("gestor")} style={{
           display:"flex",alignItems:"center",gap:".6rem",
-          background:"rgba(99,102,241,.12)",border:"1px solid rgba(99,102,241,.3)",
+          background:"rgb(var(--indigo-500-rgb) / .12)",border:"1px solid rgb(var(--indigo-500-rgb) / .3)",
           borderRadius:10,padding:".75rem 1rem",cursor:"pointer",textAlign:"left",
           transition:"background .15s",
         }}
-          onMouseEnter={e=>e.currentTarget.style.background="rgba(99,102,241,.2)"}
-          onMouseLeave={e=>e.currentTarget.style.background="rgba(99,102,241,.12)"}
+          onMouseEnter={e=>e.currentTarget.style.background="rgb(var(--indigo-500-rgb) / .2)"}
+          onMouseLeave={e=>e.currentTarget.style.background="rgb(var(--indigo-500-rgb) / .12)"}
         >
-          <div style={{width:32,height:32,background:"#6366f1",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <div style={{width:32,height:32,background:"var(--indigo-500)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" rx="1" fill="white"/><rect x="6.5" y="5" width="3" height="9" rx="1" fill="white"/><rect x="11" y="2" width="3" height="12" rx="1" fill="white"/></svg>
           </div>
           <div>
-            <div style={{fontSize:".8rem",fontWeight:700,color:"#a5b4fc"}}>Acesso do Gestor</div>
-            <div style={{fontSize:".7rem",color:"#64748b"}}>Painel executivo com indicadores à vista</div>
+            <div style={{fontSize:".8rem",fontWeight:700,color:"var(--indigo-300)"}}>Acesso do Gestor</div>
+            <div style={{fontSize:".7rem",color:"var(--slate-500)"}}>Painel executivo com indicadores à vista</div>
           </div>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{marginLeft:"auto",color:"#6366f1"}}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{marginLeft:"auto",color:"var(--indigo-500)"}}>
             <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
@@ -858,118 +878,6 @@ function AuthScreen({ onLogin, onRegister, publicTeams, error, busy }) {
                 </select>
               </label>
               {reg.role !== "receptionist" && reg.role !== "gestor" && (
-                <label>Equipe
-                  <select value={reg.teamId} onChange={e=>setReg(s=>({...s,teamId:e.target.value}))}>
-                    <option value="">Selecione a equipe</option>
-                    {[
-                      {id:"equipe-amarela", name:"Equipe Amarela"},
-                      {id:"equipe-azul",    name:"Equipe Azul"},
-                      {id:"equipe-cinza",   name:"Equipe Cinza"},
-                      {id:"equipe-marrom",  name:"Equipe Marrom"},
-                      {id:"equipe-rosa",    name:"Equipe Rosa"},
-                    ].map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-                </label>
-              )}
-              {["doctor","dentist","nurse_manager","nursing_tech","pharmacist","pharmacy_tech"].includes(reg.role) && <>
-                <label>
-                  {reg.role==="doctor"?"CRM":reg.role==="dentist"?"CRO":["pharmacist","pharmacy_tech"].includes(reg.role)?"CFF":"COREN"} — Número do conselho
-                  <input value={reg.councilNumber} onChange={e=>setReg(s=>({...s,councilNumber:onlyDigits(e.target.value).slice(0,12)}))} placeholder="000000"/>
-                </label>
-                <label>UF do conselho<input maxLength={2} value={reg.councilUf} onChange={e=>setReg(s=>({...s,councilUf:e.target.value.toUpperCase()}))} placeholder="SP"/></label>
-              </>}
-              {error && <p className="error">{error}</p>}
-              <button type="submit" disabled={busy}>{busy?"Criando...":"Criar cadastro"}</button>
-            </form>
-          ) : authTab === "reset" ? (
-            <ResetPasswordForm/>
-          ) : null}
-        </div>
-      </section>
-    </main>
-  );
-
-  return (
-    <main className="auth-screen">
-      {/* Left panel */}
-      <section className="auth-left">
-        <div className="auth-brand">
-          <div className="auth-brand-icon"><IconLogo/></div>
-          <span className="brand-name">SIGUNS</span>
-        </div>
-
-        <div className="auth-hero">
-          <div className="auth-eyebrow">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M5 3v2l1.5 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-            Plataforma clínica
-          </div>
-          <h1>Gestão clínica<br/><em>para atenção básica</em></h1>
-          <p>Uma plataforma completa para conectar todos os profissionais da unidade e garantir o cuidado contínuo ao paciente.</p>
-        </div>
-
-        <div className="auth-stats">
-          <div className="auth-stat">
-            <div className="auth-stat-value">100%</div>
-            <div className="auth-stat-label">Integrado</div>
-          </div>
-          <div className="auth-stat">
-            <div className="auth-stat-value">UBS</div>
-            <div className="auth-stat-label">Atenção básica</div>
-          </div>
-          <div className="auth-stat">
-            <div className="auth-stat-value">LGPD</div>
-            <div className="auth-stat-label">Conformidade</div>
-          </div>
-        </div>
-      </section>
-
-      {/* Right panel */}
-      <section className="auth-right">
-        <div className="auth-card">
-          <div className="auth-card-header">
-            <h2>{authTab === "login" ? "Bem-vindo de volta" : "Criar conta"}</h2>
-            <p>{authTab === "login" ? "Entre com suas credenciais institucionais" : "Preencha os dados para criar sua conta"}</p>
-          </div>
-
-          <div className="auth-tabs">
-            <button className={`auth-tab${authTab==="login"?" active":""}`} type="button" onClick={()=>setAuthTab("login")}>Entrar</button>
-            <button className={`auth-tab${authTab==="register"?" active":""}`} type="button" onClick={()=>setAuthTab("register")}>Novo cadastro</button>
-            <button className={`auth-tab${authTab==="reset"?" active":""}`} type="button" onClick={()=>setAuthTab("reset")}>Esqueci a senha</button>
-          </div>
-
-          {authTab === "login" ? (
-            <form className="auth-form" onSubmit={e=>{e.preventDefault();onLogin(email,password);}}>
-              <label>
-                E-mail institucional
-                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@unidade.local" autoComplete="email"/>
-              </label>
-              <label>
-                Senha
-                <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="********" autoComplete="current-password"/>
-              </label>
-              {error && <p className="error">{error}</p>}
-              <button type="submit" disabled={busy}>
-                {busy ? "Entrando..." : <>Acessar sistema <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></>}
-              </button>
-            </form>
-          ) : authTab === "register" ? (
-            <form className="auth-form" onSubmit={e=>{e.preventDefault();onRegister(reg);}}>
-              <label>Nome completo<input value={reg.name} onChange={e=>setReg(s=>({...s,name:e.target.value}))} placeholder="Maria da Silva"/></label>
-              <label>E-mail<input type="email" value={reg.email} onChange={e=>setReg(s=>({...s,email:e.target.value}))} placeholder="você@unidade.local"/></label>
-              <label>Senha<input type="password" value={reg.password} onChange={e=>setReg(s=>({...s,password:e.target.value}))} placeholder="Mínimo 8 caracteres"/></label>
-              <label>Perfil
-                <select value={reg.role} onChange={e=>setReg(s=>({...s,role:e.target.value,councilNumber:"",councilUf:"SP",teamId:""}))}>
-                  <option value="nurse_manager">Enfermeira</option>
-                  <option value="doctor">Médico(a)</option>
-                  <option value="dentist">Dentista</option>
-                  <option value="nursing_tech">Téc. de Enfermagem</option>
-                  <option value="pharmacist">Farmacêutico(a)</option>
-                  <option value="pharmacy_tech">Téc. de Farmácia</option>
-                  <option value="acs">ACS</option>
-                  <option value="receptionist">Recepcionista</option>
-                </select>
-              </label>
-              {reg.role !== "receptionist" && (
                 <label>Equipe
                   <select value={reg.teamId} onChange={e=>setReg(s=>({...s,teamId:e.target.value}))}>
                     <option value="">Selecione a equipe</option>
@@ -1061,7 +969,7 @@ function ResetPasswordForm() {
             <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoFocus placeholder="usuario@unidade.local"/>
           </label>
           {err&&<p className="error">{err}</p>}
-          {msg&&<p style={{color:"#15803d",fontSize:".8rem",background:"#f0fdf4",padding:".5rem .75rem",borderRadius:"var(--r-md)",border:"1px solid #bbf7d0",margin:0}}>{msg}</p>}
+          {msg&&<p style={{color:"var(--green-700)",fontSize:".8rem",background:"var(--green-50)",padding:".5rem .75rem",borderRadius:"var(--r-md)",border:"1px solid #bbf7d0",margin:0}}>{msg}</p>}
           <button type="submit" disabled={busy}>{busy?"Enviando...":"Solicitar redefinição"}</button>
         </form>
       )}
@@ -1086,7 +994,7 @@ function ResetPasswordForm() {
       {step === "done" && (
         <div style={{textAlign:"center",padding:"1.5rem 0"}}>
           <div style={{fontSize:"2.5rem",marginBottom:".75rem"}}>✅</div>
-          <p style={{color:"#15803d",fontWeight:700,margin:0}}>{msg}</p>
+          <p style={{color:"var(--green-700)",fontWeight:700,margin:0}}>{msg}</p>
         </div>
       )}
     </div>
@@ -1147,7 +1055,7 @@ function Topbar({ user, selectedPatient, templates, mobileOpen, setMobileOpen, o
           </svg>
         </button>
         {/* Ícone de saúde — cruz no quadrado arredondado */}
-        <div className="topbar-brand-icon" style={{width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#14b8a6,#0d9488)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+        <div className="topbar-brand-icon" style={{width:30,height:30,borderRadius:8,background:"var(--accent-grad)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <rect x="7.5" y="2.5" width="3" height="13" rx="1.5" fill="white" opacity="0.95"/>
             <rect x="2.5" y="7.5" width="13" height="3" rx="1.5" fill="white" opacity="0.95"/>
@@ -1331,8 +1239,8 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
   const dmSpont=demandMonthly?.totals?.spontaneous ?? 0;
   const dmPct=dmTotal>0?Math.round((dmSched/dmTotal)*100):null;
   const dmInRange=dmPct!==null&&dmPct>=50&&dmPct<=70;
-  const dmColor=dmPct===null?"var(--text-3)":dmInRange?"#15803d":dmPct<50?"#b45309":"#be123c";
-  const dmBg=dmPct===null?"var(--surface-3)":dmInRange?"#dcfce7":dmPct<50?"#fef3c7":"#fee2e2";
+  const dmColor=dmPct===null?"var(--text-3)":dmInRange?"var(--green-700)":dmPct<50?"var(--amber-700)":"var(--red-700)";
+  const dmBg=dmPct===null?"var(--surface-3)":dmInRange?"var(--green-100)":dmPct<50?"var(--amber-100)":"var(--red-100)";
   const dmStatus=dmPct===null?"Sem dados":dmInRange?"Na meta ✓":dmPct<50?"Abaixo da meta":"Acima da meta";
   const isAna = isAdmin(currentUser);
   // Mescla usuários da API com locais (recepção/farmácia), sem duplicatas
@@ -1380,7 +1288,7 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
           </div>
           {dmPct!==null&&(
             <div style={{position:"relative",height:6,background:"var(--slate-100)",borderRadius:99,overflow:"hidden",marginBottom:".35rem"}}>
-              <div style={{position:"absolute",left:"50%",width:"20%",height:"100%",background:"#bbf7d0",opacity:.7,borderRadius:99}}/>
+              <div style={{position:"absolute",left:"50%",width:"20%",height:"100%",background:"var(--green-200)",opacity:.7,borderRadius:99}}/>
               <div style={{position:"absolute",left:0,width:`${Math.min(dmPct,100)}%`,height:"100%",background:dmColor,borderRadius:99}}/>
             </div>
           )}
@@ -1401,15 +1309,15 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
                 {["","Nome","E-mail","Perfil","Status"].map((h,i)=><th key={i} style={{padding:".5rem .85rem",textAlign:"left",fontWeight:600,color:"var(--text-3)",fontSize:".72rem",width:i===0?"36px":undefined}}>{h}</th>)}
               </tr></thead>
                 <tbody>{[...adminUserList].sort((a,b)=>{const o={nurse_manager:0,doctor:1,dentist:2,nursing_tech:3,pharmacist:4,pharmacy_tech:5,acs:6,receptionist:7};return((o[a.role] ?? 9)-(o[b.role] ?? 9));}).map(u=>{
-                const rc={nurse_manager:"#0d9488",doctor:"#6366f1",dentist:"#8b5cf6",nursing_tech:"#0891b2",acs:"#f59e0b",pharmacist:"#7c3aed",pharmacy_tech:"#a855f7",receptionist:"#64748b"}[u.role]||"var(--teal-600)";
+                const rc={nurse_manager:"var(--teal-600)",doctor:"var(--indigo-500)",dentist:"var(--violet-500)",nursing_tech:"var(--cyan-600)",acs:"var(--amber-500)",pharmacist:"var(--violet-600)",pharmacy_tech:"#a855f7",receptionist:"var(--slate-500)"}[u.role]||"var(--teal-600)";
                 const online=u.online===true;
                 return(<tr key={u.id} style={{borderBottom:"1px solid var(--border)"}} onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"} onMouseLeave={e=>e.currentTarget.style.background=""}>
                   <td style={{padding:".5rem .85rem"}}><div className="user-avatar" style={{width:28,height:28,fontSize:".7rem",background:rc}}>{initials(u.name)}</div></td>
                   <td style={{padding:".5rem .85rem",fontWeight:500,color:"var(--ink)"}}>{u.name}</td>
                   <td style={{padding:".5rem .85rem",color:"var(--text-2)",fontFamily:"monospace",fontSize:".78rem"}}>{u.email||"-"}</td>
                   <td style={{padding:".5rem .85rem"}}><span style={{fontSize:".72rem",fontWeight:600,padding:".2rem .5rem",borderRadius:999,background:`${rc}18`,color:rc}}>{roleLabel(u.role)}</span></td>
-                  <td style={{padding:".5rem .85rem"}}><span style={{display:"inline-flex",alignItems:"center",gap:".3rem",fontSize:".72rem",fontWeight:600,color:online?"#16a34a":"var(--text-3)"}}>
-                    <span style={{width:7,height:7,borderRadius:"50%",background:online?"#16a34a":"var(--border)",boxShadow:online?"0 0 0 2px #bbf7d0":undefined}}/>
+                  <td style={{padding:".5rem .85rem"}}><span style={{display:"inline-flex",alignItems:"center",gap:".3rem",fontSize:".72rem",fontWeight:600,color:online?"var(--green-600)":"var(--text-3)"}}>
+                    <span style={{width:7,height:7,borderRadius:"50%",background:online?"var(--green-600)":"var(--border)",boxShadow:online?"0 0 0 2px #bbf7d0":undefined}}/>
                     {online?"Online":"Offline"}
                   </span></td>
                 </tr>);
@@ -1435,14 +1343,14 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
               {alerts.map(a=>(
                 <div key={a.id} onClick={()=>a.patientId&&onNavigate&&onNavigate(a.patientId)}
                   style={{padding:".65rem .85rem",borderRadius:"var(--r-md)",cursor:a.patientId?"pointer":"default",
-                    background:a.type==="danger"?"#fff1f2":a.type==="warn"?"#fffbeb":"#eff6ff",
-                    border:`1px solid ${a.type==="danger"?"#fecdd3":a.type==="warn"?"#fde68a":"#bfdbfe"}`,
+                    background:a.type==="danger"?"var(--rose-50)":a.type==="warn"?"var(--amber-50)":"var(--blue-50)",
+                    border:`1px solid ${a.type==="danger"?"var(--rose-200)":a.type==="warn"?"var(--amber-200)":"var(--blue-200)"}`,
                     display:"flex",gap:".6rem",alignItems:"center",transition:"filter .1s"}}
                   onMouseEnter={e=>{ if(a.patientId) e.currentTarget.style.filter="brightness(.97)"; }}
                   onMouseLeave={e=>e.currentTarget.style.filter="none"}>
                   <span style={{fontSize:"1.1rem",flexShrink:0}}>{a.icon}</span>
                   <div style={{minWidth:0}}>
-                    <div style={{fontWeight:700,fontSize:".74rem",color:a.type==="danger"?"#be123c":a.type==="warn"?"#92400e":"#1d4ed8"}}>{a.title}</div>
+                    <div style={{fontWeight:700,fontSize:".74rem",color:a.type==="danger"?"var(--rose-700)":a.type==="warn"?"var(--amber-700)":"var(--blue-700)"}}>{a.title}</div>
                     <div style={{fontSize:".71rem",color:"var(--text-2)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{a.detail}</div>
                   </div>
                 </div>
@@ -1822,7 +1730,7 @@ function ExamRequestModal({ patient, user, users, token, onClose }) {
                     </select>
                   </label>
                 </div>
-                {exams.length>1&&<button type="button" onClick={()=>removeExam(i)} style={{marginTop:"1.4rem",padding:".25rem .45rem",background:"#fff1f2",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"#be123c",cursor:"pointer",fontSize:".75rem",flexShrink:0}}>✕</button>}
+                {exams.length>1&&<button type="button" onClick={()=>removeExam(i)} style={{marginTop:"1.4rem",padding:".25rem .45rem",background:"var(--rose-50)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"var(--rose-700)",cursor:"pointer",fontSize:".75rem",flexShrink:0}}>✕</button>}
               </div>
               <input value={ex.notes} onChange={e=>updateExam(i,"notes",e.target.value)} placeholder="Observação específica (opcional)" style={{fontSize:".78rem"}}/>
             </div>
@@ -1916,7 +1824,7 @@ function PrescriptionModal({ patient, user, token, onClose }) {
                     {MEDICATIONS_COMMON.map(med=><option key={med} value={med}>{med}</option>)}
                   </select>
                 </label>
-                {meds.length>1&&<button type="button" onClick={()=>removeMed(i)} style={{padding:".3rem .5rem",background:"#fff1f2",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"#be123c",cursor:"pointer",fontSize:".75rem",flexShrink:0,marginBottom:0}}>✕</button>}
+                {meds.length>1&&<button type="button" onClick={()=>removeMed(i)} style={{padding:".3rem .5rem",background:"var(--rose-50)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"var(--rose-700)",cursor:"pointer",fontSize:".75rem",flexShrink:0,marginBottom:0}}>✕</button>}
               </div>
               {m.name==="Outros (digitar)"&&<input value={m.custom} onChange={e=>updateMed(i,"custom",e.target.value)} placeholder="Nome do medicamento com concentração"/>}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".4rem"}}>
@@ -2025,7 +1933,7 @@ function InternalReferralModal({ patient, user, users, token, onClose }) {
           <button className="icon-btn" onClick={()=>onClose(false)}><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
         </div>
         {!doctors.length ? (
-          <div style={{padding:"1rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".8rem",color:"#92400e"}}>
+          <div style={{padding:"1rem",background:"var(--amber-50)",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".8rem",color:"var(--amber-700)"}}>
             Nenhum médico/dentista cadastrado na equipe para encaminhar.
           </div>
         ) : (
@@ -2149,13 +2057,13 @@ function ExamsTab({ patientId, patient, canManageUser, canWriteRecords, user, us
           </button>
           {(canManageUser||["doctor","dentist","nurse_manager"].includes(user?.role))&&(
             <button type="button" onClick={()=>setShowPrescription(true)}
-              style={{fontSize:".76rem",padding:".3rem .7rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",color:"#15803d",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:".3rem"}}>
+              style={{fontSize:".76rem",padding:".3rem .7rem",background:"var(--green-50)",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",color:"var(--green-700)",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:".3rem"}}>
               💊 Prescrever
             </button>
           )}
           {user?.role==="nurse_manager"&&(
             <button type="button" onClick={()=>setShowReferral(true)}
-              style={{fontSize:".76rem",padding:".3rem .7rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",color:"#1d4ed8",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:".3rem"}}>
+              style={{fontSize:".76rem",padding:".3rem .7rem",background:"var(--blue-50)",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",color:"var(--blue-700)",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:".3rem"}}>
               🔁 Encaminhar ao médico
             </button>
           )}
@@ -2165,7 +2073,7 @@ function ExamsTab({ patientId, patient, canManageUser, canWriteRecords, user, us
               + Exame do posto
             </button>
             <button type="button" onClick={()=>setAddMode(addMode==="externo"?null:"externo")}
-              style={{fontSize:".76rem",padding:".3rem .7rem",background:addMode==="externo"?"#6366f1":"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",color:addMode==="externo"?"#fff":"var(--text-1)",fontWeight:600,cursor:"pointer"}}>
+              style={{fontSize:".76rem",padding:".3rem .7rem",background:addMode==="externo"?"var(--indigo-500)":"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",color:addMode==="externo"?"#fff":"var(--text-1)",fontWeight:600,cursor:"pointer"}}>
               + Exame externo
             </button>
           </div>
@@ -2174,8 +2082,8 @@ function ExamsTab({ patientId, patient, canManageUser, canWriteRecords, user, us
 
       {/* Formulário inline — posto ou externo */}
       {addMode&&(
-        <div style={{padding:".85rem",background:"var(--surface-2)",border:`2px solid ${addMode==="externo"?"#6366f1":"var(--teal-500)"}`,borderRadius:"var(--r-md)",marginBottom:"1rem"}}>
-          <div style={{fontSize:".72rem",fontWeight:700,color:addMode==="externo"?"#6366f1":"var(--teal-700)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".65rem"}}>
+        <div style={{padding:".85rem",background:"var(--surface-2)",border:`2px solid ${addMode==="externo"?"var(--indigo-500)":"var(--teal-500)"}`,borderRadius:"var(--r-md)",marginBottom:"1rem"}}>
+          <div style={{fontSize:".72rem",fontWeight:700,color:addMode==="externo"?"var(--indigo-500)":"var(--teal-700)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".65rem"}}>
             {addMode==="externo"?"📎 Inserir exame externo (trazido pelo paciente)":"🏥 Registrar exame realizado no posto"}
           </div>
           <form onSubmit={handleSubmit} style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
@@ -2228,8 +2136,8 @@ function ExamsTab({ patientId, patient, canManageUser, canWriteRecords, user, us
 
       {/* Lista — exames externos */}
       <div>
-        <div style={{fontSize:".7rem",fontWeight:700,color:"#6366f1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".5rem",display:"flex",alignItems:"center",gap:".4rem"}}>
-          <span style={{width:8,height:8,borderRadius:"50%",background:"#6366f1",display:"inline-block"}}/>
+        <div style={{fontSize:".7rem",fontWeight:700,color:"var(--indigo-500)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".5rem",display:"flex",alignItems:"center",gap:".4rem"}}>
+          <span style={{width:8,height:8,borderRadius:"50%",background:"var(--indigo-500)",display:"inline-block"}}/>
           Trazidos pelo paciente ({externo.length})
         </div>
         {!externo.length ? <p className="muted" style={{fontSize:".82rem"}}>Nenhum exame externo registrado.</p>
@@ -2271,7 +2179,7 @@ function ExamsTab({ patientId, patient, canManageUser, canWriteRecords, user, us
 function examCard(exam, canManageUser, handleDelete, setPreview, isImg, fmtDate) {
   const isExternal = String(exam.details||"").includes("[EXAME EXTERNO");
   return (
-    <div key={exam.id} style={{background:"var(--surface)",border:`1px solid ${isExternal?"#e0e7ff":"var(--border)"}`,borderLeft:`3px solid ${isExternal?"#6366f1":"var(--teal-400)"}`,borderRadius:"var(--r-md)",padding:".65rem .85rem",marginBottom:".4rem"}}>
+    <div key={exam.id} style={{background:"var(--surface)",border:`1px solid ${isExternal?"var(--indigo-100)":"var(--border)"}`,borderLeft:`3px solid ${isExternal?"var(--indigo-500)":"var(--teal-400)"}`,borderRadius:"var(--r-md)",padding:".65rem .85rem",marginBottom:".4rem"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:".5rem"}}>
         <div>
           <div style={{fontWeight:600,fontSize:".84rem",color:"var(--ink)"}}>{exam.title}</div>
@@ -2279,7 +2187,7 @@ function examCard(exam, canManageUser, handleDelete, setPreview, isImg, fmtDate)
         </div>
         <div style={{display:"flex",gap:".3rem",alignItems:"center",flexShrink:0}}>
           {Array.isArray(exam.attachments)&&exam.attachments.length>0&&(
-            <span style={{fontSize:".68rem",color:isExternal?"#6366f1":"var(--teal-700)",background:isExternal?"#eff6ff":"var(--teal-50)",border:`1px solid ${isExternal?"#c7d2fe":"var(--teal-100)"}`,padding:".1rem .4rem",borderRadius:999}}>
+            <span style={{fontSize:".68rem",color:isExternal?"var(--indigo-500)":"var(--teal-700)",background:isExternal?"var(--blue-50)":"var(--teal-50)",border:`1px solid ${isExternal?"var(--indigo-200)":"var(--teal-100)"}`,padding:".1rem .4rem",borderRadius:999}}>
               {exam.attachments.length} anexo{exam.attachments.length>1?"s":""}
             </span>
           )}
@@ -2330,12 +2238,12 @@ function PatientActionsTab({ patient, user, users, token, canManageUser, canWrit
     canPrescribe && {
       id:"prescription", icon:"💊", title:"Prescrever Medicamento",
       desc:"Emita prescrição com medicamentos, dosagem, frequência e via.",
-      color:"#15803d", bg:"#f0fdf4", border:"#bbf7d0"
+      color:"var(--green-700)", bg:"var(--green-50)", border:"var(--green-200)"
     },
     canRefer && {
       id:"referral", icon:"🔁", title:"Encaminhar ao Médico",
       desc:"Encaminhe o paciente a um médico ou dentista da unidade com justificativa.",
-      color:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe"
+      color:"var(--blue-700)", bg:"var(--blue-50)", border:"var(--blue-200)"
     },
   ].filter(Boolean);
 
@@ -2533,7 +2441,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
                     + Exame do posto
                   </button>
                   <button type="button" onClick={()=>setAddMode(addMode==="externo"?null:"externo")}
-                    style={{fontSize:".76rem",padding:".3rem .7rem",background:addMode==="externo"?"#6366f1":"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",color:addMode==="externo"?"#fff":"var(--text-1)",fontWeight:600,cursor:"pointer"}}>
+                    style={{fontSize:".76rem",padding:".3rem .7rem",background:addMode==="externo"?"var(--indigo-500)":"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",color:addMode==="externo"?"#fff":"var(--text-1)",fontWeight:600,cursor:"pointer"}}>
                     + Exame externo
                   </button>
                 </div>
@@ -2541,8 +2449,8 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
 
               {/* Formulário inline */}
               {addMode&&(
-                <div style={{padding:".85rem",background:"var(--surface-2)",border:`2px solid ${addMode==="externo"?"#6366f1":"var(--teal-500)"}`,borderRadius:"var(--r-md)",marginBottom:"1rem"}}>
-                  <div style={{fontSize:".71rem",fontWeight:700,color:addMode==="externo"?"#6366f1":"var(--teal-700)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".6rem"}}>
+                <div style={{padding:".85rem",background:"var(--surface-2)",border:`2px solid ${addMode==="externo"?"var(--indigo-500)":"var(--teal-500)"}`,borderRadius:"var(--r-md)",marginBottom:"1rem"}}>
+                  <div style={{fontSize:".71rem",fontWeight:700,color:addMode==="externo"?"var(--indigo-500)":"var(--teal-700)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".6rem"}}>
                     {addMode==="externo"?"📎 Exame externo (trazido pelo paciente)":"🏥 Exame realizado no posto"}
                   </div>
                   <form onSubmit={handleSubmit} style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
@@ -2595,8 +2503,8 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
 
               {/* Exames externos */}
               <div>
-                <div style={{fontSize:".7rem",fontWeight:700,color:"#6366f1",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".5rem",display:"flex",alignItems:"center",gap:".4rem"}}>
-                  <span style={{width:8,height:8,borderRadius:"50%",background:"#6366f1",display:"inline-block"}}/>
+                <div style={{fontSize:".7rem",fontWeight:700,color:"var(--indigo-500)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".5rem",display:"flex",alignItems:"center",gap:".4rem"}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:"var(--indigo-500)",display:"inline-block"}}/>
                   Trazidos pelo paciente ({externo.length})
                 </div>
                 {!externo.length?<p className="muted" style={{fontSize:".82rem"}}>Nenhum exame externo registrado.</p>
@@ -2649,20 +2557,20 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
     nursing:"Evolução de enfermagem", evolution:"Evolução clínica", home_visit:"Visita domiciliar",
   };
   const TYPE_COLORS = {
-    consultation:["#1d4ed8","#eff6ff","#bfdbfe"],
-    visit:       ["#15803d","#f0fdf4","#bbf7d0"],
-    home_visit:  ["#15803d","#f0fdf4","#bbf7d0"],
-    vaccine:     ["#7c3aed","#f5f3ff","#ddd6fe"],
-    procedure:   ["#c2410c","#fff7ed","#fed7aa"],
-    note:        ["#475569","var(--surface-2)","var(--border)"],
-    task:        ["#d97706","#fffbeb","#fde68a"],
-    message:     ["#0891b2","#ecfeff","#a5f3fc"],
-    exam:        ["#0f766e","var(--teal-50)","var(--teal-100)"],
-    exam_request:["#0f766e","var(--teal-50)","var(--teal-100)"],
-    prescription:["#15803d","#f0fdf4","#bbf7d0"],
-    referral:    ["#6366f1","#eff6ff","#c7d2fe"],
-    nursing:     ["#0d9488","#f0fdfa","#99f6e4"],
-    evolution:   ["#0891b2","#ecfeff","#a5f3fc"],
+    consultation:["var(--blue-700)","var(--blue-50)","var(--blue-200)"],
+    visit:       ["var(--green-700)","var(--green-50)","var(--green-200)"],
+    home_visit:  ["var(--green-700)","var(--green-50)","var(--green-200)"],
+    vaccine:     ["var(--violet-600)","var(--violet-50)","var(--violet-200)"],
+    procedure:   ["var(--orange-700)","var(--orange-50)","var(--orange-200)"],
+    note:        ["var(--slate-600)","var(--surface-2)","var(--border)"],
+    task:        ["var(--amber-600)","var(--amber-50)","var(--amber-200)"],
+    message:     ["var(--cyan-600)","var(--cyan-50)","var(--cyan-200)"],
+    exam:        ["var(--teal-700)","var(--teal-50)","var(--teal-100)"],
+    exam_request:["var(--teal-700)","var(--teal-50)","var(--teal-100)"],
+    prescription:["var(--green-700)","var(--green-50)","var(--green-200)"],
+    referral:    ["var(--indigo-500)","var(--blue-50)","var(--indigo-200)"],
+    nursing:     ["var(--teal-600)","var(--teal-50)","var(--teal-200)"],
+    evolution:   ["var(--cyan-600)","var(--cyan-50)","var(--cyan-200)"],
   };
 
   // Tipos internos que NÒO entram no prontuário legal
@@ -2736,7 +2644,7 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
           Clínico — entra no prontuário legal
         </span>
         <span style={{display:"flex",alignItems:"center",gap:".3rem",fontSize:".68rem",color:"var(--text-3)"}}>
-          <span style={{width:8,height:8,borderRadius:2,background:"#d97706",display:"inline-block"}}/>
+          <span style={{width:8,height:8,borderRadius:2,background:"var(--amber-600)",display:"inline-block"}}/>
           Interno — só visível aqui
         </span>
       </div>
@@ -2775,7 +2683,7 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
                 <div style={{display:"flex",alignItems:"center",gap:".4rem",flexWrap:"wrap"}}>
                   <span style={{fontWeight:700,fontSize:".84rem",color:"var(--ink)"}}>{ev.title}</span>
                   <span style={{fontSize:".65rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:color,color:"#fff",flexShrink:0}}>{label}</span>
-                  {isInternal&&<span style={{fontSize:".62rem",padding:".08rem .35rem",borderRadius:999,background:"#fef3c7",color:"#92400e",border:"1px solid #fde68a",flexShrink:0}}>somente interno</span>}
+                  {isInternal&&<span style={{fontSize:".62rem",padding:".08rem .35rem",borderRadius:999,background:"var(--amber-100)",color:"var(--amber-700)",border:"1px solid #fde68a",flexShrink:0}}>somente interno</span>}
                   {ev.status&&<span style={{fontSize:".65rem",padding:".1rem .4rem",borderRadius:999,background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-3)"}}>{ev.status}</span>}
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:".35rem",flexShrink:0}}>
@@ -2831,7 +2739,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
           <div style={{fontWeight:700,fontSize:".95rem",color:"var(--text-1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:".5rem"}}>
             {patient.name}
             {(()=>{ const age=calcAge(patient.birthDate); return age&&<span style={{fontSize:".72rem",fontWeight:600,color:"var(--text-3)",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:999,padding:".1rem .45rem",flexShrink:0}}>{age}</span>; })()}
-            {isProfileIncomplete(patient)&&<span style={{fontSize:".65rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"#fef3c7",color:"#92400e",border:"1px solid #fde68a",flexShrink:0}}>⚠️ Cadastro incompleto</span>}
+            {isProfileIncomplete(patient)&&<span style={{fontSize:".65rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"var(--amber-100)",color:"var(--amber-700)",border:"1px solid #fde68a",flexShrink:0}}>⚠️ Cadastro incompleto</span>}
           </div>
           <div style={{fontSize:".75rem",color:"var(--text-2)",display:"flex",gap:".5rem",flexWrap:"wrap",marginTop:".15rem"}}>
             <span>{catLabel(templates,patient.careCategory)}</span>
@@ -2842,14 +2750,14 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
         {canManageUser&&(
           <div style={{display:"flex",gap:".35rem",flexShrink:0}}>
             <button onClick={()=>setShowPatientCard(true)} title="Cartão do paciente" style={{fontSize:".7rem",padding:".25rem .55rem",background:"var(--teal-600)",border:"1px solid var(--teal-700)",borderRadius:"var(--r-md)",color:"#fff",fontWeight:600,cursor:"pointer"}}>Cartão</button>
-            <button onClick={()=>setDocType("comparecimento")} title="Declaração de comparecimento" style={{fontSize:".7rem",padding:".25rem .55rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",color:"#1d4ed8",fontWeight:600,cursor:"pointer"}}>Decl.</button>
-            <button onClick={()=>setDocType("atestado")} title="Atestado médico" style={{fontSize:".7rem",padding:".25rem .55rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",color:"#15803d",fontWeight:600,cursor:"pointer"}}>Atestado</button>
+            <button onClick={()=>setDocType("comparecimento")} title="Declaração de comparecimento" style={{fontSize:".7rem",padding:".25rem .55rem",background:"var(--blue-50)",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",color:"var(--blue-700)",fontWeight:600,cursor:"pointer"}}>Decl.</button>
+            <button onClick={()=>setDocType("atestado")} title="Atestado médico" style={{fontSize:".7rem",padding:".25rem .55rem",background:"var(--green-50)",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",color:"var(--green-700)",fontWeight:600,cursor:"pointer"}}>Atestado</button>
           </div>
         )}
       </div>
       {/* Banner de cadastro incompleto */}
       {isProfileIncomplete(patient)&&(
-        <div style={{padding:".55rem 1.25rem",background:"#fffbeb",borderBottom:"1px solid #fde68a",fontSize:".75rem",color:"#92400e",display:"flex",alignItems:"center",gap:".5rem"}}>
+        <div style={{padding:".55rem 1.25rem",background:"var(--amber-50)",borderBottom:"1px solid #fde68a",fontSize:".75rem",color:"var(--amber-700)",display:"flex",alignItems:"center",gap:".5rem"}}>
           <span>âš ï¸</span>
           <span style={{flex:1}}>Este paciente foi cadastrado rapidamente para agendamento. <strong>Complete o perfil</strong> para liberar consultas.</span>
         </div>
@@ -2925,8 +2833,8 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
                           Indicadores perdidos — Idade atual: {idadeFmt}
                         </div>
                         {lost.map(l=>(
-                          <div key={l} style={{display:"flex",alignItems:"center",gap:".5rem",padding:".4rem .65rem",borderRadius:"var(--r-md)",background:"#f5f3ff",border:"1px solid #ddd6fe",fontSize:".75rem"}}>
-                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#7c3aed" strokeWidth="1.4"/><path d="M5 8h6M8 5v6" stroke="#7c3aed" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                          <div key={l} style={{display:"flex",alignItems:"center",gap:".5rem",padding:".4rem .65rem",borderRadius:"var(--r-md)",background:"var(--violet-50)",border:"1px solid #ddd6fe",fontSize:".75rem"}}>
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="var(--violet-600)" strokeWidth="1.4"/><path d="M5 8h6M8 5v6" stroke="var(--violet-600)" strokeWidth="1.3" strokeLinecap="round"/></svg>
                             <span style={{color:"#6d28d9"}}>{l} — não recuperável</span>
                           </div>
                         ))}
@@ -3098,7 +3006,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
                       return am < 120;
                     })();
                     return isCrianca && recordForm.date && recordVaccines.length > 0 ? (
-                      <div style={{padding:".4rem .6rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",fontSize:".72rem",color:"#1d4ed8",display:"flex",flexDirection:"column",gap:".2rem"}}>
+                      <div style={{padding:".4rem .6rem",background:"var(--blue-50)",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",fontSize:".72rem",color:"var(--blue-700)",display:"flex",flexDirection:"column",gap:".2rem"}}>
                         <strong>Doses que serão registradas:</strong>
                         {recordVaccines.map(v => {
                           const resolved = inferVaccineDoseTitle(v, recordForm.date, patient.birthDate);
@@ -3157,7 +3065,7 @@ function PatientDetail({ patient,users,templates,patientTab,setPatientTab,appoin
                   onChange={e=>setRecordForm(s=>({...s,details:e.target.value}))} style={{minHeight:48}}/>
               </label>
 
-              <div style={{display:"flex",alignItems:"center",gap:".5rem",padding:".5rem .65rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",fontSize:".72rem",color:"#15803d"}}>
+              <div style={{display:"flex",alignItems:"center",gap:".5rem",padding:".5rem .65rem",background:"var(--green-50)",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",fontSize:".72rem",color:"var(--green-700)"}}>
                 <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 3h3l-2.5 2 1 3L8 7.5 5 9l1-3L3.5 4h3L8 1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
                 Este registro será salvo automaticamente no prontuário com data, hora e profissional responsável.
               </div>
@@ -3468,7 +3376,7 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
           <path d="M8 14.5a2 2 0 004 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
         </svg>
         {unseenCount > 0 && (
-          <span style={{position:"absolute",top:-4,right:-4,minWidth:16,height:16,borderRadius:999,background:hasDanger?"#dc2626":"var(--amber-500)",color:"#fff",fontSize:".6rem",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",lineHeight:1}}>
+          <span style={{position:"absolute",top:-4,right:-4,minWidth:16,height:16,borderRadius:999,background:hasDanger?"var(--red-600)":"var(--amber-500)",color:"#fff",fontSize:".6rem",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",lineHeight:1}}>
             {unseenCount > 9 ? "9+" : unseenCount}
           </span>
         )}
@@ -3498,7 +3406,7 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
           {unseenAlerts.map(a => (
             <div key={a.id}
               style={{padding:".65rem 1rem",borderBottom:"1px solid var(--border-soft)",display:"flex",gap:".65rem",alignItems:"flex-start",
-                background:a.type==="danger"?"#fff5f5":a.type==="warn"?"#fffbeb":"var(--surface)",
+                background:a.type==="danger"?"#fff5f5":a.type==="warn"?"var(--amber-50)":"var(--surface)",
                 cursor:a.patientId?"pointer":"default",transition:"filter .1s"}}
               onMouseEnter={e=>{ if(a.patientId) e.currentTarget.style.filter="brightness(.97)"; }}
               onMouseLeave={e=>{ e.currentTarget.style.filter="none"; }}>
@@ -3509,7 +3417,7 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
                   {a.type==="danger"?"⛔":a.type==="warn"?"⚠️":"ℹ️"}
                 </span>
                 <div style={{minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:".76rem",color:a.type==="danger"?"#be123c":a.type==="warn"?"var(--amber-700)":"var(--teal-700)"}}>{a.title}</div>
+                  <div style={{fontWeight:700,fontSize:".76rem",color:a.type==="danger"?"var(--rose-700)":a.type==="warn"?"var(--amber-700)":"var(--teal-700)"}}>{a.title}</div>
                   <div style={{fontSize:".73rem",color:"var(--text-2)",marginTop:".1rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{a.detail}</div>
                 </div>
               </span>
@@ -3628,10 +3536,10 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
   // ── Queue helpers ──
   const PRIORITY_LABELS = { urgent:"Urgente", elderly:"Idoso/PCD", pregnant:"Gestante", child:"Criança", normal:"Normal" };
   const PRIORITY_COLORS = {
-    urgent:   {bg:"#fff1f2",border:"#fecdd3",text:"#be123c",order:0},
-    elderly:  {bg:"#fff7ed",border:"#fed7aa",text:"#c2410c",order:1},
-    pregnant: {bg:"#fdf4ff",border:"#e9d5ff",text:"#7e22ce",order:2},
-    child:    {bg:"#eff6ff",border:"#bfdbfe",text:"#1d4ed8",order:3},
+    urgent:   {bg:"var(--rose-50)",border:"var(--rose-200)",text:"var(--rose-700)",order:0},
+    elderly:  {bg:"var(--orange-50)",border:"var(--orange-200)",text:"var(--orange-700)",order:1},
+    pregnant: {bg:"#fdf4ff",border:"var(--purple-200)",text:"var(--purple-800)",order:2},
+    child:    {bg:"var(--blue-50)",border:"var(--blue-200)",text:"var(--blue-700)",order:3},
     normal:   {bg:"var(--surface-2)",border:"var(--border)",text:"var(--text-2)",order:4},
   };
 
@@ -3676,11 +3584,11 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
   // ── Agenda helpers ──
   const AGENDA_HOURS = ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00"];
   const STATUS_STYLE = {
-    scheduled:{bg:"#eff6ff",color:"#1d4ed8",border:"#bfdbfe",label:"Agendado"},
-    arrived:  {bg:"#f0fdf4",color:"#15803d",border:"#bbf7d0",label:"Chegou"},
-    attending:{bg:"#fff7ed",color:"#c2410c",border:"#fed7aa",label:"Em atend."},
+    scheduled:{bg:"var(--blue-50)",color:"var(--blue-700)",border:"var(--blue-200)",label:"Agendado"},
+    arrived:  {bg:"var(--green-50)",color:"var(--green-700)",border:"var(--green-200)",label:"Chegou"},
+    attending:{bg:"var(--orange-50)",color:"var(--orange-700)",border:"var(--orange-200)",label:"Em atend."},
     done:     {bg:"var(--surface-2)",color:"var(--text-3)",border:"var(--border)",label:"Concluído"},
-    absent:   {bg:"#fff1f2",color:"#be123c",border:"#fecdd3",label:"Faltou"},
+    absent:   {bg:"var(--rose-50)",color:"var(--rose-700)",border:"var(--rose-200)",label:"Faltou"},
   };
 
   const selD     = new Date(selectedDate+"T12:00:00");
@@ -3750,7 +3658,7 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                 color:tab===t.id?"#fff":"var(--text-2)",cursor:"pointer",
                 fontSize:".8rem",fontWeight:600,display:"flex",alignItems:"center",gap:".35rem",transition:"all .12s"}}>
               <span>{t.icon}</span>{t.label}
-              {t.id==="queue"&&waiting>0&&<span style={{background:"#dc2626",color:"#fff",borderRadius:999,fontSize:".6rem",padding:"0 5px",fontWeight:800,minWidth:16,textAlign:"center"}}>{waiting}</span>}
+              {t.id==="queue"&&waiting>0&&<span style={{background:"var(--red-600)",color:"#fff",borderRadius:999,fontSize:".6rem",padding:"0 5px",fontWeight:800,minWidth:16,textAlign:"center"}}>{waiting}</span>}
             </button>
           ))}
         </div>
@@ -3783,7 +3691,7 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
           <div style={{maxWidth:820,margin:"0 auto"}}>
             {/* KPIs */}
             <div style={{display:"flex",gap:".75rem",marginBottom:"1.25rem",flexWrap:"wrap"}}>
-              {[["⏳","Aguardando",waiting,"#1d4ed8","#eff6ff"],["🩺","Em atendimento",attending,"#c2410c","#fff7ed"],["📋","Total hoje",sortedQueue.length,"var(--text-2)","var(--surface-2)"]].map(([ic,l,v,color,bg])=>(
+              {[["⏳","Aguardando",waiting,"var(--blue-700)","var(--blue-50)"],["🩺","Em atendimento",attending,"var(--orange-700)","var(--orange-50)"],["📋","Total hoje",sortedQueue.length,"var(--text-2)","var(--surface-2)"]].map(([ic,l,v,color,bg])=>(
                 <div key={l} style={{flex:"1 1 140px",background:bg,border:`1px solid ${bg==="var(--surface-2)"?"var(--border)":bg.replace("ff","cc")}`,borderRadius:"var(--r-md)",padding:".85rem 1rem",display:"flex",alignItems:"center",gap:".75rem"}}>
                   <span style={{fontSize:"1.6rem"}}>{ic}</span>
                   <div>
@@ -3838,12 +3746,12 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                           )}
                           {q.status==="attending"&&(
                             <button onClick={()=>updateQueueStatus(q.id,"done")}
-                              style={{fontSize:".78rem",padding:".3rem .75rem",background:"#15803d",color:"#fff",border:"none",borderRadius:"var(--r-md)"}}>
+                              style={{fontSize:".78rem",padding:".3rem .75rem",background:"var(--green-700)",color:"#fff",border:"none",borderRadius:"var(--r-md)"}}>
                               ✓ Concluir
                             </button>
                           )}
                           <button onClick={()=>removeFromQueue(q.id)}
-                            style={{fontSize:".78rem",padding:".3rem .6rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"#be123c"}}>
+                            style={{fontSize:".78rem",padding:".3rem .6rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"var(--rose-700)"}}>
                             ✕
                           </button>
                         </div>
@@ -3869,12 +3777,12 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                 return(
                   <button key={d} onClick={()=>setSelectedDate(d)}
                     style={{flex:"1 0 70px",minWidth:70,padding:".6rem .4rem",borderRadius:"var(--r-md)",
-                      border:`2px solid ${isSel?"var(--teal-500)":unavailable?"#e2e8f0":"var(--border)"}`,
-                      background:isSel?"var(--teal-600)":unavailable?"#f8fafc":isToday?"var(--teal-50)":"var(--surface)",
-                      color:isSel?"#fff":unavailable?"#94a3b8":isToday?"var(--teal-700)":"var(--text-2)",cursor:"pointer",textAlign:"center",opacity:unavailable&&!isSel?.7:1}}>
+                      border:`2px solid ${isSel?"var(--teal-500)":unavailable?"var(--slate-200)":"var(--border)"}`,
+                      background:isSel?"var(--teal-600)":unavailable?"var(--slate-50)":isToday?"var(--teal-50)":"var(--surface)",
+                      color:isSel?"#fff":unavailable?"var(--slate-400)":isToday?"var(--teal-700)":"var(--text-2)",cursor:"pointer",textAlign:"center",opacity:unavailable&&!isSel?.7:1}}>
                     <div style={{fontSize:".65rem",fontWeight:600,textTransform:"uppercase",opacity:.8}}>{dt.toLocaleDateString("pt-BR",{weekday:"short"})}</div>
                     <div style={{fontSize:"1.15rem",fontWeight:900,lineHeight:1.2}}>{dt.getDate()}</div>
-                    {unavailable&&!isSel&&<div style={{fontSize:".55rem",marginTop:".1rem",color:"#94a3b8"}}>fechado</div>}
+                    {unavailable&&!isSel&&<div style={{fontSize:".55rem",marginTop:".1rem",color:"var(--slate-400)"}}>fechado</div>}
                     {!unavailable&&countByDay[d]>0&&<div style={{fontSize:".62rem",marginTop:".1rem",opacity:.85,fontWeight:600}}>{countByDay[d]} aptos.</div>}
                   </button>
                 );
@@ -3892,9 +3800,9 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
               </button>}
             </div>
             {isUnavailableDay(selectedDate)&&(
-              <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".65rem 1rem",marginBottom:".75rem",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:"var(--r-md)",fontSize:".8rem",color:"#64748b"}}>
+              <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".65rem 1rem",marginBottom:".75rem",background:"var(--slate-50)",border:"1px solid #e2e8f0",borderRadius:"var(--r-md)",fontSize:".8rem",color:"var(--slate-500)"}}>
                 <span style={{fontSize:"1.1rem"}}>🔒</span>
-                <span style={{fontWeight:600,color:"#475569"}}>{unavailableReason(selectedDate)}</span>
+                <span style={{fontWeight:600,color:"var(--slate-600)"}}>{unavailableReason(selectedDate)}</span>
               </div>
             )}
 
@@ -3926,7 +3834,7 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                           {Object.entries(STATUS_STYLE).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
                         </select>
                         <button onClick={()=>openAgendaEdit(appt)} style={{padding:".3rem .55rem",fontSize:".72rem",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",color:"var(--text-1)"}}>✏️</button>
-                        <button onClick={()=>removeAgenda(appt.id)} style={{padding:".3rem .55rem",fontSize:".72rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"#be123c"}}>✕</button>
+                        <button onClick={()=>removeAgenda(appt.id)} style={{padding:".3rem .55rem",fontSize:".72rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"var(--rose-700)"}}>✕</button>
                       </div>
                     </div>
                   );
@@ -4027,7 +3935,7 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                       <div style={{fontWeight:700,fontSize:".72rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".5rem"}}>Alertas clínicos</div>
                       <div style={{fontSize:".82rem",display:"flex",flexDirection:"column",gap:".3rem"}}>
                         {String(selectedPatient.allergies||"").trim()&&(
-                          <span style={{color:"#be123c",fontWeight:600,background:"#fff1f2",padding:".2rem .5rem",borderRadius:"var(--r-md)",border:"1px solid #fecdd3"}}>âš ï¸ Alergias: {selectedPatient.allergies}</span>
+                          <span style={{color:"var(--rose-700)",fontWeight:600,background:"var(--rose-50)",padding:".2rem .5rem",borderRadius:"var(--r-md)",border:"1px solid #fecdd3"}}>âš ï¸ Alergias: {selectedPatient.allergies}</span>
                         )}
                         {gestationalAgeInfo(selectedPatient)&&String(selectedPatient.careCategory||"").toLowerCase()==="pregnant"&&(()=>{
                           const g=gestationalAgeInfo(selectedPatient);
@@ -4269,7 +4177,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
   const dayAppts = agenda.filter(a => a.date===selectedDate && (!filterDoc||a.doctorId===filterDoc))
     .sort((a,b)=>a.time.localeCompare(b.time));
 
-  const statusStyle = { scheduled:{bg:"#eff6ff",color:"#1d4ed8",border:"#bfdbfe",label:"Agendado"}, arrived:{bg:"#f0fdf4",color:"#15803d",border:"#bbf7d0",label:"Chegou"}, attending:{bg:"#fff7ed",color:"#c2410c",border:"#fed7aa",label:"Em atend."}, done:{bg:"var(--surface-2)",color:"var(--text-3)",border:"var(--border)",label:"Concluído"}, absent:{bg:"#fff1f2",color:"#be123c",border:"#fecdd3",label:"Faltou"} };
+  const statusStyle = { scheduled:{bg:"var(--blue-50)",color:"var(--blue-700)",border:"var(--blue-200)",label:"Agendado"}, arrived:{bg:"var(--green-50)",color:"var(--green-700)",border:"var(--green-200)",label:"Chegou"}, attending:{bg:"var(--orange-50)",color:"var(--orange-700)",border:"var(--orange-200)",label:"Em atend."}, done:{bg:"var(--surface-2)",color:"var(--text-3)",border:"var(--border)",label:"Concluído"}, absent:{bg:"var(--rose-50)",color:"var(--rose-700)",border:"var(--rose-200)",label:"Faltou"} };
 
   // Week navigation
   const selD = new Date(selectedDate+"T12:00:00");
@@ -4306,13 +4214,13 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
           const unavailable=isUnavailableDay(d);
           return (
             <button key={d} onClick={()=>setSelectedDate(d)}
-              style={{flex:"1 0 60px",padding:".55rem .4rem",borderRadius:"var(--r-md)",border:`1px solid ${isSel?"var(--teal-500)":unavailable?"#e2e8f0":"var(--border)"}`,
-                background:isSel?"var(--teal-600)":unavailable?"#f8fafc":"var(--surface)",
-                color:isSel?"#fff":unavailable?"#94a3b8":isToday?"var(--teal-600)":"var(--text-2)",
+              style={{flex:"1 0 60px",padding:".55rem .4rem",borderRadius:"var(--r-md)",border:`1px solid ${isSel?"var(--teal-500)":unavailable?"var(--slate-200)":"var(--border)"}`,
+                background:isSel?"var(--teal-600)":unavailable?"var(--slate-50)":"var(--surface)",
+                color:isSel?"#fff":unavailable?"var(--slate-400)":isToday?"var(--teal-600)":"var(--text-2)",
                 cursor:"pointer",textAlign:"center",minWidth:60,opacity:unavailable&&!isSel?.7:1}}>
               <div style={{fontSize:".65rem",fontWeight:600,textTransform:"uppercase",opacity:.8}}>{dt.toLocaleDateString("pt-BR",{weekday:"short"})}</div>
               <div style={{fontSize:"1.05rem",fontWeight:800,lineHeight:1.2}}>{dt.getDate()}</div>
-              {unavailable&&!isSel&&<div style={{fontSize:".55rem",marginTop:".1rem",color:"#94a3b8"}}>fechado</div>}
+              {unavailable&&!isSel&&<div style={{fontSize:".55rem",marginTop:".1rem",color:"var(--slate-400)"}}>fechado</div>}
               {!unavailable&&countByDay[d]>0&&<div style={{fontSize:".6rem",marginTop:".1rem",opacity:.85}}>{countByDay[d]}×</div>}
             </button>
           );
@@ -4331,10 +4239,10 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
       {/* Timeline */}
       <div style={{flex:1,overflow:"auto",padding:"0 1.5rem 1.5rem"}}>
         {isUnavailableDay(selectedDate)&&(
-          <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".75rem 1rem",marginBottom:".75rem",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:"var(--r-md)",fontSize:".82rem",color:"#64748b"}}>
+          <div style={{display:"flex",alignItems:"center",gap:".75rem",padding:".75rem 1rem",marginBottom:".75rem",background:"var(--slate-50)",border:"1px solid #e2e8f0",borderRadius:"var(--r-md)",fontSize:".82rem",color:"var(--slate-500)"}}>
             <span style={{fontSize:"1.2rem"}}>🔒</span>
             <div>
-              <div style={{fontWeight:700,color:"#475569"}}>{unavailableReason(selectedDate)}</div>
+              <div style={{fontWeight:700,color:"var(--slate-600)"}}>{unavailableReason(selectedDate)}</div>
               <div style={{fontSize:".75rem",marginTop:".1rem"}}>Agendamentos não são realizados nesta data. Caso haja um agendamento existente, ele foi criado manualmente.</div>
             </div>
           </div>
@@ -4358,13 +4266,13 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                 || isProfileIncomplete(patObj)
                 || String(appt.patientId).startsWith("local_");
               return (
-                <div key={appt.id} style={{display:"flex",flexDirection:"column",gap:".4rem",padding:".75rem 1rem",borderRadius:"var(--r-md)",background:ss.bg,border:`1px solid ${incomplete?"#f59e0b":ss.border}`}}>
+                <div key={appt.id} style={{display:"flex",flexDirection:"column",gap:".4rem",padding:".75rem 1rem",borderRadius:"var(--r-md)",background:ss.bg,border:`1px solid ${incomplete?"var(--amber-500)":ss.border}`}}>
                   {incomplete&&(
-                    <div style={{display:"flex",alignItems:"center",gap:".5rem",padding:".3rem .6rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".72rem",color:"#92400e",fontWeight:600}}>
+                    <div style={{display:"flex",alignItems:"center",gap:".5rem",padding:".3rem .6rem",background:"var(--amber-50)",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".72rem",color:"var(--amber-700)",fontWeight:600}}>
                       <span>âš ï¸</span>
                       <span>Cadastro incompleto — consulta bloqueada até completar o perfil.</span>
                       {onNavigatePatient&&<button type="button" onClick={()=>onNavigatePatient(appt.patientId)}
-                        style={{marginLeft:"auto",fontSize:".7rem",padding:".15rem .5rem",background:"#f59e0b",color:"#fff",border:"none",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:700,flexShrink:0}}>
+                        style={{marginLeft:"auto",fontSize:".7rem",padding:".15rem .5rem",background:"var(--amber-500)",color:"#fff",border:"none",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:700,flexShrink:0}}>
                         Completar →
                       </button>}
                     </div>
@@ -4395,7 +4303,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                         })}
                       </select>
                       <button onClick={()=>openEdit(appt)} style={{padding:".25rem .5rem",fontSize:".71rem",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",color:"var(--text-1)"}}>✏️</button>
-                      <button onClick={()=>remove(appt.id)} style={{padding:".25rem .5rem",fontSize:".71rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"#be123c"}}>✕</button>
+                      <button onClick={()=>remove(appt.id)} style={{padding:".25rem .5rem",fontSize:".71rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"var(--rose-700)"}}>✕</button>
                     </div>
                   </div>
                 </div>
@@ -4526,7 +4434,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                       </select>
                     </label>
                   </div>
-                  {newPatErr&&<div style={{fontSize:".75rem",color:"#be123c"}}>{newPatErr}</div>}
+                  {newPatErr&&<div style={{fontSize:".75rem",color:"var(--rose-700)"}}>{newPatErr}</div>}
                   <button type="button"
                     onClick={()=>{
                       if(!newPatForm.name.trim()){setNewPatErr("Nome obrigatório.");return;}
@@ -4544,7 +4452,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                 Data *
                 <input type="date" value={form.date} onChange={e=>setForm(s=>({...s,date:e.target.value}))}/>
                 {form.date&&isUnavailableDay(form.date)&&(
-                  <span style={{fontSize:".72rem",color:"#c2410c",fontWeight:600,display:"flex",alignItems:"center",gap:".3rem"}}>
+                  <span style={{fontSize:".72rem",color:"var(--orange-700)",fontWeight:600,display:"flex",alignItems:"center",gap:".3rem"}}>
                     âš ï¸ {unavailableReason(form.date)} — confirme se necessário
                   </span>
                 )}
@@ -4593,10 +4501,10 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
 ══════════════════════════════════════════════════════════════════ */
 const PRIORITY_LABELS = { urgent:"Urgente", elderly:"Idoso/PCD", pregnant:"Gestante", child:"Criança", normal:"Normal" };
 const PRIORITY_COLORS = {
-  urgent:   { bg:"#fff1f2",border:"#fecdd3",text:"#be123c",order:0 },
-  elderly:  { bg:"#fff7ed",border:"#fed7aa",text:"#c2410c",order:1 },
-  pregnant: { bg:"#fdf4ff",border:"#e9d5ff",text:"#7e22ce",order:2 },
-  child:    { bg:"#eff6ff",border:"#bfdbfe",text:"#1d4ed8",order:3 },
+  urgent:   { bg:"var(--rose-50)",border:"var(--rose-200)",text:"var(--rose-700)",order:0 },
+  elderly:  { bg:"var(--orange-50)",border:"var(--orange-200)",text:"var(--orange-700)",order:1 },
+  pregnant: { bg:"#fdf4ff",border:"var(--purple-200)",text:"var(--purple-800)",order:2 },
+  child:    { bg:"var(--blue-50)",border:"var(--blue-200)",text:"var(--blue-700)",order:3 },
   normal:   { bg:"var(--surface-2)",border:"var(--border)",text:"var(--text-2)",order:4 },
 };
 
@@ -4656,8 +4564,8 @@ function TriagePage({ patients, users, user }) {
           <div style={{display:"flex",alignItems:"center",gap:".5rem",flexShrink:0}}>
             <span style={{fontSize:".72rem",color:"var(--text-3)"}}>Online:</span>
             {onlineTechs.length===0?<span style={{fontSize:".72rem",color:"var(--text-3)"}}>nenhum</span>:onlineTechs.map(u=>(
-              <span key={u.id} style={{fontSize:".72rem",padding:".18rem .5rem",borderRadius:999,background:"#dcfce7",color:"#15803d",fontWeight:600,display:"flex",alignItems:"center",gap:".25rem"}}>
-                <span style={{width:6,height:6,borderRadius:"50%",background:"#16a34a",display:"inline-block"}}/>
+              <span key={u.id} style={{fontSize:".72rem",padding:".18rem .5rem",borderRadius:999,background:"var(--green-100)",color:"var(--green-700)",fontWeight:600,display:"flex",alignItems:"center",gap:".25rem"}}>
+                <span style={{width:6,height:6,borderRadius:"50%",background:"var(--green-600)",display:"inline-block"}}/>
                 {shortName(u.name)}
               </span>
             ))}
@@ -4679,23 +4587,23 @@ function TriagePage({ patients, users, user }) {
             const techName=isBusy?users.find(u=>u.id===entry.triageBy)?.name:null;
             return(
               <div key={entry.id} style={{padding:".7rem .9rem",borderRadius:"var(--r-md)",cursor:entry.status==="triage"?"default":"pointer",
-                border:`2px solid ${isMe?"var(--teal-400)":isBusy?"#fde68a":pc.border}`,
-                background:isMe?"var(--teal-50)":isBusy?"#fffbeb":pc.bg}}
+                border:`2px solid ${isMe?"var(--teal-400)":isBusy?"var(--amber-200)":pc.border}`,
+                background:isMe?"var(--teal-50)":isBusy?"var(--amber-50)":pc.bg}}
                 onClick={()=>{if(!isBusy&&entry.status!=="triage")startTriage(entry);}}>
                 <div style={{fontWeight:700,fontSize:".88rem",color:"var(--ink)"}}>{entry.patientName}</div>
                 <div style={{fontSize:".71rem",color:"var(--text-3)",marginTop:".2rem"}}>Chegou {fmtTime(entry.arrivedAt)} · há {waitMins(entry.arrivedAt)}</div>
                 {isMe&&<div style={{fontSize:".72rem",fontWeight:700,color:"var(--teal-600)",marginTop:".3rem"}}>→ Em triagem por você</div>}
-                {isBusy&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:".3rem"}}>Em triagem: {shortName(techName||"outro técnico")}</div>}
+                {isBusy&&<div style={{fontSize:".72rem",color:"var(--amber-700)",marginTop:".3rem"}}>Em triagem: {shortName(techName||"outro técnico")}</div>}
                 {!isMe&&!isBusy&&<div style={{fontSize:".73rem",color:"var(--teal-600)",fontWeight:600,marginTop:".3rem"}}>Clique para iniciar →</div>}
               </div>
             );
           })}
           {(()=>{const ready=queue.filter(q=>q.status==="ready");if(!ready.length)return null;return(
             <div style={{marginTop:".75rem"}}>
-              <div style={{fontSize:".75rem",fontWeight:700,color:"#15803d",textTransform:"uppercase",letterSpacing:".04em",marginBottom:".35rem"}}>Prontos ({ready.length})</div>
-              {ready.map(e=><div key={e.id} style={{padding:".55rem .8rem",borderRadius:"var(--r-md)",border:"1px solid #bbf7d0",background:"#f0fdf4",marginBottom:".3rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div><div style={{fontWeight:600,fontSize:".82rem",color:"#15803d"}}>{e.patientName}</div><div style={{fontSize:".7rem",color:"#16a34a"}}>Concluído · {fmtTime(e.triageDone)}</div></div>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="#16a34a" strokeWidth="1.4"/><path d="M5 8l2 2 4-4" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <div style={{fontSize:".75rem",fontWeight:700,color:"var(--green-700)",textTransform:"uppercase",letterSpacing:".04em",marginBottom:".35rem"}}>Prontos ({ready.length})</div>
+              {ready.map(e=><div key={e.id} style={{padding:".55rem .8rem",borderRadius:"var(--r-md)",border:"1px solid #bbf7d0",background:"var(--green-50)",marginBottom:".3rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div><div style={{fontWeight:600,fontSize:".82rem",color:"var(--green-700)"}}>{e.patientName}</div><div style={{fontSize:".7rem",color:"var(--green-600)"}}>Concluído · {fmtTime(e.triageDone)}</div></div>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="var(--green-600)" strokeWidth="1.4"/><path d="M5 8l2 2 4-4" stroke="var(--green-600)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>)}
             </div>
           );})()}
@@ -4742,7 +4650,7 @@ function TriagePage({ patients, users, user }) {
                     <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:600}}>Altura (cm)<input value={vitals.height} onChange={e=>setVitals(s=>({...s,height:e.target.value}))} placeholder="170" inputMode="numeric"/></label>
                     <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".78rem",fontWeight:600}}>Glicemia (mg/dL)<input value={vitals.glucose} onChange={e=>setVitals(s=>({...s,glucose:e.target.value}))} placeholder="100" inputMode="numeric"/></label>
                   </div>
-                  {vitals.weight&&vitals.height&&(()=>{const bmi=(parseFloat(vitals.weight)/Math.pow(parseFloat(vitals.height)/100,2)).toFixed(1);const cat=bmi<18.5?["Abaixo do peso","#1d4ed8"]:bmi<25?["Normal","#15803d"]:bmi<30?["Sobrepeso","#b45309"]:["Obesidade","#be123c"];return !isNaN(bmi)?<div style={{marginTop:".3rem",fontSize:".75rem",color:cat[1],fontWeight:600}}>IMC: {bmi} — {cat[0]}</div>:null;})()}
+                  {vitals.weight&&vitals.height&&(()=>{const bmi=(parseFloat(vitals.weight)/Math.pow(parseFloat(vitals.height)/100,2)).toFixed(1);const cat=bmi<18.5?["Abaixo do peso","var(--blue-700)"]:bmi<25?["Normal","var(--green-700)"]:bmi<30?["Sobrepeso","var(--amber-700)"]:["Obesidade","var(--rose-700)"];return !isNaN(bmi)?<div style={{marginTop:".3rem",fontSize:".75rem",color:cat[1],fontWeight:600}}>IMC: {bmi} — {cat[0]}</div>:null;})()}
                 </div>
                 <div>
                   <div style={{fontSize:".78rem",fontWeight:700,color:"var(--text-2)",textTransform:"uppercase",letterSpacing:".04em",marginBottom:".5rem"}}>Dor (0–10)</div>
@@ -4750,9 +4658,9 @@ function TriagePage({ patients, users, user }) {
                     {[0,1,2,3,4,5,6,7,8,9,10].map(n=>(
                       <button key={n} type="button" onClick={()=>setVitals(s=>({...s,pain:String(n)}))}
                         style={{width:36,height:36,borderRadius:"var(--r-md)",fontWeight:700,fontSize:".85rem",cursor:"pointer",
-                          border:`2px solid ${vitals.pain===String(n)?(n<=3?"#15803d":n<=6?"#b45309":"#be123c"):"var(--border)"}`,
-                          background:vitals.pain===String(n)?(n<=3?"#dcfce7":n<=6?"#fef3c7":"#fee2e2"):"var(--surface)",
-                          color:vitals.pain===String(n)?(n<=3?"#15803d":n<=6?"#b45309":"#be123c"):"var(--text-2)"}}>
+                          border:`2px solid ${vitals.pain===String(n)?(n<=3?"var(--green-700)":n<=6?"var(--amber-700)":"var(--rose-700)"):"var(--border)"}`,
+                          background:vitals.pain===String(n)?(n<=3?"var(--green-100)":n<=6?"var(--amber-100)":"var(--red-100)"):"var(--surface)",
+                          color:vitals.pain===String(n)?(n<=3?"var(--green-700)":n<=6?"var(--amber-700)":"var(--rose-700)"):"var(--text-2)"}}>
                         {n}
                       </button>
                     ))}
@@ -4969,7 +4877,7 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
 
       {/* KPIs */}
       <div style={{display:"flex",gap:".75rem",padding:"0 1.5rem .75rem"}}>
-        {[["Aguardando","⏳",waiting,"#1d4ed8","#eff6ff"],["Em atendimento","🩺",attending,"#c2410c","#fff7ed"],["Total hoje","📋",sorted.length,"var(--text-2)","var(--surface-2)"]].map(([l,ic,v,color,bg])=>(
+        {[["Aguardando","⏳",waiting,"var(--blue-700)","var(--blue-50)"],["Em atendimento","🩺",attending,"var(--orange-700)","var(--orange-50)"],["Total hoje","📋",sorted.length,"var(--text-2)","var(--surface-2)"]].map(([l,ic,v,color,bg])=>(
           <div key={l} className="card" style={{flex:"1 1 120px",padding:".75rem 1rem",background:bg,border:`1px solid ${bg==="var(--surface-2)"?"var(--border)":bg.replace("ff)","dd)")}`}}>
             <div style={{fontSize:"1.2rem"}}>{ic}</div>
             <div style={{fontSize:"1.5rem",fontWeight:800,color,lineHeight:1.1,marginTop:".25rem"}}>{v}</div>
@@ -5002,8 +4910,8 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
                     <div style={{display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
                       <span style={{fontWeight:700,fontSize:".88rem",color:isDone?"var(--text-3)":"var(--ink)"}}>{q.patientName}</span>
                       <span style={{fontSize:".68rem",padding:".08rem .4rem",borderRadius:999,background:pc.bg,color:pc.text,border:`1px solid ${pc.border}`,fontWeight:700}}>{PRIORITY_LABELS[q.priority]}</span>
-                      {q.demandType==="spontaneous"&&<span style={{fontSize:".68rem",padding:".08rem .4rem",borderRadius:999,background:"#fff7ed",color:"#c2410c",border:"1px solid #fed7aa",fontWeight:700}}>Espontâneo → {q.destination==="nurse"?"Enfermagem":"Médico(a)"}</span>}
-                      {q.demandType==="scheduled"&&<span style={{fontSize:".68rem",padding:".08rem .4rem",borderRadius:999,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe",fontWeight:700}}>Agendado</span>}
+                      {q.demandType==="spontaneous"&&<span style={{fontSize:".68rem",padding:".08rem .4rem",borderRadius:999,background:"var(--orange-50)",color:"var(--orange-700)",border:"1px solid #fed7aa",fontWeight:700}}>Espontâneo → {q.destination==="nurse"?"Enfermagem":"Médico(a)"}</span>}
+                      {q.demandType==="scheduled"&&<span style={{fontSize:".68rem",padding:".08rem .4rem",borderRadius:999,background:"var(--blue-50)",color:"var(--blue-700)",border:"1px solid #bfdbfe",fontWeight:700}}>Agendado</span>}
                     </div>
                     <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem"}}>
                       Entrada: {fmtTime(q.arrivedAt)} · Aguardando: {waitMins(q.arrivedAt)}{q.reason&&" · "+q.reason}
@@ -5011,11 +4919,11 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
                   </div>
                   {!isDone&&(
                     <div style={{display:"flex",gap:".35rem",flexShrink:0}}>
-                      {q.status==="waiting"&&<span style={{fontSize:".72rem",padding:".25rem .55rem",borderRadius:999,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe",fontWeight:600}}>Aguardando triagem</span>}
-                      {q.status==="triage"&&<span style={{fontSize:".72rem",padding:".25rem .55rem",borderRadius:999,background:"#fef3c7",color:"#b45309",border:"1px solid #fde68a",fontWeight:600}}>Em triagem</span>}
+                      {q.status==="waiting"&&<span style={{fontSize:".72rem",padding:".25rem .55rem",borderRadius:999,background:"var(--blue-50)",color:"var(--blue-700)",border:"1px solid #bfdbfe",fontWeight:600}}>Aguardando triagem</span>}
+                      {q.status==="triage"&&<span style={{fontSize:".72rem",padding:".25rem .55rem",borderRadius:999,background:"var(--amber-100)",color:"var(--amber-700)",border:"1px solid #fde68a",fontWeight:600}}>Em triagem</span>}
                       {q.status==="ready"&&<button onClick={()=>updateStatus(q.id,"attending")} style={{fontSize:".78rem",padding:".35rem .75rem",background:"var(--teal-600)",color:"#fff",border:"none",borderRadius:"var(--r-md)",cursor:"pointer"}}>🩺 Chamar</button>}
-                      {q.status==="attending"&&<button onClick={()=>updateStatus(q.id,"done")} style={{fontSize:".78rem",padding:".35rem .75rem",background:"#15803d",color:"#fff",border:"none",borderRadius:"var(--r-md)",cursor:"pointer"}}>✓ Concluir</button>}
-                      <button onClick={()=>removeFromQueue(q.id)} style={{fontSize:".78rem",padding:".35rem .6rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"#be123c",cursor:"pointer"}}>✕</button>
+                      {q.status==="attending"&&<button onClick={()=>updateStatus(q.id,"done")} style={{fontSize:".78rem",padding:".35rem .75rem",background:"var(--green-700)",color:"#fff",border:"none",borderRadius:"var(--r-md)",cursor:"pointer"}}>✓ Concluir</button>}
+                      <button onClick={()=>removeFromQueue(q.id)} style={{fontSize:".78rem",padding:".35rem .6rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"var(--rose-700)",cursor:"pointer"}}>✕</button>
                     </div>
                   )}
                 </div>
@@ -5139,7 +5047,7 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
                   <div>
                     <label style={{fontSize:".78rem",fontWeight:600,display:"block",marginBottom:".4rem"}}>Tipo de demanda *</label>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
-                      {[["scheduled","Agendado","Consulta marcada","#eff6ff","#1d4ed8","#bfdbfe"],["spontaneous","Espontâneo","Sem agendamento","#fff7ed","#c2410c","#fed7aa"]].map(([val,label,desc,bg,color,border])=>(
+                      {[["scheduled","Agendado","Consulta marcada","var(--blue-50)","var(--blue-700)","var(--blue-200)"],["spontaneous","Espontâneo","Sem agendamento","var(--orange-50)","var(--orange-700)","var(--orange-200)"]].map(([val,label,desc,bg,color,border])=>(
                         <button key={val} type="button" onClick={()=>setDemandType(val)}
                           style={{padding:".65rem .85rem",borderRadius:"var(--r-md)",border:`2px solid ${demandType===val?color:border}`,background:demandType===val?bg:"var(--surface)",cursor:"pointer",textAlign:"left"}}>
                           <div style={{fontWeight:700,fontSize:".82rem",color:demandType===val?color:"var(--text-1)"}}>{label}</div>
@@ -5178,9 +5086,9 @@ function QueuePage({ patients, users, user, token, onNewPatient }) {
                     <input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Dor, retorno, renovação de receita..."/>
                   </div>
 
-                  <div style={{padding:".6rem .85rem",background:demandType==="scheduled"?"#eff6ff":"#fff7ed",
-                    border:`1px solid ${demandType==="scheduled"?"#bfdbfe":"#fed7aa"}`,borderRadius:"var(--r-md)",
-                    fontSize:".75rem",color:demandType==="scheduled"?"#1d4ed8":"#c2410c",display:"flex",alignItems:"flex-start",gap:".5rem"}}>
+                  <div style={{padding:".6rem .85rem",background:demandType==="scheduled"?"var(--blue-50)":"var(--orange-50)",
+                    border:`1px solid ${demandType==="scheduled"?"var(--blue-200)":"var(--orange-200)"}`,borderRadius:"var(--r-md)",
+                    fontSize:".75rem",color:demandType==="scheduled"?"var(--blue-700)":"var(--orange-700)",display:"flex",alignItems:"flex-start",gap:".5rem"}}>
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{flexShrink:0,marginTop:".1rem"}}><path d="M8 1.5a5 5 0 00-5 5v3l-1.5 2h13L13 9.5v-3a5 5 0 00-5-5z" stroke="currentColor" strokeWidth="1.3"/><path d="M6.5 13.5a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
                     <span><strong>Aviso:</strong> {demandType==="scheduled"?`Profissional será notificado que ${selectedPatient.name} chegou.`:`${destination==="doctor"?"Médico(a)":"Enfermagem"} receberá aviso de paciente espontâneo.`}</span>
                   </div>
@@ -5303,18 +5211,18 @@ function chartDeadlineInfo(dateStr) {
    Nota: tarefas (task) e mensagens internas (message) NÒO entram no prontuário —
    são controle interno. O prontuário é documento legal compartilhável com a rede. */
 const ENTRY_TYPE = {
-  consultation:  { label:"Consulta",              color:"#4f46e5", bg:"#eef2ff", border:"#c7d2fe", ico:"🩺" },
-  nursing:       { label:"Evolução de enfermagem", color:"#0d9488", bg:"#f0fdfa", border:"#99f6e4", ico:"💉" },
-  evolution:     { label:"Evolução clínica",       color:"#0891b2", bg:"#ecfeff", border:"#a5f3fc", ico:"📈" },
-  procedure:     { label:"Procedimento",           color:"#7c3aed", bg:"#f5f3ff", border:"#ddd6fe", ico:"🔬" },
-  vaccine:       { label:"Vacinação",              color:"#15803d", bg:"#f0fdf4", border:"#bbf7d0", ico:"💊" },
-  exam:          { label:"Exame / Resultado",      color:"#b45309", bg:"#fffbeb", border:"#fde68a", ico:"📋" },
-  exam_request:  { label:"Pedido de exame",        color:"#0f766e", bg:"#f0fdfa", border:"#99f6e4", ico:"🔬" },
-  prescription:  { label:"Prescrição",             color:"#be123c", bg:"#fff1f2", border:"#fecdd3", ico:"💊" },
-  referral:      { label:"Encaminhamento",         color:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe", ico:"➡️" },
-  visit:         { label:"Visita domiciliar",      color:"#92400e", bg:"#fef3c7", border:"#fde68a", ico:"🏠" },
-  home_visit:    { label:"Visita domiciliar",      color:"#92400e", bg:"#fef3c7", border:"#fde68a", ico:"🏠" },
-  note:          { label:"Observação clínica",     color:"#475569", bg:"var(--surface-2)", border:"var(--border)", ico:"📝" },
+  consultation:  { label:"Consulta",              color:"var(--indigo-600)", bg:"var(--indigo-100)", border:"var(--indigo-200)", ico:"🩺" },
+  nursing:       { label:"Evolução de enfermagem", color:"var(--teal-600)", bg:"var(--teal-50)", border:"var(--teal-200)", ico:"💉" },
+  evolution:     { label:"Evolução clínica",       color:"var(--cyan-600)", bg:"var(--cyan-50)", border:"var(--cyan-200)", ico:"📈" },
+  procedure:     { label:"Procedimento",           color:"var(--violet-600)", bg:"var(--violet-50)", border:"var(--violet-200)", ico:"🔬" },
+  vaccine:       { label:"Vacinação",              color:"var(--green-700)", bg:"var(--green-50)", border:"var(--green-200)", ico:"💊" },
+  exam:          { label:"Exame / Resultado",      color:"var(--amber-700)", bg:"var(--amber-50)", border:"var(--amber-200)", ico:"📋" },
+  exam_request:  { label:"Pedido de exame",        color:"var(--teal-700)", bg:"var(--teal-50)", border:"var(--teal-200)", ico:"🔬" },
+  prescription:  { label:"Prescrição",             color:"var(--rose-700)", bg:"var(--rose-50)", border:"var(--rose-200)", ico:"💊" },
+  referral:      { label:"Encaminhamento",         color:"var(--blue-700)", bg:"var(--blue-50)", border:"var(--blue-200)", ico:"➡️" },
+  visit:         { label:"Visita domiciliar",      color:"var(--amber-700)", bg:"var(--amber-100)", border:"var(--amber-200)", ico:"🏠" },
+  home_visit:    { label:"Visita domiciliar",      color:"var(--amber-700)", bg:"var(--amber-100)", border:"var(--amber-200)", ico:"🏠" },
+  note:          { label:"Observação clínica",     color:"var(--slate-600)", bg:"var(--surface-2)", border:"var(--border)", ico:"📝" },
 };
 
 // Tipos que NÒO pertencem ao prontuário (controle interno apenas)
@@ -5356,23 +5264,23 @@ function ChartAuthGate({ patient, users, user, onUnlock }) {
             <div style={{width:44,height:44,borderRadius:"var(--r-md)",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem"}}>📋</div>
             <div>
               <div style={{fontSize:".65rem",fontWeight:700,color:"#34d399",textTransform:"uppercase",letterSpacing:".1em"}}>Prontuário Eletrônico do Paciente</div>
-              <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:".1rem"}}>Res. CFM 1638/2002 · LGPD</div>
+              <div style={{fontSize:".72rem",color:"var(--slate-400)",marginTop:".1rem"}}>Res. CFM 1638/2002 · LGPD</div>
             </div>
           </div>
           <div style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.12)",borderRadius:"var(--r-md)",padding:".85rem 1rem"}}>
             <div style={{fontWeight:700,fontSize:".95rem",color:"#fff"}}>{patient.name}</div>
             <div style={{display:"flex",gap:".75rem",marginTop:".3rem",flexWrap:"wrap"}}>
-              {patient.birthDate&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Nasc.: {fmtDate(patient.birthDate)}</span>}
-              {patient.cpf&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>CPF: {patient.cpf}</span>}
-              {patient.cns&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>CNS: {patient.cns}</span>}
+              {patient.birthDate&&<span style={{fontSize:".72rem",color:"var(--slate-400)"}}>Nasc.: {fmtDate(patient.birthDate)}</span>}
+              {patient.cpf&&<span style={{fontSize:".72rem",color:"var(--slate-400)"}}>CPF: {patient.cpf}</span>}
+              {patient.cns&&<span style={{fontSize:".72rem",color:"var(--slate-400)"}}>CNS: {patient.cns}</span>}
             </div>
-            <div style={{fontSize:".72rem",color:"#64748b",marginTop:".25rem"}}>ACS: {acsName}</div>
+            <div style={{fontSize:".72rem",color:"var(--slate-500)",marginTop:".25rem"}}>ACS: {acsName}</div>
           </div>
         </div>
 
         {/* Corpo */}
         <div style={{padding:"1.5rem 1.75rem"}}>
-          <div style={{display:"flex",alignItems:"flex-start",gap:".6rem",padding:".75rem .9rem",background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:"var(--r-md)",marginBottom:"1.25rem",fontSize:".76rem",color:"#92400e"}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:".6rem",padding:".75rem .9rem",background:"var(--orange-50)",border:"1px solid #fed7aa",borderRadius:"var(--r-md)",marginBottom:"1.25rem",fontSize:".76rem",color:"var(--amber-700)"}}>
             <span style={{fontSize:"1rem",flexShrink:0}}>🔒</span>
             <span>Este é um documento <strong>sigiloso e de caráter legal</strong>. Confirme sua identidade para acessar. O acesso é registrado na trilha de auditoria.</span>
           </div>
@@ -5390,9 +5298,9 @@ function ChartAuthGate({ patient, users, user, onUnlock }) {
                 placeholder="Digite sua senha para confirmar"
                 style={{fontSize:".88rem",letterSpacing:".05em"}}/>
             </label>
-            {err&&<div style={{fontSize:".76rem",color:"#be123c",padding:".4rem .65rem",background:"#fff1f2",borderRadius:"var(--r-md)",border:"1px solid #fecdd3"}}>{err}</div>}
+            {err&&<div style={{fontSize:".76rem",color:"var(--rose-700)",padding:".4rem .65rem",background:"var(--rose-50)",borderRadius:"var(--r-md)",border:"1px solid #fecdd3"}}>{err}</div>}
             <button type="submit" disabled={busy}
-              style={{background:"#0f172a",color:"#fff",padding:".65rem",fontSize:".85rem",fontWeight:700,borderRadius:"var(--r-md)",border:"none",cursor:"pointer"}}>
+              style={{background:"var(--slate-900)",color:"#fff",padding:".65rem",fontSize:".85rem",fontWeight:700,borderRadius:"var(--r-md)",border:"none",cursor:"pointer"}}>
               {busy?"Verificando...":"🔓 Acessar prontuário"}
             </button>
           </form>
@@ -5498,9 +5406,9 @@ function ChartEntryModal({ patient, user, users, token, onSaved, onClose }) {
           <div style={{width:36,height:36,borderRadius:"var(--r-md)",background:meta.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",flexShrink:0}}>{meta.ico}</div>
           <div style={{flex:1}}>
             <div style={{fontWeight:700,fontSize:".88rem",color:"#fff"}}>Novo registro — {patient.name}</div>
-            <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:".1rem"}}>Prazo: até {CHART_DEADLINE_DAYS} dias após o evento · Res. CFM 1638/2002</div>
+            <div style={{fontSize:".7rem",color:"var(--slate-400)",marginTop:".1rem"}}>Prazo: até {CHART_DEADLINE_DAYS} dias após o evento · Res. CFM 1638/2002</div>
           </div>
-          <button className="icon-btn" onClick={onClose} style={{color:"#94a3b8"}}>
+          <button className="icon-btn" onClick={onClose} style={{color:"var(--slate-400)"}}>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -5531,7 +5439,7 @@ function ChartEntryModal({ patient, user, users, token, onSaved, onClose }) {
                 Data do evento *
                 <input type="date" value={form.date} max={today} onChange={e=>onDate(e.target.value)}
                   style={{border:nconf?"2px solid #dc2626":"1px solid var(--border)"}}/>
-                {form.date&&!nconf&&(()=>{const i=chartDeadlineInfo(form.date);if(!i)return null;const u=i.daysLeft<=3;return <span style={{fontSize:".68rem",color:u?"#b45309":"#15803d",fontWeight:600}}>{u?`âš ï¸ ${i.daysLeft} dia(s) restantes`:`✓ ${i.daysLeft} dias para o prazo`}</span>;})()}
+                {form.date&&!nconf&&(()=>{const i=chartDeadlineInfo(form.date);if(!i)return null;const u=i.daysLeft<=3;return <span style={{fontSize:".68rem",color:u?"var(--amber-700)":"var(--green-700)",fontWeight:600}}>{u?`âš ï¸ ${i.daysLeft} dia(s) restantes`:`✓ ${i.daysLeft} dias para o prazo`}</span>;})()}
               </label>
               <label style={{display:"flex",flexDirection:"column",gap:".25rem",fontSize:".75rem",fontWeight:600}}>
                 Hora do evento * <span style={{fontSize:".65rem",color:"var(--text-3)",fontWeight:400}}>(CFM 1638/2002)</span>
@@ -5543,7 +5451,7 @@ function ChartEntryModal({ patient, user, users, token, onSaved, onClose }) {
                 <input value={form.title} onChange={e=>f({title:e.target.value})} placeholder={`Ex: ${meta.label} de rotina`}/>
               </label>
               <label style={{display:"flex",flexDirection:"column",gap:".25rem",fontSize:".75rem",fontWeight:600}}>
-                Conselho profissional * <span style={{fontSize:".65rem",color:"#be123c",fontWeight:600}}>obrigatório</span>
+                Conselho profissional * <span style={{fontSize:".65rem",color:"var(--rose-700)",fontWeight:600}}>obrigatório</span>
                 <input value={form.professionalCouncil} onChange={e=>f({professionalCouncil:e.target.value})} placeholder="CRM 12345/SP ou COREN 67890/SP"
                   style={{border:!form.professionalCouncil.trim()?"2px solid #f59e0b":"1px solid var(--border)"}}/>
               </label>
@@ -5581,10 +5489,10 @@ function ChartEntryModal({ patient, user, users, token, onSaved, onClose }) {
               <div style={{fontSize:".72rem",fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".65rem"}}>📝 Evolução clínica (SOAP)</div>
               <div style={{display:"flex",flexDirection:"column",gap:".65rem"}}>
                 {[
-                  ["S","subjetivo","#6366f1","Subjetivo — Queixa principal, história da doença atual, sintomas relatados pelo paciente"],
-                  ["O","objetivo","#0d9488","Objetivo — Achados do exame físico, dados objetivos observados"],
-                  ["A","avaliacao","#b45309","Avaliação — Hipótese diagnóstica, diagnóstico definitivo, raciocínio clínico"],
-                  ["P","plano","#be123c","Plano — Conduta terapêutica, prescrição, solicitação de exames, encaminhamentos"],
+                  ["S","subjetivo","var(--indigo-500)","Subjetivo — Queixa principal, história da doença atual, sintomas relatados pelo paciente"],
+                  ["O","objetivo","var(--teal-600)","Objetivo — Achados do exame físico, dados objetivos observados"],
+                  ["A","avaliacao","var(--amber-700)","Avaliação — Hipótese diagnóstica, diagnóstico definitivo, raciocínio clínico"],
+                  ["P","plano","var(--rose-700)","Plano — Conduta terapêutica, prescrição, solicitação de exames, encaminhamentos"],
                 ].map(([letra,key,cor,desc])=>(
                   <label key={key} style={{display:"flex",flexDirection:"column",gap:".25rem",fontSize:".75rem",fontWeight:600}}>
                     <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
@@ -5610,26 +5518,26 @@ function ChartEntryModal({ patient, user, users, token, onSaved, onClose }) {
           )}
 
           {/* Contexto clínico */}
-          <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)",padding:".85rem 1rem"}}>
-            <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".5rem"}}>âš ï¸ Contexto clínico do paciente (pré-carregado)</div>
+          <div style={{background:"var(--amber-50)",border:"1px solid #fde68a",borderRadius:"var(--r-md)",padding:".85rem 1rem"}}>
+            <div style={{fontSize:".72rem",fontWeight:700,color:"var(--amber-700)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:".5rem"}}>âš ï¸ Contexto clínico do paciente (pré-carregado)</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".5rem"}}>
-              <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".73rem",fontWeight:600,color:"#92400e"}}>
+              <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".73rem",fontWeight:600,color:"var(--amber-700)"}}>
                 Alergias conhecidas
-                <textarea value={form.alergias} onChange={e=>f({alergias:e.target.value})} style={{minHeight:48,fontSize:".78rem",background:"#fffbeb",border:"1px solid #fde68a",resize:"vertical"}}/>
+                <textarea value={form.alergias} onChange={e=>f({alergias:e.target.value})} style={{minHeight:48,fontSize:".78rem",background:"var(--amber-50)",border:"1px solid #fde68a",resize:"vertical"}}/>
               </label>
-              <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".73rem",fontWeight:600,color:"#92400e"}}>
+              <label style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".73rem",fontWeight:600,color:"var(--amber-700)"}}>
                 Medicamentos em uso
-                <textarea value={form.medicamentos} onChange={e=>f({medicamentos:e.target.value})} style={{minHeight:48,fontSize:".78rem",background:"#fffbeb",border:"1px solid #fde68a",resize:"vertical"}}/>
+                <textarea value={form.medicamentos} onChange={e=>f({medicamentos:e.target.value})} style={{minHeight:48,fontSize:".78rem",background:"var(--amber-50)",border:"1px solid #fde68a",resize:"vertical"}}/>
               </label>
             </div>
           </div>
 
           {/* Não conformidade */}
           {nconf&&(
-            <div style={{padding:".9rem 1rem",background:"#fff1f2",border:"2px solid #fecdd3",borderRadius:"var(--r-md)",display:"flex",gap:".65rem",alignItems:"flex-start"}}>
+            <div style={{padding:".9rem 1rem",background:"var(--rose-50)",border:"2px solid #fecdd3",borderRadius:"var(--r-md)",display:"flex",gap:".65rem",alignItems:"flex-start"}}>
               <span style={{fontSize:"1.3rem",flexShrink:0}}>🚫</span>
               <div>
-                <div style={{fontWeight:800,fontSize:".82rem",color:"#be123c",marginBottom:".25rem"}}>NÒO CONFORMIDADE — Lançamento recusado</div>
+                <div style={{fontWeight:800,fontSize:".82rem",color:"var(--rose-700)",marginBottom:".25rem"}}>NÒO CONFORMIDADE — Lançamento recusado</div>
                 <div style={{fontSize:".78rem",color:"#9f1239",lineHeight:1.6}}>
                   O evento foi datado em <strong>{fmtDate(form.date)}</strong> — há <strong>{nconf.diffDays} dias</strong>.<br/>
                   O prazo máximo permitido é de <strong>{CHART_DEADLINE_DAYS} dias</strong> (Res. CFM 1638/2002).<br/>
@@ -5639,12 +5547,12 @@ function ChartEntryModal({ patient, user, users, token, onSaved, onClose }) {
             </div>
           )}
 
-          {err&&!nconf&&<div style={{fontSize:".76rem",color:"#be123c",padding:".5rem .75rem",background:"#fff1f2",borderRadius:"var(--r-md)",border:"1px solid #fecdd3"}}>{err}</div>}
+          {err&&!nconf&&<div style={{fontSize:".76rem",color:"var(--rose-700)",padding:".5rem .75rem",background:"var(--rose-50)",borderRadius:"var(--r-md)",border:"1px solid #fecdd3"}}>{err}</div>}
 
           <div style={{display:"flex",gap:".5rem",paddingTop:".25rem"}}>
             <button type="button" onClick={onClose} style={{flex:1,background:"var(--surface-2)",border:"1px solid var(--border)",color:"var(--text-1)"}}>Cancelar</button>
             <button type="submit" disabled={saving||!!nconf}
-              style={{flex:2,background:nconf?"#94a3b8":"#0f172a",color:"#fff",cursor:nconf?"not-allowed":"pointer",fontWeight:700}}>
+              style={{flex:2,background:nconf?"var(--slate-400)":"var(--slate-900)",color:"#fff",cursor:nconf?"not-allowed":"pointer",fontWeight:700}}>
               {saving?"Salvando...":"✓ Assinar e registrar no prontuário"}
             </button>
           </div>
@@ -5673,7 +5581,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
   if (!canAccessChart(user)) {
     return (
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:"1rem",padding:"3rem",textAlign:"center"}}>
-        <div style={{width:64,height:64,borderRadius:"50%",background:"#fff1f2",border:"2px solid #fecdd3",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"2rem"}}>🔒</div>
+        <div style={{width:64,height:64,borderRadius:"50%",background:"var(--rose-50)",border:"2px solid #fecdd3",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"2rem"}}>🔒</div>
         <div style={{fontWeight:800,fontSize:"1.1rem",color:"var(--ink)"}}>Acesso restrito</div>
         <div style={{fontSize:".88rem",color:"var(--text-3)",maxWidth:360}}>O prontuário eletrônico é acessível apenas por <strong>enfermeiros(as)</strong> e <strong>médicos(as)</strong>, conforme Res. CFM 1638/2002.</div>
       </div>
@@ -5774,7 +5682,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
         actions={
           <div style={{display:"flex",flexDirection:"column",gap:".6rem",alignItems:"flex-end",flexShrink:0}}>
             <div style={{position:"relative",width:340}}>
-              <div style={{position:"absolute",left:".75rem",top:"50%",transform:"translateY(-50%)",color:"#64748b",pointerEvents:"none"}}>
+              <div style={{position:"absolute",left:".75rem",top:"50%",transform:"translateY(-50%)",color:"var(--slate-500)",pointerEvents:"none"}}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
               </div>
               <input value={patSearch}
@@ -5815,7 +5723,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
             {patSelected&&unlocked&&(
               <div style={{display:"flex",gap:".5rem",alignItems:"center"}}>
                 {onNavigatePatient&&<button type="button" onClick={()=>onNavigatePatient(patSelected.id)}
-                  style={{fontSize:".73rem",padding:".35rem .7rem",background:"rgba(255,255,255,.1)",color:"#e2e8f0",border:"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:600}}>
+                  style={{fontSize:".73rem",padding:".35rem .7rem",background:"rgba(255,255,255,.1)",color:"var(--slate-200)",border:"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:600}}>
                   Perfil →
                 </button>}
               </div>
@@ -5825,11 +5733,11 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
       >
         {patSelected&&unlocked&&(
           <div style={{display:"flex",gap:".75rem",marginTop:".3rem",flexWrap:"wrap"}}>
-            {patSelected.birthDate&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Nasc.: {fmtDate(patSelected.birthDate)}</span>}
-            {patSelected.cpf&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>CPF: {patSelected.cpf}</span>}
-            {patSelected.cns&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>CNS: {patSelected.cns}</span>}
-            {patSelected.sex&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Sexo: {patSelected.sex}</span>}
-            {patSelected.birthDate&&(()=>{const a=Math.floor((new Date()-(parseLocalDate(patSelected.birthDate)||new Date()))/31557600000);return <span style={{fontSize:".72rem",color:"#94a3b8"}}>{a} anos</span>;})()}
+            {patSelected.birthDate&&<span style={{fontSize:".72rem",color:"var(--slate-400)"}}>Nasc.: {fmtDate(patSelected.birthDate)}</span>}
+            {patSelected.cpf&&<span style={{fontSize:".72rem",color:"var(--slate-400)"}}>CPF: {patSelected.cpf}</span>}
+            {patSelected.cns&&<span style={{fontSize:".72rem",color:"var(--slate-400)"}}>CNS: {patSelected.cns}</span>}
+            {patSelected.sex&&<span style={{fontSize:".72rem",color:"var(--slate-400)"}}>Sexo: {patSelected.sex}</span>}
+            {patSelected.birthDate&&(()=>{const a=Math.floor((new Date()-(parseLocalDate(patSelected.birthDate)||new Date()))/31557600000);return <span style={{fontSize:".72rem",color:"var(--slate-400)"}}>{a} anos</span>;})()}
           </div>
         )}
       </PageHero>
@@ -5885,10 +5793,10 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
 
             <div style={{borderTop:"1px solid var(--border)",paddingTop:".75rem",marginTop:".5rem"}}>
               <div style={{fontWeight:700,fontSize:".65rem",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".5rem"}}>Dados clínicos</div>
-              {patSelected.allergies&&<div style={{marginBottom:".4rem",padding:".4rem .5rem",background:"#fff1f2",border:"1px solid #fecdd3",borderRadius:"var(--r-sm)",fontSize:".73rem",color:"#be123c"}}><strong>âš ï¸ Alergias:</strong> {patSelected.allergies}</div>}
+              {patSelected.allergies&&<div style={{marginBottom:".4rem",padding:".4rem .5rem",background:"var(--rose-50)",border:"1px solid #fecdd3",borderRadius:"var(--r-sm)",fontSize:".73rem",color:"var(--rose-700)"}}><strong>âš ï¸ Alergias:</strong> {patSelected.allergies}</div>}
               {patSelected.comorbidities&&<div style={{marginBottom:".4rem",padding:".4rem .5rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-sm)",fontSize:".73rem"}}><strong>Comorbidades:</strong> {patSelected.comorbidities}</div>}
-              {patSelected.medications&&<div style={{marginBottom:".4rem",padding:".4rem .5rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-sm)",fontSize:".73rem",color:"#92400e"}}><strong>💊 Medicamentos:</strong> {patSelected.medications}</div>}
-              {(patSelected.chronicConditions||[]).length>0&&<div style={{padding:".4rem .5rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-sm)",fontSize:".73rem",color:"#1d4ed8"}}><strong>Condições:</strong> {(patSelected.chronicConditions||[]).join(", ")}</div>}
+              {patSelected.medications&&<div style={{marginBottom:".4rem",padding:".4rem .5rem",background:"var(--amber-50)",border:"1px solid #fde68a",borderRadius:"var(--r-sm)",fontSize:".73rem",color:"var(--amber-700)"}}><strong>💊 Medicamentos:</strong> {patSelected.medications}</div>}
+              {(patSelected.chronicConditions||[]).length>0&&<div style={{padding:".4rem .5rem",background:"var(--blue-50)",border:"1px solid #bfdbfe",borderRadius:"var(--r-sm)",fontSize:".73rem",color:"var(--blue-700)"}}><strong>Condições:</strong> {(patSelected.chronicConditions||[]).join(", ")}</div>}
             </div>
 
             {/* Gestação */}
@@ -5905,7 +5813,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
               <div style={{fontWeight:700,fontSize:".65rem",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".5rem"}}>🔍 Acessos recentes</div>
               {chartAuditLog.filter(a=>a.patientId===patSelected.id).slice(0,5).map((a,i)=>(
                 <div key={i} style={{fontSize:".65rem",color:"var(--text-3)",marginBottom:".25rem",lineHeight:1.5}}>
-                  <span style={{color:a.action==="EXCLUSAO_REGISTRO"?"#be123c":a.action==="LANCAMENTO_REGISTRO"?"#15803d":"var(--text-2)",fontWeight:600}}>{a.action.replace(/_/g," ")}</span><br/>
+                  <span style={{color:a.action==="EXCLUSAO_REGISTRO"?"var(--rose-700)":a.action==="LANCAMENTO_REGISTRO"?"var(--green-700)":"var(--text-2)",fontWeight:600}}>{a.action.replace(/_/g," ")}</span><br/>
                   {a.professional} · {new Date(a.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}
                 </div>
               ))}
@@ -5919,7 +5827,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
             {/* Filtros por tipo */}
             <div style={{display:"flex",gap:".4rem",flexWrap:"wrap",marginBottom:"1rem",alignItems:"center"}}>
               <button type="button" onClick={()=>setFilterType("all")}
-                style={{fontSize:".72rem",padding:".3rem .65rem",borderRadius:4,border:`1px solid ${filterType==="all"?"#0f172a":"var(--border)"}`,background:filterType==="all"?"#0f172a":"var(--surface)",color:filterType==="all"?"#fff":"var(--text-2)",cursor:"pointer",fontWeight:600}}>
+                style={{fontSize:".72rem",padding:".3rem .65rem",borderRadius:4,border:`1px solid ${filterType==="all"?"var(--slate-900)":"var(--border)"}`,background:filterType==="all"?"var(--slate-900)":"var(--surface)",color:filterType==="all"?"#fff":"var(--text-2)",cursor:"pointer",fontWeight:600}}>
                 Todos ({records.length})
               </button>
               {Object.entries(ENTRY_TYPE).map(([type,meta])=>{
@@ -5933,7 +5841,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
             </div>
 
             {/* Aviso prazo */}
-            <div style={{marginBottom:"1rem",padding:".65rem .9rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".74rem",color:"#92400e",display:"flex",gap:".5rem"}}>
+            <div style={{marginBottom:"1rem",padding:".65rem .9rem",background:"var(--amber-50)",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".74rem",color:"var(--amber-700)",display:"flex",gap:".5rem"}}>
               <span style={{flexShrink:0}}>⚖️</span>
               <span>Registros devem ser lançados em até <strong>{CHART_DEADLINE_DAYS} dias</strong> após o evento (Res. CFM 1638/2002). Lançamentos fora do prazo são recusados como não conformidade.</span>
             </div>
@@ -5960,7 +5868,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
                     <article key={item.id} style={{
                       background: isInactive ? "var(--surface-2)" : "var(--surface)",
                       border:`1px solid ${isInactive?"var(--border)":meta.border}`,
-                      borderLeft:`4px solid ${isInactive?"#94a3b8":meta.color}`,
+                      borderLeft:`4px solid ${isInactive?"var(--slate-400)":meta.color}`,
                       borderRadius:"var(--r-md)", overflow:"hidden",
                       boxShadow:"0 1px 3px rgba(0,0,0,.05)",
                       opacity: isInactive ? 0.65 : 1,
@@ -5972,11 +5880,11 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
                           <div style={{display:"flex",alignItems:"center",gap:".4rem",flexWrap:"wrap",marginBottom:".2rem"}}>
                             <span style={{fontWeight:700,fontSize:".88rem",color:isInactive?"var(--text-3)":"var(--ink)",textDecoration:isInactive?"line-through":"none"}}>{item.title||meta.label}</span>
                             {isInactive
-                              ? <span style={{fontSize:".67rem",fontWeight:700,padding:".1rem .45rem",borderRadius:999,background:"#f1f5f9",color:"#64748b",border:"1px solid #e2e8f0"}}>INATIVO</span>
+                              ? <span style={{fontSize:".67rem",fontWeight:700,padding:".1rem .45rem",borderRadius:999,background:"var(--slate-100)",color:"var(--slate-500)",border:"1px solid #e2e8f0"}}>INATIVO</span>
                               : <span style={{fontSize:".67rem",fontWeight:700,padding:".1rem .38rem",borderRadius:999,background:meta.bg,color:meta.color,border:`1px solid ${meta.border}`,flexShrink:0}}>{meta.label}</span>
                             }
-                            {item.cid&&!isInactive&&<span style={{fontSize:".67rem",padding:".1rem .38rem",borderRadius:999,background:"#f1f5f9",color:"#475569",border:"1px solid #e2e8f0",fontWeight:600}}>CID: {item.cid}</span>}
-                            {lagDays!==null&&lagDays>0&&!isInactive&&<span style={{fontSize:".67rem",color:"#92400e",background:"#fffbeb",padding:".1rem .38rem",borderRadius:999,border:"1px solid #fde68a"}}>âš ï¸ +{lagDays}d após evento</span>}
+                            {item.cid&&!isInactive&&<span style={{fontSize:".67rem",padding:".1rem .38rem",borderRadius:999,background:"var(--slate-100)",color:"var(--slate-600)",border:"1px solid #e2e8f0",fontWeight:600}}>CID: {item.cid}</span>}
+                            {lagDays!==null&&lagDays>0&&!isInactive&&<span style={{fontSize:".67rem",color:"var(--amber-700)",background:"var(--amber-50)",padding:".1rem .38rem",borderRadius:999,border:"1px solid #fde68a"}}>âš ï¸ +{lagDays}d após evento</span>}
                           </div>
                           <div style={{display:"flex",gap:"1rem",flexWrap:"wrap"}}>
                             {/* CFM 1638/2002: exibe data E hora do evento */}
@@ -5987,7 +5895,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
                             {item.professionalName&&<span style={{fontSize:".72rem",color:"var(--text-3)"}}>Por: {item.professionalName}{item.professionalCouncil?` · ${item.professionalCouncil}`:""}</span>}
                           </div>
                           {isInactive&&item.inactivationReason&&(
-                            <div style={{fontSize:".7rem",color:"#64748b",marginTop:".25rem",fontStyle:"italic"}}>Motivo da inativação: {item.inactivationReason}</div>
+                            <div style={{fontSize:".7rem",color:"var(--slate-500)",marginTop:".25rem",fontStyle:"italic"}}>Motivo da inativação: {item.inactivationReason}</div>
                           )}
                         </div>
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{color:"var(--text-3)",flexShrink:0,marginTop:4,transform:isExp?"rotate(180deg)":"none",transition:"transform .2s"}}>
@@ -6007,7 +5915,7 @@ function ChartPage({ patients, users, user, token, onNavigatePatient }) {
                             </span>
                             {item.source==="clinicalRecord"&&!isInactive&&(
                               <button type="button" onClick={()=>handleDelete(item.id)}
-                                style={{fontSize:".72rem",padding:".25rem .65rem",background:"#fff7ed",color:"#c2410c",border:"1px solid #fed7aa",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:600}}>
+                                style={{fontSize:".72rem",padding:".25rem .65rem",background:"var(--orange-50)",color:"var(--orange-700)",border:"1px solid #fed7aa",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:600}}>
                                 âš ï¸ Inativar registro
                               </button>
                             )}
@@ -6094,9 +6002,9 @@ function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
     if (!dueDate) return { bg:"var(--surface-2)", border:"var(--border)", label:"", labelColor:"" };
     const d = new Date(dueDate + "T00:00:00");
     const diff = Math.ceil((d - today) / 86400000);
-    if (diff < 0)  return { bg:"#fff1f2", border:"#fecdd3", label:`Atrasada ${Math.abs(diff)}d`, labelColor:"#be123c" };
-    if (diff === 0) return { bg:"#fff7ed", border:"#fed7aa", label:"Hoje",                       labelColor:"#c2410c" };
-    if (diff <= 3)  return { bg:"#fffbeb", border:"#fde68a", label:`${diff}d`,                   labelColor:"#b45309" };
+    if (diff < 0)  return { bg:"var(--rose-50)", border:"var(--rose-200)", label:`Atrasada ${Math.abs(diff)}d`, labelColor:"var(--rose-700)" };
+    if (diff === 0) return { bg:"var(--orange-50)", border:"var(--orange-200)", label:"Hoje",                       labelColor:"var(--orange-700)" };
+    if (diff <= 3)  return { bg:"var(--amber-50)", border:"var(--amber-200)", label:`${diff}d`,                   labelColor:"var(--amber-700)" };
     return { bg:"var(--surface-2)", border:"var(--border)", label:`${diff}d`, labelColor:"var(--text-3)" };
   }
 
@@ -6107,9 +6015,9 @@ function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
       {/* KPIs rápidos */}
       <div style={{display:"flex",gap:".75rem",marginBottom:"1.25rem",flexWrap:"wrap"}}>
         {[
-          { label:"Pendentes",   value:pendingCount,  color:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe" },
-          { label:"Em atraso",   value:overdueCount,  color:"#be123c", bg:"#fff1f2", border:"#fecdd3" },
-          { label:"Concluídas",  value:myTasks.filter(t=>t.status==="done").length, color:"#15803d", bg:"#f0fdf4", border:"#bbf7d0" },
+          { label:"Pendentes",   value:pendingCount,  color:"var(--blue-700)", bg:"var(--blue-50)", border:"var(--blue-200)" },
+          { label:"Em atraso",   value:overdueCount,  color:"var(--rose-700)", bg:"var(--rose-50)", border:"var(--rose-200)" },
+          { label:"Concluídas",  value:myTasks.filter(t=>t.status==="done").length, color:"var(--green-700)", bg:"var(--green-50)", border:"var(--green-200)" },
         ].map(k=>(
           <div key={k.label} style={{flex:"1 1 120px",padding:".65rem .9rem",background:k.bg,border:`1px solid ${k.border}`,borderRadius:"var(--r-md)"}}>
             <div style={{fontSize:"1.4rem",fontWeight:800,color:k.color,lineHeight:1}}>{k.value}</div>
@@ -6227,8 +6135,8 @@ function ReferralsPage({ patients, users, user }) {
     return true;
   });
 
-  const statusMap={ pending:{label:"Aguardando",bg:"#fff7ed",color:"#c2410c",border:"#fed7aa"}, scheduled:{label:"Agendado",bg:"#eff6ff",color:"#1d4ed8",border:"#bfdbfe"}, done:{label:"Realizado",bg:"#f0fdf4",color:"#15803d",border:"#bbf7d0"}, cancelled:{label:"Cancelado",bg:"var(--surface-2)",color:"var(--text-3)",border:"var(--border)"} };
-  const priorityMap={ urgent:{label:"Urgente",color:"#be123c"}, priority:{label:"Prioritário",color:"#c2410c"}, routine:{label:"Rotina",color:"var(--text-3)"} };
+  const statusMap={ pending:{label:"Aguardando",bg:"var(--orange-50)",color:"var(--orange-700)",border:"var(--orange-200)"}, scheduled:{label:"Agendado",bg:"var(--blue-50)",color:"var(--blue-700)",border:"var(--blue-200)"}, done:{label:"Realizado",bg:"var(--green-50)",color:"var(--green-700)",border:"var(--green-200)"}, cancelled:{label:"Cancelado",bg:"var(--surface-2)",color:"var(--text-3)",border:"var(--border)"} };
+  const priorityMap={ urgent:{label:"Urgente",color:"var(--rose-700)"}, priority:{label:"Prioritário",color:"var(--orange-700)"}, routine:{label:"Rotina",color:"var(--text-3)"} };
 
   const counts={ all:referrals.length, pending:referrals.filter(r=>r.status==="pending").length, scheduled:referrals.filter(r=>r.status==="scheduled").length, done:referrals.filter(r=>r.status==="done").length };
 
@@ -6301,7 +6209,7 @@ function ReferralsPage({ patients, users, user }) {
                         <div style={{display:"flex",gap:".3rem",justifyContent:"center"}}>
                           <button onClick={()=>setShowDoc(r)} title="Ver documento" style={{fontSize:".71rem",padding:".25rem .5rem",background:"var(--teal-50)",border:"1px solid var(--teal-200)",color:"var(--teal-700)",borderRadius:"var(--r-md)"}}>📄</button>
                           <button onClick={()=>openEdit(r)} style={{fontSize:".71rem",padding:".25rem .5rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>✏️</button>
-                          <button onClick={()=>remove(r.id)} style={{fontSize:".71rem",padding:".25rem .5rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"#be123c"}}>✕</button>
+                          <button onClick={()=>remove(r.id)} style={{fontSize:".71rem",padding:".25rem .5rem",background:"var(--surface)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",color:"var(--rose-700)"}}>✕</button>
                         </div>
                       </td>
                     </tr>
@@ -6506,7 +6414,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
   const auditRecent = [...(auditLog||[])].reverse().slice(0,8);
 
   // ── Helpers visuais ──────────────────────────────────────────
-  const TEAL="#0d9488", RED="#dc2626", AMBER="#d97706", GREEN="#16a34a", BLUE="#1d4ed8", VIOLET="#7c3aed";
+  const TEAL="var(--teal-600)", RED="var(--red-600)", AMBER="var(--amber-600)", GREEN="var(--green-600)", BLUE="var(--blue-700)", VIOLET="var(--violet-600)";
 
   function KPI({ label, value, sub, color=TEAL, icon, trend }) {
     return (
@@ -6576,11 +6484,11 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
         actions={
           <div style={{display:"flex",gap:".4rem",flexWrap:"wrap",flexShrink:0}}>
             {[["month","Mês"],["quarter","Trimestre"],["year","Ano"]].map(([k,l])=>(
-              <button key={k} onClick={()=>setPeriod(k)} style={{fontSize:".75rem",padding:".35rem .8rem",background:period===k?TEAL:"rgba(255,255,255,.1)",color:period===k?"var(--teal-900)":"#e2e8f0",border:period===k?"none":"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",fontWeight:600,cursor:"pointer"}}>
+              <button key={k} onClick={()=>setPeriod(k)} style={{fontSize:".75rem",padding:".35rem .8rem",background:period===k?TEAL:"rgba(255,255,255,.1)",color:period===k?"var(--teal-900)":"var(--slate-200)",border:period===k?"none":"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",fontWeight:600,cursor:"pointer"}}>
                 {l}
               </button>
             ))}
-            <button onClick={()=>window.print()} style={{fontSize:".75rem",padding:".35rem .8rem",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",color:"#e2e8f0",cursor:"pointer"}}>
+            <button onClick={()=>window.print()} style={{fontSize:".75rem",padding:".35rem .8rem",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:"var(--r-md)",color:"var(--slate-200)",cursor:"pointer"}}>
               Exportar
             </button>
           </div>
@@ -6644,7 +6552,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
                         {u.email} · {roleLabel(u.role)} · {u.teamName || "Sem equipe"}
                       </div>
                     </div>
-                    <span style={{alignSelf:"center",fontSize:".68rem",fontWeight:700,padding:".15rem .45rem",borderRadius:999,background:u.online?"#dcfce7":"#f1f5f9",border:`1px solid ${u.online?"#bbf7d0":"#cbd5e1"}`,color:u.online?"#166534":"#475569"}}>
+                    <span style={{alignSelf:"center",fontSize:".68rem",fontWeight:700,padding:".15rem .45rem",borderRadius:999,background:u.online?"var(--green-100)":"var(--slate-100)",border:`1px solid ${u.online?"var(--green-200)":"var(--slate-300)"}`,color:u.online?"var(--green-800)":"var(--slate-600)"}}>
                       {u.online ? "Online" : "Offline"}
                     </span>
                   </div>
@@ -6732,7 +6640,7 @@ function GestorPage({ patients, users, templates, protocolByPatient }) {
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".35rem"}}>
                         <span style={{fontWeight:600,fontSize:".83rem",color:"var(--text-1)"}}>{a.name}</span>
                         <div style={{display:"flex",gap:".35rem"}}>
-                          <span style={{fontSize:".68rem",fontWeight:700,padding:".1em .45em",borderRadius:99,background:a.criticos>0?"#fef2f2":"#f0fdf4",color:a.criticos>0?RED:GREEN,border:`1px solid ${a.criticos>0?"#fecaca":"#bbf7d0"}`}}>
+                          <span style={{fontSize:".68rem",fontWeight:700,padding:".1em .45em",borderRadius:99,background:a.criticos>0?"var(--red-50)":"var(--green-50)",color:a.criticos>0?RED:GREEN,border:`1px solid ${a.criticos>0?"var(--red-200)":"var(--green-200)"}`}}>
                             {a.criticos} critico{a.criticos!==1?"s":""}
                           </span>
                           <span style={{fontSize:".68rem",fontWeight:700,padding:".1em .45em",borderRadius:99,background:"var(--surface)",color:"var(--text-3)",border:"1px solid var(--border)"}}>
@@ -6923,7 +6831,7 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
 
   const periodLabel = { month:"Mês atual", quarter:"Trimestre atual", year:"Ano atual" }[period];
 
-  function StatBox({ label, value, sub, color="#1d4ed8", bg="#eff6ff" }) {
+  function StatBox({ label, value, sub, color="var(--blue-700)", bg="var(--blue-50)" }) {
     return (
       <div style={{background:bg,borderRadius:"var(--r-md)",padding:"1rem",border:`1px solid ${bg.replace("ff)","cc)")}`}}>
         <div style={{fontSize:"1.8rem",fontWeight:900,color,lineHeight:1}}>{value}</div>
@@ -6967,11 +6875,11 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
             <p style={{fontSize:".8rem",color:"var(--text-3)",marginBottom:"1rem",fontWeight:600}}>Período: {periodLabel}</p>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:".75rem",marginBottom:"1.5rem"}}>
               <StatBox label="Total de pacientes" value={totalPatients} sub={`Gestantes: ${gestantes} · Crianças: ${criancas}`}/>
-              <StatBox label="Protocolos críticos" value={protCritical} color="#be123c" bg="#fff1f2" sub="Precisam de atenção"/>
-              <StatBox label="Consultas realizadas" value={consultDone} color="#15803d" bg="#f0fdf4" sub={`Faltas: ${consultAbsent}`}/>
-              <StatBox label="📤 Encaminhamentos" value={referralsPeriod.length} color="#7e22ce" bg="#faf5ff" sub={`Pendentes: ${referralsPeriod.filter(r=>r.status==="pending").length}`}/>
-              <StatBox label="Dispensações" value={dispensasPeriod.length} color="#c2410c" bg="#fff7ed" sub="Medicamentos entregues"/>
-              <StatBox label="Estoque crítico" value={lowStock} color={lowStock>0?"#be123c":"#15803d"} bg={lowStock>0?"#fff1f2":"#f0fdf4"} sub="Abaixo do mínimo"/>
+              <StatBox label="Protocolos críticos" value={protCritical} color="var(--rose-700)" bg="var(--rose-50)" sub="Precisam de atenção"/>
+              <StatBox label="Consultas realizadas" value={consultDone} color="var(--green-700)" bg="var(--green-50)" sub={`Faltas: ${consultAbsent}`}/>
+              <StatBox label="📤 Encaminhamentos" value={referralsPeriod.length} color="var(--purple-800)" bg="var(--purple-50)" sub={`Pendentes: ${referralsPeriod.filter(r=>r.status==="pending").length}`}/>
+              <StatBox label="Dispensações" value={dispensasPeriod.length} color="var(--orange-700)" bg="var(--orange-50)" sub="Medicamentos entregues"/>
+              <StatBox label="Estoque crítico" value={lowStock} color={lowStock>0?"var(--rose-700)":"var(--green-700)"} bg={lowStock>0?"var(--rose-50)":"var(--green-50)"} sub="Abaixo do mínimo"/>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
               <div className="card">
@@ -7025,12 +6933,12 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
           <>
             <p style={{fontSize:".8rem",color:"var(--text-3)",marginBottom:"1rem",fontWeight:600}}>Produção — {periodLabel}</p>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:".75rem"}}>
-              <StatBox label="Consultas agendadas" value={agendaPeriod.length} color="#1d4ed8" bg="#eff6ff"/>
-              <StatBox label="Consultas realizadas" value={consultDone} color="#15803d" bg="#f0fdf4"/>
-              <StatBox label="Faltas" value={consultAbsent} color="#c2410c" bg="#fff7ed"/>
-              <StatBox label="Taxa de comparecimento" value={agendaPeriod.length>0?Math.round(consultDone/agendaPeriod.length*100)+"%":"—"} color="#7e22ce" bg="#faf5ff"/>
-              <StatBox label="Encaminhamentos emitidos" value={referralsPeriod.length} color="#1d4ed8" bg="#eff6ff"/>
-              <StatBox label="Encaminhamentos concluídos" value={referralsPeriod.filter(r=>r.status==="done").length} color="#15803d" bg="#f0fdf4"/>
+              <StatBox label="Consultas agendadas" value={agendaPeriod.length} color="var(--blue-700)" bg="var(--blue-50)"/>
+              <StatBox label="Consultas realizadas" value={consultDone} color="var(--green-700)" bg="var(--green-50)"/>
+              <StatBox label="Faltas" value={consultAbsent} color="var(--orange-700)" bg="var(--orange-50)"/>
+              <StatBox label="Taxa de comparecimento" value={agendaPeriod.length>0?Math.round(consultDone/agendaPeriod.length*100)+"%":"—"} color="var(--purple-800)" bg="var(--purple-50)"/>
+              <StatBox label="Encaminhamentos emitidos" value={referralsPeriod.length} color="var(--blue-700)" bg="var(--blue-50)"/>
+              <StatBox label="Encaminhamentos concluídos" value={referralsPeriod.filter(r=>r.status==="done").length} color="var(--green-700)" bg="var(--green-50)"/>
             </div>
           </>
         )}
@@ -7038,10 +6946,10 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
           <>
             <p style={{fontSize:".8rem",color:"var(--text-3)",marginBottom:"1rem",fontWeight:600}}>Farmácia — {periodLabel}</p>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:".75rem",marginBottom:"1.5rem"}}>
-              <StatBox label="Dispensações" value={dispensasPeriod.length} color="#c2410c" bg="#fff7ed"/>
-              <StatBox label="Itens em estoque" value={(stock||[]).length} color="#1d4ed8" bg="#eff6ff"/>
-              <StatBox label="Estoque zerado" value={(stock||[]).filter(s=>s.qty===0).length} color="#be123c" bg="#fff1f2"/>
-              <StatBox label="Estoque baixo" value={lowStock} color="#c2410c" bg="#fff7ed"/>
+              <StatBox label="Dispensações" value={dispensasPeriod.length} color="var(--orange-700)" bg="var(--orange-50)"/>
+              <StatBox label="Itens em estoque" value={(stock||[]).length} color="var(--blue-700)" bg="var(--blue-50)"/>
+              <StatBox label="Estoque zerado" value={(stock||[]).filter(s=>s.qty===0).length} color="var(--rose-700)" bg="var(--rose-50)"/>
+              <StatBox label="Estoque baixo" value={lowStock} color="var(--orange-700)" bg="var(--orange-50)"/>
             </div>
             {dispensasPeriod.length>0&&(
               <div className="card">
@@ -7076,34 +6984,34 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
    AUDIT LOG PANEL — trilha de auditoria imutável
 ══════════════════════════════════════════════════════════════════ */
 const ACTION_LABELS = {
-  LOGIN:                   { label:"Login",                color:"#15803d", bg:"#f0fdf4" },
-  LOGIN_FAILED:            { label:"Tentativa falha",      color:"#be123c", bg:"#fff1f2" },
-  LOGOUT:                  { label:"Logout",               color:"#64748b", bg:"var(--surface-2)" },
-  USUARIO_CADASTRADO:      { label:"Usuário cadastrado",   color:"#1d4ed8", bg:"#eff6ff" },
-  USUARIO_EDITADO:         { label:"Usuário editado",      color:"#c2410c", bg:"#fff7ed" },
-  USUARIO_EXCLUIDO:        { label:"Usuário excluído",     color:"#be123c", bg:"#fff1f2" },
-  PACIENTE_CADASTRADO:     { label:"Paciente cadastrado",  color:"#0f766e", bg:"var(--teal-50)" },
-  PACIENTE_EDITADO:        { label:"Paciente editado",     color:"#0891b2", bg:"#ecfeff" },
-  PACIENTE_EXCLUIDO:       { label:"Paciente excluído",    color:"#be123c", bg:"#fff1f2" },
-  ATENDIMENTO_REGISTRADO:  { label:"Atendimento",          color:"#6366f1", bg:"#eff6ff" },
-  TAREFA_CRIADA:           { label:"Tarefa criada",        color:"#d97706", bg:"#fffbeb" },
-  MENSAGEM_ENVIADA:        { label:"Mensagem",             color:"#0891b2", bg:"#ecfeff" },
-  REGISTRO_INATIVADO:      { label:"Registro inativado",   color:"#92400e", bg:"#fffbeb" },
-  ATENDIMENTO_EXCLUIDO:    { label:"Atendimento excluído", color:"#be123c", bg:"#fff1f2" },
-  ACESSO_PRONTUARIO:       { label:"Acesso prontuário",    color:"#7c3aed", bg:"#f5f3ff" },
-  LANCAMENTO_REGISTRO:     { label:"Lançamento prontuário",color:"#6366f1", bg:"#eff6ff" },
-  INATIVACAO_REGISTRO:     { label:"Inativação prontuário",color:"#92400e", bg:"#fffbeb" },
-  PEDIDO_EXAME:            { label:"Pedido de exame",      color:"#0f766e", bg:"var(--teal-50)" },
-  PRESCRICAO_EMITIDA:      { label:"Prescrição emitida",   color:"#15803d", bg:"#f0fdf4" },
-  ENCAMINHAMENTO_INTERNO:  { label:"Encaminhamento",       color:"#1d4ed8", bg:"#eff6ff" },
-  EXAME_POSTO_REGISTRADO:  { label:"Exame (posto)",        color:"#0f766e", bg:"var(--teal-50)" },
-  EXAME_EXTERNO_INSERIDO:  { label:"Exame externo",        color:"#6366f1", bg:"#eff6ff" },
-  RESET_SENHA_SOLICITADO:  { label:"Reset de senha",       color:"#c2410c", bg:"#fff7ed" },
-  DISPENSACAO_FARMACIA:    { label:"Dispensação",           color:"#7c3aed", bg:"#f5f3ff" },
-  ESTOQUE_AJUSTADO:        { label:"Ajuste de estoque",     color:"#c2410c", bg:"#fff7ed" },
-  MEDICAMENTO_CADASTRADO:  { label:"Medicamento cadastrado",color:"#15803d", bg:"#f0fdf4" },
-  MEDICAMENTO_EDITADO:     { label:"Medicamento editado",   color:"#0891b2", bg:"#ecfeff" },
-  EXAME_EXCLUIDO:          { label:"Exame excluído",        color:"#be123c", bg:"#fff1f2" },
+  LOGIN:                   { label:"Login",                color:"var(--green-700)", bg:"var(--green-50)" },
+  LOGIN_FAILED:            { label:"Tentativa falha",      color:"var(--rose-700)", bg:"var(--rose-50)" },
+  LOGOUT:                  { label:"Logout",               color:"var(--slate-500)", bg:"var(--surface-2)" },
+  USUARIO_CADASTRADO:      { label:"Usuário cadastrado",   color:"var(--blue-700)", bg:"var(--blue-50)" },
+  USUARIO_EDITADO:         { label:"Usuário editado",      color:"var(--orange-700)", bg:"var(--orange-50)" },
+  USUARIO_EXCLUIDO:        { label:"Usuário excluído",     color:"var(--rose-700)", bg:"var(--rose-50)" },
+  PACIENTE_CADASTRADO:     { label:"Paciente cadastrado",  color:"var(--teal-700)", bg:"var(--teal-50)" },
+  PACIENTE_EDITADO:        { label:"Paciente editado",     color:"var(--cyan-600)", bg:"var(--cyan-50)" },
+  PACIENTE_EXCLUIDO:       { label:"Paciente excluído",    color:"var(--rose-700)", bg:"var(--rose-50)" },
+  ATENDIMENTO_REGISTRADO:  { label:"Atendimento",          color:"var(--indigo-500)", bg:"var(--blue-50)" },
+  TAREFA_CRIADA:           { label:"Tarefa criada",        color:"var(--amber-600)", bg:"var(--amber-50)" },
+  MENSAGEM_ENVIADA:        { label:"Mensagem",             color:"var(--cyan-600)", bg:"var(--cyan-50)" },
+  REGISTRO_INATIVADO:      { label:"Registro inativado",   color:"var(--amber-700)", bg:"var(--amber-50)" },
+  ATENDIMENTO_EXCLUIDO:    { label:"Atendimento excluído", color:"var(--rose-700)", bg:"var(--rose-50)" },
+  ACESSO_PRONTUARIO:       { label:"Acesso prontuário",    color:"var(--violet-600)", bg:"var(--violet-50)" },
+  LANCAMENTO_REGISTRO:     { label:"Lançamento prontuário",color:"var(--indigo-500)", bg:"var(--blue-50)" },
+  INATIVACAO_REGISTRO:     { label:"Inativação prontuário",color:"var(--amber-700)", bg:"var(--amber-50)" },
+  PEDIDO_EXAME:            { label:"Pedido de exame",      color:"var(--teal-700)", bg:"var(--teal-50)" },
+  PRESCRICAO_EMITIDA:      { label:"Prescrição emitida",   color:"var(--green-700)", bg:"var(--green-50)" },
+  ENCAMINHAMENTO_INTERNO:  { label:"Encaminhamento",       color:"var(--blue-700)", bg:"var(--blue-50)" },
+  EXAME_POSTO_REGISTRADO:  { label:"Exame (posto)",        color:"var(--teal-700)", bg:"var(--teal-50)" },
+  EXAME_EXTERNO_INSERIDO:  { label:"Exame externo",        color:"var(--indigo-500)", bg:"var(--blue-50)" },
+  RESET_SENHA_SOLICITADO:  { label:"Reset de senha",       color:"var(--orange-700)", bg:"var(--orange-50)" },
+  DISPENSACAO_FARMACIA:    { label:"Dispensação",           color:"var(--violet-600)", bg:"var(--violet-50)" },
+  ESTOQUE_AJUSTADO:        { label:"Ajuste de estoque",     color:"var(--orange-700)", bg:"var(--orange-50)" },
+  MEDICAMENTO_CADASTRADO:  { label:"Medicamento cadastrado",color:"var(--green-700)", bg:"var(--green-50)" },
+  MEDICAMENTO_EDITADO:     { label:"Medicamento editado",   color:"var(--cyan-600)", bg:"var(--cyan-50)" },
+  EXAME_EXCLUIDO:          { label:"Exame excluído",        color:"var(--rose-700)", bg:"var(--rose-50)" },
 };
 
 function AuditLogPanel() {
@@ -7148,7 +7056,7 @@ function AuditLogPanel() {
       </div>
 
       {/* Aviso de imutabilidade */}
-      <div style={{padding:".55rem .85rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".73rem",color:"#92400e",marginBottom:"1rem",display:"flex",gap:".5rem",alignItems:"center"}}>
+      <div style={{padding:".55rem .85rem",background:"var(--amber-50)",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".73rem",color:"var(--amber-700)",marginBottom:"1rem",display:"flex",gap:".5rem",alignItems:"center"}}>
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
         <span>Esta trilha é <strong>somente leitura</strong>. Nenhum registro pode ser alterado ou excluído. Todos os eventos do sistema são gravados automaticamente com data, hora e usuário responsável.</span>
       </div>
@@ -7291,7 +7199,7 @@ function EsusMirror({ patients, users, period, periodLabel }) {
   function CopyBtn({ value, k }) {
     return (
       <button onClick={()=>copyToClipboard(String(value), k)}
-        style={{fontSize:".65rem",padding:".15rem .45rem",borderRadius:4,background:copied===k?"#f0fdf4":"var(--surface-2)",border:`1px solid ${copied===k?"#bbf7d0":"var(--border)"}`,color:copied===k?"#15803d":"var(--text-3)",cursor:"pointer",transition:"all .15s",fontWeight:600}}>
+        style={{fontSize:".65rem",padding:".15rem .45rem",borderRadius:4,background:copied===k?"var(--green-50)":"var(--surface-2)",border:`1px solid ${copied===k?"var(--green-200)":"var(--border)"}`,color:copied===k?"var(--green-700)":"var(--text-3)",cursor:"pointer",transition:"all .15s",fontWeight:600}}>
         {copied===k?"✓ Copiado":"Copiar"}
       </button>
     );
@@ -7355,9 +7263,9 @@ Dispensações: ${dispensas}
 
         {/* Cadastros */}
         <div className="card" style={{padding:0,overflow:"hidden"}}>
-          <div style={{padding:".6rem 1rem",background:"#eff6ff",borderBottom:"1px solid #bfdbfe",display:"flex",alignItems:"center",gap:".5rem"}}>
-            <span style={{fontWeight:700,fontSize:".78rem",color:"#1d4ed8"}}>📋 Ficha de Cadastro Individual (FCI)</span>
-            <span style={{fontSize:".7rem",color:"#3b82f6",marginLeft:"auto"}}>Módulo CDS / e-SUS APS</span>
+          <div style={{padding:".6rem 1rem",background:"var(--blue-50)",borderBottom:"1px solid #bfdbfe",display:"flex",alignItems:"center",gap:".5rem"}}>
+            <span style={{fontWeight:700,fontSize:".78rem",color:"var(--blue-700)"}}>📋 Ficha de Cadastro Individual (FCI)</span>
+            <span style={{fontSize:".7rem",color:"var(--blue-500)",marginLeft:"auto"}}>Módulo CDS / e-SUS APS</span>
           </div>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <tbody>
@@ -7371,9 +7279,9 @@ Dispensações: ${dispensas}
 
         {/* Atendimento */}
         <div className="card" style={{padding:0,overflow:"hidden"}}>
-          <div style={{padding:".6rem 1rem",background:"#f0fdf4",borderBottom:"1px solid #bbf7d0",display:"flex",alignItems:"center",gap:".5rem"}}>
-            <span style={{fontWeight:700,fontSize:".78rem",color:"#15803d"}}>🩺 Ficha de Atendimento Individual (FAI)</span>
-            <span style={{fontSize:".7rem",color:"#22c55e",marginLeft:"auto"}}>Módulo CDS / e-SUS APS</span>
+          <div style={{padding:".6rem 1rem",background:"var(--green-50)",borderBottom:"1px solid #bbf7d0",display:"flex",alignItems:"center",gap:".5rem"}}>
+            <span style={{fontWeight:700,fontSize:".78rem",color:"var(--green-700)"}}>🩺 Ficha de Atendimento Individual (FAI)</span>
+            <span style={{fontSize:".7rem",color:"var(--green-500)",marginLeft:"auto"}}>Módulo CDS / e-SUS APS</span>
           </div>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <tbody>
@@ -7388,8 +7296,8 @@ Dispensações: ${dispensas}
 
         {/* Equipe */}
         <div className="card" style={{padding:0,overflow:"hidden"}}>
-          <div style={{padding:".6rem 1rem",background:"#faf5ff",borderBottom:"1px solid #e9d5ff",display:"flex",alignItems:"center",gap:".5rem"}}>
-            <span style={{fontWeight:700,fontSize:".78rem",color:"#7e22ce"}}>👥 Composição da Equipe</span>
+          <div style={{padding:".6rem 1rem",background:"var(--purple-50)",borderBottom:"1px solid #e9d5ff",display:"flex",alignItems:"center",gap:".5rem"}}>
+            <span style={{fontWeight:700,fontSize:".78rem",color:"var(--purple-800)"}}>👥 Composição da Equipe</span>
             <span style={{fontSize:".7rem",color:"#a855f7",marginLeft:"auto"}}>CNES / e-Gestor AB</span>
           </div>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -7404,8 +7312,8 @@ Dispensações: ${dispensas}
 
         {/* Farmácia */}
         <div className="card" style={{padding:0,overflow:"hidden"}}>
-          <div style={{padding:".6rem 1rem",background:"#fff7ed",borderBottom:"1px solid #fed7aa",display:"flex",alignItems:"center",gap:".5rem"}}>
-            <span style={{fontWeight:700,fontSize:".78rem",color:"#c2410c"}}>💊 Dispensação de Medicamentos</span>
+          <div style={{padding:".6rem 1rem",background:"var(--orange-50)",borderBottom:"1px solid #fed7aa",display:"flex",alignItems:"center",gap:".5rem"}}>
+            <span style={{fontWeight:700,fontSize:".78rem",color:"var(--orange-700)"}}>💊 Dispensação de Medicamentos</span>
             <span style={{fontSize:".7rem",color:"#f97316",marginLeft:"auto"}}>RNDS / HÓRUS</span>
           </div>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -7621,11 +7529,11 @@ const PNI_CALENDAR = [
 
 const AGE_GROUP_ORDER = ["Criança","Adolescente","Adulto","Gestante","Idoso"];
 const AGE_GROUP_COLOR = {
-  "Criança":    { bg:"#eff6ff", border:"#bfdbfe", text:"#1d4ed8" },
-  "Adolescente":{ bg:"#f0fdf4", border:"#bbf7d0", text:"#15803d" },
-  "Adulto":     { bg:"#faf5ff", border:"#e9d5ff", text:"#7e22ce" },
-  "Gestante":   { bg:"#fff1f2", border:"#fecdd3", text:"#be123c" },
-  "Idoso":      { bg:"#fff7ed", border:"#fed7aa", text:"#c2410c" },
+  "Criança":    { bg:"var(--blue-50)", border:"var(--blue-200)", text:"var(--blue-700)" },
+  "Adolescente":{ bg:"var(--green-50)", border:"var(--green-200)", text:"var(--green-700)" },
+  "Adulto":     { bg:"var(--purple-50)", border:"var(--purple-200)", text:"var(--purple-800)" },
+  "Gestante":   { bg:"var(--rose-50)", border:"var(--rose-200)", text:"var(--rose-700)" },
+  "Idoso":      { bg:"var(--orange-50)", border:"var(--orange-200)", text:"var(--orange-700)" },
 };
 
 function ageInMonths(birthDate) {
@@ -8030,12 +7938,12 @@ function InsumoPage({ patients, users, user }) {
       {/* KPIs */}
       <div style={{display:"flex",gap:".65rem",padding:"0 1.5rem .75rem",flexWrap:"wrap",flexShrink:0}}>
         {[
-          { label:"Pacientes contínuos ativos", value:continuosAtivos.length, icon:"🔄", color:"#0d9488" },
-          { label:"Dispensações hoje",           value:totalSaidasHoje,        icon:"📋", color:"#6366f1" },
-          { label:"Total de dispensações",       value:dispensas.length,       icon:"📦", color:"#0891b2" },
-          { label:"Itens sem estoque",           value:stock.filter(s=>s.qty===0).length, icon:"âš ï¸", color:"#be123c", warn:true },
+          { label:"Pacientes contínuos ativos", value:continuosAtivos.length, icon:"🔄", color:"var(--teal-600)" },
+          { label:"Dispensações hoje",           value:totalSaidasHoje,        icon:"📋", color:"var(--indigo-500)" },
+          { label:"Total de dispensações",       value:dispensas.length,       icon:"📦", color:"var(--cyan-600)" },
+          { label:"Itens sem estoque",           value:stock.filter(s=>s.qty===0).length, icon:"âš ï¸", color:"var(--rose-700)", warn:true },
         ].map(k=>(
-          <div key={k.label} className="card" style={{flex:"1 1 140px",padding:".75rem 1rem",minWidth:120,background:k.warn&&k.value>0?"#fff1f2":"var(--surface)",border:`1px solid ${k.warn&&k.value>0?"#fecdd3":"var(--border)"}`}}>
+          <div key={k.label} className="card" style={{flex:"1 1 140px",padding:".75rem 1rem",minWidth:120,background:k.warn&&k.value>0?"var(--rose-50)":"var(--surface)",border:`1px solid ${k.warn&&k.value>0?"var(--rose-200)":"var(--border)"}`}}>
             <div style={{fontSize:"1.2rem"}}>{k.icon}</div>
             <div style={{fontSize:"1.5rem",fontWeight:800,color:k.color,lineHeight:1.1,marginTop:".25rem"}}>{k.value}</div>
             <div style={{fontSize:".7rem",color:"var(--text-3)",marginTop:".15rem"}}>{k.label}</div>
@@ -8082,7 +7990,7 @@ function InsumoPage({ patients, users, user }) {
                             style={{display:"flex",alignItems:"center",gap:".6rem",width:"100%",padding:".5rem .8rem",background:"none",border:"none",cursor:"pointer",textAlign:"left"}}
                             onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"}
                             onMouseLeave={e=>e.currentTarget.style.background="none"}>
-                            <div style={{width:28,height:28,borderRadius:"50%",background:cont?"#dcfce7":"var(--teal-100)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".7rem",fontWeight:700,color:cont?"#15803d":"var(--teal-700)",flexShrink:0}}>{initials(p.name)}</div>
+                            <div style={{width:28,height:28,borderRadius:"50%",background:cont?"var(--green-100)":"var(--teal-100)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".7rem",fontWeight:700,color:cont?"var(--green-700)":"var(--teal-700)",flexShrink:0}}>{initials(p.name)}</div>
                             <div style={{minWidth:0}}>
                               <div style={{fontWeight:600,fontSize:".83rem",color:"var(--ink)"}}>{p.name}</div>
                               <div style={{fontSize:".7rem",color:"var(--text-3)"}}>{p.cpf||""}{cont?" · 🔄 Contínuo":""}</div>
@@ -8102,7 +8010,7 @@ function InsumoPage({ patients, users, user }) {
                       {patSelected.cpf&&` · CPF: ${patSelected.cpf}`}
                     </div>
                     {continuos.find(c=>c.patientId===patSelected.id&&c.ativo)&&(
-                      <div style={{marginTop:".4rem",fontSize:".72rem",fontWeight:700,color:"#15803d",display:"flex",alignItems:"center",gap:".3rem"}}>
+                      <div style={{marginTop:".4rem",fontSize:".72rem",fontWeight:700,color:"var(--green-700)",display:"flex",alignItems:"center",gap:".3rem"}}>
                         🔄 Paciente contínuo ativo
                       </div>
                     )}
@@ -8139,7 +8047,7 @@ function InsumoPage({ patients, users, user }) {
             {/* Coluna direita: seleção de insumos */}
             <div style={{flex:1,minWidth:0}}>
               {/* Aviso máximos */}
-              <div style={{marginBottom:".85rem",padding:".6rem .9rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",fontSize:".75rem",color:"#1d4ed8",display:"flex",gap:".4rem"}}>
+              <div style={{marginBottom:".85rem",padding:".6rem .9rem",background:"var(--blue-50)",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",fontSize:".75rem",color:"var(--blue-700)",display:"flex",gap:".4rem"}}>
                 <span style={{flexShrink:0}}>ℹ️</span>
                 <span>As quantidades máximas por insumo seguem o formulário DAF/Secretaria de Saúde de Osasco. Nenhum campo pode ultrapassar o limite definido.</span>
               </div>
@@ -8163,17 +8071,17 @@ function InsumoPage({ patients, users, user }) {
                   const contItem = continuos.find(c=>c.patientId===patSelected?.id&&c.ativo)?.itens?.find(i=>i.id===insumo.id);
                   const limite = contItem ? contItem.qtd : insumo.qtdMax;
                   return (
-                    <div key={insumo.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".55rem .85rem",background:qtd>0?"var(--teal-50)":"var(--surface)",border:`1px solid ${qtd>0?"var(--teal-300)":semEstoque?"#fecdd3":"var(--border)"}`,borderRadius:"var(--r-md)",opacity:semEstoque?0.6:1}}>
+                    <div key={insumo.id} style={{display:"flex",alignItems:"center",gap:".75rem",padding:".55rem .85rem",background:qtd>0?"var(--teal-50)":"var(--surface)",border:`1px solid ${qtd>0?"var(--teal-300)":semEstoque?"var(--rose-200)":"var(--border)"}`,borderRadius:"var(--r-md)",opacity:semEstoque?0.6:1}}>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontWeight:600,fontSize:".82rem",color:"var(--ink)"}}>{insumo.nome}</div>
                         <div style={{display:"flex",gap:".5rem",marginTop:".1rem",flexWrap:"wrap"}}>
                           <span style={{fontSize:".68rem",color:"var(--text-3)"}}>{insumo.categoria}</span>
                           <span style={{fontSize:".68rem",color:"var(--text-3)"}}>Máx: {limite} {insumo.unidade}</span>
-                          <span style={{fontSize:".68rem",fontWeight:600,color:semEstoque?"#be123c":estq<=5?"#b45309":"#15803d"}}>
+                          <span style={{fontSize:".68rem",fontWeight:600,color:semEstoque?"var(--rose-700)":estq<=5?"var(--amber-700)":"var(--green-700)"}}>
                             Estoque: {estq} {insumo.unidade}
                           </span>
                         </div>
-                        {insumo.obs&&<div style={{fontSize:".68rem",color:"#1d4ed8",marginTop:".15rem"}}>ℹ️ {insumo.obs}</div>}
+                        {insumo.obs&&<div style={{fontSize:".68rem",color:"var(--blue-700)",marginTop:".15rem"}}>ℹ️ {insumo.obs}</div>}
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:".3rem",flexShrink:0}}>
                         <button type="button" onClick={()=>setItem(insumo.id, qtd-1)} disabled={!patSelected||qtd<=0}
@@ -8201,8 +8109,8 @@ function InsumoPage({ patients, users, user }) {
                       <span>{cat?.nome}</span><span style={{fontWeight:700}}>{qtd} {cat?.unidade}</span>
                     </div>;
                   })}
-                  {dispErr&&<div style={{marginTop:".65rem",padding:".45rem .65rem",background:"#fff1f2",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",fontSize:".76rem",color:"#be123c"}}>{dispErr}</div>}
-                  {dispOk&&<div style={{marginTop:".65rem",padding:".45rem .65rem",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",fontSize:".76rem",color:"#15803d",fontWeight:700}}>✓ Dispensação registrada com sucesso!</div>}
+                  {dispErr&&<div style={{marginTop:".65rem",padding:".45rem .65rem",background:"var(--rose-50)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",fontSize:".76rem",color:"var(--rose-700)"}}>{dispErr}</div>}
+                  {dispOk&&<div style={{marginTop:".65rem",padding:".45rem .65rem",background:"var(--green-50)",border:"1px solid #bbf7d0",borderRadius:"var(--r-md)",fontSize:".76rem",color:"var(--green-700)",fontWeight:700}}>✓ Dispensação registrada com sucesso!</div>}
                   <button type="button" onClick={confirmarDispensa} disabled={!patSelected||dispOk}
                     style={{marginTop:".75rem",width:"100%",padding:".55rem",background:"var(--teal-600)",color:"#fff",border:"none",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:700,fontSize:".85rem"}}>
                     ✓ Confirmar dispensação{isContinuo?" (contínuo)":""}
@@ -8243,13 +8151,13 @@ function InsumoPage({ patients, users, user }) {
                     const st = stock.find(s=>s.id===insumo.id)?.qty ?? 0;
                     const pct = insumo.qtdMax > 0 ? Math.round(st/insumo.qtdMax*100) : 0;
                     const sit = st===0?"Sem estoque":pct<=20?"Estoque baixo":pct<=60?"Regular":"Adequado";
-                    const sitColor = st===0?"#be123c":pct<=20?"#b45309":pct<=60?"#1d4ed8":"#15803d";
-                    const sitBg = st===0?"#fff1f2":pct<=20?"#fffbeb":pct<=60?"#eff6ff":"#f0fdf4";
+                    const sitColor = st===0?"var(--rose-700)":pct<=20?"var(--amber-700)":pct<=60?"var(--blue-700)":"var(--green-700)";
+                    const sitBg = st===0?"var(--rose-50)":pct<=20?"var(--amber-50)":pct<=60?"var(--blue-50)":"var(--green-50)";
                     return (
                       <tr key={insumo.id} style={{borderBottom:"1px solid var(--border)"}} onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"} onMouseLeave={e=>e.currentTarget.style.background=""}>
                         <td style={{padding:".55rem .85rem",fontWeight:600,color:"var(--ink)"}}>
                           {insumo.nome}
-                          {insumo.obs&&<div style={{fontSize:".66rem",color:"#1d4ed8",marginTop:".1rem"}}>ℹ️ {insumo.obs}</div>}
+                          {insumo.obs&&<div style={{fontSize:".66rem",color:"var(--blue-700)",marginTop:".1rem"}}>ℹ️ {insumo.obs}</div>}
                         </td>
                         <td style={{padding:".55rem .85rem",color:"var(--text-2)"}}>{insumo.categoria}</td>
                         <td style={{padding:".55rem .85rem",color:"var(--text-2)"}}>{insumo.unidade}</td>
@@ -8306,7 +8214,7 @@ function InsumoPage({ patients, users, user }) {
                       <div>
                         <div style={{fontWeight:700,fontSize:".88rem",color:"var(--ink)",display:"flex",alignItems:"center",gap:".5rem"}}>
                           {d.patientName}
-                          {d.continuo&&<span style={{fontSize:".67rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"#dcfce7",color:"#15803d",border:"1px solid #bbf7d0"}}>🔄 Contínuo</span>}
+                          {d.continuo&&<span style={{fontSize:".67rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"var(--green-100)",color:"var(--green-700)",border:"1px solid #bbf7d0"}}>🔄 Contínuo</span>}
                         </div>
                         <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".15rem"}}>
                           {d.profissional} ({d.profRole}) · {new Date(d.ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
@@ -8333,7 +8241,7 @@ function InsumoPage({ patients, users, user }) {
         {/* ── ABA: PACIENTES CONTÍNUOS ── */}
         {insumoTab==="continuos"&&(
           <div>
-            <div style={{marginBottom:"1rem",padding:".65rem .9rem",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",fontSize:".76rem",color:"#1d4ed8",display:"flex",gap:".4rem"}}>
+            <div style={{marginBottom:"1rem",padding:".65rem .9rem",background:"var(--blue-50)",border:"1px solid #bfdbfe",borderRadius:"var(--r-md)",fontSize:".76rem",color:"var(--blue-700)",display:"flex",gap:".4rem"}}>
               <span>🔄</span>
               <span>Pacientes contínuos têm lesão ativa e retornam mensalmente para retirada de insumos. A quantidade máxima foi definida na primeira dispensação e não pode ser ultrapassada. Para encerrar, clique em "Encerrar".</span>
             </div>
@@ -8354,7 +8262,7 @@ function InsumoPage({ patients, users, user }) {
                         <div>
                           <div style={{fontWeight:800,fontSize:".9rem",color:"var(--ink)",display:"flex",alignItems:"center",gap:".5rem"}}>
                             {c.patientName}
-                            <span style={{fontSize:".67rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"#dcfce7",color:"#15803d",border:"1px solid #bbf7d0"}}>🔄 Ativo</span>
+                            <span style={{fontSize:".67rem",fontWeight:700,padding:".1rem .4rem",borderRadius:999,background:"var(--green-100)",color:"var(--green-700)",border:"1px solid #bbf7d0"}}>🔄 Ativo</span>
                           </div>
                           <div style={{fontSize:".72rem",color:"var(--text-3)",marginTop:".2rem"}}>
                             Desde {fmtDate(c.dtInicio)} · {retiradas} retirada(s) registrada(s) · Por: {c.profissional}
@@ -8363,7 +8271,7 @@ function InsumoPage({ patients, users, user }) {
                         </div>
                         {canDispense&&(
                           <button type="button" onClick={()=>encerrarContinuo(c.id)}
-                            style={{fontSize:".73rem",padding:".3rem .7rem",background:"#fff1f2",color:"#be123c",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:700,flexShrink:0}}>
+                            style={{fontSize:".73rem",padding:".3rem .7rem",background:"var(--rose-50)",color:"var(--rose-700)",border:"1px solid #fecdd3",borderRadius:"var(--r-md)",cursor:"pointer",fontWeight:700,flexShrink:0}}>
                             Encerrar
                           </button>
                         )}
@@ -8594,7 +8502,7 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
               <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".4rem"}}>Dados Clínicos</div>
               <div style={{fontSize:".8rem",color:"var(--text-2)",display:"flex",flexDirection:"column",gap:".2rem"}}>
                 {allergies
-                  ? <span style={{color:"#be123c",fontWeight:600}}>⚠️ Alergias: {allergies}</span>
+                  ? <span style={{color:"var(--rose-700)",fontWeight:600}}>⚠️ Alergias: {allergies}</span>
                   : <span style={{color:"var(--text-3)"}}>Sem alergias registradas</span>}
                 {comorbid&&<span>🏥 {comorbid}</span>}
               </div>
@@ -8603,8 +8511,8 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
 
           {/* Medicamentos */}
           {meds&&(
-            <div style={{marginBottom:"1rem",padding:".65rem .85rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)"}}>
-              <div style={{fontWeight:700,fontSize:".75rem",color:"#92400e",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".35rem"}}>💊 Medicamentos em uso</div>
+            <div style={{marginBottom:"1rem",padding:".65rem .85rem",background:"var(--amber-50)",border:"1px solid #fde68a",borderRadius:"var(--r-md)"}}>
+              <div style={{fontWeight:700,fontSize:".75rem",color:"var(--amber-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".35rem"}}>💊 Medicamentos em uso</div>
               <div style={{fontSize:".8rem",color:"#78350f",whiteSpace:"pre-wrap"}}>{meds}</div>
             </div>
           )}
@@ -8615,7 +8523,7 @@ function PatientCardModal({ patient, users, templates, history, onClose }) {
               <div style={{fontWeight:700,fontSize:".75rem",color:"var(--teal-700)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:".5rem"}}>💉 Vacinas registradas</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:".3rem"}}>
                 {vaccines.slice(0,12).map((v,i)=>(
-                  <span key={i} style={{fontSize:".72rem",padding:".15rem .5rem",borderRadius:999,background:"#f0fdf4",color:"#15803d",border:"1px solid #bbf7d0",fontWeight:600}}>
+                  <span key={i} style={{fontSize:".72rem",padding:".15rem .5rem",borderRadius:999,background:"var(--green-50)",color:"var(--green-700)",border:"1px solid #bbf7d0",fontWeight:600}}>
                     {v.title} {v.date?`(${fmtDate(v.date)})`:""}</span>
                 ))}
                 {vaccines.length>12&&<span style={{fontSize:".72rem",color:"var(--text-3)"}}>+{vaccines.length-12} mais</span>}
@@ -9034,19 +8942,19 @@ function PharmacyPage({ user }) {
 
   function logTypeBadge(type) {
     const map = {
-      dispensa: { label:"Dispensação", bg:"#eff6ff",  color:"#1d4ed8", border:"#bfdbfe" },
-      ajuste:   { label:"Ajuste",      bg:"#fff7ed",  color:"#c2410c", border:"#fed7aa" },
-      cadastro: { label:"Cadastro",    bg:"#f0fdf4",  color:"#15803d", border:"#bbf7d0" },
-      edicao:   { label:"Edição",      bg:"#faf5ff",  color:"#7e22ce", border:"#e9d5ff" },
+      dispensa: { label:"Dispensação", bg:"var(--blue-50)",  color:"var(--blue-700)", border:"var(--blue-200)" },
+      ajuste:   { label:"Ajuste",      bg:"var(--orange-50)",  color:"var(--orange-700)", border:"var(--orange-200)" },
+      cadastro: { label:"Cadastro",    bg:"var(--green-50)",  color:"var(--green-700)", border:"var(--green-200)" },
+      edicao:   { label:"Edição",      bg:"var(--purple-50)",  color:"var(--purple-800)", border:"var(--purple-200)" },
     };
     const s = map[type] || { label:type, bg:"var(--surface-2)", color:"var(--text-2)", border:"var(--border)" };
     return <span style={{fontSize:".68rem",padding:".1rem .45rem",borderRadius:999,background:s.bg,color:s.color,border:`1px solid ${s.border}`,fontWeight:700,whiteSpace:"nowrap"}}>{s.label}</span>;
   }
 
   function stockStatusColor(item) {
-    if (item.qty === 0) return { bg:"#fff1f2", border:"#fecdd3", text:"#be123c", label:"Zerado" };
-    if (item.qty <= item.minQty) return { bg:"#fff7ed", border:"#fed7aa", text:"#c2410c", label:"Baixo" };
-    return { bg:"#f0fdf4", border:"#bbf7d0", text:"#15803d", label:"OK" };
+    if (item.qty === 0) return { bg:"var(--rose-50)", border:"var(--rose-200)", text:"var(--rose-700)", label:"Zerado" };
+    if (item.qty <= item.minQty) return { bg:"var(--orange-50)", border:"var(--orange-200)", text:"var(--orange-700)", label:"Baixo" };
+    return { bg:"var(--green-50)", border:"var(--green-200)", text:"var(--green-700)", label:"OK" };
   }
 
   function fmtTs(ts) {
@@ -9090,13 +8998,13 @@ function PharmacyPage({ user }) {
         {[
           { label:"Total de itens", value:totalItems, icon:"📦", color:"var(--teal-600)" },
           { label:"Estoque baixo",  value:lowStock.length, icon:"âš ï¸", color:lowStock.length>0?"var(--amber-600)":"var(--text-3)", warn:lowStock.length>0 },
-          { label:"Sem estoque",    value:outStock.length, icon:"🚫", color:outStock.length>0?"#be123c":"var(--text-3)", danger:outStock.length>0 },
+          { label:"Sem estoque",    value:outStock.length, icon:"🚫", color:outStock.length>0?"var(--rose-700)":"var(--text-3)", danger:outStock.length>0 },
           { label:"Dispensações hoje", value:log.filter(l=>l.type==="dispensa"&&l.ts?.slice(0,10)===new Date().toISOString().slice(0,10)).length, icon:"💊", color:"var(--teal-600)" },
         ].map(k => (
           <div key={k.label} className="card" style={{
             flex:"1 1 150px",padding:".85rem 1rem",minWidth:130,
-            background:k.danger?"#fff1f2":k.warn?"#fff7ed":"var(--surface)",
-            border:`1px solid ${k.danger?"#fecdd3":k.warn?"#fed7aa":"var(--border)"}`,
+            background:k.danger?"var(--rose-50)":k.warn?"var(--orange-50)":"var(--surface)",
+            border:`1px solid ${k.danger?"var(--rose-200)":k.warn?"var(--orange-200)":"var(--border)"}`,
           }}>
             <div style={{fontSize:"1.25rem",lineHeight:1}}>{k.icon}</div>
             <div style={{fontSize:"1.55rem",fontWeight:800,color:k.color,lineHeight:1.1,marginTop:".3rem"}}>{k.value}</div>
@@ -9138,9 +9046,9 @@ function PharmacyPage({ user }) {
               <button
                 onClick={()=>setShowLowOnly(v=>!v)}
                 style={{fontSize:".78rem",padding:".38rem .75rem",
-                  background:showLowOnly?"#fff7ed":"var(--surface-2)",
-                  border:`1px solid ${showLowOnly?"#fed7aa":"var(--border)"}`,
-                  color:showLowOnly?"#c2410c":"var(--text-2)"}}>
+                  background:showLowOnly?"var(--orange-50)":"var(--surface-2)",
+                  border:`1px solid ${showLowOnly?"var(--orange-200)":"var(--border)"}`,
+                  color:showLowOnly?"var(--orange-700)":"var(--text-2)"}}>
                 {showLowOnly?"âš ï¸ Só baixo":"âš ï¸ Filtrar baixo"}
               </button>
               {isAuthenticated && (
@@ -9226,7 +9134,7 @@ function PharmacyPage({ user }) {
               </table>
             </div>
             {!isAuthenticated && (
-              <div style={{marginTop:".75rem",padding:".65rem 1rem",background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:"var(--r-md)",fontSize:".78rem",color:"#92400e",display:"flex",alignItems:"center",gap:".5rem"}}>
+              <div style={{marginTop:".75rem",padding:".65rem 1rem",background:"var(--orange-50)",border:"1px solid #fed7aa",borderRadius:"var(--r-md)",fontSize:".78rem",color:"var(--amber-700)",display:"flex",alignItems:"center",gap:".5rem"}}>
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 1l6.5 13H1.5L8 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M8 6v4M8 11.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
                 Faça login como farmacêutico para dispensar medicamentos e ajustar o estoque.
               </div>
@@ -9237,7 +9145,7 @@ function PharmacyPage({ user }) {
         {pharmaTab === "log" && (
           <>
             {/* ANVISA RDC 20/2011 — aviso de retenção obrigatória */}
-            <div style={{marginBottom:"1rem",padding:".6rem .85rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".73rem",color:"#92400e",display:"flex",gap:".5rem",alignItems:"flex-start"}}>
+            <div style={{marginBottom:"1rem",padding:".6rem .85rem",background:"var(--amber-50)",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".73rem",color:"var(--amber-700)",display:"flex",gap:".5rem",alignItems:"flex-start"}}>
               <span style={{flexShrink:0}}>⚖️</span>
               <span><strong>ANVISA RDC 20/2011:</strong> A escrituração de dispensação deve ser conservada por no mínimo <strong>5 anos</strong>. Este histórico não pode ser deletado. Para fins de auditoria, todos os registros devem ser exportados e arquivados fisicamente.</span>
             </div>
@@ -9291,7 +9199,7 @@ function PharmacyPage({ user }) {
                           {l.notes && <span style={{color:"var(--text-3)",fontStyle:"italic"}}>{l.notes}</span>}
                         </div>}
                         {l.type==="ajuste" && <>
-                          <span style={{fontWeight:600,color:l.delta>=0?"#15803d":"#be123c"}}>{l.delta>=0?"+":""}{l.delta}</span>
+                          <span style={{fontWeight:600,color:l.delta>=0?"var(--green-700)":"var(--rose-700)"}}>{l.delta>=0?"+":""}{l.delta}</span>
                           {l.reason && <span style={{color:"var(--text-3)"}}> · {l.reason}</span>}
                         </>}
                         {l.type==="cadastro" && <span>Estoque inicial: {l.qty}</span>}
@@ -9585,8 +9493,8 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                           {ageGroup}{ageMonths !== null ? ` · ${ageMonths<24?`${ageMonths}m`:`${Math.floor(ageMonths/12)}a`}` : ""}
                         </span>
                         <span style={{fontSize:".73rem",padding:".12rem .45rem",borderRadius:999,
-                          background:totalPending?"var(--amber-50)":"#f0fdf4",
-                          color:totalPending?"var(--amber-700)":"#15803d",
+                          background:totalPending?"var(--amber-50)":"var(--green-50)",
+                          color:totalPending?"var(--amber-700)":"var(--green-700)",
                           border:totalPending?"1px solid var(--amber-100)":"1px solid #bbf7d0",
                           fontWeight:600}}>
                           {totalPending ? `${totalPending} pendente${totalPending>1?"s":""}` : "Em dia ✓"}
@@ -9648,7 +9556,7 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                     <div style={{padding:"1rem 1.1rem",display:"flex",flexDirection:"column",gap:"1.5rem"}}>
 
                       {rosaGestantePrecoce && (
-                        <div style={{padding:".85rem 1rem",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".82rem",color:"#92400e",display:"flex",alignItems:"flex-start",gap:".6rem"}}>
+                        <div style={{padding:".85rem 1rem",background:"var(--amber-50)",border:"1px solid #fde68a",borderRadius:"var(--r-md)",fontSize:".82rem",color:"var(--amber-700)",display:"flex",alignItems:"flex-start",gap:".6rem"}}>
                           <span style={{fontSize:"1.1rem",flexShrink:0}}>🤰</span>
                           <div>
                             <div style={{fontWeight:700,marginBottom:".2rem"}}>dTpa — aguardando 20ª semana</div>
@@ -9684,7 +9592,7 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                                 Calendário vacinal
                               </span>
                               <div style={{marginLeft:"auto",display:"flex",gap:".3rem",flexWrap:"wrap",justifyContent:"flex-end"}}>
-                                {[["Criança","0–9a","#1d4ed8","#eff6ff","#bfdbfe"],["Adolescente","10–19a","#15803d","#f0fdf4","#bbf7d0"],["Adulto","20–59a","#7e22ce","#faf5ff","#e9d5ff"],["Idoso","60+a","#c2410c","#fff7ed","#fed7aa"]].map(([label,range,color,bg,border])=>(
+                                {[["Criança","0–9a","var(--blue-700)","var(--blue-50)","var(--blue-200)"],["Adolescente","10–19a","var(--green-700)","var(--green-50)","var(--green-200)"],["Adulto","20–59a","var(--purple-800)","var(--purple-50)","var(--purple-200)"],["Idoso","60+a","var(--orange-700)","var(--orange-50)","var(--orange-200)"]].map(([label,range,color,bg,border])=>(
                                   <span key={label} style={{fontSize:".65rem",padding:".1rem .4rem",borderRadius:999,background:bg,color,border:`1px solid ${border}`,fontWeight:600,whiteSpace:"nowrap"}}>
                                     {label} <span style={{fontWeight:400,opacity:.8}}>{range}</span>
                                   </span>
@@ -9726,9 +9634,9 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                                           <div style={{display:"flex",alignItems:"center",gap:".55rem",minWidth:0}}>
                                             <div style={{width:24,height:24,borderRadius:"50%",flexShrink:0,
                                               display:"flex",alignItems:"center",justifyContent:"center",
-                                              background:applied?"#dcfce7":"var(--amber-100)"}}>
+                                              background:applied?"var(--green-100)":"var(--amber-100)"}}>
                                               {applied
-                                                ? <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                ? <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="var(--green-600)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                                 : <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5" stroke="var(--amber-600)" strokeWidth="1.5"/><path d="M8 5.5v2.5M8 10v.5" stroke="var(--amber-600)" strokeWidth="1.4" strokeLinecap="round"/></svg>
                                               }
                                             </div>
@@ -9743,7 +9651,7 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                                           {applied && last?.date ? (
                                             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".1rem",flexShrink:0}}>
                                               <span style={{fontSize:".72rem",fontFamily:"IBM Plex Mono",fontWeight:600,
-                                                color:"#15803d",background:"#dcfce7",padding:".1rem .4rem",
+                                                color:"var(--green-700)",background:"var(--green-100)",padding:".1rem .4rem",
                                                 borderRadius:999,border:"1px solid #bbf7d0"}}>
                                                 {fmtDate(last.date)}
                                               </span>
@@ -9771,7 +9679,7 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                       {condVaccines.length > 0 && (()=>{
                         const norm = s => String(s||"").toLowerCase().replace(/[^a-z0-9]/g," ").trim();
                         const condGroup = getConditionGroup(selectedPatient.careCategory);
-                        const condColor = AGE_GROUP_COLOR[condGroup] || {bg:"#fff1f2",border:"#fecdd3",text:"#be123c"};
+                        const condColor = AGE_GROUP_COLOR[condGroup] || {bg:"var(--rose-50)",border:"var(--rose-200)",text:"var(--rose-700)"};
                         return (
                           <div style={{paddingTop:".75rem",borderTop:"2px dashed var(--border)"}}>
                             <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:".75rem"}}>
@@ -9810,9 +9718,9 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                                     <div style={{display:"flex",alignItems:"center",gap:".55rem",minWidth:0}}>
                                       <div style={{width:24,height:24,borderRadius:"50%",flexShrink:0,
                                         display:"flex",alignItems:"center",justifyContent:"center",
-                                        background:applied?"#dcfce7":condColor.border}}>
+                                        background:applied?"var(--green-100)":condColor.border}}>
                                         {applied
-                                          ? <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                          ? <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="var(--green-600)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                           : <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5" stroke={condColor.text} strokeWidth="1.5"/><path d="M8 5.5v2.5M8 10v.5" stroke={condColor.text} strokeWidth="1.4" strokeLinecap="round"/></svg>
                                         }
                                       </div>
@@ -9824,7 +9732,7 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
                                     {applied && last?.date ? (
                                       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:".1rem",flexShrink:0}}>
                                         <span style={{fontSize:".72rem",fontFamily:"IBM Plex Mono",fontWeight:600,
-                                          color:"#15803d",background:"#dcfce7",padding:".1rem .4rem",
+                                          color:"var(--green-700)",background:"var(--green-100)",padding:".1rem .4rem",
                                           borderRadius:999,border:"1px solid #bbf7d0"}}>
                                           {fmtDate(last.date)}
                                         </span>
@@ -10128,9 +10036,9 @@ function DiagnosticsPage({ apiHealth, token, user, patients, users, templates, l
           <div style={{display:"flex",flexDirection:"column",gap:".35rem",alignItems:"flex-end",flexShrink:0}}>
             <div style={{display:"flex",alignItems:"center",gap:".5rem",background:"rgba(255,255,255,.07)",border:"1px solid rgba(255,255,255,.12)",borderRadius:"var(--r-md)",padding:".4rem .85rem"}}>
               <div style={{width:8,height:8,borderRadius:"50%",background:healthColor,flexShrink:0}}/>
-              <span style={{fontSize:".78rem",fontWeight:700,color:"#e2e8f0"}}>{apiHealth?.label || "Verificando..."}</span>
+              <span style={{fontSize:".78rem",fontWeight:700,color:"var(--slate-200)"}}>{apiHealth?.label || "Verificando..."}</span>
             </div>
-            {latency>0&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>Latência: {latency} ms</span>}
+            {latency>0&&<span style={{fontSize:".7rem",color:"var(--slate-400)"}}>Latência: {latency} ms</span>}
           </div>
         }
       />
@@ -10197,24 +10105,24 @@ class AppErrorBoundary extends Component {
     if (this.state.error) {
       return (
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-          minHeight:"100vh",padding:"2rem",background:"#f8fafc",fontFamily:"system-ui,sans-serif"}}>
+          minHeight:"100vh",padding:"2rem",background:"var(--slate-50)",fontFamily:"system-ui,sans-serif"}}>
           <div style={{maxWidth:480,width:"100%",background:"#fff",borderRadius:12,padding:"2rem",
             boxShadow:"0 4px 24px rgba(0,0,0,.08)",border:"1px solid #e2e8f0"}}>
             <div style={{fontSize:"2rem",marginBottom:"1rem",textAlign:"center"}}>âš ï¸</div>
-            <h2 style={{margin:"0 0 .5rem",fontSize:"1.1rem",color:"#0f172a",textAlign:"center"}}>
+            <h2 style={{margin:"0 0 .5rem",fontSize:"1.1rem",color:"var(--slate-900)",textAlign:"center"}}>
               Ocorreu um erro inesperado
             </h2>
-            <p style={{fontSize:".85rem",color:"#64748b",margin:"0 0 1.5rem",textAlign:"center",lineHeight:1.6}}>
+            <p style={{fontSize:".85rem",color:"var(--slate-500)",margin:"0 0 1.5rem",textAlign:"center",lineHeight:1.6}}>
               {String(this.state.error?.message||this.state.error||"Erro desconhecido")}
             </p>
             <div style={{display:"flex",gap:".75rem",justifyContent:"center"}}>
               <button onClick={()=>{ sessionStorage.clear(); window.location.reload(); }}
-                style={{padding:".5rem 1.25rem",background:"#0f172a",color:"#fff",border:"none",
+                style={{padding:".5rem 1.25rem",background:"var(--slate-900)",color:"#fff",border:"none",
                   borderRadius:8,cursor:"pointer",fontSize:".85rem",fontWeight:600}}>
                 Recarregar
               </button>
               <button onClick={()=>{ sessionStorage.clear(); localStorage.removeItem("saudeubs_react_session"); window.location.reload(); }}
-                style={{padding:".5rem 1.25rem",background:"#fff",color:"#64748b",border:"1px solid #e2e8f0",
+                style={{padding:".5rem 1.25rem",background:"#fff",color:"var(--slate-500)",border:"1px solid #e2e8f0",
                   borderRadius:8,cursor:"pointer",fontSize:".85rem"}}>
                 Limpar sessão e recarregar
               </button>

@@ -1,0 +1,100 @@
+/* 04-components/card.css
+   Card padrão + KPI (accent bar topo).
+
+   Markup:
+     <div class="card">…</div>
+     <div class="card card--padded">…</div>
+     <div class="card kpi kpi--accent">
+       <div class="kpi__label">…</div>
+       <div class="kpi__value">…</div>
+       <div class="kpi__delta kpi__delta--up">…</div>
+     </div>
+*/
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s-5);
+  box-shadow: var(--shadow-xs);
+  transition:
+    box-shadow   var(--d-base),
+    border-color var(--d-base),
+    background   var(--d-base);
+}
+.card:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-strong);
+}
+
+.card--flat   { background: transparent; box-shadow: none; }
+.card--padded { padding: var(--s-6); }
+.card--noPad  { padding: 0; }
+
+/* Cabeçalho/footer internos (para .card com padding: 0) */
+.card__header {
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.card__title {
+  font: 600 var(--t-md) var(--font-sans);
+  letter-spacing: var(--ls-base);
+  color: var(--text);
+}
+.card__subtitle {
+  font: 400 var(--t-sm) var(--font-sans);
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.card__body   { padding: var(--s-5); }
+.card__footer {
+  padding: var(--s-3) var(--s-5);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-2);
+}
+
+/* ── KPI · barra accent no topo ─────────────────────────── */
+.kpi {
+  position: relative;
+  overflow: hidden;
+  padding: var(--s-4);
+}
+.kpi::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+.kpi--success::before { background: var(--success); }
+.kpi--warning::before { background: var(--warning); }
+.kpi--danger::before  { background: var(--danger); }
+.kpi--info::before    { background: var(--info); }
+
+.kpi__label {
+  font: 600 10.5px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.kpi__value {
+  font: 700 28px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  margin-top: 8px;
+  letter-spacing: var(--ls-snug);
+}
+.kpi__delta {
+  margin-top: 6px;
+  font: 500 11.5px var(--font-mono);
+}
+.kpi__delta--up   { color: var(--success); }
+.kpi__delta--down { color: var(--danger); }
+.kpi__delta--flat { color: var(--text-dim); }

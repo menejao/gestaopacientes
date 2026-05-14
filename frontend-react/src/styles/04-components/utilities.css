@@ -1,0 +1,52 @@
+/* 04-components/utilities.css
+   Helpers tipográficos e visuais que não justificam um componente
+   próprio. Use com moderação — preferir tokens/componentes.
+*/
+
+/* Eyebrow · pré-título institucional (10.5px mono uppercase) */
+.eyebrow {
+  font: 600 10.5px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Kicker · igual eyebrow, mas com dot accent (usado no hero) */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 10.5px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+.kicker::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+/* Tipografia helper */
+.mono  { font-family: var(--font-mono); }
+.muted { color: var(--text-muted); }
+.dim   { color: var(--text-dim); }
+
+/* Truncate */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Visually hidden (mantém para screen reader) */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}

@@ -1,0 +1,56 @@
+/* 03-layout/app-shell.css
+   Estrutura raiz da aplicação: shell vertical com topbar e
+   body horizontal (sidebar + main).
+
+   Markup esperado:
+     <div class="app">
+       <header class="topbar">…</header>
+       <div class="app-body">
+         <aside class="sidebar">…</aside>
+         <main class="main-area">…</main>
+       </div>
+     </div>
+*/
+
+:root {
+  --sidebar-w: 240px;
+  --topbar-h:  56px;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.main-area {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  background: var(--bg);
+}
+
+/* Mobile: sidebar vira drawer */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 260px; }
+
+  .sidebar {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0;
+    bottom: 0;
+    z-index: var(--z-sticky);
+    transform: translateX(-104%);
+    transition: transform var(--d-slow) var(--ease-out);
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+}
