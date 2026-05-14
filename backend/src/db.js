@@ -14,7 +14,7 @@ const SENSITIVE_USER_FIELDS = ["twoFactorSecret", "twoFactorPendingSecret"];
 const pool = DATABASE_URL
   ? new Pool({
       connectionString: DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
+      ssl: true
     })
   : null;
 
