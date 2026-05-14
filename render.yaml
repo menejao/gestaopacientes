@@ -24,6 +24,20 @@ services:
         sync: false
       - key: BACKUP_EXPORT_KEY
         sync: false
+      - key: AUTH_MAX_ATTEMPTS
+        value: 20
+      - key: AUTH_WINDOW_MS
+        value: 600000
+      - key: GLOBAL_RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: GLOBAL_RATE_LIMIT_MAX
+        value: 600
+      - key: TWOFA_ISSUER
+        value: SaudeUBS
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
       - key: COUNCIL_VERIFY_MODE
         value: required
       - key: COUNCIL_VERIFY_PROVIDER
