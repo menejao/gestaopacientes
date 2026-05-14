@@ -81,6 +81,17 @@ export async function register(payload) {
   });
 }
 
+export async function refreshSession(refreshToken) {
+  return api("/auth/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refreshToken })
+  });
+}
+
+export async function logoutApi(token, refreshToken) {
+  return api("/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken }) }, token);
+}
+
 export async function listPublicTeams() {
   return api("/teams/public", { method: "GET", retryCount: 2 });
 }

@@ -43,6 +43,17 @@ const TWOFA_ISSUER = String(process.env.TWOFA_ISSUER || "SaudeUBS").trim() || "S
 const TWOFA_CHALLENGE_TTL_MS = Number(process.env.TWOFA_CHALLENGE_TTL_MS || 5 * 60 * 1000);
 const TWOFA_MAX_ATTEMPTS = Number(process.env.TWOFA_MAX_ATTEMPTS || 5);
 const BACKUP_EXPORT_KEY = String(process.env.BACKUP_EXPORT_KEY || "").trim();
+const ACCESS_EXPIRES_IN = String(process.env.ACCESS_TOKEN_EXPIRES_IN || JWT_EXPIRES_IN).trim();
+const REFRESH_EXPIRES_IN = String(process.env.REFRESH_TOKEN_EXPIRES_IN || "7d").trim();
+const REFRESH_EXPIRES_MS = (() => {
+  const s = REFRESH_EXPIRES_IN;
+  const n = parseInt(s, 10);
+  if (s.endsWith("d")) return n * 86400_000;
+  if (s.endsWith("h")) return n * 3600_000;
+  if (s.endsWith("m")) return n * 60_000;
+  if (s.endsWith("s")) return n * 1000;
+  return n || 7 * 86400_000;
+})();
 
 if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === "dev-only-jwt-secret-change-me")) {
   throw new Error("JWT_SECRET obrigatório em produção");
@@ -641,6 +652,35 @@ function normalizeTotpSecret(secret) {
   return String(secret || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
 }
 
+function hashToken(raw) {
+  return crypto.createHash("sha256").update(String(raw)).digest("hex");
+}
+
+function createRefreshToken(userId, ip, db) {
+  ensureArray(db, "refreshTokens");
+  const raw = crypto.randomBytes(40).toString("hex");
+  const record = {
+    id: uuidv4(),
+    userId,
+    tokenHash: hashToken(raw),
+    expiresAt: new Date(Date.now() + REFRESH_EXPIRES_MS).toISOString(),
+    createdAt: new Date().toISOString(),
+    revokedAt: null,
+    ip: String(ip || "")
+  };
+  db.refreshTokens.push(record);
+  if (db.refreshTokens.length > 500) {
+    const now = Date.now();
+    db.refreshTokens = db.refreshTokens
+      .filter(t => !t.revokedAt && new Date(t.expiresAt).getTime() > now)
+      .slice(-400);
+    if (!db.refreshTokens.find(t => t.id === record.id)) {
+      db.refreshTokens.push(record);
+    }
+  }
+  return { raw, sessionId: record.id };
+}
+
 function generateTotpSecret() {
   return base32Encode(crypto.randomBytes(20));
 }
@@ -793,6 +833,7 @@ function ensureDbShape(db) {
   ensureArray(db, "privacyRequests");
   ensureArray(db, "registerVerifications");
   ensureArray(db, "loginChallenges");
+  ensureArray(db, "refreshTokens");
 
   if (!db.teams.length) {
     const defaultTeamId = "team-default";
@@ -1046,6 +1087,7 @@ async function migrateLegacyPlaintextPasswords() {
 function createToken(user, db) {
   return jwt.sign(
     {
+      jti: uuidv4(),
       id: user.id,
       name: user.name,
       role: canonicalRole(user.role),
@@ -1055,7 +1097,7 @@ function createToken(user, db) {
     },
     JWT_SECRET,
     {
-      expiresIn: JWT_EXPIRES_IN,
+      expiresIn: ACCESS_EXPIRES_IN,
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
       algorithm: "HS256"
@@ -3584,7 +3626,9 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
       team.managerUserId = user.id;
       team.updatedAt = new Date().toISOString();
     }
-    return { user, db };
+    const rtResult = createRefreshToken(user.id, getClientIp(req), db);
+    addAuditLog(db, user, "auth.register", "auth", rtResult.sessionId, { userId: user.id });
+    return { user, db, raw: rtResult.raw };
   });
 
   if (result?.error) {
@@ -3592,7 +3636,7 @@ app.post("/auth/register", authRateLimit, async (req, res) => {
   }
   const safeUser = sanitizeUser(result.user, result.db);
   const token = createToken(result.user, result.db);
-  return res.status(201).json({ user: safeUser, token });
+  return res.status(201).json({ user: safeUser, token, refreshToken: result.raw });
 });
 
 app.post("/auth/register/request-code", authRateLimit, async (_req, res) => {
@@ -3673,7 +3717,7 @@ app.post("/auth/login", authRateLimit, async (req, res) => {
     });
   }
 
-  await withDb((mutableDb) => {
+  const { raw: loginRefreshToken } = await withDb((mutableDb) => {
     ensureDbShape(mutableDb);
     const idx = mutableDb.users.findIndex((u) => u.id === user.id);
     if (idx >= 0) {
@@ -3682,6 +3726,9 @@ app.post("/auth/login", authRateLimit, async (req, res) => {
       mutableDb.users[idx].lastSeenIp = getClientIp(req);
       mutableDb.users[idx].updatedAt = nowIso;
     }
+    const rtResult = createRefreshToken(user.id, getClientIp(req), mutableDb);
+    addAuditLog(mutableDb, user, "auth.login", "auth", rtResult.sessionId, { userId: user.id });
+    return rtResult;
   });
   {
     const latestDb = await readDb();
@@ -3692,7 +3739,7 @@ app.post("/auth/login", authRateLimit, async (req, res) => {
 
   const safeUser = sanitizeUser(user, db);
   const token = createToken(user, db);
-  return res.json({ user: safeUser, token });
+  return res.json({ user: safeUser, token, refreshToken: loginRefreshToken });
 });
 
 app.post("/auth/login/verify", authRateLimit, async (req, res) => {
@@ -3735,14 +3782,47 @@ app.post("/auth/login/verify", authRateLimit, async (req, res) => {
     db.users[userIndex].lastSeenAt = nowIso;
     db.users[userIndex].lastSeenIp = getClientIp(req);
     db.users[userIndex].updatedAt = nowIso;
-    addAuditLog(db, user, "auth.login_2fa_verified", "auth", challengeId, { userId: user.id });
-    return { user: db.users[userIndex], db };
+    const rtResult = createRefreshToken(user.id, getClientIp(req), db);
+    addAuditLog(db, user, "auth.login_2fa_verified", "auth", challengeId, { userId: user.id, sessionId: rtResult.sessionId });
+    return { user: db.users[userIndex], db, raw: rtResult.raw };
   });
 
   if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
   const safeUser = sanitizeUser(result.user, result.db);
   const token = createToken(result.user, result.db);
-  return res.json({ user: safeUser, token });
+  return res.json({ user: safeUser, token, refreshToken: result.raw });
+});
+
+app.post("/auth/refresh", authRateLimit, async (req, res) => {
+  const rawToken = String(req.body?.refreshToken || "").trim();
+  if (!rawToken) return res.status(400).json({ error: "refreshToken é obrigatório" });
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const hash = hashToken(rawToken);
+    const idx = db.refreshTokens.findIndex((t) => t.tokenHash === hash);
+    if (idx < 0) return { error: { status: 401, message: "Refresh token inválido" } };
+
+    const record = db.refreshTokens[idx];
+    if (record.revokedAt) return { error: { status: 401, message: "Sessão encerrada" } };
+    if (new Date(record.expiresAt) < new Date()) {
+      db.refreshTokens[idx].revokedAt = new Date().toISOString();
+      return { error: { status: 401, message: "Sessão expirada" } };
+    }
+
+    const user = db.users.find((u) => u.id === record.userId);
+    if (!user) return { error: { status: 401, message: "Usuário não encontrado" } };
+
+    db.refreshTokens[idx].revokedAt = new Date().toISOString();
+    const rtResult = createRefreshToken(user.id, record.ip, db);
+    addAuditLog(db, user, "auth.refresh", "auth", rtResult.sessionId, { prevSession: record.id });
+    return { user, db, raw: rtResult.raw };
+  });
+
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  const safeUser = sanitizeUser(result.user, result.db);
+  const token = createToken(result.user, result.db);
+  return res.json({ user: safeUser, token, refreshToken: result.raw });
 });
 
 app.use(requireAuth);
@@ -3751,6 +3831,26 @@ app.use((req, res, next) => {
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
   next();
+});
+
+app.post("/auth/logout", requireAuth, async (req, res) => {
+  const rawToken = String(req.body?.refreshToken || "").trim();
+  await withDb((db) => {
+    ensureDbShape(db);
+    if (rawToken) {
+      const hash = hashToken(rawToken);
+      const idx = db.refreshTokens.findIndex(
+        (t) => t.tokenHash === hash && t.userId === req.user.id
+      );
+      if (idx >= 0 && !db.refreshTokens[idx].revokedAt) {
+        db.refreshTokens[idx].revokedAt = new Date().toISOString();
+      }
+    }
+    addAuditLog(db, req.user, "auth.logout", "auth", req.user.id, {
+      hadRefreshToken: Boolean(rawToken)
+    });
+  });
+  return res.json({ ok: true });
 });
 
 app.get("/me", requireAuth, async (req, res) => {

@@ -7,8 +7,8 @@ import {
   deleteProtocolTemplate, deleteRecord, deleteUser, getUserUsage,
   getPatientHistory, getPatientProtocolSummary, getProtocolSummaries,
   getApiHealth, listAppointments, listMessages, listPatients, listProtocolTemplates,
-  listTasks, listUsers, login, listPublicTeams, pingPresence, register, sendMessage,
-  updateProtocolTemplate, updatePatient, updateUser, updateTaskStatus,
+  listTasks, listUsers, login, listPublicTeams, logoutApi, pingPresence, refreshSession,
+  register, sendMessage, updateProtocolTemplate, updatePatient, updateUser, updateTaskStatus,
 } from "./api";
 
 
@@ -10563,7 +10563,7 @@ function AppInner() {
       const payload=await login(email.trim(),password);
       if(payload?.twoFactorRequired) throw new Error("2FA ativo: tela React ainda não implementa desafio.");
       setToken(payload.token); setUser(payload.user);
-      sessionStorage.setItem(SESSION_KEY,JSON.stringify({token:payload.token,user:payload.user}));
+      sessionStorage.setItem(SESSION_KEY,JSON.stringify({token:payload.token,user:payload.user,refreshToken:payload.refreshToken||""}));
       auditLog("LOGIN", { email: email.trim().toLowerCase(), success: true }, payload.user);
       // Gestor vai direto para o painel de gestão
       if(String(payload.user?.role||"")==="gestor") setTab("gestor");
@@ -10578,17 +10578,31 @@ function AppInner() {
     try {
       const payload=await register({name:reg.name.trim(),email:reg.email.trim(),password:reg.password,role:reg.role,teamId:reg.teamId,councilNumber:onlyDigits(reg.councilNumber),councilUf:String(reg.councilUf||"").toUpperCase()});
       setToken(payload.token); setUser(payload.user);
-      sessionStorage.setItem(SESSION_KEY,JSON.stringify({token:payload.token,user:payload.user}));
+      sessionStorage.setItem(SESSION_KEY,JSON.stringify({token:payload.token,user:payload.user,refreshToken:payload.refreshToken||""}));
       auditLog("USUARIO_CADASTRADO", { name:reg.name.trim(), email:reg.email.trim(), role:reg.role }, payload.user);
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Falha no cadastro"); } finally{ setBusy(false); }
+    } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Falha no cadastro"); } finally{ setBusy(false); }
   }
 
-  /* ── Token expirado — desloga automaticamente ── */
-  function handleApiError(e) {
+  /* ── Token expirado — tenta refresh, senão desloga ── */
+  async function handleApiError(e) {
     const msg = String(e?.message||e||"").toLowerCase();
     const is401 = e?.status === 401 || msg.includes("token ausente") || msg.includes("token inválido") ||
                   msg.includes("expirad") || msg.includes("não autorizado");
     if (is401) {
+      const sess = readSession();
+      if (sess?.refreshToken) {
+        try {
+          const payload = await refreshSession(sess.refreshToken);
+          setToken(payload.token);
+          setUser(payload.user);
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+            token: payload.token,
+            user: payload.user,
+            refreshToken: payload.refreshToken || ""
+          }));
+          return true;
+        } catch {}
+      }
       auditLog("SESSAO_EXPIRADA", { reason: e?.message }, user);
       setToken(""); setUser(null); setPatients([]); setUsers([]); setTemplates([]);
       setProtocolByPatient({}); setSelectedPatientId("");
@@ -10634,7 +10648,7 @@ function AppInner() {
         setProtocolByPatient(sums?.summaries||{});
       } else setProtocolByPatient({});
       setLastLoadAt(new Date().toISOString());
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Falha ao carregar dados"); } finally{ setBusy(false); }
+    } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Falha ao carregar dados"); } finally{ setBusy(false); }
   }
 
   async function loadSelectedPatientData(patientId) {
@@ -10651,10 +10665,12 @@ function AppInner() {
       setAppointments(Array.isArray(appts)?appts:[]);
       setTasks(Array.isArray(taskItems)?taskItems:[]);
       setMessages(Array.isArray(msgItems)?msgItems:[]);
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Falha ao carregar dados do paciente"); }
+    } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Falha ao carregar dados do paciente"); }
   }
 
   function logout() {
+    const sess = readSession();
+    if (sess?.refreshToken && token) logoutApi(token, sess.refreshToken).catch(()=>{});
     auditLog("LOGOUT", { email: user?.email }, user);
     setToken(""); setUser(null); setPatients([]); setUsers([]); setTemplates([]); setProtocolByPatient({}); setSelectedPatientId("");
     sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(UI_STATE_KEY); localStorage.removeItem(RECEPTION_KEY);
@@ -10791,7 +10807,7 @@ function AppInner() {
         writeLS("saudeubs_agenda_v1", updatedAgenda);
       }
       await loadAll();
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Erro ao salvar paciente"); } finally{ setBusy(false); }
+    } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro ao salvar paciente"); } finally{ setBusy(false); }
   }
 
   async function removePatient(p) {
@@ -10839,7 +10855,7 @@ function AppInner() {
       await updateUser(token,editingUser.id,payload);
       auditLog("USUARIO_EDITADO", { targetId:editingUser.id, targetName:userForm.name.trim(), role:userForm.role, changedPassword:!!userForm.password.trim() }, user);
       setShowUserModal(false); await loadAll();
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Erro ao salvar usuário"); } finally{ setBusy(false); }
+    } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro ao salvar usuário"); } finally{ setBusy(false); }
   }
 
   async function removeUser(u) {
@@ -10874,7 +10890,7 @@ function AppInner() {
     try {
       editingTemplate?.category?await updateProtocolTemplate(token,editingTemplate.category,payload):await createProtocolTemplate(token,payload);
       setShowTemplateModal(false); await loadAll();
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Erro ao salvar protocolo"); } finally{ setBusy(false); }
+    } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro ao salvar protocolo"); } finally{ setBusy(false); }
   }
 
   async function removeTemplate(t) {
@@ -10885,9 +10901,9 @@ function AppInner() {
   }
 
   /* ââ€â‚¬ââ€â‚¬ AI ââ€â‚¬ââ€â‚¬ */
-  async function loadAiPriorities(){if(!token)return;setBusy(true);setError("");try{setAiView("priorities");setAiData(await aiTeamPriorities(token));}catch(e){ if(!handleApiError(e)) setError(e.message||"Erro"); }finally{setBusy(false);}}
-  async function loadAiQuality(){if(!token)return;setBusy(true);setError("");try{setAiView("quality");setAiData(await aiTeamDataQuality(token));}catch(e){ if(!handleApiError(e)) setError(e.message||"Erro"); }finally{setBusy(false);}}
-  async function loadAiReport(){if(!token)return;setBusy(true);setError("");try{setAiView("report");setAiData(await aiTeamReport(token));}catch(e){ if(!handleApiError(e)) setError(e.message||"Erro"); }finally{setBusy(false);}}
+  async function loadAiPriorities(){if(!token)return;setBusy(true);setError("");try{setAiView("priorities");setAiData(await aiTeamPriorities(token));}catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro"); }finally{setBusy(false);}}
+  async function loadAiQuality(){if(!token)return;setBusy(true);setError("");try{setAiView("quality");setAiData(await aiTeamDataQuality(token));}catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro"); }finally{setBusy(false);}}
+  async function loadAiReport(){if(!token)return;setBusy(true);setError("");try{setAiView("report");setAiData(await aiTeamReport(token));}catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro"); }finally{setBusy(false);}}
   async function submitAiQuestion(e){e.preventDefault();if(!token||!aiQuestion.trim())return;setBusy(true);setError("");try{setAiView("chat");setAiData(await aiTeamAsk(token,aiQuestion.trim()));}catch(e2){setError(e2.message||"Erro");}finally{setBusy(false);}}
 
   /* ââ€â‚¬ââ€â‚¬ Record / Appointment / Task / Message ââ€â‚¬ââ€â‚¬ */
@@ -10983,7 +10999,7 @@ function AppInner() {
         user?.role==="doctor"?"Consulta médica":user?.role==="dentist"?"Consulta odontológica":"Consulta de enfermagem",
         date:"",details:"",conduct:"",nextStep:"",demandType:"scheduled",consultKind:"medica",consultDoctor:"",consultSpecialty:""});
       setRecordVaccines([]); await loadSelectedPatientData(selectedPatientId); await loadAll();
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Erro ao criar registro"); }
+    } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro ao criar registro"); }
   }
 
   async function submitAppointment(e) {
@@ -10996,7 +11012,7 @@ function AppInner() {
       await createRecord(token,selectedPatientId,{type:"consultation",title,date:appointmentForm.date,details});
       setAppointmentForm({date:"",demandType:"scheduled",summary:"",conduct:"",nextStep:""});
       await loadSelectedPatientData(selectedPatientId); await loadAll();
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Erro ao registrar atendimento"); }
+    } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro ao registrar atendimento"); }
   }
 
   async function submitTask(e) {
@@ -11021,7 +11037,7 @@ function AppInner() {
       }).catch(()=>{});
       setTaskForm({title:"",notes:"",dueDate:"",assigneeId:""});
       await loadSelectedPatientData(selectedPatientId); await loadAll();
-    } catch(e){ if(!handleApiError(e)) setError(e.message||"Erro ao criar tarefa"); }
+    } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro ao criar tarefa"); }
   }
 
   async function submitMessage(e) {
@@ -11039,7 +11055,7 @@ function AppInner() {
       }).catch(()=>{});
       setMessageText(""); await loadSelectedPatientData(selectedPatientId);
     }
-    catch(e){ if(!handleApiError(e)) setError(e.message||"Erro ao enviar mensagem"); }
+    catch(e){ if(!(await handleApiError(e))) setError(e.message||"Erro ao enviar mensagem"); }
   }
 
   async function handleDeleteRecord(recordId) {
@@ -11118,7 +11134,8 @@ function AppInner() {
       const updated = await updateUser(token, user.id, payload).catch(()=>null);
       const newUser = { ...user, ...payload, ...(updated?.user || updated || {}) };
       setUser(newUser);
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token, user: newUser }));
+      const sess = readSession();
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token, user: newUser, refreshToken: sess?.refreshToken || "" }));
       setShowProfileModal(false);
     } catch (err) {
       setProfileError(err.message || "Erro ao salvar perfil.");
