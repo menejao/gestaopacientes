@@ -908,6 +908,8 @@ function sanitizeUser(user, db) {
 }
 
 async function ensureDemoManagerIfNeeded(email, password) {
+  if (IS_PROD) return null;
+
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const rawPassword = String(password || "");
   const demoEmail = "ana@clinica.local";
