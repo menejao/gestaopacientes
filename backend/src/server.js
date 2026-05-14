@@ -3402,7 +3402,7 @@ app.get("/teams/public", async (_req, res) => {
   res.json(items);
 });
 
-app.get("/integrations/council/status", (_req, res) => {
+app.get("/integrations/council/status", requireAuth, (_req, res) => {
   const config = getCouncilIntegrationConfig();
   return res.json({
     mode: config.mode,
