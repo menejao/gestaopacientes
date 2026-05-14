@@ -457,7 +457,6 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "same-site" },
   contentSecurityPolicy: {
     useDefaults: false,
-    reportOnly: true,
     directives: {
       "default-src": ["'none'"],
       "frame-ancestors": ["'none'"],
