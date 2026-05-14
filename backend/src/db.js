@@ -167,12 +167,12 @@ function buildDefaultState() {
 }
 
 async function readDbFromFile() {
-  const raw = await fs.readFile(DB_PATH, "utf-8");
+  const raw = (await fs.readFile(DB_PATH, "utf-8")).replace(/^﻿/, "");
   return deserializeStateFromStorage(JSON.parse(raw));
 }
 
 async function readDbSnapshotFromFileStorage() {
-  const raw = await fs.readFile(DB_PATH, "utf-8");
+  const raw = (await fs.readFile(DB_PATH, "utf-8")).replace(/^﻿/, "");
   return JSON.parse(raw);
 }
 
