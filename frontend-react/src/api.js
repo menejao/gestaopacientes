@@ -56,7 +56,9 @@ export async function api(path, options = {}, token = "") {
         continue;
       }
       const body = await response.json().catch(() => ({}));
-      throw new Error(body?.error || "Erro na API");
+      const err = new Error(body?.error || "Erro na API");
+      err.status = response.status;
+      throw err;
     }
 
     return response.json();

@@ -10586,8 +10586,8 @@ function AppInner() {
   /* ── Token expirado — desloga automaticamente ── */
   function handleApiError(e) {
     const msg = String(e?.message||e||"").toLowerCase();
-    const is401 = msg.includes("401") || msg.includes("token") || msg.includes("expirad") ||
-                  msg.includes("invalid") || msg.includes("unauthorized") || msg.includes("não autorizado");
+    const is401 = e?.status === 401 || msg.includes("token ausente") || msg.includes("token inválido") ||
+                  msg.includes("expirad") || msg.includes("não autorizado");
     if (is401) {
       auditLog("SESSAO_EXPIRADA", { reason: e?.message }, user);
       setToken(""); setUser(null); setPatients([]); setUsers([]); setTemplates([]);
