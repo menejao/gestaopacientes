@@ -80,8 +80,8 @@ try {
   fatal(`Falha ao ler/parsear ${filePath}: ${err.message}`);
 }
 
-if (!backup.generatedAt || !backup.driver) {
-  fatal("Arquivo de backup inválido — faltam campos 'generatedAt' ou 'driver'.");
+if (!backup.generatedAt || !backup.encryptedSnapshot) {
+  fatal("Arquivo de backup inválido — faltam campos 'generatedAt' ou 'encryptedSnapshot'.");
 }
 
 // ── summary ───────────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ if (!backup.generatedAt || !backup.driver) {
 console.log("\n=== RESTORE DE BACKUP — SaudeUbs/SIGUS ===\n");
 console.log(`  Arquivo:       ${filePath}`);
 console.log(`  Gerado em:     ${backup.generatedAt}`);
-console.log(`  Driver:        ${backup.driver}`);
+console.log(`  Driver:        ${backup.driver || "n/a"}`);
 console.log(`  Ambiente alvo: ${env.toUpperCase()}`);
 console.log(`  DB URL (host): ${maskUrl(DATABASE_URL)}`);
 console.log(`  Dry-run:       ${dryRun ? "SIM — nenhuma escrita será feita" : "NÃO"}`);
@@ -177,36 +177,37 @@ async function performRestore(backupData, dbUrl) {
   const tableCheck = await client.query(`
     SELECT EXISTS (
       SELECT FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name = 'data'
+      WHERE table_schema = 'public' AND table_name = 'app_state'
     ) AS exists
   `);
   const tableExists = tableCheck.rows[0]?.exists;
 
   if (!tableExists) {
-    console.log("     Tabela 'data' não existe — criando...");
+    console.log("     Tabela 'app_state' não existe — criando...");
     await client.query(`
-      CREATE TABLE IF NOT EXISTS data (
+      CREATE TABLE IF NOT EXISTS app_state (
         id INTEGER PRIMARY KEY DEFAULT 1,
-        data JSONB NOT NULL
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
   }
 
   console.log("[3/4] Aplicando backup...");
 
-  // The backup.driver field contains the raw JSONB payload from the origin database.
-  // We restore it as-is — the DATA_ENCRYPTION_KEY must match the origin environment.
-  const payload = backupData.driver;
+  // backup.encryptedSnapshot is the raw JSONB payload from app_state.data in the origin DB.
+  // Restore as-is — DATA_ENCRYPTION_KEY must match the origin environment.
+  const payload = backupData.encryptedSnapshot;
 
   await client.query(`
-    INSERT INTO data (id, data)
-    VALUES (1, $1::jsonb)
+    INSERT INTO app_state (id, data, updated_at)
+    VALUES (1, $1::jsonb, NOW())
     ON CONFLICT (id)
-    DO UPDATE SET data = EXCLUDED.data
+    DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
   `, [JSON.stringify(payload)]);
 
   console.log("[4/4] Verificando restore...");
-  const verify = await client.query("SELECT id, (data IS NOT NULL) AS has_data FROM data WHERE id = 1");
+  const verify = await client.query("SELECT id, (data IS NOT NULL) AS has_data FROM app_state WHERE id = 1");
   if (!verify.rows[0]?.has_data) {
     await client.end();
     fatal("Verificação pós-restore falhou — linha não encontrada.");
