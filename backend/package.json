@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test test/health.test.js && node --test test/auth.test.js && node --test test/patients.test.js && node --test test/twofa.test.js && node --test test/backup.test.js",
-    "test:legacy": "node src/ai.test.js"
+    "test:legacy": "node src/ai.test.js",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@upstash/ratelimit": "^2.0.8",
@@ -21,5 +22,8 @@
     "pg": "^8.13.1",
     "uuid": "^11.1.0",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
   }
 }
