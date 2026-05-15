@@ -171,9 +171,18 @@ function GestorAccessPanel({ onBackToClinical, error, busy, email, password, set
         </div>
 
         <div className="auth-kpi-grid">
-          <KPI label="Perfil" value="Gestor" helper="Acesso com MFA obrigatório" />
-          <KPI label="Acesso" value="Restrito" helper="Fluxo administrativo obrigatório" />
-          <KPI label="Cobertura" value="Multi-módulo" helper="Contexto expandido após autenticação" />
+          <KPI className="auth-info-card">
+            <strong className="auth-info-card__title">Perfil</strong>
+            <span className="auth-info-card__desc">Gestor com MFA obrigatório</span>
+          </KPI>
+          <KPI className="auth-info-card">
+            <strong className="auth-info-card__title">Acesso</strong>
+            <span className="auth-info-card__desc">Fluxo administrativo</span>
+          </KPI>
+          <KPI className="auth-info-card">
+            <strong className="auth-info-card__title">Cobertura</strong>
+            <span className="auth-info-card__desc">Multi-módulo por contexto</span>
+          </KPI>
         </div>
       </section>
 
@@ -275,17 +284,25 @@ function AuthScreen({ onLogin, onRegister, error, busy }) {
           <p>Segurança enterprise, rastreabilidade completa e módulos adaptados a cada contexto assistencial.</p>
         </div>
 
-        <div className="auth-hero-actions">
-          <Button variant="secondary" size="lg" onClick={() => setLoginMode("gestor")}>
-            Acesso do gestor
-          </Button>
-          <Badge tone="success">LGPD · MFA · Multi-tenant</Badge>
-        </div>
+        <button className="auth-context-card" onClick={() => setLoginMode("gestor")}>
+          <strong className="auth-context-card__title">Ambiente institucional</strong>
+          <p className="auth-context-card__desc">Gestão, módulos e indicadores conforme o perfil de acesso.</p>
+          <span className="auth-context-card__cta">Acessar painel →</span>
+        </button>
 
         <div className="auth-kpi-grid">
-          <KPI label="Segurança" value="MFA" helper="Autenticação em dois fatores" />
-          <KPI label="Conformidade" value="LGPD" helper="Dados protegidos e auditados" />
-          <KPI label="Módulos" value="Multi-tenant" helper="Contexto ativado após autenticação" />
+          <KPI className="auth-info-card">
+            <strong className="auth-info-card__title">Segurança</strong>
+            <span className="auth-info-card__desc">MFA e controle de acesso</span>
+          </KPI>
+          <KPI className="auth-info-card">
+            <strong className="auth-info-card__title">Conformidade</strong>
+            <span className="auth-info-card__desc">LGPD e rastreabilidade</span>
+          </KPI>
+          <KPI className="auth-info-card">
+            <strong className="auth-info-card__title">Multi-tenant</strong>
+            <span className="auth-info-card__desc">Módulos por organização</span>
+          </KPI>
         </div>
       </section>
 
@@ -307,7 +324,7 @@ function AuthScreen({ onLogin, onRegister, error, busy }) {
               <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@organizacao.gov.br" autoComplete="email" />
               <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" autoComplete="current-password" />
               {error ? <Alert tone="danger">{error}</Alert> : null}
-              <Button type="submit" variant="primary" size="lg" disabled={busy}>{busy ? "Entrando..." : "Acessar VALENS"}</Button>
+              <Button type="submit" variant="primary" size="lg" disabled={busy}>{busy ? "Entrando..." : "Acessar plataforma"}</Button>
             </form>
           ) : authTab === "register" ? (
             <form className="auth-form auth-form--stacked" onSubmit={(e) => { e.preventDefault(); onRegister(reg); }}>
