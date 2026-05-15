@@ -109,9 +109,7 @@ function AccessRequestsPage({ token }) {
             <thead>
               <tr>
                 <th>Solicitante</th>
-                <th>Organização</th>
                 <th>Cargo / Função</th>
-                <th>Justificativa</th>
                 <th>Status</th>
                 <th>Data</th>
                 <th>Ações</th>
@@ -125,9 +123,7 @@ function AccessRequestsPage({ token }) {
                     <br />
                     <span className="muted small">{req.email}</span>
                   </td>
-                  <td>{req.organization || "—"}</td>
                   <td>{req.jobTitle || "—"}</td>
-                  <td className="access-req-reason">{req.reason || "—"}</td>
                   <td>
                     <Badge tone={STATUS_TONE[req.status] || "neutral"}>
                       {STATUS_LABEL[req.status] || req.status}

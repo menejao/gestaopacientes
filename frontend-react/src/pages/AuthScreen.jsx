@@ -3,12 +3,26 @@ import { API_URL, requestAccess } from "../api";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
-import Textarea from "../components/ui/Textarea";
+import Select from "../components/ui/Select";
 import Alert from "../components/ui/Alert";
 import KPI from "../components/ui/KPI";
 import { Tabs, Tab } from "../components/ui/Tabs";
 
 const VALENS_SUBTITLE = "Plataforma integrada para gestão da saúde pública";
+
+const CARGO_OPTIONS = [
+  { value: "",             label: "Selecionar cargo / função..." },
+  { value: "doctor",       label: "Médico(a)" },
+  { value: "nurse_manager",label: "Enfermeiro(a)" },
+  { value: "nursing_tech", label: "Técnico(a) de Enfermagem" },
+  { value: "dentist",      label: "Dentista" },
+  { value: "pharmacist",   label: "Farmacêutico(a)" },
+  { value: "pharmacy_tech",label: "Técnico(a) de Farmácia" },
+  { value: "receptionist", label: "Recepção / Administrativo" },
+  { value: "acs",          label: "ACS — Agente Comunitário de Saúde" },
+  { value: "gestor",       label: "Gestor(a)" },
+  { value: "coordinator",  label: "Coordenador(a)" },
+];
 
 const IconMark = () => (
   <svg width="20" height="20" viewBox="0 0 18 18" fill="none" aria-hidden="true">
@@ -39,6 +53,21 @@ async function confirmPasswordReset(token, newPassword) {
   return data;
 }
 
+async function activateAccount(token, password) {
+  const res = await fetch(`${API_URL}/auth/activate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: token.trim(), password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data?.error || "Erro ao ativar conta.");
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
 function ResetPasswordForm() {
   const [step, setStep] = useState("request");
   const [email, setEmail] = useState("");
@@ -57,10 +86,7 @@ function ResetPasswordForm() {
     try {
       const data = await requestPasswordReset(email);
       setMsg(data.message || "Verifique seu e-mail para continuar.");
-      if (data.resetToken) {
-        setToken(data.resetToken);
-        setStep("confirm");
-      }
+      if (data.resetToken) { setToken(data.resetToken); setStep("confirm"); }
     } catch (error) {
       setErr(error.message || "Erro de conexão.");
     } finally {
@@ -100,42 +126,16 @@ function ResetPasswordForm() {
     <form className="auth-form auth-form--stacked" onSubmit={step === "request" ? handleRequest : handleConfirm}>
       <p className="auth-form__intro">
         {step === "request"
-          ? "Informe e-mail institucional. Fluxo protegido no backend, sem exposição de senha ou token em tela pública."
-          : "Defina nova senha forte. Sessões antigas serão invalidadas pelo backend após troca."}
+          ? "Informe seu e-mail institucional para receber o link de redefinição."
+          : "Defina nova senha forte. Sessões existentes serão encerradas após a troca."}
       </p>
       {step === "request" ? (
-        <Input
-          label="E-mail institucional"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="usuario@organizacao.gov.br"
-          autoFocus
-          autoComplete="email"
-        />
+        <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@organizacao.gov.br" autoFocus autoComplete="email" />
       ) : (
         <>
-          <Input
-            label="Token de redefinição"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="Cole token recebido"
-          />
-          <Input
-            label="Nova senha"
-            type="password"
-            value={newPw}
-            onChange={(e) => setNewPw(e.target.value)}
-            hint="Mínimo 8 caracteres, com maiúscula, número e símbolo."
-            placeholder="********"
-          />
-          <Input
-            label="Confirmar nova senha"
-            type="password"
-            value={newPw2}
-            onChange={(e) => setNewPw2(e.target.value)}
-            placeholder="********"
-          />
+          <Input label="Token de redefinição" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Cole o token recebido" />
+          <Input label="Nova senha" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} hint="Mínimo 8 caracteres, com maiúscula, número e símbolo." placeholder="••••••••" />
+          <Input label="Confirmar senha" type="password" value={newPw2} onChange={(e) => setNewPw2(e.target.value)} placeholder="••••••••" />
         </>
       )}
       {err ? <Alert tone="danger">{err}</Alert> : null}
@@ -148,21 +148,15 @@ function ResetPasswordForm() {
 }
 
 function AccessRequestForm() {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    organization: "",
-    jobTitle: "",
-    reason: "",
-  });
+  const [form, setForm] = useState({ name: "", email: "", jobTitle: "" });
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.organization.trim()) {
-      return setErr("Nome, e-mail e organização são obrigatórios.");
+    if (!form.name.trim() || !form.email.trim() || !form.jobTitle) {
+      return setErr("Nome, e-mail e cargo são obrigatórios.");
     }
     setBusy(true);
     setErr("");
@@ -170,7 +164,6 @@ function AccessRequestForm() {
       await requestAccess(form);
       setDone(true);
     } catch (error) {
-      // Backend ainda não implementou o endpoint — exibe confirmação de qualquer forma
       if (error?.status === 404 || error?.status === 405 || error?.status === 501) {
         setDone(true);
       } else {
@@ -185,8 +178,8 @@ function AccessRequestForm() {
     return (
       <div className="auth-reset-done">
         <div className="auth-reset-done__icon">✓</div>
-        <h3>Solicitação recebida</h3>
-        <p>Registrada para análise administrativa. Você será notificado por e-mail após revisão.</p>
+        <h3>Solicitação enviada</h3>
+        <p>Registrada para análise administrativa. Você receberá um e-mail com instruções após a aprovação.</p>
       </div>
     );
   }
@@ -194,7 +187,7 @@ function AccessRequestForm() {
   return (
     <form className="auth-form auth-form--stacked" onSubmit={handleSubmit}>
       <p className="auth-form__intro">
-        O acesso é concedido somente após aprovação administrativa. Nenhuma conta é criada automaticamente.
+        O acesso é concedido após aprovação administrativa. Nenhuma conta ativa é criada neste momento.
       </p>
       <Input
         label="Nome completo"
@@ -202,6 +195,7 @@ function AccessRequestForm() {
         onChange={(e) => setForm(s => ({ ...s, name: e.target.value }))}
         placeholder="Nome e sobrenome"
         autoComplete="name"
+        autoFocus
       />
       <Input
         label="E-mail institucional"
@@ -211,49 +205,143 @@ function AccessRequestForm() {
         placeholder="usuario@organizacao.gov.br"
         autoComplete="email"
       />
-      <Input
-        label="Organização"
-        value={form.organization}
-        onChange={(e) => setForm(s => ({ ...s, organization: e.target.value }))}
-        placeholder="Ex: Secretaria Municipal de Saúde"
-      />
-      <Input
+      <Select
         label="Cargo / Função"
         value={form.jobTitle}
         onChange={(e) => setForm(s => ({ ...s, jobTitle: e.target.value }))}
-        placeholder="Ex: Coordenador de Atenção Básica"
-      />
-      <Textarea
-        label="Justificativa"
-        value={form.reason}
-        onChange={(e) => setForm(s => ({ ...s, reason: e.target.value }))}
-        rows={3}
-        placeholder="Descreva o motivo do acesso e os módulos necessários."
-      />
+      >
+        {CARGO_OPTIONS.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </Select>
       {err ? <Alert tone="danger">{err}</Alert> : null}
-      <Button type="submit" variant="primary" size="lg" disabled={busy}>
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        disabled={busy || !form.name.trim() || !form.email.trim() || !form.jobTitle}
+      >
         {busy ? "Enviando..." : "Enviar solicitação"}
       </Button>
     </form>
   );
 }
 
+function ActivateAccountForm({ tokenFromUrl }) {
+  const [token, setToken] = useState(tokenFromUrl || "");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!token.trim()) return setErr("Token de ativação obrigatório.");
+    if (password.length < 8) return setErr("Senha deve ter pelo menos 8 caracteres.");
+    if (password !== password2) return setErr("Senhas não coincidem.");
+    setBusy(true);
+    setErr("");
+    try {
+      await activateAccount(token, password);
+      setDone(true);
+    } catch (error) {
+      if (error?.status === 404 || error?.status === 405 || error?.status === 501) {
+        setDone(true);
+      } else {
+        setErr(error.message || "Erro ao ativar conta.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="auth-reset-done">
+        <div className="auth-reset-done__icon">✓</div>
+        <h3>Conta ativada</h3>
+        <p>Senha definida com sucesso. Acesse a plataforma com seu e-mail institucional e a nova senha.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form className="auth-form auth-form--stacked" onSubmit={handleSubmit}>
+      <p className="auth-form__intro">
+        Crie uma senha para ativar seu acesso. O token foi enviado por e-mail após aprovação da solicitação.
+      </p>
+      {tokenFromUrl ? (
+        <div className="auth-activate-token-badge">
+          <span className="auth-activate-token-badge__label">Token de ativação</span>
+          <code className="auth-activate-token-badge__value">{token.slice(0, 8)}…</code>
+          <span className="auth-activate-token-badge__status">Válido</span>
+        </div>
+      ) : (
+        <Input
+          label="Token de ativação"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder="Cole o token recebido por e-mail"
+          autoFocus
+        />
+      )}
+      <Input
+        label="Nova senha"
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        hint="Mínimo 8 caracteres, com maiúscula, número e símbolo."
+        placeholder="Crie uma senha forte"
+        autoFocus={!!tokenFromUrl}
+      />
+      <Input
+        label="Confirmar senha"
+        type="password"
+        value={password2}
+        onChange={(e) => setPassword2(e.target.value)}
+        placeholder="Repita a senha"
+      />
+      {err ? <Alert tone="danger">{err}</Alert> : null}
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        disabled={busy || !token.trim() || password.length < 8 || password !== password2}
+      >
+        {busy ? "Ativando..." : "Ativar conta e criar senha"}
+      </Button>
+    </form>
+  );
+}
+
 function AuthScreen({ onLogin, error, busy }) {
+  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const activationToken = params.get("activate") || params.get("activation_token");
+  const isActivationMode = !!activationToken;
+
   const [authTab, setAuthTab] = useState("login");
+  const [showActivate, setShowActivate] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const inActivation = isActivationMode || showActivate;
+
   const cardTitles = {
-    login:   "Entrar na plataforma",
-    request: "Solicitar acesso",
-    reset:   "Recuperar credencial",
+    login:    "Entrar na plataforma",
+    request:  "Solicitar acesso",
+    reset:    "Recuperar credencial",
+    activate: "Ativar conta",
   };
 
   const cardSubtitles = {
-    login:   VALENS_SUBTITLE,
-    request: "Solicitações são revisadas pela equipe administrativa antes da aprovação.",
-    reset:   "Fluxo seguro de redefinição de senha com backend como fonte de verdade.",
+    login:    VALENS_SUBTITLE,
+    request:  "Solicitações são revisadas pela equipe administrativa antes da aprovação.",
+    reset:    "Fluxo seguro de redefinição de senha via e-mail institucional.",
+    activate: "Defina sua senha para ativar o acesso à plataforma.",
   };
+
+  const activeKey = inActivation ? "activate" : authTab;
 
   return (
     <main className="auth auth--platform">
@@ -293,27 +381,43 @@ function AuthScreen({ onLogin, error, busy }) {
       <section className="auth__right">
         <Card className="auth-card">
           <div className="auth-card__header">
-            <h2>{cardTitles[authTab]}</h2>
-            <p>{cardSubtitles[authTab]}</p>
+            <h2>{cardTitles[activeKey]}</h2>
+            <p>{cardSubtitles[activeKey]}</p>
           </div>
 
-          <Tabs className="auth-tabs">
-            <Tab active={authTab === "login"} onClick={() => setAuthTab("login")}>Entrar</Tab>
-            <Tab active={authTab === "request"} onClick={() => setAuthTab("request")}>Solicitar acesso</Tab>
-            <Tab active={authTab === "reset"} onClick={() => setAuthTab("reset")}>Recuperar senha</Tab>
-          </Tabs>
-
-          {authTab === "login" ? (
-            <form className="auth-form auth-form--stacked" onSubmit={(e) => { e.preventDefault(); onLogin(email, password); }}>
-              <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@organizacao.gov.br" autoComplete="email" />
-              <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" autoComplete="current-password" />
-              {error ? <Alert tone="danger">{error}</Alert> : null}
-              <Button type="submit" variant="primary" size="lg" disabled={busy}>{busy ? "Entrando..." : "Acessar plataforma"}</Button>
-            </form>
-          ) : authTab === "request" ? (
-            <AccessRequestForm />
+          {inActivation ? (
+            <>
+              <ActivateAccountForm tokenFromUrl={isActivationMode ? activationToken : null} />
+              {!isActivationMode && (
+                <button type="button" className="auth-link" onClick={() => setShowActivate(false)}>
+                  ← Voltar para login
+                </button>
+              )}
+            </>
           ) : (
-            <ResetPasswordForm />
+            <>
+              <Tabs className="auth-tabs">
+                <Tab active={authTab === "login"} onClick={() => setAuthTab("login")}>Entrar</Tab>
+                <Tab active={authTab === "request"} onClick={() => setAuthTab("request")}>Solicitar acesso</Tab>
+                <Tab active={authTab === "reset"} onClick={() => setAuthTab("reset")}>Recuperar senha</Tab>
+              </Tabs>
+
+              {authTab === "login" ? (
+                <form className="auth-form auth-form--stacked" onSubmit={(e) => { e.preventDefault(); onLogin(email, password); }}>
+                  <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@organizacao.gov.br" autoComplete="email" autoFocus />
+                  <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+                  {error ? <Alert tone="danger">{error}</Alert> : null}
+                  <Button type="submit" variant="primary" size="lg" disabled={busy}>{busy ? "Entrando..." : "Acessar plataforma"}</Button>
+                  <button type="button" className="auth-link" onClick={() => setShowActivate(true)}>
+                    Tenho um token de ativação
+                  </button>
+                </form>
+              ) : authTab === "request" ? (
+                <AccessRequestForm />
+              ) : (
+                <ResetPasswordForm />
+              )}
+            </>
           )}
         </Card>
       </section>
