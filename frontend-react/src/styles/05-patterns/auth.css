@@ -78,6 +78,15 @@
   padding: var(--s-8);
 }
 
+.auth__right-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-4);
+  width: 100%;
+  max-width: 440px;
+}
+
 /* ── Auth card · container premium ──────────────────────── */
 
 .auth-card {
@@ -408,6 +417,73 @@
   color: var(--hero-text-muted);
 }
 
+/* ── Footer link (abaixo do card) ────────────────────────── */
+
+.auth-page-footer {
+  margin: 0;
+  text-align: center;
+}
+.auth-footer-link {
+  font: 500 var(--t-xs)/1 var(--font-sans);
+  color: var(--text-dim);
+  text-decoration: none;
+  letter-spacing: var(--ls-base);
+  transition: color var(--d-fast);
+}
+.auth-footer-link:hover {
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+/* ── E-mail vinculado ao token (badge read-only) ────────── */
+
+.auth-activate-email-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--accent-soft);
+  border: 1px solid rgba(20,184,166,.25);
+  border-radius: var(--r-md);
+}
+.auth-activate-email-badge__label {
+  font: 600 var(--t-xs)/1 var(--font-sans);
+  color: var(--accent-text);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.auth-activate-email-badge__value {
+  font: 500 var(--t-sm)/1 var(--font-sans);
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Success state no ActivateAccountPage ────────────────── */
+
+.auth-activate-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-6) 0;
+  text-align: center;
+}
+.auth-activate-success h2 {
+  margin: 0;
+  font: 800 var(--t-xl)/var(--lh-snug) var(--font-sans);
+  color: var(--text);
+}
+.auth-activate-success p {
+  margin: 0;
+  font-size: var(--t-sm);
+  line-height: var(--lh-relaxed);
+  color: var(--text-muted);
+  max-width: 32ch;
+}
+
 /* ── Responsividade ──────────────────────────────────────── */
 
 @media (max-width: 900px) {
@@ -431,6 +507,9 @@
     padding: var(--s-5) var(--s-4);
     align-items: flex-start;
     padding-top: var(--s-10);
+  }
+  .auth__right-inner {
+    max-width: 100%;
   }
   .auth-card {
     max-width: 100% !important;

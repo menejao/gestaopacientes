@@ -63,6 +63,7 @@ import ExamsPage from "./pages/ExamsPage";
 import AgendaPage from "./pages/AgendaPage";
 import ReceptionistApp from "./pages/ReceptionistApp";
 import AuthScreen from "./pages/AuthScreen";
+import ActivateAccountPage from "./pages/ActivateAccountPage";
 import PatientsPage from "./pages/PatientsPage";
 import AppErrorBoundary from "./components/feedback/AppErrorBoundary";
 import OfflineBanner from "./components/feedback/OfflineBanner";
@@ -924,6 +925,12 @@ function AppInner() {
   }
 
   /* â”€â”€ Auth guard â€” login Ãºnico, roteamento por perfil â”€â”€ */
+  /* rota /activate — primeiro acesso via token (sem auth) */
+  const _path = typeof window !== "undefined" ? window.location.pathname : "/";
+  if (_path === "/activate" || _path === "/primeiro-acesso") {
+    return <ActivateAccountPage />;
+  }
+
   if (!token || !user || typeof user !== 'object') {
     return <AuthScreen onLogin={handleLogin} error={error} busy={busy}/>;
   }
