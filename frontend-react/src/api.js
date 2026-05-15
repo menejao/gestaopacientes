@@ -221,6 +221,25 @@ export async function aiTeamAsk(token, question) {
   return api("/ai/chat", { method: "POST", body: JSON.stringify({ question }), retryCount: 1 }, token);
 }
 
+export async function requestAccess(payload) {
+  return api("/auth/access-requests", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function listAccessRequests(token) {
+  return api("/auth/access-requests", { method: "GET", retryCount: 1 }, token);
+}
+
+export async function approveAccessRequest(token, id) {
+  return api(`/auth/access-requests/${id}/approve`, { method: "POST", body: JSON.stringify({}) }, token);
+}
+
+export async function rejectAccessRequest(token, id) {
+  return api(`/auth/access-requests/${id}/reject`, { method: "POST", body: JSON.stringify({}) }, token);
+}
+
 export async function getApiHealth() {
   return api("/health", { method: "GET", retryCount: 1, retryDelayMs: 250 });
 }

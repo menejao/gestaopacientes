@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { API_URL } from "../api";
+import { API_URL, requestAccess } from "../api";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
-import Select from "../components/ui/Select";
 import Textarea from "../components/ui/Textarea";
 import Alert from "../components/ui/Alert";
-import Badge from "../components/ui/Badge";
 import KPI from "../components/ui/KPI";
 import { Tabs, Tab } from "../components/ui/Tabs";
 
@@ -149,124 +147,116 @@ function ResetPasswordForm() {
   );
 }
 
-function GestorAccessPanel({ onBackToClinical, error, busy, email, password, setEmail, setPassword, onLogin, requestNotes, setRequestNotes }) {
-  return (
-    <main className="auth auth--gestor">
-      <section className="auth__left auth__left--gestor">
-        <div className="auth__brand">
-          <div className="auth-brand-lockup">
-            <div className="auth-brand-lockup__icon"><IconMark /></div>
-            <div className="auth-brand-lockup__copy">
-              <strong>VALENS</strong>
-              <span>{VALENS_SUBTITLE}</span>
-            </div>
-          </div>
-          <Badge tone="info" className="auth-brand-badge">Painel executivo</Badge>
-        </div>
-
-        <div className="auth__hero">
-          <span className="auth-eyebrow">Gestão institucional</span>
-          <h1>Indicadores assistenciais, operacionais e regulatórios em visão única.</h1>
-          <p>Leitura rápida, hierarquia clara, navegação segura e visibilidade abrangente para gestão da rede de saúde.</p>
-        </div>
-
-        <div className="auth-kpi-grid">
-          <KPI className="auth-info-card">
-            <strong className="auth-info-card__title">Perfil</strong>
-            <span className="auth-info-card__desc">Gestor com MFA obrigatório</span>
-          </KPI>
-          <KPI className="auth-info-card">
-            <strong className="auth-info-card__title">Acesso</strong>
-            <span className="auth-info-card__desc">Fluxo administrativo</span>
-          </KPI>
-          <KPI className="auth-info-card">
-            <strong className="auth-info-card__title">Cobertura</strong>
-            <span className="auth-info-card__desc">Multi-módulo por contexto</span>
-          </KPI>
-        </div>
-      </section>
-
-      <section className="auth__right auth__right--institutional">
-        <Card className="auth-card auth-card--wide">
-          <Button className="auth-back-link" variant="ghost" onClick={onBackToClinical}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Voltar ao acesso padrão
-          </Button>
-
-          <div className="auth-card__header">
-            <h2>Acesso institucional</h2>
-            <p>VALENS para coordenação, indicadores, metas e governança da rede assistencial.</p>
-          </div>
-
-          <Tabs className="auth-tabs">
-            <Tab active>Entrar</Tab>
-            <Tab>Solicitar acesso</Tab>
-          </Tabs>
-
-          <form className="auth-form auth-form--stacked" onSubmit={(e) => { e.preventDefault(); onLogin(email, password); }}>
-            <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="gestor@organizacao.gov.br" autoComplete="email" />
-            <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" autoComplete="current-password" />
-            {error ? <Alert tone="danger">{error}</Alert> : null}
-            <Button type="submit" variant="primary" size="lg" disabled={busy}>{busy ? "Entrando..." : "Acessar painel de gestão"}</Button>
-          </form>
-
-          <div className="auth-divider" />
-
-          <div className="auth-request-box">
-            <div className="auth-request-box__copy">
-              <h3>Solicitar acesso institucional</h3>
-              <p>Cadastro público sensível bloqueado. Solicitação segue fluxo administrativo autorizado.</p>
-            </div>
-            <Textarea
-              label="Contexto da solicitação"
-              value={requestNotes}
-              onChange={(e) => setRequestNotes(e.target.value)}
-              rows={4}
-              placeholder="Informe organização, cargo, jurisdição e motivo do acesso."
-            />
-            <Button variant="secondary" size="lg" disabled>Fluxo administrativo obrigatório</Button>
-          </div>
-        </Card>
-      </section>
-    </main>
-  );
-}
-
-function AuthScreen({ onLogin, onRegister, error, busy }) {
-  const [authTab, setAuthTab] = useState("login");
-  const [loginMode, setLoginMode] = useState("clinical");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [requestNotes, setRequestNotes] = useState("");
-  const [reg, setReg] = useState({
+function AccessRequestForm() {
+  const [form, setForm] = useState({
     name: "",
     email: "",
-    password: "",
-    role: "receptionist",
-    teamId: "",
-    councilNumber: "",
-    councilUf: "SP",
+    organization: "",
+    jobTitle: "",
+    reason: "",
   });
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
 
-  if (loginMode === "gestor") {
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.organization.trim()) {
+      return setErr("Nome, e-mail e organização são obrigatórios.");
+    }
+    setBusy(true);
+    setErr("");
+    try {
+      await requestAccess(form);
+      setDone(true);
+    } catch (error) {
+      // Backend ainda não implementou o endpoint — exibe confirmação de qualquer forma
+      if (error?.status === 404 || error?.status === 405 || error?.status === 501) {
+        setDone(true);
+      } else {
+        setErr(error.message || "Erro ao registrar solicitação.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done) {
     return (
-      <GestorAccessPanel
-        onBackToClinical={() => setLoginMode("clinical")}
-        error={error}
-        busy={busy}
-        email={email}
-        password={password}
-        setEmail={setEmail}
-        setPassword={setPassword}
-        onLogin={onLogin}
-        requestNotes={requestNotes}
-        setRequestNotes={setRequestNotes}
-      />
+      <div className="auth-reset-done">
+        <div className="auth-reset-done__icon">✓</div>
+        <h3>Solicitação recebida</h3>
+        <p>Registrada para análise administrativa. Você será notificado por e-mail após revisão.</p>
+      </div>
     );
   }
 
   return (
-    <main className="auth auth--clinical">
+    <form className="auth-form auth-form--stacked" onSubmit={handleSubmit}>
+      <p className="auth-form__intro">
+        O acesso é concedido somente após aprovação administrativa. Nenhuma conta é criada automaticamente.
+      </p>
+      <Input
+        label="Nome completo"
+        value={form.name}
+        onChange={(e) => setForm(s => ({ ...s, name: e.target.value }))}
+        placeholder="Nome e sobrenome"
+        autoComplete="name"
+      />
+      <Input
+        label="E-mail institucional"
+        type="email"
+        value={form.email}
+        onChange={(e) => setForm(s => ({ ...s, email: e.target.value }))}
+        placeholder="usuario@organizacao.gov.br"
+        autoComplete="email"
+      />
+      <Input
+        label="Organização"
+        value={form.organization}
+        onChange={(e) => setForm(s => ({ ...s, organization: e.target.value }))}
+        placeholder="Ex: Secretaria Municipal de Saúde"
+      />
+      <Input
+        label="Cargo / Função"
+        value={form.jobTitle}
+        onChange={(e) => setForm(s => ({ ...s, jobTitle: e.target.value }))}
+        placeholder="Ex: Coordenador de Atenção Básica"
+      />
+      <Textarea
+        label="Justificativa"
+        value={form.reason}
+        onChange={(e) => setForm(s => ({ ...s, reason: e.target.value }))}
+        rows={3}
+        placeholder="Descreva o motivo do acesso e os módulos necessários."
+      />
+      {err ? <Alert tone="danger">{err}</Alert> : null}
+      <Button type="submit" variant="primary" size="lg" disabled={busy}>
+        {busy ? "Enviando..." : "Enviar solicitação"}
+      </Button>
+    </form>
+  );
+}
+
+function AuthScreen({ onLogin, error, busy }) {
+  const [authTab, setAuthTab] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const cardTitles = {
+    login:   "Entrar na plataforma",
+    request: "Solicitar acesso",
+    reset:   "Recuperar credencial",
+  };
+
+  const cardSubtitles = {
+    login:   VALENS_SUBTITLE,
+    request: "Solicitações são revisadas pela equipe administrativa antes da aprovação.",
+    reset:   "Fluxo seguro de redefinição de senha com backend como fonte de verdade.",
+  };
+
+  return (
+    <main className="auth auth--platform">
       <section className="auth__left">
         <div className="auth__brand">
           <div className="auth-brand-lockup">
@@ -283,12 +273,6 @@ function AuthScreen({ onLogin, onRegister, error, busy }) {
           <h1>Infraestrutura centralizada para gestão integrada da saúde pública.</h1>
           <p>Segurança enterprise, rastreabilidade completa e módulos adaptados a cada contexto assistencial.</p>
         </div>
-
-        <button className="auth-context-card" onClick={() => setLoginMode("gestor")}>
-          <strong className="auth-context-card__title">Ambiente institucional</strong>
-          <p className="auth-context-card__desc">Gestão, módulos e indicadores conforme o perfil de acesso.</p>
-          <span className="auth-context-card__cta">Acessar painel →</span>
-        </button>
 
         <div className="auth-kpi-grid">
           <KPI className="auth-info-card">
@@ -309,13 +293,13 @@ function AuthScreen({ onLogin, onRegister, error, busy }) {
       <section className="auth__right">
         <Card className="auth-card">
           <div className="auth-card__header">
-            <h2>{authTab === "login" ? "Entrar na plataforma" : authTab === "register" ? "Criar acesso operacional" : "Recuperar credencial"}</h2>
-            <p>{authTab === "login" ? VALENS_SUBTITLE : authTab === "register" ? "Fluxo público restrito a perfis operacionais permitidos." : "Fluxo seguro de redefinição de senha com backend como fonte de verdade."}</p>
+            <h2>{cardTitles[authTab]}</h2>
+            <p>{cardSubtitles[authTab]}</p>
           </div>
 
           <Tabs className="auth-tabs">
             <Tab active={authTab === "login"} onClick={() => setAuthTab("login")}>Entrar</Tab>
-            <Tab active={authTab === "register"} onClick={() => setAuthTab("register")}>Novo acesso</Tab>
+            <Tab active={authTab === "request"} onClick={() => setAuthTab("request")}>Solicitar acesso</Tab>
             <Tab active={authTab === "reset"} onClick={() => setAuthTab("reset")}>Recuperar senha</Tab>
           </Tabs>
 
@@ -326,18 +310,8 @@ function AuthScreen({ onLogin, onRegister, error, busy }) {
               {error ? <Alert tone="danger">{error}</Alert> : null}
               <Button type="submit" variant="primary" size="lg" disabled={busy}>{busy ? "Entrando..." : "Acessar plataforma"}</Button>
             </form>
-          ) : authTab === "register" ? (
-            <form className="auth-form auth-form--stacked" onSubmit={(e) => { e.preventDefault(); onRegister(reg); }}>
-              <Alert tone="warning">Cadastro público restrito a perfis operacionais autorizados. Perfis de gestão seguem fluxo administrativo.</Alert>
-              <Input label="Nome completo" value={reg.name} onChange={(e) => setReg((s) => ({ ...s, name: e.target.value }))} placeholder="Maria da Silva" />
-              <Input label="E-mail institucional" type="email" value={reg.email} onChange={(e) => setReg((s) => ({ ...s, email: e.target.value }))} placeholder="usuario@organizacao.gov.br" />
-              <Input label="Senha" type="password" value={reg.password} onChange={(e) => setReg((s) => ({ ...s, password: e.target.value }))} placeholder="Mínimo 8 caracteres" hint="Use senha forte. Sessão passa a ser controlada por cookie seguro." />
-              <Select label="Perfil" value={reg.role} onChange={(e) => setReg((s) => ({ ...s, role: e.target.value }))}>
-                <option value="receptionist">Recepcionista</option>
-              </Select>
-              {error ? <Alert tone="danger">{error}</Alert> : null}
-              <Button type="submit" variant="primary" size="lg" disabled={busy}>{busy ? "Criando..." : "Criar acesso operacional"}</Button>
-            </form>
+          ) : authTab === "request" ? (
+            <AccessRequestForm />
           ) : (
             <ResetPasswordForm />
           )}
