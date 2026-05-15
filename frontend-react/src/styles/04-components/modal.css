@@ -55,6 +55,25 @@
   letter-spacing: var(--ls-snug);
   color: var(--text);
 }
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-2);
+}
+.modal__close {
+  padding: 0;
+}
 .modal p {
   font-size: var(--t-base);
   color: var(--text-muted);

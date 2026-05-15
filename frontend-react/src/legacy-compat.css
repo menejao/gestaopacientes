@@ -22,6 +22,9 @@
   --text-3: var(--text-dim);
   --ink:    var(--text);
 
+  /* Border aliases */
+  --border-soft: var(--border-subtle);
+
   /* Shadow aliases */
   --sh-xs: var(--shadow-xs);
   --sh-sm: var(--shadow-sm);

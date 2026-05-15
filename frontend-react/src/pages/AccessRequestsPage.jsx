@@ -4,6 +4,8 @@ import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import Alert from "../components/ui/Alert";
 import EmptyState from "../components/ui/EmptyState";
+import PageLayout from "../components/layout/PageLayout";
+import PageHeader from "../components/layout/PageHeader";
 
 const STATUS_LABEL = { pending: "Pendente", approved: "Aprovado", rejected: "Recusado" };
 const STATUS_TONE  = { pending: "warning",  approved: "success",  rejected: "danger"  };
@@ -61,18 +63,16 @@ function AccessRequestsPage({ token }) {
   }
 
   return (
-    <div className="workspace-home">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Solicitações de Acesso</h1>
-          <p className="page-subtitle">
-            Gerencie solicitações pendentes de acesso à plataforma. Apenas usuários aprovados recebem credenciais.
-          </p>
-        </div>
-        <Button variant="secondary" size="sm" onClick={load} disabled={loading}>
-          {loading ? "Carregando..." : "Atualizar"}
-        </Button>
-      </div>
+    <PageLayout>
+      <PageHeader
+        title="Solicitações de Acesso"
+        subtitle="Gerencie solicitações pendentes de acesso à plataforma. Apenas usuários aprovados recebem credenciais."
+        actions={
+          <Button variant="secondary" size="sm" onClick={load} disabled={loading}>
+            {loading ? "Carregando..." : "Atualizar"}
+          </Button>
+        }
+      />
 
       {error ? <Alert tone="danger">{error}</Alert> : null}
 
@@ -162,7 +162,7 @@ function AccessRequestsPage({ token }) {
           </table>
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }
 
