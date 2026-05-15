@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#060F1B" />
+  <meta name="robots" content="index, follow" />
+  <meta name="keywords" content="VALENS, APS, UBS, gestão municipal de saúde, prontuário eletrônico, saúde pública, secretaria de saúde, e-SUS, LGPD, ESF, atenção básica, gestão municipal" />
+  <meta name="author" content="VALENS" />
+  <title>VALENS · Plataforma integrada para gestão da saúde pública</title>
+  <meta name="description" content="VALENS unifica prontuário eletrônico, agenda, farmácia, dashboards e auditoria em uma única plataforma para gestão pública de saúde." />
+
+  <link rel="canonical" href="https://landing-2f7.pages.dev/" />
+
+  <link rel="icon" type="image/svg+xml" href="./brand/favicon/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="./brand/favicon/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="./brand/favicon/favicon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./brand/favicon/apple-touch-icon.png" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="VALENS" />
+  <meta property="og:url" content="https://landing-2f7.pages.dev/" />
+  <meta property="og:title" content="VALENS — Plataforma integrada para gestão da saúde pública" />
+  <meta property="og:description" content="VALENS unifica prontuário eletrônico, agenda, farmácia, dashboards e auditoria em uma única plataforma." />
+  <meta property="og:image" content="https://landing-2f7.pages.dev/brand/social/og-image.svg" />
+  <meta property="og:image:type" content="image/svg+xml" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="VALENS — Plataforma integrada para gestão da saúde pública" />
+  <meta name="twitter:description" content="VALENS unifica prontuário eletrônico, agenda, farmácia, dashboards e auditoria em uma única plataforma." />
+  <meta name="twitter:image" content="https://landing-2f7.pages.dev/brand/social/twitter-card.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; background: var(--bg); color: var(--text); }
+    a { text-decoration: none; color: inherit; }
+    ul { list-style: none; }
+    button { cursor: pointer; font-family: inherit; }
+    input { font-family: inherit; }
+    img { max-width: 100%; display: block; }
+
+    /* ── Skip link ─────────────────────────────────────────── */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 16px;
+      z-index: 200;
+      padding: 8px 16px;
+      background: var(--navy);
+      color: #fff;
+      border-radius: 0 0 8px 8px;
+      font: 500 14px var(--font-sans);
+      transition: top 80ms;
+    }
+    .skip-link:focus { top: 0; outline: 2px solid var(--teal-400); outline-offset: 2px; }
+
+    /* ── Screen-reader only ─────────────────────────────────── */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* ── Tokens ────────────────────────────────────────────── */
+    :root {
+      --teal-300: #5EEAD4;
+      --teal-400: #2DD4BF;
+      --teal-500: #14B8A6;
+      --teal-600: #0D9488;
+      --navy:   #060F1B;
+      --navy-2: #0F1F35;
+
+      --bg:            #F8FAFC;
+      --surface:       #FFFFFF;
+      --surface-2:     #F1F5F9;
+      --surface-3:     #E2E8F0;
+      --surface-hover: rgba(0,0,0,.04);
+      --text:          #0F172A;
+      --text-muted:    #64748B;
+      --text-dim:      #94A3B8;
+      --text-on-accent: #FFFFFF;
+      --border:        #E2E8F0;
+      --border-subtle: rgba(0,0,0,.06);
+      --border-strong: #CBD5E1;
+      --border-accent: #14B8A6;
+      --accent:        #14B8A6;
+      --accent-hover:  #0D9488;
+      --accent-soft:   rgba(20,184,166,.10);
+      --accent-soft-2: rgba(20,184,166,.20);
+      --accent-text:   #0D9488;
+      --accent-grad:   linear-gradient(135deg,#14B8A6,#0D9488);
+      --accent-2:      #5EEAD4;
+
+      --hero-grad:       linear-gradient(135deg,#060F1B 0%,#0F1F35 55%,#133756 100%);
+      --hero-glow-1:     radial-gradient(620px 460px at 82% -10%,rgba(20,184,166,.30),transparent 55%);
+      --hero-glow-2:     radial-gradient(420px 340px at -5% 110%,rgba(34,211,238,.14),transparent 65%);
+      --hero-text:       #FFFFFF;
+      --hero-text-muted: rgba(255,255,255,.72);
+      --hero-kicker:     #5EEAD4;
+
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+
+      --t-xs: 11px; --t-sm: 12px; --t-base: 13.5px; --t-md: 15px;
+      --t-lg: 18px; --t-xl: 24px; --t-2xl: 32px; --t-3xl: 44px;
+      --ls-base: -0.005em; --ls-snug: -0.02em; --ls-tight: -0.035em;
+      --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 999px;
+      --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px;
+      --d-fast: 120ms; --d-base: 200ms;
+      --ease: cubic-bezier(.25,.46,.45,.94);
+      --ease-out: cubic-bezier(.16,1,.3,1);
+      --shadow-xs:   0 1px 2px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);
+      --shadow-sm:   0 2px 4px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+      --shadow-md:   0 4px 12px rgba(0,0,0,.10),0 2px 4px rgba(0,0,0,.06);
+      --shadow-glow: 0 0 0 3px rgba(20,184,166,.25),0 1px 4px rgba(13,148,136,.2);
+      --focus-ring:  0 0 0 3px rgba(20,184,166,.25);
+      --shadow-lg:   0 10px 40px rgba(0,0,0,.12),0 4px 8px rgba(0,0,0,.06);
+      --overlay: rgba(15,23,42,.64);
+      --z-modal:50; --z-sticky:50; --topbar-h:56px; --lh-base:1.6;
+      --success:#22C55E; --success-soft:rgba(34,197,94,.10); --success-bd:rgba(34,197,94,.30);
+      --warning:#F59E0B; --warning-soft:rgba(245,158,11,.10); --warning-bd:rgba(245,158,11,.30);
+      --danger:#EF4444;  --danger-soft:rgba(239,68,68,.10);  --danger-bd:rgba(239,68,68,.30);
+      --info:#3B82F6;    --info-soft:rgba(59,130,246,.10);   --info-bd:rgba(59,130,246,.30);
+    }
+
+    /* ── Buttons ───────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: var(--s-2);
+      height: 32px; padding: 0 14px;
+      font: 500 var(--t-base)/1 var(--font-sans);
+      letter-spacing: var(--ls-base);
+      border-radius: var(--r-md); border: 1px solid transparent;
+      background: transparent; color: inherit; cursor: pointer;
+      user-select: none; white-space: nowrap;
+      transition: background var(--d-fast) var(--ease), border-color var(--d-fast) var(--ease),
+        box-shadow var(--d-base) var(--ease), color var(--d-fast), transform 80ms var(--ease);
+    }
+    .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .btn--primary {
+      background: var(--accent); color: var(--text-on-accent); font-weight: 600;
+      box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 1px 2px rgba(13,148,136,.15);
+    }
+    .btn--primary:hover { background: var(--accent-hover); box-shadow: var(--shadow-glow); }
+    .btn--primary:active { transform: scale(.98); }
+
+    /* ── Cards ─────────────────────────────────────────────── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: var(--s-5);
+      box-shadow: var(--shadow-xs);
+      transition: box-shadow var(--d-base), border-color var(--d-base),
+        background var(--d-base), transform var(--d-base) var(--ease);
+    }
+    .card:hover {
+      box-shadow: var(--shadow-md); border-color: var(--border-strong);
+      transform: translateY(-2px);
+    }
+
+    /* ── Typography helpers ─────────────────────────────────── */
+    .eyebrow {
+      font: 600 10.5px var(--font-mono);
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim);
+    }
+    .alert {
+      display: flex; align-items: flex-start; gap: var(--s-3);
+      padding: 12px 14px; border-radius: var(--r-md);
+      border: 1px solid var(--border); background: var(--surface);
+      font: 400 13px var(--font-sans); color: var(--text);
+    }
+    .alert--info { background: var(--info-soft); border-color: var(--info-bd); color: var(--info); }
+    .alert strong { color: inherit; font-weight: 600; }
+
+    /* ── Nav ───────────────────────────────────────────────── */
+    .nav-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(248,250,252,0.85);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .nav-inner {
+      max-width: 1280px; margin: 0 auto;
+      padding: 0 32px;
+      height: var(--topbar-h);
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    }
+    .nav-brand span {
+      font: 700 17px/1 var(--font-sans); letter-spacing: -0.02em; color: var(--text);
+    }
+    .nav-links {
+      display: flex; gap: 28px; align-items: center;
+    }
+    .nav-links a {
+      font: 500 13.5px var(--font-sans); color: var(--text-muted); letter-spacing: -0.005em;
+      transition: color var(--d-fast);
+      border-radius: 4px; padding: 2px 4px; margin: -2px -4px;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links a:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .nav-ctas {
+      display: flex; gap: 10px; align-items: center; flex-shrink: 0;
+    }
+    .nav-ctas .btn-platform {
+      font: 500 13.5px var(--font-sans); color: var(--text);
+      padding: 8px 14px; border-radius: var(--r-md);
+      border: 1px solid var(--border); background: var(--surface);
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: background var(--d-fast), border-color var(--d-fast), box-shadow var(--d-base);
+      white-space: nowrap;
+    }
+    .nav-ctas .btn-platform:hover { background: var(--surface-2); border-color: var(--border-strong); }
+    .nav-ctas .btn-platform:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+    /* Hamburger toggle */
+    .nav-toggle {
+      display: none;
+      align-items: center; justify-content: center;
+      width: 36px; height: 36px;
+      background: transparent; border: 1px solid var(--border);
+      border-radius: var(--r-md); color: var(--text);
+      transition: background var(--d-fast), border-color var(--d-fast);
+      flex-shrink: 0;
+    }
+    .nav-toggle:hover { background: var(--surface-2); border-color: var(--border-strong); }
+    .nav-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+    /* ── Mobile nav ────────────────────────────────────────── */
+    .mobile-nav {
+      display: none;
+      position: fixed;
+      top: var(--topbar-h);
+      left: 0; right: 0; bottom: 0;
+      background: var(--navy);
+      z-index: 90;
+      padding: 24px 24px 40px;
+      flex-direction: column;
+      overflow-y: auto;
+      border-top: 1px solid rgba(255,255,255,.07);
+    }
+    .mobile-nav.is-open { display: flex; }
+    .mobile-nav a {
+      display: block; padding: 12px 16px;
+      font: 500 16px/1 var(--font-sans); color: rgba(255,255,255,.75);
+      border-radius: var(--r-md);
+      transition: background var(--d-fast), color var(--d-fast);
+    }
+    .mobile-nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .mobile-nav a:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(93,234,212,.3); }
+    .mobile-nav-divider {
+      margin: 16px 0;
+      border: none; border-top: 1px solid rgba(255,255,255,.07);
+    }
+    .mobile-nav-ctas {
+      display: flex; flex-direction: column; gap: 10px; margin-top: 8px;
+    }
+    .mobile-nav-ctas a,
+    .mobile-nav-ctas button {
+      width: 100%; height: 44px; justify-content: center; font-size: 15px;
+      border-radius: var(--r-md);
+    }
+    .mobile-nav-ctas .btn-platform-mobile {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      height: 44px;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+      border-radius: var(--r-md); color: #fff; font: 500 15px var(--font-sans);
+      transition: background var(--d-fast);
+    }
+    .mobile-nav-ctas .btn-platform-mobile:hover { background: rgba(255,255,255,.10); }
+
+    /* ── Hero ──────────────────────────────────────────────── */
+    .hero-h1 {
+      font-size: clamp(2.25rem, 5.5vw, 4.75rem) !important;
+      line-height: 1.05 !important;
+    }
+    .sec-h2-lg { font-size: clamp(2rem, 4vw, 3rem) !important; }
+    .sec-h2-md { font-size: clamp(1.75rem, 3.5vw, 2.75rem) !important; }
+
+    /* ── Responsive breakpoints ────────────────────────────── */
+    @media (max-width: 1024px) {
+      .nav-links { display: none !important; }
+      .nav-toggle { display: flex !important; }
+      .nav-ctas .btn-talk { display: none !important; }
+      .hero-grid { grid-template-columns: 1fr !important; }
+      .hero-preview { display: none !important; }
+      .hero-bullets { grid-template-columns: 1fr 1fr !important; }
+      .vp-grid { grid-template-columns: 1fr 1fr !important; }
+      .tf-grid { grid-template-columns: 1fr 1fr !important; }
+      .mod-grid { grid-template-columns: 1fr 1fr !important; }
+      .sec-grid { grid-template-columns: 1fr !important; }
+      .interop-grid { grid-template-columns: 1fr 1fr !important; }
+      .impl-grid { grid-template-columns: 1fr 1fr !important; }
+      .supp-grid { grid-template-columns: 1fr !important; }
+      .ben-grid { grid-template-columns: 1fr !important; }
+      .cta-grid { grid-template-columns: 1fr !important; }
+      .footer-grid { grid-template-columns: 1fr 1fr !important; }
+    }
+
+    @media (max-width: 768px) {
+      .nav-inner { padding: 0 20px; }
+      .vp-grid { grid-template-columns: 1fr !important; }
+      section { padding-left: 20px !important; padding-right: 20px !important; }
+      .cta-inner { padding: 48px 28px !important; }
+      footer { padding-left: 20px !important; padding-right: 20px !important; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-section { padding-top: 64px !important; padding-bottom: 80px !important; }
+      section { padding-top: 72px !important; padding-bottom: 72px !important; padding-left: 20px !important; padding-right: 20px !important; }
+      .hero-bullets { grid-template-columns: 1fr !important; }
+      .tf-grid { grid-template-columns: 1fr !important; }
+      .mod-grid { grid-template-columns: 1fr !important; }
+      .impl-grid { grid-template-columns: 1fr !important; }
+      .footer-grid { grid-template-columns: 1fr !important; }
+      .cta-inner { padding: 36px 20px !important; }
+      footer { padding-left: 20px !important; padding-right: 20px !important; }
+    }
+  </style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Pular para o conteúdo principal</a>
+
+<!-- ════ NAV ════ -->
+<nav class="nav-bar" aria-label="Navegação principal">
+  <div class="nav-inner">
+
+    <a href="/" class="nav-brand" aria-label="VALENS — página inicial">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="nm-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="#0D9488"/></linearGradient>
+          <linearGradient id="nm-hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+        </defs>
+        <rect width="32" height="32" rx="7" fill="url(#nm-g)"/>
+        <rect width="32" height="32" rx="7" fill="url(#nm-hl)"/>
+        <rect x="6" y="6"  width="20" height="4" rx="1.6" fill="#fff"/>
+        <rect x="22" y="6" width="4"  height="12" rx="1.6" fill="#fff"/>
+        <rect x="6" y="14" width="20" height="4" rx="1.6" fill="#fff"/>
+        <rect x="6" y="14" width="4"  height="12" rx="1.6" fill="#fff"/>
+        <rect x="6" y="22" width="20" height="4" rx="1.6" fill="#fff"/>
+      </svg>
+      <span>VALENS</span>
+    </a>
+
+    <div class="nav-links" role="list">
+      <a href="#produto"     role="listitem">Produto</a>
+      <a href="#módulos"     role="listitem">Módulos</a>
+      <a href="#segurança"   role="listitem">Segurança</a>
+      <a href="#implantação" role="listitem">Implantação</a>
+      <a href="#contato"     role="listitem">Contato</a>
+    </div>
+
+    <div class="nav-ctas">
+      <a href="https://gestaopacientes.meneguccijao.workers.dev/" class="btn-platform" target="_blank" rel="noopener noreferrer">
+        Acessar plataforma
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2h4v4M14 2L8 8M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-3"/></svg>
+      </a>
+      <button class="btn btn--primary btn-talk" onclick="document.getElementById('contato').scrollIntoView({behavior:'smooth'})">
+        Falar com a equipe
+      </button>
+      <button class="nav-toggle" id="nav-toggle-btn" aria-label="Abrir menu" aria-expanded="false" aria-controls="mobile-nav">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+  </div>
+</nav>
+
+<!-- Mobile nav -->
+<div id="mobile-nav" class="mobile-nav" role="dialog" aria-modal="true" aria-label="Menu de navegação" aria-hidden="true">
+  <a href="#produto"     onclick="closeMobileNav()">Produto</a>
+  <a href="#módulos"     onclick="closeMobileNav()">Módulos</a>
+  <a href="#segurança"   onclick="closeMobileNav()">Segurança</a>
+  <a href="#implantação" onclick="closeMobileNav()">Implantação</a>
+  <a href="#contato"     onclick="closeMobileNav()">Contato</a>
+  <hr class="mobile-nav-divider" />
+  <div class="mobile-nav-ctas">
+    <a href="https://gestaopacientes.meneguccijao.workers.dev/" class="btn-platform-mobile" target="_blank" rel="noopener noreferrer" onclick="closeMobileNav()">
+      Acessar plataforma
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2h4v4M14 2L8 8M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-3"/></svg>
+    </a>
+    <button class="btn btn--primary" style="height:44px;font-size:15px;justify-content:center;" onclick="closeMobileNav();document.getElementById('contato').scrollIntoView({behavior:'smooth'})">
+      Falar com a equipe
+    </button>
+  </div>
+</div>
+
+
+<main id="main-content">
+
+<!-- ════ HERO ════ -->
+<section class="hero-section" style="position:relative;background:linear-gradient(135deg,#060F1B 0%,#0F1F35 55%,#133756 100%);color:#fff;padding:100px 32px 120px;overflow:hidden;isolation:isolate;">
+  <div style="position:absolute;inset:0;z-index:-1;background:radial-gradient(620px 460px at 82% -10%,rgba(20,184,166,.30),transparent 55%),radial-gradient(420px 340px at -5% 110%,rgba(34,211,238,.14),transparent 65%);pointer-events:none;"></div>
+
+  <div class="hero-grid" style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:1.05fr 0.95fr;gap:72px;align-items:center;">
+
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:rgba(20,184,166,.12);border:1px solid rgba(20,184,166,.25);">
+        <span style="width:6px;height:6px;border-radius:999px;background:#14B8A6;box-shadow:0 0 10px rgba(20,184,166,.7);display:inline-block;flex-shrink:0;" aria-hidden="true"></span>
+        <span style="font:500 11.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#5EEAD4;text-transform:uppercase;">Plataforma Integrada</span>
+      </div>
+
+      <h1 class="hero-h1" style="margin:28px 0 0;font:800 76px/1.05 Inter;letter-spacing:-0.04em;color:#fff;">
+        Gestão pública de saúde, <span style="color:#5EEAD4;">integrada.</span>
+      </h1>
+
+      <p style="margin:28px 0 0;max-width:54ch;color:rgba(255,255,255,.72);line-height:1.65;font-size:clamp(15px,2vw,17px);">
+        VALENS unifica prontuário eletrônico, agenda, farmácia, dashboards e auditoria em uma única plataforma — operada por médicos, gestores e secretarias municipais de saúde.
+      </p>
+
+      <div style="margin-top:36px;display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn--primary" style="height:46px;padding:0 24px;font-size:15px;" onclick="document.getElementById('contato').scrollIntoView({behavior:'smooth'})">
+          Agendar demonstração
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </button>
+        <button style="height:46px;padding:0 24px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font:500 15px Inter;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:background 120ms;" onclick="document.getElementById('produto').scrollIntoView({behavior:'smooth'})">
+          Ver a plataforma
+        </button>
+      </div>
+
+      <div class="hero-bullets" style="margin-top:64px;padding-top:28px;border-top:1px solid rgba(255,255,255,.08);display:grid;grid-template-columns:repeat(3,1fr);gap:28px;">
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#5EEAD4;text-transform:uppercase;">● Light-first</div>
+          <div style="margin-top:8px;font:400 13px Inter;color:rgba(255,255,255,.62);line-height:1.5;">Interface clara e legível para uso clínico contínuo</div>
+        </div>
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#5EEAD4;text-transform:uppercase;">● Modular</div>
+          <div style="margin-top:8px;font:400 13px Inter;color:rgba(255,255,255,.62);line-height:1.5;">Prontuário · agenda · farmácia · auditoria</div>
+        </div>
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#5EEAD4;text-transform:uppercase;">● Institucional</div>
+          <div style="margin-top:8px;font:400 13px Inter;color:rgba(255,255,255,.62);line-height:1.5;">Gestão municipal · UBS · clínicas · secretarias</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- preview dashboard -->
+    <div class="hero-preview" aria-hidden="true">
+      <div style="padding:20px;border-radius:14px;background:rgba(8,18,28,.6);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 32px 80px rgba(0,0,0,.5);">
+        <div style="display:flex;align-items:center;gap:8px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06);">
+          <div style="display:flex;gap:6px;">
+            <span style="width:10px;height:10px;border-radius:999px;background:rgba(255,255,255,.15);display:inline-block;"></span>
+            <span style="width:10px;height:10px;border-radius:999px;background:rgba(255,255,255,.15);display:inline-block;"></span>
+            <span style="width:10px;height:10px;border-radius:999px;background:rgba(255,255,255,.15);display:inline-block;"></span>
+          </div>
+          <div style="margin-left:8px;font:500 11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.45);">gestaopacientes.meneguccijao.workers.dev</div>
+          <div style="margin-left:auto;padding:3px 8px;border-radius:4px;background:rgba(20,184,166,.18);font:500 9.5px 'IBM Plex Mono',monospace;color:#5EEAD4;letter-spacing:.06em;">PREVIEW</div>
+        </div>
+        <div style="margin-top:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+          <div style="padding:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;">
+            <div style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.45);text-transform:uppercase;">Atendimentos · 30d</div>
+            <div style="margin-top:6px;font:700 22px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.55);">—</div>
+          </div>
+          <div style="padding:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;">
+            <div style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.45);text-transform:uppercase;">Em espera</div>
+            <div style="margin-top:6px;font:700 22px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.55);">—</div>
+          </div>
+          <div style="padding:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;">
+            <div style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.45);text-transform:uppercase;">Críticos</div>
+            <div style="margin-top:6px;font:700 22px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.55);">—</div>
+          </div>
+          <div style="padding:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;">
+            <div style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.45);text-transform:uppercase;">Cobertura ESF</div>
+            <div style="margin-top:6px;font:700 22px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.55);">—</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;">
+          <div style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:rgba(255,255,255,.5);">ATENDIMENTOS · 30D</div>
+          <svg width="100%" height="56" viewBox="0 0 360 56" preserveAspectRatio="none" style="margin-top:8px;">
+            <defs>
+              <linearGradient id="lh-a" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#5EEAD4" stop-opacity="0.25"/>
+                <stop offset="1" stop-color="#5EEAD4" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0 40 Q40 32 80 36 T160 28 T240 20 T360 18 L360 56 L0 56 Z" fill="url(#lh-a)"/>
+            <path d="M0 40 Q40 32 80 36 T160 28 T240 20 T360 18" fill="none" stroke="#5EEAD4" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <div style="margin-top:6px;font:500 9.5px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.32);letter-spacing:.08em;">PREVIEW · SEM DADOS REAIS</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ════ VALUE PROP ════ -->
+<section id="produto" style="padding:120px 32px;background:var(--bg);">
+  <div style="max-width:1080px;margin:0 auto;">
+    <div class="eyebrow">PROPOSTA DE VALOR</div>
+    <h2 class="sec-h2-lg" style="margin:16px 0 0;font:700 48px/1.05 Inter;letter-spacing:-0.035em;color:var(--text);max-width:22ch;">
+      A operação clínica e administrativa de uma cidade em uma única plataforma.
+    </h2>
+    <p style="margin:20px 0 0;max-width:62ch;color:var(--text-muted);line-height:1.65;font-size:16px;">
+      Hoje, secretarias lidam com sistemas paralelos para prontuário, agenda, farmácia, vacinação, e-SUS, RNDS e auditoria. O VALENS substitui essa fragmentação por um sistema único, integrado, conforme LGPD, operado por quem está na ponta.
+    </p>
+
+    <div class="vp-grid" style="margin-top:56px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+
+      <div class="card" style="padding:24px;">
+        <div style="width:40px;height:40px;background:var(--accent-soft);color:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><path d="M1.5 13c0-2.2 2-4 4.5-4s4.5 1.8 4.5 4M11 4a2 2 0 110 4M14.5 12.5c0-1.7-1.3-3.1-3-3.4"/></svg>
+        </div>
+        <h3 style="margin:0;font:600 17px/1 Inter;letter-spacing:-0.015em;color:var(--text);">Para profissionais clínicos</h3>
+        <p style="margin:10px 0 0;font:400 14px/1.6 Inter;color:var(--text-muted);">Médicos, enfermeiros e ACS encontram o paciente certo, com histórico completo, em segundos.</p>
+      </div>
+
+      <div class="card" style="padding:24px;">
+        <div style="width:40px;height:40px;background:var(--accent-soft);color:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h12M3 11V8M6 11V5M9 11V7M12 11V3"/></svg>
+        </div>
+        <h3 style="margin:0;font:600 17px/1 Inter;letter-spacing:-0.015em;color:var(--text);">Para gestores e secretarias</h3>
+        <p style="margin:10px 0 0;font:400 14px/1.6 Inter;color:var(--text-muted);">Indicadores operacionais consolidados — atendimento, espera, cobertura — em tempo quase real.</p>
+      </div>
+
+      <div class="card" style="padding:24px;">
+        <div style="width:40px;height:40px;background:var(--accent-soft);color:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5C11 13.5 13.5 11.5 13.5 8V4L8 1.5z"/></svg>
+        </div>
+        <h3 style="margin:0;font:600 17px/1 Inter;letter-spacing:-0.015em;color:var(--text);">Para auditoria e conformidade</h3>
+        <p style="margin:10px 0 0;font:400 14px/1.6 Inter;color:var(--text-muted);">Logs imutáveis, exportação para e-SUS APS e RNDS, padrões LGPD em todas as camadas.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════ TRANSFORMAÇÃO ════ -->
+<section style="padding:120px 32px;background:var(--surface-2);">
+  <div style="max-width:1080px;margin:0 auto;">
+    <div class="eyebrow">TRANSFORMAÇÃO DIGITAL</div>
+    <h2 class="sec-h2-md" style="margin:16px 0 0;font:700 44px/1.05 Inter;letter-spacing:-0.035em;color:var(--text);max-width:20ch;">
+      Atenção básica que opera em ritmo de plantão.
+    </h2>
+    <p style="margin:20px 0 0;max-width:62ch;color:var(--text-muted);line-height:1.65;font-size:16px;">
+      O atendimento em UBS, ESF e clínicas municipais tem ritmo próprio. Plantões longos, filas mistas, demanda variável, ACS em campo, vacinação programada, exames de rotina. VALENS foi desenhado em conjunto com profissionais reais — não em comitê de TI.
+    </p>
+
+    <div class="tf-grid" style="margin-top:56px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div class="eyebrow" style="font-size:10px;">TRIAGEM</div>
+        <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Manchester aplicado, prioridade clínica visível, fila em tempo real.</p>
+      </div>
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div class="eyebrow" style="font-size:10px;">ANAMNESE</div>
+        <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Estrutura unificada por linha de cuidado, importação de exames externos.</p>
+      </div>
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div class="eyebrow" style="font-size:10px;">CONDUTA</div>
+        <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Prescrição com CID, receita eletrônica, encaminhamentos integrados.</p>
+      </div>
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div class="eyebrow" style="font-size:10px;">AUDITORIA</div>
+        <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Log imutável de cada acesso · exportação para sistemas federais.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════ MÓDULOS ════ -->
+<section id="módulos" style="padding:120px 32px;background:var(--bg);">
+  <div style="max-width:1280px;margin:0 auto;">
+    <div class="eyebrow">MÓDULOS</div>
+    <h2 class="sec-h2-lg" style="margin:16px 0 0;font:700 48px/1.05 Inter;letter-spacing:-0.035em;color:var(--text);max-width:20ch;">
+      Um sistema. Seis frentes integradas.
+    </h2>
+    <p style="margin:20px 0 0;max-width:62ch;color:var(--text-muted);line-height:1.65;font-size:16px;">
+      Cada módulo funciona isolado e funciona melhor junto. Implantação pode ser modular, faseada ou completa — definida pela secretaria.
+    </p>
+
+    <div class="mod-grid" style="margin-top:56px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+
+      <div class="card" style="padding:24px;">
+        <div style="width:44px;height:44px;background:var(--accent-soft);color:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 1.5h6l3 3v10H3v-13z"/><path d="M9 1.5v3h3"/></svg>
+        </div>
+        <h3 style="margin:0;font:600 17px/1 Inter;letter-spacing:-0.015em;color:var(--text);">Prontuário Eletrônico</h3>
+        <p style="margin:10px 0 0;font:400 13.5px/1.6 Inter;color:var(--text-muted);">Histórico clínico unificado, linhas de cuidado, anamnese estruturada, prescrição digital, importação de exames externos.</p>
+        <a href="#contato" style="margin-top:14px;display:inline-flex;align-items:center;gap:6px;font:500 13px Inter;color:var(--accent-text);border-radius:4px;padding:2px 0;transition:opacity var(--d-fast);">
+          Conhecer módulo
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+      <div class="card" style="padding:24px;">
+        <div style="width:44px;height:44px;background:var(--accent-soft);color:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5 1.5v3M11 1.5v3"/></svg>
+        </div>
+        <h3 style="margin:0;font:600 17px/1 Inter;letter-spacing:-0.015em;color:var(--text);">Agenda &amp; Triagem</h3>
+        <p style="margin:10px 0 0;font:400 13.5px/1.6 Inter;color:var(--text-muted);">Agenda multi-profissional, encaixes, retornos automáticos, triagem Manchester com prioridade visível.</p>
+        <a href="#contato" style="margin-top:14px;display:inline-flex;align-items:center;gap:6px;font:500 13px Inter;color:var(--accent-text);border-radius:4px;padding:2px 0;transition:opacity var(--d-fast);">
+          Conhecer módulo
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+      <div class="card" style="padding:24px;">
+        <div style="width:44px;height:44px;background:var(--accent-soft);color:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="12" height="6" rx="3"/><path d="M8 5v6"/></svg>
+        </div>
+        <h3 style="margin:0;font:600 17px/1 Inter;letter-spacing:-0.015em;color:var(--text);">Farmácia Municipal</h3>
+        <p style="margin:10px 0 0;font:400 13.5px/1.6 Inter;color:var(--text-muted);">Estoque por unidade, dispensação rastreada, alertas de medicamento contínuo, integração com receita.</p>
+        <a href="#contato" style="margin-top:14px;display:inline-flex;align-items:center;gap:6px;font:500 13px Inter;color:var(--accent-text);border-radius:4px;padding:2px 0;transition:opacity var(--d-fast);">
+          Conhecer módulo
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+      <div class="card" style="padding:24px;">
+        <div style="width:44px;height:44px;background:var(--accent-soft);color:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h12M3 11V8M6 11V5M9 11V7M12 11V3"/></svg>
+        </div>
+        <h3 style="margin:0;font:600 17px/1 Inter;letter-spacing:-0.015em;color:var(--text);">Dashboards Gerenciais</h3>
+        <p style="margin:10px 0 0;font:400 13.5px/1.6 Inter;color:var(--text-muted);">Indicadores operacionais e clínicos consolidados — atendimento, espera, cobertura ESF, protocolos críticos.</p>
+        <a href="#contato" style="margin-top:14px;display:inline-flex;align-items:center;gap:6px;font:500 13px Inter;color:var(--accent-text);border-radius:4px;padding:2px 0;transition:opacity var(--d-fast);">
+          Conhecer módulo
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+      <div class="card" style="padding:24px;">
+        <div style="width:44px;height:44px;background:var(--accent-soft);color:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.5"/><path d="M13 13l-2.7-2.7"/></svg>
+        </div>
+        <h3 style="margin:0;font:600 17px/1 Inter;letter-spacing:-0.015em;color:var(--text);">Auditoria &amp; Conformidade</h3>
+        <p style="margin:10px 0 0;font:400 13.5px/1.6 Inter;color:var(--text-muted);">Log imutável, exportação automática para e-SUS APS e RNDS, espelhamento para sistemas federais.</p>
+        <a href="#contato" style="margin-top:14px;display:inline-flex;align-items:center;gap:6px;font:500 13px Inter;color:var(--accent-text);border-radius:4px;padding:2px 0;transition:opacity var(--d-fast);">
+          Conhecer módulo
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+      <div class="card" style="padding:24px;">
+        <div style="width:44px;height:44px;background:var(--accent-soft);color:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><path d="M1.5 13c0-2.2 2-4 4.5-4s4.5 1.8 4.5 4M11 4a2 2 0 110 4M14.5 12.5c0-1.7-1.3-3.1-3-3.4"/></svg>
+        </div>
+        <h3 style="margin:0;font:600 17px/1 Inter;letter-spacing:-0.015em;color:var(--text);">Gestão Municipal</h3>
+        <p style="margin:10px 0 0;font:400 13.5px/1.6 Inter;color:var(--text-muted);">Visão consolidada da rede — múltiplas UBS, equipes ESF, ACS em campo, indicadores comparativos.</p>
+        <a href="#contato" style="margin-top:14px;display:inline-flex;align-items:center;gap:6px;font:500 13px Inter;color:var(--accent-text);border-radius:4px;padding:2px 0;transition:opacity var(--d-fast);">
+          Conhecer módulo
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════ SEGURANÇA ════ -->
+<section id="segurança" style="padding:120px 32px;background:var(--hero-grad);color:#fff;position:relative;overflow:hidden;isolation:isolate;">
+  <div style="position:absolute;inset:0;z-index:-1;background:var(--hero-glow-1);pointer-events:none;"></div>
+  <div style="position:absolute;inset:0;z-index:-1;background:var(--hero-glow-2);pointer-events:none;"></div>
+
+  <div style="max-width:1080px;margin:0 auto;">
+    <div style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#5EEAD4;text-transform:uppercase;">● SEGURANÇA &amp; LGPD</div>
+    <h2 class="sec-h2-md" style="margin:16px 0 0;font:700 44px/1.05 Inter;letter-spacing:-0.035em;color:#fff;max-width:22ch;">
+      Dado clínico é dado sensível. Tratado como tal — em cada camada.
+    </h2>
+    <p style="margin:20px 0 0;max-width:62ch;color:rgba(255,255,255,.72);line-height:1.65;font-size:16px;">
+      VALENS opera sob LGPD desde o desenho. Criptografia em repouso e em trânsito, isolamento por tenant municipal, controle granular de acesso, auditoria de cada operação.
+    </p>
+
+    <div class="sec-grid" style="margin-top:56px;display:grid;grid-template-columns:repeat(2,1fr);gap:14px;">
+
+      <div style="padding:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background var(--d-base),border-color var(--d-base);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;background:rgba(20,184,166,.15);color:#5EEAD4;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5C11 13.5 13.5 11.5 13.5 8V4L8 1.5z"/></svg>
+          </div>
+          <h3 style="margin:0;font:600 16px/1 Inter;color:#fff;">LGPD by design</h3>
+        </div>
+        <p style="margin:12px 0 0;font:400 13.5px/1.6 Inter;color:rgba(255,255,255,.65);">Base legal documentada por finalidade · DPO · canal do titular · DPIA disponível para secretarias.</p>
+      </div>
+
+      <div style="padding:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background var(--d-base),border-color var(--d-base);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;background:rgba(20,184,166,.15);color:#5EEAD4;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5C11 13.5 13.5 11.5 13.5 8V4L8 1.5z"/></svg>
+          </div>
+          <h3 style="margin:0;font:600 16px/1 Inter;color:#fff;">Criptografia</h3>
+        </div>
+        <p style="margin:12px 0 0;font:400 13.5px/1.6 Inter;color:rgba(255,255,255,.65);">TLS 1.3 em trânsito · AES-256 em repouso · backups criptografados · KMS gerenciado.</p>
+      </div>
+
+      <div style="padding:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background var(--d-base),border-color var(--d-base);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;background:rgba(20,184,166,.15);color:#5EEAD4;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5C11 13.5 13.5 11.5 13.5 8V4L8 1.5z"/></svg>
+          </div>
+          <h3 style="margin:0;font:600 16px/1 Inter;color:#fff;">Controle de acesso</h3>
+        </div>
+        <p style="margin:12px 0 0;font:400 13.5px/1.6 Inter;color:rgba(255,255,255,.65);">Perfis por função clínica · MFA opcional · sessão limitada · revogação imediata.</p>
+      </div>
+
+      <div style="padding:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background var(--d-base),border-color var(--d-base);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;background:rgba(20,184,166,.15);color:#5EEAD4;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5C11 13.5 13.5 11.5 13.5 8V4L8 1.5z"/></svg>
+          </div>
+          <h3 style="margin:0;font:600 16px/1 Inter;color:#fff;">Auditoria imutável</h3>
+        </div>
+        <p style="margin:12px 0 0;font:400 13.5px/1.6 Inter;color:rgba(255,255,255,.65);">Cada acesso, cada alteração, cada exportação — log com timestamp e identidade.</p>
+      </div>
+
+      <div style="padding:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background var(--d-base),border-color var(--d-base);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;background:rgba(20,184,166,.15);color:#5EEAD4;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5C11 13.5 13.5 11.5 13.5 8V4L8 1.5z"/></svg>
+          </div>
+          <h3 style="margin:0;font:600 16px/1 Inter;color:#fff;">Tenancy</h3>
+        </div>
+        <p style="margin:12px 0 0;font:400 13.5px/1.6 Inter;color:rgba(255,255,255,.65);">Cada município opera em isolamento lógico · dados não atravessam fronteiras municipais.</p>
+      </div>
+
+      <div style="padding:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background var(--d-base),border-color var(--d-base);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;background:rgba(20,184,166,.15);color:#5EEAD4;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5C11 13.5 13.5 11.5 13.5 8V4L8 1.5z"/></svg>
+          </div>
+          <h3 style="margin:0;font:600 16px/1 Inter;color:#fff;">Conformidade</h3>
+        </div>
+        <p style="margin:12px 0 0;font:400 13.5px/1.6 Inter;color:rgba(255,255,255,.65);">Aderente a CFM nº 1.821/2007 · CFM 2.299/2021 (teleconsulta) · Manual SBIS.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════ INTEROPERABILIDADE ════ -->
+<section style="padding:120px 32px;background:var(--surface-2);">
+  <div style="max-width:1080px;margin:0 auto;">
+    <div class="eyebrow">INTEROPERABILIDADE</div>
+    <h2 class="sec-h2-md" style="margin:16px 0 0;font:700 44px/1.05 Inter;letter-spacing:-0.035em;color:var(--text);max-width:22ch;">
+      Integrado com a rede pública de saúde do Brasil.
+    </h2>
+    <p style="margin:20px 0 0;max-width:62ch;color:var(--text-muted);line-height:1.65;font-size:16px;">
+      Espelhamento contínuo para os sistemas federais — sem dupla entrada, sem retrabalho. Integração via FHIR e padrões oficiais.
+    </p>
+
+    <div class="interop-grid" style="margin-top:48px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-xs);transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5C4 3 7 2 10 3.5"/><path d="M13.5 10.5C12 13 9 14 6 12.5"/><path d="M10 1.5v3h-3M6 14.5v-3h3"/></svg>
+          <span style="font:600 14px/1 Inter;color:var(--text);">e-SUS APS</span>
+        </div>
+        <div style="margin-top:6px;font:400 12px/1 Inter;color:var(--text-muted);">Atenção primária</div>
+      </div>
+
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-xs);transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5C4 3 7 2 10 3.5"/><path d="M13.5 10.5C12 13 9 14 6 12.5"/><path d="M10 1.5v3h-3M6 14.5v-3h3"/></svg>
+          <span style="font:600 14px/1 Inter;color:var(--text);">RNDS</span>
+        </div>
+        <div style="margin-top:6px;font:400 12px/1 Inter;color:var(--text-muted);">Rede Nacional de Dados em Saúde</div>
+      </div>
+
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-xs);transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5C4 3 7 2 10 3.5"/><path d="M13.5 10.5C12 13 9 14 6 12.5"/><path d="M10 1.5v3h-3M6 14.5v-3h3"/></svg>
+          <span style="font:600 14px/1 Inter;color:var(--text);">SINAN</span>
+        </div>
+        <div style="margin-top:6px;font:400 12px/1 Inter;color:var(--text-muted);">Notificações compulsórias</div>
+      </div>
+
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-xs);transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5C4 3 7 2 10 3.5"/><path d="M13.5 10.5C12 13 9 14 6 12.5"/><path d="M10 1.5v3h-3M6 14.5v-3h3"/></svg>
+          <span style="font:600 14px/1 Inter;color:var(--text);">SI-PNI</span>
+        </div>
+        <div style="margin-top:6px;font:400 12px/1 Inter;color:var(--text-muted);">Imunizações</div>
+      </div>
+
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-xs);transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5C4 3 7 2 10 3.5"/><path d="M13.5 10.5C12 13 9 14 6 12.5"/><path d="M10 1.5v3h-3M6 14.5v-3h3"/></svg>
+          <span style="font:600 14px/1 Inter;color:var(--text);">SISAB</span>
+        </div>
+        <div style="margin-top:6px;font:400 12px/1 Inter;color:var(--text-muted);">Atenção básica · indicadores</div>
+      </div>
+
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-xs);transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5C4 3 7 2 10 3.5"/><path d="M13.5 10.5C12 13 9 14 6 12.5"/><path d="M10 1.5v3h-3M6 14.5v-3h3"/></svg>
+          <span style="font:600 14px/1 Inter;color:var(--text);">HORUS</span>
+        </div>
+        <div style="margin-top:6px;font:400 12px/1 Inter;color:var(--text-muted);">Assistência farmacêutica</div>
+      </div>
+
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-xs);transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5C4 3 7 2 10 3.5"/><path d="M13.5 10.5C12 13 9 14 6 12.5"/><path d="M10 1.5v3h-3M6 14.5v-3h3"/></svg>
+          <span style="font:600 14px/1 Inter;color:var(--text);">e-SUS Notifica</span>
+        </div>
+        <div style="margin-top:6px;font:400 12px/1 Inter;color:var(--text-muted);">Doenças e agravos</div>
+      </div>
+
+      <div style="padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-xs);transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5C4 3 7 2 10 3.5"/><path d="M13.5 10.5C12 13 9 14 6 12.5"/><path d="M10 1.5v3h-3M6 14.5v-3h3"/></svg>
+          <span style="font:600 14px/1 Inter;color:var(--text);">FHIR R4</span>
+        </div>
+        <div style="margin-top:6px;font:400 12px/1 Inter;color:var(--text-muted);">Padrão internacional</div>
+      </div>
+
+    </div>
+
+    <div class="alert alert--info" style="margin-top:28px;max-width:60ch;">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>
+      <div>
+        <strong>Aderência</strong> · integrações federais sob padrões do Ministério da Saúde · DATASUS · ANS. Cada nova rotina é homologada antes de produção.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════ IMPLANTAÇÃO ════ -->
+<section id="implantação" style="padding:120px 32px;background:var(--bg);">
+  <div style="max-width:1080px;margin:0 auto;">
+    <div class="eyebrow">IMPLANTAÇÃO</div>
+    <h2 class="sec-h2-md" style="margin:16px 0 0;font:700 44px/1.05 Inter;letter-spacing:-0.035em;color:var(--text);max-width:20ch;">
+      Do contrato à operação plena — em fases controladas.
+    </h2>
+    <p style="margin:20px 0 0;max-width:62ch;color:var(--text-muted);line-height:1.65;font-size:16px;">
+      Implantação faseada com squads de campo, treinamento presencial e suporte dedicado. Sem big-bang.
+    </p>
+
+    <div class="impl-grid" style="margin-top:56px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+      <div style="padding:22px;background:var(--surface);border:1px solid var(--border);border-radius:12px;position:relative;transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="font:700 28px/1 'IBM Plex Mono',monospace;color:var(--accent);letter-spacing:-0.015em;">01</div>
+        <h3 style="margin:10px 0 0;font:600 16px/1 Inter;color:var(--text);letter-spacing:-0.015em;">Diagnóstico</h3>
+        <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Levantamento de processos, sistemas legados, equipes. Plano de migração por unidade.</p>
+      </div>
+      <div style="padding:22px;background:var(--surface);border:1px solid var(--border);border-radius:12px;position:relative;transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="font:700 28px/1 'IBM Plex Mono',monospace;color:var(--accent);letter-spacing:-0.015em;">02</div>
+        <h3 style="margin:10px 0 0;font:600 16px/1 Inter;color:var(--text);letter-spacing:-0.015em;">Piloto</h3>
+        <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Uma UBS, 4 semanas. Configuração tenant, treinamento, ajustes finos.</p>
+      </div>
+      <div style="padding:22px;background:var(--surface);border:1px solid var(--border);border-radius:12px;position:relative;transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="font:700 28px/1 'IBM Plex Mono',monospace;color:var(--accent);letter-spacing:-0.015em;">03</div>
+        <h3 style="margin:10px 0 0;font:600 16px/1 Inter;color:var(--text);letter-spacing:-0.015em;">Onda 1</h3>
+        <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Replicação para conjunto de 4–6 unidades. Migração de dados históricos.</p>
+      </div>
+      <div style="padding:22px;background:var(--surface);border:1px solid var(--border);border-radius:12px;position:relative;transition:box-shadow var(--d-base),transform var(--d-base) var(--ease);">
+        <div style="font:700 28px/1 'IBM Plex Mono',monospace;color:var(--accent);letter-spacing:-0.015em;">04</div>
+        <h3 style="margin:10px 0 0;font:600 16px/1 Inter;color:var(--text);letter-spacing:-0.015em;">Rede completa</h3>
+        <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Rollout para toda a rede municipal. Operação plena com suporte dedicado.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:64px;">
+      <div class="eyebrow">SUPORTE</div>
+      <h3 style="margin:12px 0 0;font:700 28px/1 Inter;letter-spacing:-0.025em;color:var(--text);">
+        Suporte humano, em horário de saúde pública.
+      </h3>
+      <div class="supp-grid" style="margin-top:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+        <div class="card" style="padding:20px;">
+          <h4 style="margin:0;font:600 15px/1 Inter;color:var(--text);">Suporte clínico</h4>
+          <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Atendimento direto a profissionais de saúde — pelo próprio app.</p>
+        </div>
+        <div class="card" style="padding:20px;">
+          <h4 style="margin:0;font:600 15px/1 Inter;color:var(--text);">Suporte administrativo</h4>
+          <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Para gestores e secretarias · canal dedicado · SLA acordado em contrato.</p>
+        </div>
+        <div class="card" style="padding:20px;">
+          <h4 style="margin:0;font:600 15px/1 Inter;color:var(--text);">Suporte técnico</h4>
+          <p style="margin:8px 0 0;font:400 13px/1.55 Inter;color:var(--text-muted);">Equipe de engenharia · monitoramento 24/7 · status público em landing-2f7.pages.dev/status.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════ BENEFÍCIOS ════ -->
+<section style="padding:100px 32px;background:var(--surface-2);">
+  <div style="max-width:1080px;margin:0 auto;">
+    <div class="ben-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;">
+      <div>
+        <div class="eyebrow">BENEFÍCIOS</div>
+        <h2 style="margin:12px 0 0;font:700 clamp(1.625rem,3vw,2.25rem)/1.1 Inter;letter-spacing:-0.03em;color:var(--text);">
+          Por que secretarias migram para VALENS.
+        </h2>
+      </div>
+      <ul style="margin:0;padding:0;display:flex;flex-direction:column;gap:12px;">
+        <li style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:8px;">
+          <span style="flex:0 0 auto;color:var(--accent);margin-top:1px;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>
+          </span>
+          <span style="font:400 14px/1.5 Inter;color:var(--text);">Substitui 3+ sistemas paralelos por uma plataforma única</span>
+        </li>
+        <li style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:8px;">
+          <span style="flex:0 0 auto;color:var(--accent);margin-top:1px;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>
+          </span>
+          <span style="font:400 14px/1.5 Inter;color:var(--text);">Cadastro de paciente com estrutura unificada por linha de cuidado</span>
+        </li>
+        <li style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:8px;">
+          <span style="flex:0 0 auto;color:var(--accent);margin-top:1px;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>
+          </span>
+          <span style="font:400 14px/1.5 Inter;color:var(--text);">Auditoria contínua sem sobrecarga operacional</span>
+        </li>
+        <li style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:8px;">
+          <span style="flex:0 0 auto;color:var(--accent);margin-top:1px;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>
+          </span>
+          <span style="font:400 14px/1.5 Inter;color:var(--text);">Espelhamento automático para e-SUS APS e RNDS</span>
+        </li>
+        <li style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:8px;">
+          <span style="flex:0 0 auto;color:var(--accent);margin-top:1px;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>
+          </span>
+          <span style="font:400 14px/1.5 Inter;color:var(--text);">Treinamento presencial incluído na implantação</span>
+        </li>
+        <li style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:8px;">
+          <span style="flex:0 0 auto;color:var(--accent);margin-top:1px;" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>
+          </span>
+          <span style="font:400 14px/1.5 Inter;color:var(--text);">Contrato sob lei pública · pregão eletrônico · ata de registro</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════ CTA ════ -->
+<section id="contato" style="padding:120px 32px;background:var(--bg);">
+  <div style="max-width:1080px;margin:0 auto;">
+    <div class="cta-inner" style="padding:72px 64px;background:var(--hero-grad);color:#fff;border-radius:20px;position:relative;overflow:hidden;isolation:isolate;">
+      <div style="position:absolute;inset:0;z-index:-1;background:var(--hero-glow-1);pointer-events:none;"></div>
+      <div style="position:absolute;inset:0;z-index:-1;background:var(--hero-glow-2);pointer-events:none;"></div>
+
+      <div class="cta-grid" style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:64px;align-items:center;">
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#5EEAD4;text-transform:uppercase;">● CONVERSA INSTITUCIONAL</div>
+          <h2 style="margin:16px 0 0;font:700 clamp(1.75rem,3.5vw,2.5rem)/1.1 Inter;letter-spacing:-0.035em;color:#fff;">
+            Conversamos sobre a sua rede municipal de saúde?
+          </h2>
+          <p style="margin:16px 0 0;max-width:50ch;color:rgba(255,255,255,.72);line-height:1.6;font-size:16px;">
+            Apresentamos a plataforma, levantamos seus processos atuais e desenhamos um plano de implantação faseado em conjunto. Sem compromisso na primeira conversa.
+          </p>
+          <div style="margin-top:36px;display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="btn btn--primary" style="height:44px;padding:0 22px;font-size:14px;" onclick="document.querySelector('#contato form input').focus()">
+              Agendar demonstração
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+            </button>
+            <button style="height:44px;padding:0 22px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font:500 14px Inter;cursor:pointer;transition:background 120ms;" onclick="document.querySelector('#contato form input').focus()">
+              Receber proposta institucional
+            </button>
+          </div>
+        </div>
+
+        <form action="mailto:contato@valens.health" method="get" enctype="text/plain"
+          style="padding:24px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;gap:14px;"
+          aria-label="Formulário de contato">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.55);text-transform:uppercase;" aria-hidden="true">FORMULÁRIO RÁPIDO</div>
+
+          <div>
+            <label class="sr-only" for="municipio">Município ou Secretaria</label>
+            <input id="municipio" name="municipio" placeholder="Município / Secretaria"
+              style="height:38px;padding:0 12px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font:400 13.5px Inter;width:100%;outline:none;transition:border-color var(--d-fast);"
+              onfocus="this.style.borderColor='rgba(20,184,166,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'" />
+          </div>
+          <div>
+            <label class="sr-only" for="responsavel">Responsável</label>
+            <input id="responsavel" name="responsavel" placeholder="Responsável"
+              style="height:38px;padding:0 12px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font:400 13.5px Inter;width:100%;outline:none;transition:border-color var(--d-fast);"
+              onfocus="this.style.borderColor='rgba(20,184,166,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'" />
+          </div>
+          <div>
+            <label class="sr-only" for="email">E-mail institucional</label>
+            <input id="email" name="email" type="email" placeholder="E-mail institucional"
+              style="height:38px;padding:0 12px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font:400 13.5px Inter;width:100%;outline:none;transition:border-color var(--d-fast);"
+              onfocus="this.style.borderColor='rgba(20,184,166,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'" />
+          </div>
+          <button type="submit" class="btn btn--primary" style="margin-top:4px;justify-content:center;height:40px;">Enviar</button>
+          <div style="font:400 11px/1.5 Inter;color:rgba(255,255,255,.45);">
+            Retornamos em até 1 dia útil. Conforme LGPD, dados usados exclusivamente para resposta institucional.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main><!-- /#main-content -->
+
+
+<!-- ════ FOOTER ════ -->
+<footer style="padding:64px 32px 36px;background:var(--navy);color:rgba(255,255,255,.7);border-top:1px solid rgba(255,255,255,.06);">
+  <div style="max-width:1280px;margin:0 auto;">
+
+    <div class="footer-grid" style="display:grid;grid-template-columns:1.5fr repeat(4,1fr);gap:48px;">
+
+      <div>
+        <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;margin-bottom:20px;" aria-label="VALENS — página inicial">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="ft-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="#0D9488"/></linearGradient>
+              <linearGradient id="ft-hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+            </defs>
+            <rect width="32" height="32" rx="7" fill="url(#ft-g)"/>
+            <rect width="32" height="32" rx="7" fill="url(#ft-hl)"/>
+            <rect x="6" y="6"  width="20" height="4" rx="1.6" fill="#fff"/>
+            <rect x="22" y="6" width="4"  height="12" rx="1.6" fill="#fff"/>
+            <rect x="6" y="14" width="20" height="4" rx="1.6" fill="#fff"/>
+            <rect x="6" y="14" width="4"  height="12" rx="1.6" fill="#fff"/>
+            <rect x="6" y="22" width="20" height="4" rx="1.6" fill="#fff"/>
+          </svg>
+          <span style="font:700 17px/1 'Inter',sans-serif;letter-spacing:-0.02em;color:#fff;">VALENS</span>
+        </a>
+        <p style="font:400 13.5px/1.6 Inter;color:rgba(255,255,255,.55);max-width:32ch;">
+          Plataforma integrada para gestão da saúde pública — prontuário, agenda, farmácia e auditoria municipal.
+        </p>
+        <div style="margin-top:20px;display:flex;gap:10px;">
+          <a href="#" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6);transition:background var(--d-fast),border-color var(--d-fast);" aria-label="Twitter / X">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4c-.5.3-1 .5-1.5.5.5-.3 1-.8 1.2-1.4-.5.3-1.1.5-1.7.6-.5-.5-1.2-.8-2-.8-1.5 0-2.7 1.2-2.7 2.7 0 .2 0 .4.1.6C5.5 6 3.5 5 2.2 3.5c-.3.4-.4.9-.4 1.4 0 .9.5 1.7 1.2 2.2-.4 0-.8-.1-1.2-.3v.1c0 1.3.9 2.4 2.1 2.7-.2.1-.5.1-.8.1-.2 0-.4 0-.5-.1.4 1.1 1.4 1.8 2.5 1.9-.9.7-2.1 1.1-3.3 1.1H1c1.2.8 2.6 1.2 4 1.2 4.8 0 7.5-4 7.5-7.5v-.3c.5-.4 1-.8 1.4-1.3z"/></svg>
+          </a>
+          <a href="#" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6);transition:background var(--d-fast),border-color var(--d-fast);" aria-label="LinkedIn">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 7v5M5 4.5h.01M8 12V7M8 9.5c0-1.4 3-1.4 3 0V12"/></svg>
+          </a>
+          <a href="#" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6);transition:background var(--d-fast),border-color var(--d-fast);" aria-label="GitHub">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.5C4.4 1.5 1.5 4.4 1.5 8c0 2.9 1.9 5.3 4.4 6.2.3.1.4-.1.4-.3v-1.1c-1.8.4-2.2-.8-2.2-.8-.3-.8-.7-1-.7-1-.6-.4 0-.4 0-.4.6 0 1 .7 1 .7.6 1 1.6.7 2 .5 0-.4.2-.7.4-.9-1.4-.2-2.9-.7-2.9-3.2 0-.7.2-1.3.7-1.7-.1-.2-.3-.9.1-1.8 0 0 .5-.2 1.8.7.5-.1 1.1-.2 1.6-.2.5 0 1.1.1 1.6.2 1.2-.8 1.8-.7 1.8-.7.4.9.1 1.6.1 1.8.4.5.7 1 .7 1.7 0 2.5-1.5 3-2.9 3.2.2.2.4.6.4 1.2v1.8c0 .2.1.4.5.3 2.5-.9 4.4-3.3 4.4-6.2 0-3.6-2.9-6.5-6.5-6.5z"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <div>
+        <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:16px;">Produto</div>
+        <ul style="display:flex;flex-direction:column;gap:8px;">
+          <li><a href="#módulos" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Prontuário</a></li>
+          <li><a href="#módulos" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Agenda</a></li>
+          <li><a href="#módulos" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Farmácia</a></li>
+          <li><a href="#módulos" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Dashboards</a></li>
+          <li><a href="#módulos" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Auditoria</a></li>
+          <li><a href="#módulos" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Gestão municipal</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:16px;">Empresa</div>
+        <ul style="display:flex;flex-direction:column;gap:8px;">
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Sobre</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Time</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Clientes</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Carreiras</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Imprensa</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:16px;">Recursos</div>
+        <ul style="display:flex;flex-direction:column;gap:8px;">
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Documentação</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">API</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Status</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Blog</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Brand assets</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:16px;">Legal</div>
+        <ul style="display:flex;flex-direction:column;gap:8px;">
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">LGPD</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Privacidade</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Termos</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">DPO</a></li>
+          <li><a href="#" style="font:400 13px Inter;color:rgba(255,255,255,.7);transition:color var(--d-fast);">Status</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div style="margin-top:56px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;">
+      <div style="font:400 12px Inter;color:rgba(255,255,255,.45);">
+        © 2026 VALENS · Plataforma integrada para gestão da saúde pública
+      </div>
+      <div style="font:500 11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.4);letter-spacing:.08em;">
+        CONFORME LGPD · ISO 27001 (EM PROCESSO)
+      </div>
+    </div>
+
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var btn = document.getElementById('nav-toggle-btn');
+    var nav = document.getElementById('mobile-nav');
+    var open = false;
+
+    function openMobileNav() {
+      open = true;
+      nav.classList.add('is-open');
+      nav.setAttribute('aria-hidden', 'false');
+      btn.setAttribute('aria-expanded', 'true');
+      btn.setAttribute('aria-label', 'Fechar menu');
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileNav() {
+      open = false;
+      nav.classList.remove('is-open');
+      nav.setAttribute('aria-hidden', 'true');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.setAttribute('aria-label', 'Abrir menu');
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
+      document.body.style.overflow = '';
+    }
+
+    window.closeMobileNav = closeMobileNav;
+
+    btn.addEventListener('click', function () {
+      open ? closeMobileNav() : openMobileNav();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && open) closeMobileNav();
+    });
+  })();
+</script>
+</body>
+</html>
