@@ -245,3 +245,34 @@ Arquivos de apoio ja prontos:
 - Dashboard de indicadores por microárea/ACS
 - Prontuário com anexos e exportação PDF
 
+# Governança de desenvolvimento — VALENS
+
+Este repositório possui contrato permanente de qualidade para mudanças humanas e assistidas por IA.
+
+Leitura obrigatória antes de qualquer alteração:
+
+- `AGENTS.md`
+- `agents/README.md`
+- `agents/workflow.md`
+- `agents/checklist-final.md`
+
+Guardians permanentes:
+
+- Design System Guardian
+- Business Rules Guardian
+- Architecture Guardian
+- UX Flow Guardian
+- QA Regression Guardian
+
+Anexos de apoio:
+
+- `agents/permissions-matrix.md`
+- `agents/design-system-matrix.md`
+
+Toda alteração deve:
+
+1. identificar áreas afetadas;
+2. aplicar guardians relevantes;
+3. respeitar Design System e regras de negócio;
+4. executar validações compatíveis com escopo;
+5. entregar relatório final em pt-BR.

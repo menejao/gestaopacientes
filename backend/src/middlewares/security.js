@@ -30,7 +30,8 @@ function setupCors(app) {
         if (CORS_ALLOW_ALL) return callback(null, true);
         if (FRONTEND_ORIGINS.includes(origin)) return callback(null, true);
         return callback(new Error("Origem não permitida por CORS"));
-      }
+      },
+      credentials: true
     })
   );
 }
@@ -40,6 +41,9 @@ function securityHeadersMiddleware(req, res, next) {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "no-referrer");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  if (IS_PROD) {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  }
   if (req.path !== "/health") {
     res.setHeader("Cache-Control", "no-store");
   }

@@ -6,6 +6,10 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "dev:isolated": "node --env-file=.env.dev --watch src/server.js",
+    "provision:dev-user": "node --env-file=.env.dev scripts/provision-dev-user.mjs",
+    "seed:dev-scenario": "node --env-file=.env.dev scripts/seed-dev-scenario.mjs",
+    "provision:remote-enterprise-user": "node scripts/provision-remote-enterprise-user.mjs",
     "test": "node --test test/health.test.js && node --test test/auth.test.js && node --test test/patients.test.js && node --test test/twofa.test.js && node --test test/backup.test.js",
     "test:legacy": "node src/ai.test.js",
     "type-check": "tsc --noEmit"

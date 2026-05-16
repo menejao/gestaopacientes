@@ -26,6 +26,22 @@ const TWOFA_MAX_ATTEMPTS = Number(process.env.TWOFA_MAX_ATTEMPTS || 5);
 const BACKUP_EXPORT_KEY = String(process.env.BACKUP_EXPORT_KEY || "").trim();
 const ACCESS_EXPIRES_IN = String(process.env.ACCESS_TOKEN_EXPIRES_IN || JWT_EXPIRES_IN).trim();
 const REFRESH_EXPIRES_IN = String(process.env.REFRESH_TOKEN_EXPIRES_IN || "7d").trim();
+const BREAK_GLASS_TTL_MS = Number(process.env.BREAK_GLASS_TTL_MS || 15 * 60 * 1000);
+const COOKIE_ACCESS_NAME = String(process.env.COOKIE_ACCESS_NAME || "valens_access").trim() || "valens_access";
+const COOKIE_REFRESH_NAME = String(process.env.COOKIE_REFRESH_NAME || "valens_refresh").trim() || "valens_refresh";
+const COOKIE_CSRF_NAME = String(process.env.COOKIE_CSRF_NAME || "valens_csrf").trim() || "valens_csrf";
+const COOKIE_DOMAIN = String(process.env.COOKIE_DOMAIN || "").trim();
+const COOKIE_SECURE = String(process.env.COOKIE_SECURE || (IS_PROD ? "true" : "false")).trim().toLowerCase() === "true";
+const COOKIE_SAME_SITE_RAW = String(process.env.COOKIE_SAME_SITE || "lax").trim().toLowerCase();
+const COOKIE_SAME_SITE = COOKIE_SAME_SITE_RAW === "strict"
+  ? "strict"
+  : (COOKIE_SAME_SITE_RAW === "none" ? "none" : "lax");
+const PUBLIC_SELF_REGISTER_ROLES = String(
+  process.env.PUBLIC_SELF_REGISTER_ROLES || (IS_PROD ? "receptionist" : "receptionist,gestor,nurse_manager,doctor")
+)
+  .split(",")
+  .map((v) => v.trim().toLowerCase())
+  .filter(Boolean);
 const REFRESH_EXPIRES_MS = (() => {
   const s = REFRESH_EXPIRES_IN;
   const n = parseInt(s, 10);
@@ -48,6 +64,9 @@ if (IS_PROD && !process.env.DATA_ENCRYPTION_KEY) {
   throw new Error(
     "DATA_ENCRYPTION_KEY obrigatório em produção — dados sensíveis (CPF, CNS) não podem ser armazenados sem criptografia"
   );
+}
+if (IS_PROD && COOKIE_SAME_SITE === "none" && !COOKIE_SECURE) {
+  throw new Error("COOKIE_SECURE=true obrigatÃ³rio em produÃ§Ã£o quando COOKIE_SAME_SITE=none");
 }
 if (IS_PROD && !BACKUP_EXPORT_KEY) {
   console.warn("[aviso] BACKUP_EXPORT_KEY não definido — exportação de backup desabilitada");
@@ -79,5 +98,13 @@ export {
   BACKUP_EXPORT_KEY,
   ACCESS_EXPIRES_IN,
   REFRESH_EXPIRES_IN,
-  REFRESH_EXPIRES_MS
+  BREAK_GLASS_TTL_MS,
+  REFRESH_EXPIRES_MS,
+  COOKIE_ACCESS_NAME,
+  COOKIE_REFRESH_NAME,
+  COOKIE_CSRF_NAME,
+  COOKIE_DOMAIN,
+  COOKIE_SECURE,
+  COOKIE_SAME_SITE,
+  PUBLIC_SELF_REGISTER_ROLES
 };

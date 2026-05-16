@@ -2,7 +2,9 @@ import { v4 as uuidv4 } from "uuid";
 import {
   canonicalRole,
   normalizeDemandType,
-  councilTypeForRole
+  councilTypeForRole,
+  getCapabilitiesForUser,
+  isBreakGlassSessionActive
 } from "./helpers.js";
 
 /* ── DB array guard ── */
@@ -320,6 +322,39 @@ function sanitizeUser(user, db) {
   };
 }
 
+function buildAccessContextUser(actorUser, db, options = {}) {
+  const safeActor = sanitizeUser(actorUser, db);
+  const scopeTeamId = String(options.scopeTeamId ?? safeActor.teamId ?? "").trim();
+  const scopeTeamName = scopeTeamId ? getTeamNameById(db, scopeTeamId) : "";
+  const capabilities = getCapabilitiesForUser(safeActor, {
+    capabilities: options.capabilities,
+    breakGlass: options.breakGlass
+  });
+
+  return {
+    ...safeActor,
+    teamId: scopeTeamId || safeActor.teamId || "",
+    teamName: scopeTeamName || safeActor.teamName || "Sem equipe",
+    capabilities,
+    impersonation: options.impersonation ? {
+      active: true,
+      targetUserId: String(options.impersonation.targetUserId || ""),
+      targetUserName: String(options.impersonation.targetUserName || ""),
+      targetUserRole: canonicalRole(options.impersonation.targetUserRole || ""),
+      targetTeamId: String(options.impersonation.targetTeamId || ""),
+      targetTeamName: String(options.impersonation.targetTeamName || ""),
+      reason: String(options.impersonation.reason || ""),
+      startedAt: String(options.impersonation.startedAt || new Date().toISOString())
+    } : null,
+    breakGlass: options.breakGlass && isBreakGlassSessionActive(options.breakGlass) ? {
+      active: true,
+      reason: String(options.breakGlass.reason || ""),
+      activatedAt: String(options.breakGlass.activatedAt || new Date().toISOString()),
+      expiresAt: String(options.breakGlass.expiresAt || "")
+    } : null
+  };
+}
+
 /* ── Protocol template map ── */
 
 function getProtocolTemplateMap(db, teamId = "") {
@@ -451,6 +486,7 @@ export {
   getTeamById,
   getTeamNameById,
   sanitizeUser,
+  buildAccessContextUser,
   getProtocolTemplateMap,
   sanitizeProtocolTemplatePayload,
   snapshotProtocolTemplateVersion

@@ -127,7 +127,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
 
   return (
     <div className="exams-page">
-      <PageHeader badge="Exames · Unidade" title="Exames dos Pacientes" subtitle="Exames realizados na unidade e exames externos trazidos pelos pacientes." />
+      <PageHeader eyebrow="VALENS" title="Exames" subtitle="Exames realizados na unidade e exames externos trazidos pelos pacientes." />
 
       <div className="exams-body">
         <div className="exams-sidebar">
@@ -198,7 +198,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
               {addMode && (
                 <div className={`exams-add-form exams-add-form--${addMode}`}>
                   <div className="exams-add-form__title">
-                    {addMode === "externo" ? "📎 Exame externo (trazido pelo paciente)" : "🏥 Exame realizado no posto"}
+                    {addMode === "externo" ? "Exame externo — trazido pelo paciente" : "Exame realizado na unidade"}
                   </div>
                   <form onSubmit={handleSubmit} className="exams-add-form__fields">
                     <div className="exams-add-form__grid">
@@ -254,7 +254,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
                 {loading
                   ? <p style={{ font: "400 var(--t-sm) var(--font-sans)", color: "var(--text-dim)" }}>Carregando...</p>
                   : !posto.length
-                    ? <p style={{ font: "400 var(--t-sm) var(--font-sans)", color: "var(--text-dim)" }}>🔬 Nenhum exame registrado.</p>
+                    ? <p style={{ font: "400 var(--t-sm) var(--font-sans)", color: "var(--text-dim)" }}>Nenhum exame registrado.</p>
                     : posto.map(exam => <ExamCard key={exam.id} exam={exam} canManage={canManage} onDelete={handleDelete} onPreview={setPreview} />)
                 }
               </div>

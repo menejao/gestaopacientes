@@ -1,13 +1,13 @@
-export default function PageHero({ badge, title, subtitle, actions, style, children }) {
+export default function PageHero({ badge, title, subtitle, actions, children }) {
   return (
-    <section className="home-hero" style={style}>
-      <div style={{flex:1}}>
-        {badge && <p className="home-kicker">{badge}</p>}
-        <h1 className="home-title">{title}</h1>
-        {subtitle && <p className="home-sub">{subtitle}</p>}
+    <header className="page-header">
+      <div className="page-header__copy">
+        {badge ? <span className="page-header__eyebrow">{badge}</span> : null}
+        {title ? <h1 className="page-header__title">{title}</h1> : null}
+        {subtitle ? <p className="page-header__subtitle">{subtitle}</p> : null}
         {children}
       </div>
-      {actions}
-    </section>
+      {actions ? <div className="page-header__actions">{actions}</div> : null}
+    </header>
   );
 }

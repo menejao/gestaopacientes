@@ -69,69 +69,73 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
   const hasDanger = unseenAlerts.some(a => a.type === "danger");
 
   return (
-    <div ref={ref} style={{position:"relative",flexShrink:0,overflow:"visible"}}>
-      <button onClick={()=>setOpen(v=>!v)}
-        style={{position:"relative",width:34,height:34,borderRadius:"var(--r-md)",background:"var(--surface-2)",border:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,overflow:"visible",padding:0}}>
-        <svg viewBox="0 0 20 20" fill="none" style={{width:20,height:20,color:"var(--text-1)",display:"block",flexShrink:0}}>
+    <div ref={ref} className="notif-bell">
+      <button className="notif-bell__btn" onClick={() => setOpen(v => !v)}>
+        <svg viewBox="0 0 20 20" fill="none" width="20" height="20">
           <path d="M10 2a6 6 0 00-6 6v3.5L2.5 14h15L16 11.5V8a6 6 0 00-6-6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
           <path d="M8 14.5a2 2 0 004 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
         </svg>
         {unseenCount > 0 && (
-          <span style={{position:"absolute",top:-4,right:-4,minWidth:16,height:16,borderRadius:999,background:hasDanger?"var(--red-600)":"var(--amber-500)",color:"#fff",fontSize:".6rem",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",lineHeight:1}}>
+          <span className={`notif-bell__badge notif-bell__badge--${hasDanger ? "danger" : "warn"}`}>
             {unseenCount > 9 ? "9+" : unseenCount}
           </span>
         )}
       </button>
       {open && (
-        <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,width:330,maxHeight:440,overflowY:"auto",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--r-lg)",boxShadow:"0 8px 30px rgba(0,0,0,.12)",zIndex:600}}>
-          <div style={{padding:".7rem 1rem",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:".5rem",position:"sticky",top:0,background:"var(--surface)",zIndex:1}}>
-            <span style={{fontWeight:700,fontSize:".82rem",color:"var(--ink)"}}>Alertas do sistema</span>
-            <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+        <div className="notif-bell__panel">
+          <div className="notif-bell__panel-head">
+            <span className="notif-bell__panel-title">Alertas do sistema</span>
+            <div className="notif-bell__panel-meta">
               {unseenCount > 0 && (
-                <span style={{fontSize:".7rem",color:"var(--text-3)"}}>{unseenCount} não visto{unseenCount!==1?"s":""}</span>
+                <span className="notif-bell__unseen-count">{unseenCount} não visto{unseenCount !== 1 ? "s" : ""}</span>
               )}
               {unseenCount > 1 && (
-                <button onClick={clearAllSeen}
-                  style={{fontSize:".68rem",color:"var(--teal-600)",background:"none",border:"none",cursor:"pointer",padding:"0 .25rem",fontWeight:600,whiteSpace:"nowrap"}}
-                  title="Marcar todos como vistos">
+                <button className="notif-bell__clear-btn" onClick={clearAllSeen} title="Marcar todos como vistos">
                   Limpar todos
                 </button>
               )}
             </div>
           </div>
           {!unseenCount && (
-            <p style={{padding:"1.5rem",textAlign:"center",color:"var(--text-3)",fontSize:".82rem"}}>
-              {allAlerts.length > 0 ? "Todos os alertas foram vistos ✓" : "Nenhum alerta no momento ✓"}
+            <p className="notif-bell__panel-empty">
+              {allAlerts.length > 0 ? "Todos os alertas foram vistos" : "Nenhum alerta no momento"}
             </p>
           )}
-          {unseenAlerts.map(a => (
-            <div key={a.id}
-              style={{padding:".65rem 1rem",borderBottom:"1px solid var(--border-soft)",display:"flex",gap:".65rem",alignItems:"flex-start",
-                background:a.type==="danger"?"#fff5f5":a.type==="warn"?"var(--amber-50)":"var(--surface)",
-                cursor:a.patientId?"pointer":"default",transition:"filter .1s"}}
-              onMouseEnter={e=>{ if(a.patientId) e.currentTarget.style.filter="brightness(.97)"; }}
-              onMouseLeave={e=>{ e.currentTarget.style.filter="none"; }}>
-              <span
-                style={{flex:1,display:"flex",gap:".65rem",alignItems:"flex-start",minWidth:0}}
-                onClick={()=>{ if(a.patientId&&onNavigate) onNavigate(a.patientId); setOpen(false); }}>
-                <span style={{fontSize:"1rem",flexShrink:0,marginTop:".1rem"}}>
-                  {a.type==="danger"?"⛔":a.type==="warn"?"⚠️":"ℹ️"}
+          {unseenAlerts.map(a => {
+            const typeClass = a.type === "danger"
+              ? "notif-bell__item--danger"
+              : a.type === "warn"
+              ? "notif-bell__item--warn"
+              : "notif-bell__item--info";
+            return (
+              <div key={a.id} className={`notif-bell__item ${typeClass}${a.patientId ? " notif-bell__item--nav" : ""}`}>
+                <span
+                  className="notif-bell__item-body"
+                  onClick={() => { if (a.patientId && onNavigate) { onNavigate(a.patientId); setOpen(false); } }}>
+                  <span className="notif-bell__item-icon">
+                    {a.type === "danger"
+                      ? <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 5v3.5M8 11h.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                      : a.type === "warn"
+                      ? <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2L14.5 13.5H1.5L8 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M8 7v2.5M8 11.5h.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                      : <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 7.5v4M8 5h.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                    }
+                  </span>
+                  <div className="notif-bell__item-copy">
+                    <div className="notif-bell__item-title">{a.title}</div>
+                    <div className="notif-bell__item-detail">{a.detail}</div>
+                  </div>
                 </span>
-                <div style={{minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:".76rem",color:a.type==="danger"?"var(--rose-700)":a.type==="warn"?"var(--amber-700)":"var(--teal-700)"}}>{a.title}</div>
-                  <div style={{fontSize:".73rem",color:"var(--text-2)",marginTop:".1rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{a.detail}</div>
-                </div>
-              </span>
-              <button
-                onClick={e => markSeen(a.id, e)}
-                title="Marcar como visto"
-                style={{flexShrink:0,width:20,height:20,borderRadius:4,background:"none",border:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",marginTop:".05rem",color:"var(--text-3)",lineHeight:1,padding:0}}>
-                <svg viewBox="0 0 12 12" fill="none" width="9" height="9">
-                  <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
-          ))}
+                <button
+                  className="notif-bell__item-dismiss"
+                  onClick={e => markSeen(a.id, e)}
+                  title="Marcar como visto">
+                  <svg viewBox="0 0 12 12" fill="none" width="9" height="9">
+                    <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

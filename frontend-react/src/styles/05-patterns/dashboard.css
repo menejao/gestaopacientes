@@ -234,6 +234,78 @@
   font-size: var(--t-sm);
 }
 
+/* Reports stats grid — auto-fill responsive KPI cards */
+.reports-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--s-3);
+}
+
+.reports-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.reports-section-label {
+  font: 600 var(--t-sm) var(--font-sans);
+  color: var(--text-muted);
+}
+
+/* Category bar chart */
+.reports-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin-bottom: var(--s-3);
+}
+.reports-bar-row:last-child { margin-bottom: 0; }
+.reports-bar-row__header {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--t-sm);
+}
+.reports-bar-row__header strong { color: var(--text); }
+.reports-bar-row__header span { color: var(--text-dim); }
+
+/* Simple stat row inside cards */
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--t-sm);
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-row__label { color: var(--text-muted); }
+.stat-row__value { font-weight: 700; color: var(--text); }
+.stat-row__value--accent { color: var(--accent-text); }
+
+/* Stack list — lista vertical de itens com chip lateral */
+.stack-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.stack-list--padded { padding: 0 var(--s-5); }
+.stack-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.stack-list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.stack-list li p { margin: 0; line-height: var(--lh-snug); }
+
 @media (max-width: 1280px) {
   .dashboard__kpis { grid-template-columns: repeat(2, 1fr); }
 }

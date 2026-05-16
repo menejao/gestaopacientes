@@ -99,7 +99,7 @@ function TriagePage({ patients, users, user }) {
   return (
     <div className="triage-page">
       <PageHeader
-        badge="Téc. de Enfermagem"
+        eyebrow="Téc. de Enfermagem"
         title="Monitoramento e Triagem"
         subtitle="Aferição de sinais vitais antes do atendimento."
         actions={
@@ -124,7 +124,9 @@ function TriagePage({ patients, users, user }) {
 
           {pendingTriage.length === 0 ? (
             <div className="triage-queue__empty">
-              <div className="triage-queue__empty-icon">🏥</div>
+              <div className="triage-queue__empty-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              </div>
               <div>Nenhum paciente aguardando</div>
             </div>
           ) : pendingTriage.map(entry => {
@@ -270,7 +272,7 @@ function TriagePage({ patients, users, user }) {
                 <div className="triage-form__footer">
                   <Button type="button" variant="secondary" onClick={cancelTriage} style={{ flex: 1 }}>Cancelar</Button>
                   <Button type="submit" variant="primary" disabled={saving} style={{ flex: 2 }}>
-                    {saving ? "Finalizando..." : "✓ Finalizar triagem e notificar"}
+                    {saving ? "Finalizando..." : "Finalizar triagem e notificar"}
                   </Button>
                 </div>
               </form>

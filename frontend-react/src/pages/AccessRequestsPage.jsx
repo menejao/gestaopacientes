@@ -65,6 +65,7 @@ function AccessRequestsPage({ token }) {
   return (
     <PageLayout>
       <PageHeader
+        eyebrow="Administração"
         title="Solicitações de Acesso"
         subtitle="Gerencie solicitações pendentes de acesso à plataforma. Apenas usuários aprovados recebem credenciais."
         actions={

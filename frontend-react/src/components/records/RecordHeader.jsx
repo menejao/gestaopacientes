@@ -1,4 +1,3 @@
-import Button from "../ui/Button";
 import Input from "../ui/Input";
 import Select from "../ui/Select";
 
@@ -8,8 +7,6 @@ export default function RecordHeader({
   patientOptions,
   selectedPatientId,
   onSelectPatient,
-  onOpenForm,
-  canWrite,
 }) {
   return (
     <div className="records-header">
@@ -23,7 +20,6 @@ export default function RecordHeader({
         <option value="">Selecione</option>
         {patientOptions.map((patient) => <option key={patient.id} value={patient.id}>{patient.name}</option>)}
       </Select>
-      {canWrite ? <Button variant="primary" onClick={onOpenForm}>Novo registro</Button> : null}
     </div>
   );
 }

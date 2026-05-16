@@ -1,15 +1,24 @@
 import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import { readDb, withDb } from "../db.js";
-import { TWOFA_CHALLENGE_TTL_MS, TWOFA_MAX_ATTEMPTS } from "../config.js";
+import {
+  TWOFA_CHALLENGE_TTL_MS,
+  TWOFA_MAX_ATTEMPTS,
+  PUBLIC_SELF_REGISTER_ROLES,
+  COOKIE_REFRESH_NAME
+} from "../config.js";
 import { validate, LoginSchema, RegisterSchema } from "../schemas.js";
 import { authRateLimit } from "../middlewares/rate-limits.js";
 import { requireAuth } from "../middlewares/auth.js";
 import {
-  canonicalRole, isStrongPassword, isValidEmail, roleNeedsCouncil,
-  councilTypeForRole, getClientIp, ALLOWED_SELF_REGISTER_ROLES
+  canonicalRole,
+  isStrongPassword,
+  isValidEmail,
+  roleNeedsCouncil,
+  councilTypeForRole,
+  getClientIp
 } from "../utils/helpers.js";
-import { ensureDbShape, sanitizeUser } from "../utils/domain.js";
+import { ensureDbShape, buildAccessContextUser } from "../utils/domain.js";
 import { validateCouncilData, verifyCouncilExternally } from "../utils/council.js";
 import { hashPassword, isHashedPassword, verifyPassword, hashToken } from "../services/crypto.js";
 import { verifyTotpCode } from "../services/totp.js";
@@ -17,8 +26,31 @@ import { createToken, createRefreshToken } from "../services/tokens.js";
 import { addAuditLog } from "../services/audit.js";
 import { ensureDemoManagerIfNeeded } from "../services/startup.js";
 import { trackLoginAttempt } from "../middlewares/logging.js";
+import {
+  clearSessionCookies,
+  createCsrfToken,
+  issueSessionCookies,
+  parseCookies
+} from "../utils/session-cookies.js";
 
 const router = express.Router();
+
+function issueSession(res, user, db, sessionContext = {}, refreshRaw = "", sessionId = "") {
+  const token = createToken(user, db, {
+    ...sessionContext,
+    sessionId
+  });
+  issueSessionCookies(res, {
+    accessToken: token,
+    refreshToken: refreshRaw,
+    csrfToken: createCsrfToken()
+  });
+  return {
+    user: buildAccessContextUser(user, db, sessionContext),
+    token,
+    refreshToken: refreshRaw
+  };
+}
 
 router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (req, res) => {
   const payload = req.body || {};
@@ -35,10 +67,12 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
     return res.status(400).json({ error: "E-mail inválido" });
   }
   if (!isStrongPassword(password)) {
-    return res.status(400).json({ error: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial" });
+    return res.status(400).json({
+      error: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial"
+    });
   }
-  if (!ALLOWED_SELF_REGISTER_ROLES.includes(role)) {
-    return res.status(400).json({ error: "Cadastro público permitido apenas para enfermeira, médica e gestor" });
+  if (!PUBLIC_SELF_REGISTER_ROLES.includes(role)) {
+    return res.status(400).json({ error: "Perfil não disponível para auto cadastro público" });
   }
 
   const councilValidation = validateCouncilData(role, payload.councilNumber, payload.councilUf);
@@ -74,8 +108,8 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
     }
 
     const duplicatedCouncil = roleNeedsCouncil(role) && db.users.some((u) => {
-      const uRole = canonicalRole(u.role);
-      return roleNeedsCouncil(uRole)
+      const userRole = canonicalRole(u.role);
+      return roleNeedsCouncil(userRole)
         && String(u.councilType || "").toUpperCase() === councilType
         && String(u.councilNumber || "") === councilValidation.councilNumber
         && String(u.councilUf || "").toUpperCase() === councilValidation.councilUf;
@@ -120,21 +154,21 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
       lastSeenIp: getClientIp(req)
     };
     db.users.push(user);
-    if (role === "nurse_manager" && !team.managerUserId) {
+    if (role === "nurse_manager" && team && !team.managerUserId) {
       team.managerUserId = user.id;
       team.updatedAt = new Date().toISOString();
     }
-    const rtResult = createRefreshToken(user.id, getClientIp(req), db);
-    addAuditLog(db, user, "auth.register", "auth", rtResult.sessionId, { userId: user.id });
-    return { user, db, raw: rtResult.raw };
+    const refresh = createRefreshToken(user.id, getClientIp(req), db);
+    addAuditLog(db, user, "auth.register", "auth", refresh.sessionId, { userId: user.id });
+    return { user, db, refresh };
   });
 
   if (result?.error) {
     return res.status(result.status || 400).json({ error: result.error });
   }
-  const safeUser = sanitizeUser(result.user, result.db);
-  const token = createToken(result.user, result.db);
-  return res.status(201).json({ user: safeUser, token, refreshToken: result.raw });
+  return res.status(201).json(
+    issueSession(res, result.user, result.db, {}, result.refresh.raw, result.refresh.sessionId)
+  );
 });
 
 router.post("/auth/register/request-code", authRateLimit, async (_req, res) => {
@@ -152,7 +186,7 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const inputPassword = String(password || "");
   let user = db.users.find(
-    (u) => String(u.email || "").toLowerCase() === normalizedEmail && verifyPassword(inputPassword, u.password)
+    (item) => String(item.email || "").toLowerCase() === normalizedEmail && verifyPassword(inputPassword, item.password)
   );
 
   if (!user) {
@@ -170,15 +204,15 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
   if (!isHashedPassword(user.password)) {
     await withDb((mutableDb) => {
       ensureDbShape(mutableDb);
-      const idx = mutableDb.users.findIndex((u) => u.id === user.id);
-      if (idx >= 0) {
-        mutableDb.users[idx].password = hashPassword(inputPassword);
-        mutableDb.users[idx].updatedAt = new Date().toISOString();
+      const index = mutableDb.users.findIndex((item) => item.id === user.id);
+      if (index >= 0) {
+        mutableDb.users[index].password = hashPassword(inputPassword);
+        mutableDb.users[index].updatedAt = new Date().toISOString();
       }
     });
     db = await readDb();
     ensureDbShape(db);
-    user = db.users.find((u) => u.id === user.id) || user;
+    user = db.users.find((item) => item.id === user.id) || user;
   }
 
   const nowIso = new Date().toISOString();
@@ -186,8 +220,8 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
   if (user.twoFactorEnabled && user.twoFactorSecret) {
     const challenge = await withDb((mutableDb) => {
       ensureDbShape(mutableDb);
-      const idx = mutableDb.users.findIndex((u) => u.id === user.id);
-      if (idx < 0) return null;
+      const index = mutableDb.users.findIndex((item) => item.id === user.id);
+      if (index < 0) return null;
       const expiresAt = new Date(Date.now() + TWOFA_CHALLENGE_TTL_MS).toISOString();
       const challengeItem = {
         id: uuidv4(),
@@ -202,9 +236,9 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
         .filter((item) => String(item.userId || "") !== String(user.id))
         .slice(-50);
       mutableDb.loginChallenges.push(challengeItem);
-      mutableDb.users[idx].lastSeenAt = nowIso;
-      mutableDb.users[idx].lastSeenIp = getClientIp(req);
-      mutableDb.users[idx].updatedAt = nowIso;
+      mutableDb.users[index].lastSeenAt = nowIso;
+      mutableDb.users[index].lastSeenIp = getClientIp(req);
+      mutableDb.users[index].updatedAt = nowIso;
       addAuditLog(mutableDb, user, "auth.login_challenge_created", "auth", challengeItem.id, {
         userId: user.id
       });
@@ -218,30 +252,29 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
     });
   }
 
-  const { raw: loginRefreshToken } = await withDb((mutableDb) => {
+  const refresh = await withDb((mutableDb) => {
     ensureDbShape(mutableDb);
-    const idx = mutableDb.users.findIndex((u) => u.id === user.id);
-    if (idx >= 0) {
-      mutableDb.users[idx].lastLoginAt = nowIso;
-      mutableDb.users[idx].lastSeenAt = nowIso;
-      mutableDb.users[idx].lastSeenIp = getClientIp(req);
-      mutableDb.users[idx].updatedAt = nowIso;
+    const index = mutableDb.users.findIndex((item) => item.id === user.id);
+    if (index >= 0) {
+      mutableDb.users[index].lastLoginAt = nowIso;
+      mutableDb.users[index].lastSeenAt = nowIso;
+      mutableDb.users[index].lastSeenIp = getClientIp(req);
+      mutableDb.users[index].updatedAt = nowIso;
     }
-    const rtResult = createRefreshToken(user.id, getClientIp(req), mutableDb);
-    addAuditLog(mutableDb, user, "auth.login", "auth", rtResult.sessionId, { userId: user.id });
-    return rtResult;
+    const tokenRecord = createRefreshToken(user.id, getClientIp(req), mutableDb);
+    addAuditLog(mutableDb, user, "auth.login", "auth", tokenRecord.sessionId, { userId: user.id });
+    return tokenRecord;
   });
+
   {
     const latestDb = await readDb();
     ensureDbShape(latestDb);
-    user = latestDb.users.find((u) => u.id === user.id) || user;
+    user = latestDb.users.find((item) => item.id === user.id) || user;
     db = latestDb;
   }
 
   trackLoginAttempt(true);
-  const safeUser = sanitizeUser(user, db);
-  const token = createToken(user, db);
-  return res.json({ user: safeUser, token, refreshToken: loginRefreshToken });
+  return res.json(issueSession(res, user, db, {}, refresh.raw, refresh.sessionId));
 });
 
 router.post("/auth/login/verify", authRateLimit, async (req, res) => {
@@ -284,9 +317,12 @@ router.post("/auth/login/verify", authRateLimit, async (req, res) => {
     db.users[userIndex].lastSeenAt = nowIso;
     db.users[userIndex].lastSeenIp = getClientIp(req);
     db.users[userIndex].updatedAt = nowIso;
-    const rtResult = createRefreshToken(user.id, getClientIp(req), db);
-    addAuditLog(db, user, "auth.login_2fa_verified", "auth", challengeId, { userId: user.id, sessionId: rtResult.sessionId });
-    return { user: db.users[userIndex], db, raw: rtResult.raw };
+    const refresh = createRefreshToken(user.id, getClientIp(req), db);
+    addAuditLog(db, user, "auth.login_2fa_verified", "auth", challengeId, {
+      userId: user.id,
+      sessionId: refresh.sessionId
+    });
+    return { user: db.users[userIndex], db, refresh };
   });
 
   if (result?.error) {
@@ -294,60 +330,72 @@ router.post("/auth/login/verify", authRateLimit, async (req, res) => {
     return res.status(result.error.status).json({ error: result.error.message });
   }
   trackLoginAttempt(true);
-  const safeUser = sanitizeUser(result.user, result.db);
-  const token = createToken(result.user, result.db);
-  return res.json({ user: safeUser, token, refreshToken: result.raw });
+  return res.json(issueSession(res, result.user, result.db, {}, result.refresh.raw, result.refresh.sessionId));
 });
 
 router.post("/auth/refresh", authRateLimit, async (req, res) => {
-  const rawToken = String(req.body?.refreshToken || "").trim();
+  const rawToken = String(req.body?.refreshToken || parseCookies(req)[COOKIE_REFRESH_NAME] || "").trim();
   if (!rawToken) return res.status(400).json({ error: "refreshToken é obrigatório" });
 
   const result = await withDb((db) => {
     ensureDbShape(db);
-    const hash = hashToken(rawToken);
-    const idx = db.refreshTokens.findIndex((t) => t.tokenHash === hash);
-    if (idx < 0) return { error: { status: 401, message: "Refresh token inválido" } };
+    const tokenHash = hashToken(rawToken);
+    const index = db.refreshTokens.findIndex((item) => item.tokenHash === tokenHash);
+    if (index < 0) return { error: { status: 401, message: "Refresh token inválido" } };
 
-    const record = db.refreshTokens[idx];
+    const record = db.refreshTokens[index];
     if (record.revokedAt) return { error: { status: 401, message: "Sessão encerrada" } };
     if (new Date(record.expiresAt) < new Date()) {
-      db.refreshTokens[idx].revokedAt = new Date().toISOString();
+      db.refreshTokens[index].revokedAt = new Date().toISOString();
       return { error: { status: 401, message: "Sessão expirada" } };
     }
 
-    const user = db.users.find((u) => u.id === record.userId);
+    const user = db.users.find((item) => item.id === record.userId);
     if (!user) return { error: { status: 401, message: "Usuário não encontrado" } };
 
-    db.refreshTokens[idx].revokedAt = new Date().toISOString();
-    const rtResult = createRefreshToken(user.id, record.ip, db);
-    addAuditLog(db, user, "auth.refresh", "auth", rtResult.sessionId, { prevSession: record.id });
-    return { user, db, raw: rtResult.raw };
+    db.refreshTokens[index].revokedAt = new Date().toISOString();
+    const refresh = createRefreshToken(user.id, record.ip, db, record.sessionContext || {});
+    addAuditLog(db, user, "auth.refresh", "auth", refresh.sessionId, {
+      prevSession: record.id,
+      impersonationTargetUserId: String(record.sessionContext?.impersonation?.targetUserId || ""),
+      breakGlass: Boolean(record.sessionContext?.breakGlass?.active)
+    });
+    return { user, db, refresh, sessionContext: record.sessionContext || {} };
   });
 
   if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
-  const safeUser = sanitizeUser(result.user, result.db);
-  const token = createToken(result.user, result.db);
-  return res.json({ user: safeUser, token, refreshToken: result.raw });
+  return res.json(
+    issueSession(
+      res,
+      result.user,
+      result.db,
+      result.sessionContext || {},
+      result.refresh.raw,
+      result.refresh.sessionId
+    )
+  );
 });
 
 router.post("/auth/logout", requireAuth, async (req, res) => {
-  const rawToken = String(req.body?.refreshToken || "").trim();
+  const rawToken = String(req.body?.refreshToken || parseCookies(req)[COOKIE_REFRESH_NAME] || "").trim();
   await withDb((db) => {
     ensureDbShape(db);
     if (rawToken) {
-      const hash = hashToken(rawToken);
-      const idx = db.refreshTokens.findIndex(
-        (t) => t.tokenHash === hash && t.userId === req.user.id
+      const tokenHash = hashToken(rawToken);
+      const index = db.refreshTokens.findIndex(
+        (item) => item.tokenHash === tokenHash && item.userId === req.user.id
       );
-      if (idx >= 0 && !db.refreshTokens[idx].revokedAt) {
-        db.refreshTokens[idx].revokedAt = new Date().toISOString();
+      if (index >= 0 && !db.refreshTokens[index].revokedAt) {
+        db.refreshTokens[index].revokedAt = new Date().toISOString();
       }
     }
     addAuditLog(db, req.user, "auth.logout", "auth", req.user.id, {
-      hadRefreshToken: Boolean(rawToken)
+      hadRefreshToken: Boolean(rawToken),
+      impersonationTargetUserId: String(req.user?.impersonation?.targetUserId || ""),
+      breakGlass: Boolean(req.user?.breakGlass?.active)
     });
   });
+  clearSessionCookies(res);
   return res.json({ ok: true });
 });
 

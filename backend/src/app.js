@@ -3,6 +3,7 @@ import { setupHelmet, setupCors, securityHeadersMiddleware, contentTypeMiddlewar
 import { requestLoggingMiddleware } from "./middlewares/logging.js";
 import { globalRateLimit } from "./middlewares/rate-limits.js";
 import { requireAuth } from "./middlewares/auth.js";
+import { requireCsrfForCookieAuth } from "./middlewares/csrf.js";
 import { globalErrorHandler } from "./middlewares/errors.js";
 
 import healthRouter from "./routes/health.js";
@@ -37,6 +38,7 @@ app.use(adminRouter);
 app.use(usersRouter);
 
 app.use(requireAuth);
+app.use(requireCsrfForCookieAuth);
 app.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
   res.setHeader("Pragma", "no-cache");

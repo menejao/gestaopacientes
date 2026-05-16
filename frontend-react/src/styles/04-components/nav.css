@@ -188,6 +188,26 @@
   color: var(--sidebar-muted);
 }
 
+/* ── Sidebar footer action (dark context) ────────────────── */
+.sidebar__footer-btn {
+  appearance: none;
+  border: 1px solid var(--sidebar-border);
+  background: transparent;
+  border-radius: var(--r-md);
+  color: var(--sidebar-muted);
+  font: 500 var(--t-sm) var(--font-sans);
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--d-fast), color var(--d-fast), border-color var(--d-fast);
+}
+.sidebar__footer-btn:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text);
+  border-color: rgba(255,255,255,.14);
+}
+
 /* ── Mobile menu toggle (topbar, visível só em mobile) ───── */
 .mobile-menu-btn {
   display: none;

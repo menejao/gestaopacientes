@@ -188,9 +188,9 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
   function fmtTime(iso) { if (!iso) return ""; return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); }
 
   const NAV_TABS = [
-    { id: "queue",  label: "🏥 Fila" },
-    { id: "agenda", label: "📅 Agenda" },
-    { id: "search", label: "🔍 Pacientes" },
+    { id: "queue",  label: "Fila" },
+    { id: "agenda", label: "Agenda" },
+    { id: "search", label: "Pacientes" },
   ];
 
   return (
@@ -237,21 +237,18 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
           <div className="rcpt-section">
             <div className="rcpt-kpis">
               <div className="rcpt-kpi rcpt-kpi--waiting">
-                <span className="rcpt-kpi__icon">⏳</span>
                 <div>
                   <div className="rcpt-kpi__value">{waiting}</div>
                   <div className="rcpt-kpi__label">Aguardando</div>
                 </div>
               </div>
               <div className="rcpt-kpi rcpt-kpi--attending">
-                <span className="rcpt-kpi__icon">🩺</span>
                 <div>
                   <div className="rcpt-kpi__value">{attending}</div>
                   <div className="rcpt-kpi__label">Em atendimento</div>
                 </div>
               </div>
               <div className="rcpt-kpi rcpt-kpi--total">
-                <span className="rcpt-kpi__icon">📋</span>
                 <div>
                   <div className="rcpt-kpi__value">{sortedQueue.length}</div>
                   <div className="rcpt-kpi__label">Total hoje</div>
@@ -266,7 +263,9 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
 
             {!sortedQueue.length ? (
               <div className="rcpt-queue-empty">
-                <div className="rcpt-queue-empty__icon">🏥</div>
+                <div className="rcpt-queue-empty__icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              </div>
                 <div className="rcpt-queue-empty__title">Nenhum paciente na fila</div>
                 <Button variant="primary" onClick={() => setShowQueueForm(true)}>+ Dar entrada no primeiro paciente</Button>
               </div>
@@ -294,12 +293,12 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                         <div className="rcpt-queue-item__actions">
                           {q.status === "waiting" && (
                             <Button variant="primary" size="sm" onClick={() => updateQueueStatus(q.id, "attending")}>
-                              🩺 Chamar
+                              Chamar
                             </Button>
                           )}
                           {q.status === "attending" && (
                             <Button variant="primary" size="sm" onClick={() => updateQueueStatus(q.id, "done")}>
-                              ✓ Concluir
+                              Concluir
                             </Button>
                           )}
                           <button className="rcpt-queue-item__remove-btn" onClick={() => removeFromQueue(q.id)}>✕</button>
@@ -351,14 +350,18 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
 
             {isUnavailableDay(selectedDate) && (
               <div className="rcpt-unavail-notice">
-                <span style={{ fontSize: "1.1rem" }}>🔒</span>
                 <strong>{unavailableReason(selectedDate)}</strong>
               </div>
             )}
 
             {!dayAppts.length ? (
               <div className="rcpt-empty">
-                <div className="rcpt-empty__icon">{isUnavailableDay(selectedDate) ? "🔒" : "📅"}</div>
+                <div className="rcpt-empty__icon">
+                {isUnavailableDay(selectedDate)
+                  ? <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                }
+              </div>
                 <div className="rcpt-empty__title">{isUnavailableDay(selectedDate) ? "Unidade fechada neste dia" : "Nenhum agendamento neste dia"}</div>
                 {!isUnavailableDay(selectedDate) && (
                   <Button variant="primary" style={{ marginTop: "var(--s-4)" }} onClick={() => openAgendaNew()}>+ Agendar consulta</Button>
@@ -385,7 +388,9 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                       >
                         {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                       </select>
-                      <button className="icon-btn" title="Editar" onClick={() => openAgendaEdit(appt)}>✏️</button>
+                      <button className="icon-btn" title="Editar" onClick={() => openAgendaEdit(appt)}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
                       <button className="rcpt-appt__remove-btn" onClick={() => removeAgenda(appt.id)}>✕</button>
                     </div>
                   </div>
@@ -466,10 +471,10 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                     </div>
                     <div className="rcpt-pat-header__actions">
                       <Button variant="secondary" size="sm" onClick={() => { setQueueForm(s => ({ ...s, patientId: selectedPatient.id })); setShowQueueForm(true); }}>
-                        🏥 Dar entrada
+                        Dar entrada
                       </Button>
                       <Button variant="secondary" size="sm" onClick={() => { setAgendaForm(s => ({ ...s, patientId: selectedPatient.id })); setShowAgendaForm(true); }}>
-                        📅 Agendar
+                        Agendar
                       </Button>
                     </div>
                   </div>
@@ -478,9 +483,9 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                     <div>
                       <div className="rcpt-pat-section-label">Contato</div>
                       <div className="rcpt-pat-info-list">
-                        {selectedPatient.phone && <span>📱 {selectedPatient.phone}</span>}
-                        {selectedPatient.phoneAlt && <span>📞 {selectedPatient.phoneAlt}</span>}
-                        {selectedPatient.address && <span>📍 {[selectedPatient.address, selectedPatient.number, selectedPatient.neighborhood, selectedPatient.city].filter(Boolean).join(", ")}</span>}
+                        {selectedPatient.phone && <span>{selectedPatient.phone}</span>}
+                        {selectedPatient.phoneAlt && <span>{selectedPatient.phoneAlt}</span>}
+                        {selectedPatient.address && <span>{[selectedPatient.address, selectedPatient.number, selectedPatient.neighborhood, selectedPatient.city].filter(Boolean).join(", ")}</span>}
                         {!selectedPatient.phone && !selectedPatient.address && <span style={{ color: "var(--text-dim)" }}>Sem contato cadastrado</span>}
                       </div>
                     </div>
@@ -488,11 +493,11 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
                       <div className="rcpt-pat-section-label">Alertas clínicos</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: "var(--s-1)" }}>
                         {String(selectedPatient.allergies || "").trim() && (
-                          <span className="rcpt-allergy-badge">⚠️ Alergias: {selectedPatient.allergies}</span>
+                          <span className="rcpt-allergy-badge">Alergias: {selectedPatient.allergies}</span>
                         )}
                         {gestationalAgeInfo(selectedPatient) && String(selectedPatient.careCategory || "").toLowerCase() === "pregnant" && (() => {
                           const g = gestationalAgeInfo(selectedPatient);
-                          return <span className="rcpt-gest-badge">🤰 IG: {g.weeks}s {g.days}d</span>;
+                          return <span className="rcpt-gest-badge">IG: {g.weeks}s {g.days}d</span>;
                         })()}
                         {!String(selectedPatient.allergies || "").trim() && !(gestationalAgeInfo(selectedPatient) && String(selectedPatient.careCategory || "").toLowerCase() === "pregnant") && (
                           <span style={{ color: "var(--text-dim)" }}>Nenhum alerta</span>
@@ -530,7 +535,9 @@ function ReceptionistApp({ recUser, patients, users, templates, onLogout }) {
 
             {!search && !selectedPatient && (
               <div className="rcpt-empty">
-                <div className="rcpt-empty__icon">🔍</div>
+                <div className="rcpt-empty__icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              </div>
                 <div className="rcpt-empty__title">Digite para buscar um paciente</div>
                 <div className="rcpt-empty__sub">Nome, CPF ou CNS</div>
               </div>

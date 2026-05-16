@@ -1,116 +1,230 @@
-import PageHero from "../components/layout/PageHero";
-import Chip from "../components/ui/Chip";
+import PageLayout from "../components/layout/PageLayout";
+import PageHeader from "../components/layout/PageHeader";
+import Card from "../components/ui/Card";
+import Alert from "../components/ui/Alert";
+import Button from "../components/ui/Button";
+
+const IconPriority = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M4 6h16M4 12h10M4 18h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+const IconQuality = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5"/>
+  </svg>
+);
+const IconReport = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M9 17H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2h-2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    <rect x="9" y="15" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M9 8h6M9 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+const IconAsk = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const ACTION_CARDS = [
+  {
+    id: "priorities",
+    icon: <IconPriority />,
+    title: "Prioridades do dia",
+    desc: "Lista classificada de pacientes que requerem atenção imediata com base em risco clínico e protocolos vigentes.",
+  },
+  {
+    id: "quality",
+    icon: <IconQuality />,
+    title: "Qualidade de dados",
+    desc: "Identificação de inconsistências, campos ausentes e cadastros incompletos que impactam indicadores e relatórios.",
+  },
+  {
+    id: "report",
+    icon: <IconReport />,
+    title: "Relatório executivo",
+    desc: "Sumário gerencial consolidado com indicadores de produtividade, cobertura e alertas da unidade.",
+  },
+];
+
+function ResultPanel({ aiView, aiData }) {
+  if (!aiData) return null;
+
+  if (aiView === "priorities") {
+    const items = Array.isArray(aiData?.items) ? aiData.items : [];
+    return (
+      <Card className="card--noPad">
+        <div className="card__header">
+          <div>
+            <div className="card__title">Prioridades do dia</div>
+            <div className="card__subtitle">{items.length} paciente(s) identificado(s)</div>
+          </div>
+        </div>
+        <div className="card__body">
+          {items.length === 0 ? (
+            <Alert tone="info">Nenhum paciente priorizado para o dia atual.</Alert>
+          ) : (
+            <div className="ai-priority-list">
+              {items.map((item, idx) => {
+                const level = String(item?.risk?.level || "").toLowerCase();
+                const tone = level === "high" ? "danger" : "warning";
+                return (
+                  <div key={item.patientId || idx} className="ai-priority-item">
+                    <div className="ai-priority-item__rank">{idx + 1}</div>
+                    <div className="ai-priority-item__body">
+                      <div className="ai-priority-item__name">{item.patientName}</div>
+                      <div className="ai-priority-item__action">{item.topAction || "Revisar pendências"}</div>
+                    </div>
+                    <div className={`ai-priority-item__badge badge badge--${tone}`}>
+                      {String(item?.risk?.level || "-").toUpperCase()} · {item?.risk?.score || 0}pts
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  if (aiView === "quality") {
+    const findings = Array.isArray(aiData?.findings) ? aiData.findings : [];
+    return (
+      <Card className="card--noPad">
+        <div className="card__header">
+          <div>
+            <div className="card__title">Qualidade de dados</div>
+            <div className="card__subtitle">{findings.length} ocorrência(s) encontrada(s)</div>
+          </div>
+        </div>
+        <div className="card__body">
+          {findings.length === 0 ? (
+            <Alert tone="success">Nenhuma inconsistência detectada nos registros consultados.</Alert>
+          ) : (
+            <div className="ai-findings-list">
+              {findings.map((f, idx) => (
+                <div key={idx} className="ai-finding-item">
+                  <div className="ai-finding-item__patient">{f.patientName || "Paciente não identificado"}</div>
+                  <div className="ai-finding-item__issue">{f.issue || "Inconsistência não detalhada"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  if (aiView === "report") {
+    const totals = aiData?.totals || {};
+    const recs = Array.isArray(aiData?.recommendations) ? aiData.recommendations : [];
+    return (
+      <Card className="card--noPad">
+        <div className="card__header">
+          <div className="card__title">Relatório executivo</div>
+        </div>
+        <div className="card__body">
+          {aiData?.executiveSummary && (
+            <p className="ai-report__summary">{aiData.executiveSummary}</p>
+          )}
+          <div className="ai-report__totals">
+            {[["Pacientes", totals.patients], ["Alto risco", totals.highRiskPatients], ["Tarefas vencidas", totals.overdueTasks]].map(([label, val]) => (
+              <div key={label} className="ai-report__total-item">
+                <div className="ai-report__total-value">{val ?? 0}</div>
+                <div className="ai-report__total-label">{label}</div>
+              </div>
+            ))}
+          </div>
+          {recs.length > 0 && (
+            <>
+              <div className="ai-report__recs-title">Recomendações</div>
+              <ul className="ai-report__recs-list">
+                {recs.map((rec, i) => <li key={i}>{rec}</li>)}
+              </ul>
+            </>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  if (aiView === "chat") {
+    return (
+      <Card className="card--noPad">
+        <div className="card__header">
+          <div className="card__title">Resposta da consulta</div>
+        </div>
+        <div className="card__body">
+          <p className="ai-chat-answer">{aiData?.answer || "Sem resposta disponível."}</p>
+        </div>
+      </Card>
+    );
+  }
+
+  return null;
+}
 
 function AiTab({ aiView, aiData, aiQuestion, setAiQuestion, onPriorities, onQuality, onReport, onAsk, busy }) {
+  const handlers = { priorities: onPriorities, quality: onQuality, report: onReport };
+
   return (
-    <div className="workspace-home">
-      <PageHero
-        badge="IA Assistida"
-        title="Assistente da Equipe"
-        subtitle="Prioridades do dia, qualidade de dados e perguntas operacionais em linguagem natural."
+    <PageLayout>
+      <PageHeader
+        eyebrow="Inteligência Clínica"
+        title="Análise Assistida por IA"
+        subtitle="Processamento de dados operacionais para apoio à decisão clínica e gerencial. Os resultados não substituem o julgamento profissional."
       />
 
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">Ações rápidas</span>
-        </div>
-        <div className="card-body">
-          <div className="actions" style={{marginBottom:"1rem"}}>
-            <button onClick={onPriorities} disabled={busy}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h7M3 12h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              Prioridades do dia
-            </button>
-            <button onClick={onQuality} disabled={busy}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5 6.5 5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
-              Qualidade de dados
-            </button>
-            <button onClick={onReport} disabled={busy}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 2h10v12H3z" stroke="currentColor" strokeWidth="1.3"/><path d="M6 6h4M6 9h4M6 12h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-              Relatório executivo
-            </button>
-          </div>
+      <Alert tone="warning">
+        As análises geradas são auxiliares e baseadas nos dados da unidade. Decisões clínicas devem sempre ser validadas pelo profissional responsável.
+      </Alert>
 
-          <form onSubmit={onAsk} style={{display:"flex",gap:".6rem"}}>
-            <input
-              style={{flex:1}}
-              placeholder="Pergunte ao assistente... Ex: Quais pacientes estão com protocolo atrasado?"
-              value={aiQuestion} onChange={e=>setAiQuestion(e.target.value)}
-            />
-            <button type="submit" disabled={busy||!aiQuestion.trim()}>Perguntar</button>
-          </form>
-        </div>
-
-        {aiData&&(
-          <div style={{borderTop:"1px solid var(--border)",padding:"1.25rem"}}>
-            {aiView==="priorities"&&(
-              <>
-                <h4 style={{marginBottom:".75rem",fontWeight:700,fontSize:".85rem"}}>Prioridades do dia</h4>
-                {!Array.isArray(aiData?.items)||!aiData.items.length
-                  ? <p className="muted">Nenhum paciente priorizado.</p>
-                  : <div style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
-                      {aiData.items.map((item,idx)=>(
-                        <div key={item.patientId||idx} style={{padding:".75rem",background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:".25rem"}}>
-                            <strong style={{fontSize:".85rem"}}>{idx+1}. {item.patientName}</strong>
-                            <Chip tone={item?.risk?.level==="high"?"danger":"warn"}>{String(item?.risk?.level||"-").toUpperCase()} ⬢ {item?.risk?.score||0}pts</Chip>
-                          </div>
-                          <p style={{fontSize:".78rem",color:"var(--text-2)"}}>{item.topAction||"Revisar pendências"}</p>
-                        </div>
-                      ))}
-                    </div>
-                }
-              </>
-            )}
-
-            {aiView==="quality"&&(
-              <>
-                <h4 style={{marginBottom:".75rem",fontWeight:700,fontSize:".85rem"}}>Qualidade de dados</h4>
-                {!Array.isArray(aiData?.findings)||!aiData.findings.length
-                  ? <p className="muted">Nenhuma inconsistência encontrada. ✓</p>
-                  : aiData.findings.map((f,idx)=>(
-                      <div key={idx} style={{padding:".65rem .85rem",borderLeft:"3px solid var(--amber-400)",background:"var(--amber-50)",borderRadius:"0 var(--r-md) var(--r-md) 0",marginBottom:".4rem"}}>
-                        <strong style={{fontSize:".83rem",color:"var(--amber-800)"}}>{f.patientName||"Paciente"}</strong>
-                        <p style={{fontSize:".78rem",color:"var(--amber-700)",marginTop:".15rem"}}>{f.issue||"Inconsistência"}</p>
-                      </div>
-                    ))
-                }
-              </>
-            )}
-
-            {aiView==="report"&&(
-              <>
-                <h4 style={{marginBottom:".5rem",fontWeight:700,fontSize:".85rem"}}>Relatório executivo</h4>
-                <div style={{padding:".85rem",background:"var(--surface-2)",borderRadius:"var(--r-md)",marginBottom:".75rem",fontSize:".84rem",color:"var(--text-2)",lineHeight:1.6}}>
-                  {aiData?.executiveSummary||"Resumo não disponível."}
-                </div>
-                <div style={{display:"flex",gap:"1rem",flexWrap:"wrap",marginBottom:"1rem"}}>
-                  {[["Pacientes",aiData?.totals?.patients],["Alto risco",aiData?.totals?.highRiskPatients],["Tarefas vencidas",aiData?.totals?.overdueTasks]].map(([label,val])=>(
-                    <div key={label} style={{background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",padding:".75rem 1rem",flex:1,minWidth:100}}>
-                      <div style={{fontSize:"1.4rem",fontWeight:700,fontFamily:"IBM Plex Mono"}}>{val||0}</div>
-                      <div style={{fontSize:".72rem",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".05em"}}>{label}</div>
-                    </div>
-                  ))}
-                </div>
-                {aiData?.recommendations?.length>0&&(
-                  <>
-                    <h4 style={{fontWeight:700,fontSize:".8rem",marginBottom:".4rem"}}>Recomendações</h4>
-                    {aiData.recommendations.map((rec,i)=>(
-                      <div key={i} style={{padding:".5rem .75rem",borderLeft:"2px solid var(--teal-400)",marginBottom:".3rem",fontSize:".82rem",color:"var(--text-2)"}}>{rec}</div>
-                    ))}
-                  </>
-                )}
-              </>
-            )}
-
-            {aiView==="chat"&&(
-              <div style={{padding:".85rem",background:"var(--teal-50)",border:"1px solid var(--teal-100)",borderRadius:"var(--r-md)",fontSize:".84rem",color:"var(--teal-900)",lineHeight:1.6}}>
-                {aiData?.answer||"Sem resposta."}
-              </div>
-            )}
-          </div>
-        )}
+      <div className="ai-action-grid">
+        {ACTION_CARDS.map((card) => (
+          <button
+            key={card.id}
+            type="button"
+            className={`ai-action-card${aiView === card.id ? " is-active" : ""}`}
+            onClick={handlers[card.id]}
+            disabled={busy}
+          >
+            <div className="ai-action-card__icon">{card.icon}</div>
+            <div className="ai-action-card__body">
+              <div className="ai-action-card__title">{card.title}</div>
+              <div className="ai-action-card__desc">{card.desc}</div>
+            </div>
+          </button>
+        ))}
       </div>
-    </div>
+
+      <Card>
+        <div style={{ marginBottom: "var(--s-3)" }}>
+          <div className="card__title" style={{ marginBottom: 4 }}>Consulta em linguagem natural</div>
+          <div className="card__subtitle">Formule perguntas operacionais sobre os dados da unidade de saúde.</div>
+        </div>
+        <form onSubmit={onAsk} className="ai-query-form">
+          <div className="input" style={{ flex: 1 }}>
+            <input
+              placeholder="Ex.: Quais pacientes gestantes estão com protocolo atrasado?"
+              value={aiQuestion}
+              onChange={(e) => setAiQuestion(e.target.value)}
+              disabled={busy}
+            />
+          </div>
+          <Button type="submit" variant="primary" disabled={busy || !aiQuestion.trim()}>
+            {busy ? "Processando..." : "Consultar"}
+          </Button>
+        </form>
+      </Card>
+
+      {busy && <Alert tone="info">Processando análise. Aguarde...</Alert>}
+
+      <ResultPanel aiView={aiView} aiData={aiData} />
+    </PageLayout>
   );
 }
 

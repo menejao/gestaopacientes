@@ -47,7 +47,7 @@ function EsusMirror({ patients, users, period, periodLabel }) {
         className={`esus-copy-btn${copied === k ? " is-copied" : ""}`}
         onClick={() => copyToClipboard(String(value), k)}
       >
-        {copied === k ? "✓ Copiado" : "Copiar"}
+        {copied === k ? "Copiado" : "Copiar"}
       </button>
     );
   }
@@ -98,9 +98,9 @@ Dispensações: ${dispensas}
         </div>
         <div className="esus-header__actions">
           <Button variant="secondary" size="sm" onClick={() => copyToClipboard(fullReport, "full")}>
-            {copied === "full" ? "✓ Copiado" : "📋 Copiar relatório completo"}
+            {copied === "full" ? "Copiado" : "Copiar relatório completo"}
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => window.print()}>🖨️ Imprimir</Button>
+          <Button variant="secondary" size="sm" onClick={() => window.print()}>Imprimir</Button>
         </div>
       </div>
 
@@ -108,7 +108,7 @@ Dispensações: ${dispensas}
 
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div className="esus-section-header esus-section-header--fci">
-            <span className="esus-section-header__title">📋 Ficha de Cadastro Individual (FCI)</span>
+            <span className="esus-section-header__title">Ficha de Cadastro Individual (FCI)</span>
             <span className="esus-section-header__sub">Módulo CDS / e-SUS APS</span>
           </div>
           <table className="esus-table">
@@ -123,7 +123,7 @@ Dispensações: ${dispensas}
 
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div className="esus-section-header esus-section-header--fai">
-            <span className="esus-section-header__title">🩺 Ficha de Atendimento Individual (FAI)</span>
+            <span className="esus-section-header__title">Ficha de Atendimento Individual (FAI)</span>
             <span className="esus-section-header__sub">Módulo CDS / e-SUS APS</span>
           </div>
           <table className="esus-table">
@@ -139,7 +139,7 @@ Dispensações: ${dispensas}
 
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div className="esus-section-header esus-section-header--equipe">
-            <span className="esus-section-header__title">👥 Composição da Equipe</span>
+            <span className="esus-section-header__title">Composição da Equipe</span>
             <span className="esus-section-header__sub">CNES / e-Gestor AB</span>
           </div>
           <table className="esus-table">
@@ -154,7 +154,7 @@ Dispensações: ${dispensas}
 
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div className="esus-section-header esus-section-header--farm">
-            <span className="esus-section-header__title">💊 Dispensação de Medicamentos</span>
+            <span className="esus-section-header__title">Dispensação de Medicamentos</span>
             <span className="esus-section-header__sub">RNDS / HÓRUS</span>
           </div>
           <table className="esus-table">
@@ -165,7 +165,7 @@ Dispensações: ${dispensas}
         </div>
 
         <div className="esus-notice">
-          <strong>⚠️ Importante:</strong> Este espelho é gerado automaticamente a partir dos dados registrados no VALENS e serve como <strong>referência de apoio</strong> para o lançamento no e-SUS APS, RNDS e outros sistemas federais. Sempre confira os dados com a equipe antes do envio oficial.
+          <strong>Importante:</strong> Este espelho é gerado automaticamente a partir dos dados registrados no VALENS e serve como <strong>referência de apoio</strong> para o lançamento no e-SUS APS, RNDS e outros sistemas federais. Sempre confira os dados com a equipe antes do envio oficial.
         </div>
       </div>
     </div>

@@ -69,15 +69,22 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
       <section className="dashboard__kpis">
         <KPI label="Pacientes ativos" value={patients.length} helper="Total cadastrado" className="card" />
         <KPI label="Com ACS definido" value={assigned} helper={`Sem ACS: ${unassigned}`} className="card" />
-        <KPI label="Protocolos críticos" value={pc.critical} helper={`Atenção: ${pc.attention} · Em dia: ${pc.ok}`} className="card" />
+        <KPI
+          label="Protocolos críticos"
+          value={pc.critical}
+          helper={`Atenção: ${pc.attention} · Em dia: ${pc.ok}`}
+          className={`card ${pc.critical ? "kpi--danger" : pc.attention ? "kpi--warning" : "kpi--success"}`}
+        />
         <KPI label="Profissionais" value={users.length} helper={`ACS: ${acsCount} · Médicos: ${docCount}`} className="card" />
+      </section>
 
-        {currentUser?.role === "nurse_manager" ? (
-          <Card className="dashboard__demand-card">
-            <div className="dashboard__demand-head">
-              <span className="kpi__label">Demanda programada</span>
-              <Badge tone={dmTone}>{dmStatus}</Badge>
-            </div>
+      {currentUser?.role === "nurse_manager" ? (
+        <Card className={`dashboard__demand-card card--noPad ${dmTone !== "neutral" ? `kpi--${dmTone}` : ""}`}>
+          <div className="card__header">
+            <span className="card__title">Demanda programada</span>
+            <Badge tone={dmTone}>{dmStatus}</Badge>
+          </div>
+          <div className="card__body">
             <div className="dashboard__demand-value-row">
               <strong className="dashboard__demand-value">{dmPct === null ? "—" : `${dmPct}%`}</strong>
             </div>
@@ -90,9 +97,9 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
             <p className="dashboard__demand-foot">
               {dmPct === null ? "Nenhum atendimento registrado." : `${dmSched} programados · ${dmSpont} espontâneos · meta 50–70%`}
             </p>
-          </Card>
-        ) : null}
-      </section>
+          </div>
+        </Card>
+      ) : null}
 
       {isAna ? (
         <Card className="card--noPad">

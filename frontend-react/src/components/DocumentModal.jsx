@@ -10,7 +10,7 @@ function DocumentModal({ patient, user, type, onClose }) {
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1rem"}}>
           <h3 style={{margin:0}}>{isAtestado?"Atestado Médico":"Declaração de Comparecimento"}</h3>
           <div style={{display:"flex",gap:".5rem"}}>
-            <button onClick={()=>window.print()} style={{fontSize:".78rem",padding:".3rem .65rem"}}>🖨️ Imprimir</button>
+            <button onClick={()=>window.print()} style={{fontSize:".78rem",padding:".3rem .65rem"}}>Imprimir</button>
             <button className="icon-btn" onClick={onClose}><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
           </div>
         </div>

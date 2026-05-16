@@ -1,10 +1,13 @@
 import jwt from "jsonwebtoken";
-import { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE } from "../config.js";
-import { canonicalRole, hasRole } from "../utils/helpers.js";
+import { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE, COOKIE_ACCESS_NAME } from "../config.js";
+import { canonicalRole, hasRole, hasCapability, hasAnyCapability } from "../utils/helpers.js";
+import { parseCookies } from "../utils/session-cookies.js";
 
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const cookieToken = parseCookies(req)[COOKIE_ACCESS_NAME] || null;
+  const token = bearerToken || cookieToken;
 
   if (!token) {
     return res.status(401).json({ error: "Token ausente" });
@@ -21,6 +24,7 @@ function requireAuth(req, res, next) {
       role: canonicalRole(payload.role),
       requestId: req.requestId || ""
     };
+    req.authTransport = bearerToken ? "bearer" : "cookie";
     return next();
   } catch {
     return res.status(401).json({ error: "Token inválido ou expirado" });
@@ -28,14 +32,14 @@ function requireAuth(req, res, next) {
 }
 
 function requireManager(req, res, next) {
-  if (!hasRole(req.user, ["nurse_manager"])) {
+  if (!hasRole(req.user, ["nurse_manager"]) && !hasCapability(req.user, "team.manage")) {
     return res.status(403).json({ error: "Somente enfermeira pode executar esta ação" });
   }
   return next();
 }
 
 function requireManagerOrDoctor(req, res, next) {
-  if (!hasRole(req.user, ["nurse_manager", "doctor"])) {
+  if (!hasRole(req.user, ["nurse_manager", "doctor"]) && !hasCapability(req.user, "records.write")) {
     return res.status(403).json({ error: "Apenas enfermeira ou médica podem executar esta ação" });
   }
   return next();
@@ -50,4 +54,13 @@ function requireRoles(allowedRoles = [], errorMessage = "Sem permissão para est
   };
 }
 
-export { requireAuth, requireManager, requireManagerOrDoctor, requireRoles };
+function requireCapabilities(capabilities = [], errorMessage = "Sem permissão para esta ação") {
+  return (req, res, next) => {
+    if (!hasAnyCapability(req.user, capabilities)) {
+      return res.status(403).json({ error: errorMessage });
+    }
+    return next();
+  };
+}
+
+export { requireAuth, requireManager, requireManagerOrDoctor, requireRoles, requireCapabilities };

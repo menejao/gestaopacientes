@@ -1,5 +1,5 @@
-﻿export const API_URL = import.meta.env.VITE_API_URL || "https://saude-backend-gkj7.onrender.com";
-
+export const API_URL = import.meta.env.VITE_API_URL || "https://saude-backend-gkj7.onrender.com";
+const COOKIE_SESSION_SENTINEL = "__cookie_session__";
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 function sleep(ms) {
@@ -13,6 +13,12 @@ function shouldRetryStatus(status, customStatuses) {
   return RETRYABLE_STATUSES.has(status);
 }
 
+function getCsrfToken() {
+  if (typeof document === "undefined") return "";
+  const pair = document.cookie.split("; ").find((item) => item.startsWith("valens_csrf="));
+  return pair ? decodeURIComponent(pair.split("=").slice(1).join("=")) : "";
+}
+
 export async function api(path, options = {}, token = "") {
   const {
     retryCount = 0,
@@ -23,10 +29,15 @@ export async function api(path, options = {}, token = "") {
 
   const headers = { ...(fetchOptions.headers || {}) };
   const isFormData = typeof FormData !== "undefined" && fetchOptions.body instanceof FormData;
+  const method = String(fetchOptions.method || "GET").toUpperCase();
   if (!isFormData && !headers["Content-Type"] && !headers["content-type"]) {
     headers["Content-Type"] = "application/json";
   }
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const csrfToken = getCsrfToken();
+  if (csrfToken && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+    headers["X-CSRF-Token"] = csrfToken;
+  }
+  if (token && token !== COOKIE_SESSION_SENTINEL) headers.Authorization = `Bearer ${token}`;
 
   for (let attempt = 0; attempt <= retryCount; attempt += 1) {
     let response;
@@ -34,7 +45,8 @@ export async function api(path, options = {}, token = "") {
     try {
       response = await fetch(`${API_URL}${path}`, {
         ...fetchOptions,
-        headers
+        headers,
+        credentials: "include"
       });
     } catch (err) {
       const message = String(err?.message || "");
@@ -84,12 +96,12 @@ export async function register(payload) {
 export async function refreshSession(refreshToken) {
   return api("/auth/refresh", {
     method: "POST",
-    body: JSON.stringify({ refreshToken })
+    body: JSON.stringify(refreshToken ? { refreshToken } : {})
   });
 }
 
 export async function logoutApi(token, refreshToken) {
-  return api("/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken }) }, token);
+  return api("/auth/logout", { method: "POST", body: JSON.stringify(refreshToken ? { refreshToken } : {}) }, token);
 }
 
 export async function listPublicTeams() {
@@ -197,6 +209,10 @@ export async function updateUser(token, userId, payload) {
   return api(`/users/${userId}`, { method: "PUT", body: JSON.stringify(payload) }, token);
 }
 
+export async function updateMe(token, payload) {
+  return api("/me", { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
 export async function getUserUsage(token, userId) {
   return api(`/users/${userId}/usage`, { method: "GET" }, token);
 }
@@ -246,11 +262,47 @@ export async function getApiHealth() {
 
 export async function pingPresence(token) {
   try {
+    const headers = {};
+    if (token && token !== COOKIE_SESSION_SENTINEL) {
+      headers.Authorization = `Bearer ${token}`;
+    }
     const res = await fetch(`${API_URL}/me/presence`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` }
+      headers,
+      credentials: "include"
     });
-    // 404 = endpoint não disponível neste deploy, ignora silenciosamente
     if (!res.ok && res.status !== 404) throw new Error("presence failed");
   } catch {}
+}
+
+export async function getAccessContext(token) {
+  return api("/me/access-context", { method: "GET" }, token);
+}
+
+export async function startImpersonation(token, payload) {
+  return api("/me/impersonation/start", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }, token);
+}
+
+export async function stopImpersonation(token) {
+  return api("/me/impersonation/stop", {
+    method: "POST",
+    body: JSON.stringify({})
+  }, token);
+}
+
+export async function activateBreakGlass(token, payload) {
+  return api("/me/break-glass/activate", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }, token);
+}
+
+export async function deactivateBreakGlass(token) {
+  return api("/me/break-glass/deactivate", {
+    method: "POST",
+    body: JSON.stringify({})
+  }, token);
 }

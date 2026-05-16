@@ -1,4 +1,4 @@
-function EmptyState({ title = "Nada por aqui", message, action = null }) {
+function EmptyState({ title = "Nada por aqui", message, description, action = null }) {
   return (
     <div className="empty">
       <div className="empty__icon empty__icon--neutral">
@@ -8,7 +8,7 @@ function EmptyState({ title = "Nada por aqui", message, action = null }) {
       </svg>
       </div>
       <h3 className="empty__title">{title}</h3>
-      <p className="empty__desc">{message}</p>
+      <p className="empty__desc">{description || message}</p>
       {action}
     </div>
   );

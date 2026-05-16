@@ -285,18 +285,18 @@ function InsumoPage({ patients, users, user }) {
   const totalSaidasHoje  = dispensas.filter(d => d.date === new Date().toISOString().slice(0, 10)).length;
 
   const TABS = [
-    canDispense && ["dispensar", "💊 Nova Dispensação"],
-    ["estoque", "📦 Estoque de Insumos"],
-    (canDispense || canViewAll) && ["log", "🗂️ Histórico de Saídas"],
-    ["continuos", "🔄 Pacientes Contínuos"],
+    canDispense && ["dispensar", "Nova Dispensação"],
+    ["estoque", "Estoque de Insumos"],
+    (canDispense || canViewAll) && ["log", "Histórico de Saídas"],
+    ["continuos", "Pacientes Contínuos"],
   ].filter(Boolean);
 
   return (
     <div className="insumos-page">
 
       <PageHeader
-        badge="Gestão de Insumos"
-        title="Dispensação de Insumos ao Paciente"
+        eyebrow="Gestão de Insumos"
+        title="Dispensação de Insumos"
         subtitle="Controle de saída, estoque e pacientes contínuos — baseado no formulário DAF/Osasco."
         actions={
           <div className="insumos-session">
@@ -338,7 +338,7 @@ function InsumoPage({ patients, users, user }) {
 
               {/* Busca de paciente */}
               <div className="card" style={{ padding: "var(--s-4)" }}>
-                <div className="ins-pat-section">📋 Paciente</div>
+                <div className="ins-pat-section">Paciente</div>
                 <div className="ins-pat-wrap">
                   <span className="ins-pat-icon">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
@@ -365,7 +365,7 @@ function InsumoPage({ patients, users, user }) {
                             <Avatar name={p.name} size="sm" />
                             <div style={{ minWidth: 0 }}>
                               <div className="ins-pat-opt__name">{p.name}</div>
-                              <div className="ins-pat-opt__sub">{p.cpf || ""}{cont ? " · 🔄 Contínuo" : ""}</div>
+                              <div className="ins-pat-opt__sub">{p.cpf || ""}{cont ? " · Contínuo" : ""}</div>
                             </div>
                           </button>
                         );
@@ -382,7 +382,7 @@ function InsumoPage({ patients, users, user }) {
                       {patSelected.cpf && ` · CPF: ${patSelected.cpf}`}
                     </div>
                     {continuos.find(c => c.patientId === patSelected.id && c.ativo) && (
-                      <div className="ins-pat-card__cont">🔄 Paciente contínuo ativo</div>
+                      <div className="ins-pat-card__cont">Paciente contínuo ativo</div>
                     )}
                   </div>
                 )}
@@ -394,7 +394,7 @@ function InsumoPage({ patients, users, user }) {
                   <label className="ins-cont-label">
                     <input type="checkbox" checked={isContinuo} onChange={e => setIsContinuo(e.target.checked)} />
                     <div>
-                      <div className="ins-cont-label__title">🔄 Paciente contínuo</div>
+                      <div className="ins-cont-label__title">Paciente contínuo</div>
                       <div className="ins-cont-label__desc">
                         Marca este paciente para retirada mensal recorrente. A quantidade definida agora será o limite máximo nas próximas retiradas. Para encerrar, use a aba "Pacientes Contínuos".
                       </div>
@@ -421,7 +421,6 @@ function InsumoPage({ patients, users, user }) {
             {/* Main: grid de insumos */}
             <div className="ins-disp-main">
               <div className="ins-notice">
-                <span style={{ flexShrink: 0 }}>ℹ️</span>
                 <span>As quantidades máximas por insumo seguem o formulário DAF/Secretaria de Saúde de Osasco. Nenhum campo pode ultrapassar o limite definido.</span>
               </div>
 
@@ -475,7 +474,7 @@ function InsumoPage({ patients, users, user }) {
               {/* Resumo + confirmar */}
               {Object.values(itens).some(v => v > 0) && (
                 <div className="ins-summary">
-                  <div className="ins-summary__title">📋 Resumo da dispensação</div>
+                  <div className="ins-summary__title">Resumo da dispensação</div>
                   {Object.entries(itens).filter(([, v]) => v > 0).map(([id, qtd]) => {
                     const cat = CATALOGO_INSUMOS.find(i => i.id === id);
                     return (
@@ -489,7 +488,7 @@ function InsumoPage({ patients, users, user }) {
                     <div className="alert alert--danger" style={{ marginTop: "var(--s-2)" }}>{dispErr}</div>
                   )}
                   {dispOk && (
-                    <div className="alert alert--success" style={{ marginTop: "var(--s-2)" }}>✓ Dispensação registrada com sucesso!</div>
+                    <div className="alert alert--success" style={{ marginTop: "var(--s-2)" }}>Dispensação registrada com sucesso!</div>
                   )}
                   <Button
                     variant="primary"
@@ -497,7 +496,7 @@ function InsumoPage({ patients, users, user }) {
                     disabled={!patSelected || dispOk}
                     style={{ marginTop: "var(--s-3)", width: "100%" }}
                   >
-                    ✓ Confirmar dispensação{isContinuo ? " (contínuo)" : ""}
+                    Confirmar dispensação{isContinuo ? " (contínuo)" : ""}
                   </Button>
                 </div>
               )}
@@ -544,7 +543,7 @@ function InsumoPage({ patients, users, user }) {
                       <tr key={insumo.id}>
                         <td className="ins-table__td ins-table__td--name">
                           {insumo.nome}
-                          {insumo.obs && <div className="ins-table__td--obs">ℹ️ {insumo.obs}</div>}
+                          {insumo.obs && <div className="ins-table__td--obs">{insumo.obs}</div>}
                         </td>
                         <td className="ins-table__td">{insumo.categoria}</td>
                         <td className="ins-table__td">{insumo.unidade}</td>
@@ -588,7 +587,7 @@ function InsumoPage({ patients, users, user }) {
                 style={{ flex: "1 1 220px", maxWidth: 360 }}
               />
               <div className="ins-log-filters">
-                {[["all", "Todas"], ["continuo", "🔄 Contínuo"], ["normal", "Normal"]].map(([v, l]) => (
+                {[["all", "Todas"], ["continuo", "Contínuo"], ["normal", "Normal"]].map(([v, l]) => (
                   <button key={v} type="button" className={`ins-cat-btn${logFilter === v ? " is-active" : ""}`} onClick={() => setLogFilter(v)}>
                     {l}
                   </button>
@@ -596,7 +595,7 @@ function InsumoPage({ patients, users, user }) {
               </div>
             </div>
             {!filteredLog.length ? (
-              <div className="empty-state">📭 Nenhuma dispensação registrada.</div>
+              <div className="empty-state">Nenhuma dispensação registrada.</div>
             ) : (
               <div className="ins-log-list">
                 {filteredLog.map(d => (
@@ -605,7 +604,7 @@ function InsumoPage({ patients, users, user }) {
                       <div>
                         <div className="ins-log-entry__name">
                           {d.patientName}
-                          {d.continuo && <span className="ins-cont-tag">🔄 Contínuo</span>}
+                          {d.continuo && <span className="ins-cont-tag">Contínuo</span>}
                         </div>
                         <div className="ins-log-entry__sub">
                           {d.profissional} ({d.profRole}) · {new Date(d.ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -635,13 +634,14 @@ function InsumoPage({ patients, users, user }) {
         {insumoTab === "continuos" && (
           <div>
             <div className="ins-notice" style={{ marginBottom: "var(--s-4)" }}>
-              <span>🔄</span>
               <span>Pacientes contínuos têm lesão ativa e retornam mensalmente para retirada de insumos. A quantidade máxima foi definida na primeira dispensação e não pode ser ultrapassada. Para encerrar, clique em "Encerrar".</span>
             </div>
 
             {!continuosAtivos.length ? (
               <div className="empty-state">
-                <div className="empty-state__icon">🔄</div>
+                <div className="empty-state__icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 2.1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 21.9l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+                </div>
                 <div className="empty-state__title">Nenhum paciente contínuo ativo</div>
                 <div className="empty-state__body">Ao dispensar insumos, marque "Paciente contínuo" para registrá-lo aqui.</div>
               </div>
@@ -656,7 +656,7 @@ function InsumoPage({ patients, users, user }) {
                         <div>
                           <div className="ins-cont-card__name">
                             {c.patientName}
-                            <span className="ins-cont-tag">🔄 Ativo</span>
+                            <span className="ins-cont-tag">Ativo</span>
                           </div>
                           <div className="ins-cont-card__meta">
                             Desde {fmtDate(c.dtInicio)} · {retiradas} retirada(s) registrada(s) · Por: {c.profissional}
@@ -716,7 +716,7 @@ function InsumoPage({ patients, users, user }) {
             editStockItem !== "new" ? (
               <>
                 <Button variant="secondary" onClick={() => setEditStockItem(null)}>Cancelar</Button>
-                <Button variant="primary" onClick={confirmarEntrada}>✓ Confirmar entrada</Button>
+                <Button variant="primary" onClick={confirmarEntrada}>Confirmar entrada</Button>
               </>
             ) : null
           }

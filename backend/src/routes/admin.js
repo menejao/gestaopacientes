@@ -2,10 +2,10 @@ import express from "express";
 import { readDb, readDbForBackup, withDb } from "../db.js";
 import { BACKUP_EXPORT_KEY } from "../config.js";
 import {
-  ensureDbShape, getProtocolTemplateMap, sanitizeUser, getTeamNameById,
+  ensureDbShape, getProtocolTemplateMap, sanitizeUser, getTeamNameById, buildAccessContextUser,
   DEFAULT_CARE_PROTOCOLS, DEMO_POPULATE_SIZE_COMPLETE, DEMO_POPULATE_SIZE_INCOMPLETE
 } from "../utils/domain.js";
-import { canonicalRole, isManager, isDoctor } from "../utils/helpers.js";
+import { canonicalRole, isManager, isDoctor, hasCapability } from "../utils/helpers.js";
 import { buildMonthlyDemandMetric, buildDataQualityMetric } from "../utils/metrics.js";
 import { getAllowedPatients } from "../utils/patients.js";
 import {
@@ -43,10 +43,11 @@ router.get("/bootstrap", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
 
-  const isGestorUser = canonicalRole(req.user?.role) === "gestor";
+  const canReadAllUsers =
+    canonicalRole(req.user?.role) === "gestor" || hasCapability(req.user, "users.read.all");
   const patients = getAllowedPatients(db, req.user, {});
   const users = db.users
-    .filter((u) => isGestorUser || u.teamId === req.user.teamId)
+    .filter((u) => canReadAllUsers || u.teamId === req.user.teamId)
     .map((u) => sanitizeUser(u, db));
   const protocolTemplates = Object.values(getProtocolTemplateMap(db, req.user.teamId));
   const teamPatientIds = new Set(patients.map((p) => p.id));
@@ -60,7 +61,15 @@ router.get("/bootstrap", requireAuth, async (req, res) => {
 
   return res.json({
     serverTime: new Date().toISOString(),
-    user: { ...req.user, teamName: getTeamNameById(db, req.user.teamId) },
+    user: buildAccessContextUser(
+      db.users.find((u) => u.id === req.user.id) || req.user,
+      db,
+      {
+        scopeTeamId: req.user.teamId,
+        impersonation: req.user.impersonation?.active ? req.user.impersonation : null,
+        breakGlass: req.user.breakGlass?.active ? req.user.breakGlass : null
+      }
+    ),
     patients,
     users,
     tasks,

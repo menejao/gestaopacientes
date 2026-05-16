@@ -114,7 +114,7 @@ function ResetPasswordForm() {
           : "Defina nova senha forte. Sessões existentes serão encerradas após a troca."}
       </p>
       {step === "request" ? (
-        <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@organizacao.gov.br" autoFocus autoComplete="email" />
+        <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@dominio.local" autoFocus autoComplete="email" />
       ) : (
         <>
           <Input label="Token de redefinição" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Cole o token recebido" />
@@ -187,11 +187,11 @@ function AccessRequestForm() {
         type="email"
         value={form.email}
         onChange={(e) => setForm(s => ({ ...s, email: e.target.value }))}
-        placeholder="usuario@organizacao.gov.br"
+        placeholder="usuario@dominio.local"
         autoComplete="email"
       />
       <Select
-        label="Cargo / Função"
+        label="Cargo / função"
         value={form.jobTitle}
         onChange={(e) => setForm(s => ({ ...s, jobTitle: e.target.value }))}
       >
@@ -230,7 +230,7 @@ function AuthScreen({ onLogin, error, busy }) {
   };
 
   return (
-    <main className="auth auth--platform">
+    <main className="auth">
       <section className="auth__left">
         <div className="auth__brand">
           <div className="auth-brand-lockup">
@@ -244,8 +244,8 @@ function AuthScreen({ onLogin, error, busy }) {
 
         <div className="auth__hero">
           <span className="auth-eyebrow">Acesso à plataforma</span>
-          <h1>Infraestrutura centralizada para gestão integrada da saúde pública.</h1>
-          <p>Segurança enterprise, rastreabilidade completa e módulos adaptados a cada contexto assistencial.</p>
+          <h1>Infraestrutura institucional para gestão integrada da saúde pública.</h1>
+          <p>Acesso seguro, rastreabilidade completa e módulos operacionais para equipes autorizadas.</p>
         </div>
 
         <div className="auth-kpi-grid">
@@ -280,11 +280,11 @@ function AuthScreen({ onLogin, error, busy }) {
 
             {authTab === "login" ? (
               <form className="auth-form auth-form--stacked" onSubmit={(e) => { e.preventDefault(); onLogin(email, password); }}>
-                <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@organizacao.gov.br" autoComplete="email" autoFocus />
+                <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@dominio.local" autoComplete="email" autoFocus />
                 <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
                 {error ? <Alert tone="danger">{error}</Alert> : null}
                 <Button type="submit" variant="primary" size="lg" disabled={busy}>
-                  {busy ? "Entrando..." : "Acessar plataforma"}
+                  {busy ? "Entrando..." : "Entrar"}
                 </Button>
               </form>
             ) : authTab === "request" ? (

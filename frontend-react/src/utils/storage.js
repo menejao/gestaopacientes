@@ -12,6 +12,7 @@ export function readSession() {
   try {
     const r = sessionStorage.getItem(SESSION_KEY);
     const p = r ? JSON.parse(r) : null;
+    if (p && p.mode === "cookie" && p.user) return p;
     if (p && typeof p.token === "string" && p.user) return p;
     return null;
   } catch { return null; }

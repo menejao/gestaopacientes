@@ -33,6 +33,7 @@ frontend-react/.wrangler/
 frontend-react/.env
 frontend-react/.env.*
 !frontend-react/.env.example
+backend/data/dev-db*.json
 
 # Local archives and temp artifacts
 *.zip

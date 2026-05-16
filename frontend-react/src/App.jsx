@@ -8,6 +8,8 @@ import {
   getApiHealth, listAppointments, listMessages, listPatients, listProtocolTemplates,
   listTasks, listUsers, login, listPublicTeams, logoutApi, pingPresence, refreshSession,
   register, sendMessage, updateProtocolTemplate, updatePatient, updateUser, updateTaskStatus,
+  updateMe,
+  startImpersonation, stopImpersonation, activateBreakGlass, deactivateBreakGlass,
 } from "./api";
 
 import {
@@ -28,6 +30,7 @@ import {
 import {
   roleLabel, isReceptionist, isPharmacist, isNursingTech, isAdmin, isAdminUser,
   isAcs, canManage, isManager, isGestor, canWriteRecords, canAccessAI, canAccessChart,
+  canImpersonate, canActivateBreakGlass, isImpersonating, isBreakGlassActive,
 } from "./utils/roles";
 import {
   normalizeSearch, matchesPatientSearch, isProfileIncomplete, calcAge,
@@ -72,10 +75,12 @@ import PatientModal from "./components/modals/PatientModal";
 import ProfileModal from "./components/modals/ProfileModal";
 import UserModal from "./components/modals/UserModal";
 import TemplateModal from "./components/modals/TemplateModal";
+import SecureAccessModal from "./components/modals/SecureAccessModal";
 import PatientDetailsPanel from "./components/patients/PatientDetailsPanel";
 import registerServiceWorker from "./services/registerServiceWorker";
 
 registerServiceWorker();
+const COOKIE_SESSION_SENTINEL = "__cookie_session__";
 function AppInner() {
   const session = useMemo(()=>{
     try { return readSession(); } catch { return null; }
@@ -87,6 +92,7 @@ function AppInner() {
   // Valida o token â€” se vier algo invÃ¡lido limpa a sessÃ£o
   const initialToken = (() => {
     try {
+      if (session?.mode === "cookie" && session?.user) return COOKIE_SESSION_SENTINEL;
       const t = String(session?.token||"");
       // Token deve ser string nÃ£o vazia sem espaÃ§os â€” se invÃ¡lido, limpa sessÃ£o
       if (t && !/\s/.test(t)) return t;
@@ -143,6 +149,9 @@ function AppInner() {
   const [profileForm, setProfileForm] = useState({name:"",email:"",password:"",councilNumber:"",councilUf:""});
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileError, setProfileError] = useState("");
+  const [secureAccessMode, setSecureAccessMode] = useState("");
+  const [secureAccessBusy, setSecureAccessBusy] = useState(false);
+  const [secureAccessError, setSecureAccessError] = useState("");
 
   const selectedPatient = patients.find(p=>p.id===selectedPatientId)||null;
   const isEquipeRosaUser = String(user?.teamId||user?.teamName||"").toLowerCase().includes("rosa");
@@ -405,14 +414,23 @@ function AppInner() {
     setRecordVaccines([]);
   },[token,selectedPatientId]);
 
+  function persistCookieSession(nextUser) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ mode: "cookie", user: nextUser }));
+  }
+
+  function applyCookieSession(nextUser) {
+    setToken(COOKIE_SESSION_SENTINEL);
+    setUser(nextUser);
+    persistCookieSession(nextUser);
+  }
+
   /* Ã¢Ã¢â‚¬ÂÃ¢â€šÂ¬Ã¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Auth handlers Ã¢Ã¢â‚¬ÂÃ¢â€šÂ¬Ã¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
   async function handleLogin(email,password) {
     setError(""); setBusy(true);
     try {
       const payload=await login(email.trim(),password);
       if(payload?.twoFactorRequired) throw new Error("2FA ativo: tela React ainda nÃ£o implementa desafio.");
-      setToken(payload.token); setUser(payload.user);
-      sessionStorage.setItem(SESSION_KEY,JSON.stringify({token:payload.token,user:payload.user,refreshToken:payload.refreshToken||""}));
+      applyCookieSession(payload.user);
       auditLog("LOGIN", { email: email.trim().toLowerCase(), success: true }, payload.user);
       // Gestor vai direto para o painel de gestÃ£o
       if(String(payload.user?.role||"")==="gestor") setTab("gestor");
@@ -426,8 +444,7 @@ function AppInner() {
     setError(""); setBusy(true);
     try {
       const payload=await register({name:reg.name.trim(),email:reg.email.trim(),password:reg.password,role:reg.role,teamId:reg.teamId,councilNumber:onlyDigits(reg.councilNumber),councilUf:String(reg.councilUf||"").toUpperCase()});
-      setToken(payload.token); setUser(payload.user);
-      sessionStorage.setItem(SESSION_KEY,JSON.stringify({token:payload.token,user:payload.user,refreshToken:payload.refreshToken||""}));
+      applyCookieSession(payload.user);
       auditLog("USUARIO_CADASTRADO", { name:reg.name.trim(), email:reg.email.trim(), role:reg.role }, payload.user);
     } catch(e){ if(!(await handleApiError(e))) setError(e.message||"Falha no cadastro"); } finally{ setBusy(false); }
   }
@@ -439,16 +456,10 @@ function AppInner() {
                   msg.includes("expirad") || msg.includes("nÃ£o autorizado");
     if (is401) {
       const sess = readSession();
-      if (sess?.refreshToken) {
+      if (sess?.mode === "cookie" || sess?.refreshToken) {
         try {
-          const payload = await refreshSession(sess.refreshToken);
-          setToken(payload.token);
-          setUser(payload.user);
-          sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-            token: payload.token,
-            user: payload.user,
-            refreshToken: payload.refreshToken || ""
-          }));
+          const payload = await refreshSession(sess?.refreshToken || "");
+          applyCookieSession(payload.user);
           return true;
         } catch {}
       }
@@ -468,7 +479,10 @@ function AppInner() {
     setBusy(true); setError("");
     try {
       const boot=await bootstrap(token);
-      setUser(prev=>prev||boot?.user||null);
+      if (boot?.user) {
+        setUser(boot.user);
+        persistCookieSession(boot.user);
+      }
       const pts=Array.isArray(boot?.patients)?boot.patients:await listPatients(token);
       const us=Array.isArray(boot?.users)?boot.users:await listUsers(token);
       const tpls=Array.isArray(boot?.protocolTemplates)?boot.protocolTemplates:await listProtocolTemplates(token);
@@ -519,7 +533,7 @@ function AppInner() {
 
   function logout() {
     const sess = readSession();
-    if (sess?.refreshToken && token) logoutApi(token, sess.refreshToken).catch(()=>{});
+    if (token) logoutApi(token, sess?.refreshToken || "").catch(()=>{});
     auditLog("LOGOUT", { email: user?.email }, user);
     setToken(""); setUser(null); setPatients([]); setUsers([]); setTemplates([]); setProtocolByPatient({}); setSelectedPatientId("");
     sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(UI_STATE_KEY); localStorage.removeItem(RECEPTION_KEY);
@@ -986,16 +1000,75 @@ function AppInner() {
           ? { councilNumber: profileForm.councilNumber.trim(), councilUf: profileForm.councilUf.trim().toUpperCase() }
           : {}),
       };
-      const updated = await updateUser(token, user.id, payload).catch(()=>null);
+      const updated = await updateMe(token, payload);
       const newUser = { ...user, ...payload, ...(updated?.user || updated || {}) };
       setUser(newUser);
-      const sess = readSession();
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token, user: newUser, refreshToken: sess?.refreshToken || "" }));
+      persistCookieSession(newUser);
       setShowProfileModal(false);
     } catch (err) {
       setProfileError(err.message || "Erro ao salvar perfil.");
     } finally {
       setProfileBusy(false);
+    }
+  }
+
+  function openSecureAccess(mode) {
+    setSecureAccessError("");
+    setSecureAccessMode(mode || "");
+  }
+
+  async function submitSecureAccess(payload) {
+    if (!token) return;
+    setSecureAccessBusy(true);
+    setSecureAccessError("");
+    try {
+      const next = secureAccessMode === "break-glass"
+        ? await activateBreakGlass(token, { reason: payload.reason })
+        : await startImpersonation(token, payload);
+      applyCookieSession(next.user);
+      setSecureAccessMode("");
+      auditLog(
+        secureAccessMode === "break-glass" ? "BREAK_GLASS_ATIVADO" : "IMPERSONATION_START",
+        payload,
+        next.user
+      );
+      await loadAll();
+    } catch (err) {
+      setSecureAccessError(err.message || "Falha ao trocar contexto de acesso.");
+    } finally {
+      setSecureAccessBusy(false);
+    }
+  }
+
+  async function stopSecureImpersonation() {
+    if (!token || !isImpersonating(user)) return;
+    setSecureAccessBusy(true);
+    setSecureAccessError("");
+    try {
+      const next = await stopImpersonation(token);
+      applyCookieSession(next.user);
+      auditLog("IMPERSONATION_STOP", {}, next.user);
+      await loadAll();
+    } catch (err) {
+      setError(err.message || "Falha ao encerrar contexto assumido.");
+    } finally {
+      setSecureAccessBusy(false);
+    }
+  }
+
+  async function stopBreakGlass() {
+    if (!token || !isBreakGlassActive(user)) return;
+    setSecureAccessBusy(true);
+    setSecureAccessError("");
+    try {
+      const next = await deactivateBreakGlass(token);
+      applyCookieSession(next.user);
+      auditLog("BREAK_GLASS_DESATIVADO", {}, next.user);
+      await loadAll();
+    } catch (err) {
+      setError(err.message || "Falha ao encerrar break-glass.");
+    } finally {
+      setSecureAccessBusy(false);
     }
   }
 
@@ -1010,6 +1083,10 @@ function AppInner() {
           user={user} selectedPatient={selectedPatient} templates={templates}
           mobileOpen={mobileNavOpen} setMobileOpen={setMobileNavOpen}
           onLogout={logout} onOpenProfile={openProfile}
+          onOpenSecureAccess={openSecureAccess}
+          onStopImpersonation={stopSecureImpersonation}
+          onActivateBreakGlass={()=>openSecureAccess("break-glass")}
+          onDeactivateBreakGlass={stopBreakGlass}
           patients={patients} protocolByPatient={protocolByPatient}
           apiHealth={apiHealth}
           onNavigatePatient={(id)=>{ setTab("patients"); setSelectedPatientId(id); }}
@@ -1036,7 +1113,7 @@ function AppInner() {
 
           {tab==="exams_page"&&<ExamsPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
           {tab==="gestor"&&<GestorPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
-          {tab==="access_requests"&&(isAdmin(user)||isGestor(user))&&<AccessRequestsPage token={token} user={user}/>}
+          {tab==="access_requests"&&(isAdmin(user)||isGestor(user)||user?.capabilities?.includes("access_requests.read"))&&<AccessRequestsPage token={token} user={user}/>}
           {tab==="reports"&&<ReportsPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
           {tab==="diagnostics"&&(
             <DiagnosticsPage
@@ -1177,6 +1254,18 @@ function AppInner() {
         onClose={() => setShowProfileModal(false)}
         onSubmit={submitProfile}
       />
+
+      {secureAccessMode ? (
+        <SecureAccessModal
+          mode={secureAccessMode}
+          user={user}
+          users={allUsers && allUsers.length ? allUsers : users}
+          busy={secureAccessBusy}
+          error={secureAccessError}
+          onClose={() => { setSecureAccessMode(""); setSecureAccessError(""); }}
+          onSubmit={submitSecureAccess}
+        />
+      ) : null}
     </main>
   );
 }

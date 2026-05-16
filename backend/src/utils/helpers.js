@@ -8,6 +8,227 @@ function canonicalRole(role) {
   return input;
 }
 
+const ROLE_CAPABILITIES = {
+  nurse_manager: [
+    "dashboard.read",
+    "patients.read.all",
+    "patients.write",
+    "records.read",
+    "records.write",
+    "appointments.write",
+    "tasks.read",
+    "tasks.write",
+    "messages.read",
+    "messages.write",
+    "protocols.manage",
+    "reports.read",
+    "diagnostics.read",
+    "users.read.scoped",
+    "users.manage.scoped",
+    "audit.read",
+    "privacy.manage",
+    "team.manage",
+    "ai.access"
+  ],
+  doctor: [
+    "dashboard.read",
+    "patients.read.all",
+    "patients.write",
+    "records.read",
+    "records.write",
+    "appointments.write",
+    "tasks.read",
+    "tasks.write",
+    "messages.read",
+    "messages.write",
+    "protocols.manage",
+    "reports.read",
+    "diagnostics.read",
+    "users.read.scoped",
+    "audit.read",
+    "ai.access"
+  ],
+  dentist: [
+    "dashboard.read",
+    "patients.read.all",
+    "records.read",
+    "records.write",
+    "reports.read",
+    "diagnostics.read",
+    "users.read.scoped",
+    "ai.access"
+  ],
+  gestor: [
+    "dashboard.read",
+    "patients.read.all",
+    "records.read",
+    "reports.read",
+    "diagnostics.read",
+    "users.read.all",
+    "audit.read",
+    "access_requests.read"
+  ],
+  acs: [
+    "dashboard.read",
+    "patients.read.all",
+    "records.read",
+    "records.write",
+    "tasks.read"
+  ],
+  nursing_tech: [
+    "dashboard.read",
+    "patients.read.all",
+    "records.read",
+    "reports.read"
+  ],
+  pharmacist: [
+    "dashboard.read",
+    "pharmacy.read",
+    "pharmacy.write",
+    "supplies.read"
+  ],
+  pharmacy_tech: [
+    "dashboard.read",
+    "pharmacy.read",
+    "supplies.read"
+  ],
+  receptionist: [
+    "dashboard.read",
+    "queue.read",
+    "queue.write",
+    "agenda.read",
+    "agenda.write"
+  ],
+  developer_readonly: [
+    "dashboard.read",
+    "patients.read.scoped",
+    "records.read",
+    "reports.read",
+    "diagnostics.read",
+    "users.read.all",
+    "session.impersonate"
+  ],
+  support_operator: [
+    "dashboard.read",
+    "patients.read.scoped",
+    "records.read",
+    "reports.read",
+    "diagnostics.read",
+    "users.read.all",
+    "session.impersonate"
+  ],
+  qa_operator: [
+    "dashboard.read",
+    "patients.read.scoped",
+    "records.read",
+    "reports.read",
+    "diagnostics.read",
+    "users.read.all",
+    "session.impersonate"
+  ],
+  security_auditor: [
+    "dashboard.read",
+    "patients.read.scoped",
+    "records.read",
+    "reports.read",
+    "diagnostics.read",
+    "users.read.all",
+    "audit.read",
+    "users.activity_log.read",
+    "session.impersonate"
+  ],
+  break_glass_admin: [
+    "dashboard.read",
+    "patients.read.all",
+    "patients.write",
+    "records.read",
+    "records.write",
+    "appointments.write",
+    "tasks.read",
+    "tasks.write",
+    "messages.read",
+    "messages.write",
+    "protocols.manage",
+    "reports.read",
+    "diagnostics.read",
+    "queue.read",
+    "queue.write",
+    "agenda.read",
+    "agenda.write",
+    "pharmacy.read",
+    "pharmacy.write",
+    "supplies.read",
+    "users.read.all",
+    "users.manage.all",
+    "audit.read",
+    "privacy.manage",
+    "team.manage",
+    "users.activity_log.read",
+    "access_requests.read",
+    "session.impersonate",
+    "session.break_glass.activate",
+    "ai.access"
+  ]
+};
+
+const BREAK_GLASS_CAPABILITIES = [
+  "patients.read.all",
+  "patients.write",
+  "records.read",
+  "records.write",
+  "appointments.write",
+  "tasks.read",
+  "tasks.write",
+  "messages.read",
+  "messages.write",
+  "protocols.manage",
+  "reports.read",
+  "diagnostics.read",
+  "users.read.all",
+  "users.manage.all",
+  "audit.read",
+  "privacy.manage",
+  "team.manage",
+  "ai.access"
+];
+
+function uniqueCapabilities(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function isBreakGlassSessionActive(breakGlass) {
+  if (!breakGlass?.active) return false;
+  const expiresAt = String(breakGlass?.expiresAt || "").trim();
+  if (!expiresAt) return true;
+  const expiresTs = Date.parse(expiresAt);
+  if (!Number.isFinite(expiresTs)) return false;
+  return expiresTs > Date.now();
+}
+
+function getRoleCapabilities(role) {
+  return ROLE_CAPABILITIES[canonicalRole(role)] || [];
+}
+
+function getCapabilitiesForUser(user, options = {}) {
+  const base = options.capabilities
+    ? uniqueCapabilities(options.capabilities)
+    : uniqueCapabilities(getRoleCapabilities(user?.role));
+  if (isBreakGlassSessionActive(options.breakGlass || user?.breakGlass)) {
+    return uniqueCapabilities([...base, ...BREAK_GLASS_CAPABILITIES]);
+  }
+  return base;
+}
+
+function hasCapability(user, capability) {
+  const expected = String(capability || "").trim();
+  if (!expected) return false;
+  return getCapabilitiesForUser(user).includes(expected);
+}
+
+function hasAnyCapability(user, capabilities = []) {
+  return capabilities.some((capability) => hasCapability(user, capability));
+}
+
 function normalizeDemandType(value) {
   const raw = String(value || "").trim().toLowerCase();
   if (raw === "spontaneous" || raw === "espontanea" || raw === "espontânea") return "spontaneous";
@@ -30,11 +251,11 @@ function hasRole(user, allowedRoles = []) {
 }
 
 function isManager(user) {
-  return canonicalRole(user?.role) === "nurse_manager";
+  return canonicalRole(user?.role) === "nurse_manager" || hasCapability(user, "team.manage");
 }
 
 function isDoctor(user) {
-  return canonicalRole(user?.role) === "doctor";
+  return canonicalRole(user?.role) === "doctor" || hasCapability(user, "records.write");
 }
 
 function isAcs(user) {
@@ -42,13 +263,18 @@ function isAcs(user) {
 }
 
 function canAccessAllPatients(user) {
+  if (hasCapability(user, "patients.read.all")) return true;
   const role = canonicalRole(user?.role);
   return role === "gestor" || role === "nurse_manager" || role === "doctor" || role === "acs";
 }
 
+function canAccessScopedPatients(user) {
+  return hasCapability(user, "patients.read.scoped");
+}
+
 function isAnaAdminUser(user) {
   const email = String(user?.email || "").trim().toLowerCase();
-  return isManager(user) && email === TEST_ADMIN_EMAIL;
+  return hasCapability(user, "users.activity_log.read") || (isManager(user) && email === TEST_ADMIN_EMAIL);
 }
 
 /* ── Validators ── */
@@ -317,10 +543,16 @@ export {
   councilTypeForRole,
   roleNeedsCouncil,
   hasRole,
+  getRoleCapabilities,
+  getCapabilitiesForUser,
+  isBreakGlassSessionActive,
+  hasCapability,
+  hasAnyCapability,
   isManager,
   isDoctor,
   isAcs,
   canAccessAllPatients,
+  canAccessScopedPatients,
   isAnaAdminUser,
   isStrongPassword,
   isValidEmail,
@@ -349,6 +581,8 @@ export {
   detectRapidTestCoverage,
   matchesAnyAlias,
   TEST_ADMIN_EMAIL,
+  ROLE_CAPABILITIES,
+  BREAK_GLASS_CAPABILITIES,
   ALLOWED_SELF_REGISTER_ROLES,
   PRIVACY_REQUEST_TYPES,
   PRIVACY_REQUEST_STATUS,

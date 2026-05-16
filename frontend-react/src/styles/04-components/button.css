@@ -72,6 +72,25 @@
 .btn--icon.btn--sm { width: 26px; }
 .btn--icon.btn--lg { width: 38px; }
 
+/* ── Icon button (close, dismiss, toolbar) ───────────────── */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--d-fast), color var(--d-fast);
+}
+.icon-btn:hover { background: var(--surface-3); color: var(--text); }
+.icon-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
 /* ── Button group horizontal (segmented) ──────────────────── */
 .btn-group {
   display: inline-flex;

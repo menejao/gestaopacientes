@@ -6,7 +6,7 @@ import { requireManager } from "../middlewares/auth.js";
 import { ensureDbShape, sanitizeUser } from "../utils/domain.js";
 import {
   canonicalRole, isStrongPassword, isValidEmail, roleNeedsCouncil,
-  councilTypeForRole, getClientIp, isAnaAdminUser
+  councilTypeForRole, getClientIp, isAnaAdminUser, hasCapability
 } from "../utils/helpers.js";
 import { validateCouncilData, verifyCouncilExternally } from "../utils/council.js";
 import { hashPassword } from "../services/crypto.js";
@@ -28,18 +28,19 @@ router.get("/teams/public", async (_req, res) => {
 router.get("/users", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
-  const isGestorUser = canonicalRole(req.user?.role) === "gestor";
+  const canReadAllUsers =
+    canonicalRole(req.user?.role) === "gestor" || hasCapability(req.user, "users.read.all");
 
   const safeUsers = db.users
-    .filter((u) => isGestorUser || u.teamId === req.user.teamId)
+    .filter((u) => canReadAllUsers || u.teamId === req.user.teamId)
     .map((u) => sanitizeUser(u, db));
 
   return res.json(safeUsers.map(({ password, ...u }) => u));
 });
 
-router.get("/users/activity-log", requireAuth, requireManager, async (req, res) => {
+router.get("/users/activity-log", requireAuth, async (req, res) => {
   if (!isAnaAdminUser(req.user)) {
-    return res.status(403).json({ error: "Apenas a conta administrativa de teste pode acessar este painel" });
+    return res.status(403).json({ error: "Sessão atual não pode acessar este painel" });
   }
   const db = await readDb();
   ensureDbShape(db);

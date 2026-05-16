@@ -1,4 +1,13 @@
-import { isAdmin, isGestor, isReceptionist, isPharmacist, isNursingTech, canManage, canAccessChart, canAccessAI } from "../utils/roles";
+import {
+  isAdmin,
+  isGestor,
+  isReceptionist,
+  isPharmacist,
+  isNursingTech,
+  canAccessChart,
+  canAccessAI,
+  hasCapability
+} from "../utils/roles";
 
 export const NAV_ICON = {
   dashboard:  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg>,
@@ -25,48 +34,54 @@ export const NAV_ICON = {
 
 export function buildNavItems(user, canManageUser) {
   const admin = isAdmin(user);
-  const role  = String(user?.role || "");
+  const role = String(user?.role || "");
   const items = [];
+  const canReadDashboard = hasCapability(user, "dashboard.read") || !isReceptionist(user);
+  const canReadPatients = hasCapability(user, "patients.read.all") || hasCapability(user, "patients.read.scoped");
+  const canReadReports = hasCapability(user, "reports.read");
+  const canReadDiagnostics = hasCapability(user, "diagnostics.read");
+  const canReadAccessRequests = hasCapability(user, "access_requests.read") || isGestor(user);
 
   if (isGestor(user) && !admin) {
-    items.push({ id:"gestor",      label:"Gestão à Vista", section:"" });
-    items.push({ id:"reports",     label:"Relatórios",     section:"" });
-    items.push({ id:"diagnostics", label:"Diagnósticos",   section:"" });
-    items.push({ id:"patients",    label:"Pacientes",      section:"Visualização" });
-    items.push({ id:"ai",          label:"IA Assistida",   section:"" });
+    items.push({ id: "gestor", label: "Gestão à Vista", section: "" });
+    items.push({ id: "reports", label: "Relatórios", section: "" });
+    items.push({ id: "diagnostics", label: "Diagnósticos", section: "" });
+    items.push({ id: "patients", label: "Pacientes", section: "Visualização" });
+    items.push({ id: "ai", label: "IA Assistida", section: "" });
     return items;
   }
 
   if (isReceptionist(user) && !admin) return items;
 
-  if (!isPharmacist(user) || admin) items.push({ id:"dashboard", label:"Painel", section:"" });
+  if ((!isPharmacist(user) || admin) && canReadDashboard) items.push({ id: "dashboard", label: "Painel", section: "" });
 
-  if (admin) items.push({ id:"queue",  label:"Fila / Recepção", section:"Atendimento" });
-  if (admin) items.push({ id:"agenda", label:"Agenda",          section: admin ? "" : "Atendimento" });
-  if (isNursingTech(user) || admin) items.push({ id:"triage", label:"Monitoramento", section: admin ? "" : "Atendimento" });
+  if (admin) items.push({ id: "queue", label: "Fila / Recepção", section: "Atendimento" });
+  if (admin) items.push({ id: "agenda", label: "Agenda", section: admin ? "" : "Atendimento" });
+  if (isNursingTech(user) || admin) items.push({ id: "triage", label: "Monitoramento", section: admin ? "" : "Atendimento" });
 
-  if (!isPharmacist(user) || admin) items.push({ id:"patients",   label:"Pacientes",        section:"Clínico" });
-  if (!isPharmacist(user) || admin) items.push({ id:"exams_page", label:"Exames",           section:"" });
-  if (canManageUser && !isNursingTech(user)) items.push({ id:"protocols", label:"Protocolos", section:"" });
-  if (canAccessChart(user) || admin) items.push({ id:"chart", label:"Prontuário", section:"" });
-  if (!isPharmacist(user) || admin) items.push({ id:"referrals",  label:"Encaminhamentos",  section:"" });
-  if (role === "acs") items.push({ id:"acs_tasks", label:"Minhas tarefas", section:"" });
+  if ((!isPharmacist(user) || admin) && canReadPatients) items.push({ id: "patients", label: "Pacientes", section: "Clínico" });
+  if (!isPharmacist(user) || admin) items.push({ id: "exams_page", label: "Exames", section: "" });
+  if (canManageUser && !isNursingTech(user)) items.push({ id: "protocols", label: "Protocolos", section: "" });
+  if (canAccessChart(user) || admin) items.push({ id: "chart", label: "Prontuário", section: "" });
+  if (!isPharmacist(user) || admin) items.push({ id: "referrals", label: "Encaminhamentos", section: "" });
+  if (role === "acs") items.push({ id: "acs_tasks", label: "Minhas tarefas", section: "" });
 
-  if (!isPharmacist(user) || admin) items.push({ id:"vaccines",  label:"Vacinas",   section:"Preventivo" });
-  items.push({ id:"pharmacy", label:"Farmácia", section:"" });
-  if (["nurse_manager","nursing_tech","pharmacist","pharmacy_tech"].includes(role) || admin)
-    items.push({ id:"insumos", label:"Insumos", section:"" });
-
-  if (canManageUser && !isNursingTech(user)) {
-    items.push({ id:"acs",     label:"ACS",     section:"Equipe" });
-    items.push({ id:"doctors", label:"Médicos", section:"" });
+  if (!isPharmacist(user) || admin) items.push({ id: "vaccines", label: "Vacinas", section: "Preventivo" });
+  items.push({ id: "pharmacy", label: "Farmácia", section: "" });
+  if (["nurse_manager", "nursing_tech", "pharmacist", "pharmacy_tech"].includes(role) || admin) {
+    items.push({ id: "insumos", label: "Insumos", section: "" });
   }
 
-  if (canManageUser || admin) items.push({ id:"gestor",          label:"Gestão à Vista",        section:"Gestão" });
-  if (canManageUser || admin) items.push({ id:"reports",         label:"Relatórios",            section:"" });
-  if (admin || isGestor(user)) items.push({ id:"access_requests", label:"Solicitações de Acesso", section:"" });
-  if (canManageUser || admin || isGestor(user)) items.push({ id:"diagnostics", label:"Diagnósticos", section:"" });
-  if (canAccessAI(user)) items.push({ id:"ai", label:"IA Assistida", section:"" });
+  if (canManageUser && !isNursingTech(user)) {
+    items.push({ id: "acs", label: "ACS", section: "Equipe" });
+    items.push({ id: "doctors", label: "Médicos", section: "" });
+  }
+
+  if (canManageUser || admin) items.push({ id: "gestor", label: "Gestão à Vista", section: "Gestão" });
+  if ((canManageUser || admin || canReadReports) && canReadReports) items.push({ id: "reports", label: "Relatórios", section: "" });
+  if (canReadAccessRequests) items.push({ id: "access_requests", label: "Solicitações de Acesso", section: "" });
+  if (canManageUser || admin || isGestor(user) || canReadDiagnostics) items.push({ id: "diagnostics", label: "Diagnósticos", section: "" });
+  if (canAccessAI(user)) items.push({ id: "ai", label: "IA Assistida", section: "" });
 
   return items;
 }

@@ -63,6 +63,33 @@ npx wrangler deployments list
 npx wrangler rollback [DEPLOYMENT_ID]
 ```
 
+### Login seguro no Cloudflare Workers (`workers.dev`)
+Backend remoto:
+```env
+FRONTEND_ORIGINS=https://gestaopacientes.meneguccijao.workers.dev
+COOKIE_SECURE=true
+COOKIE_SAME_SITE=none
+COOKIE_DOMAIN=
+```
+
+Frontend publicado:
+```env
+VITE_API_URL=https://saude-backend-gkj7.onrender.com
+```
+
+Provisionamento remoto seguro de usuário enterprise:
+```bash
+ALLOW_ENTERPRISE_REMOTE_PROVISIONING=true \
+DATABASE_URL="$DATABASE_URL_REMOTA" \
+DATA_ENCRYPTION_KEY="$DATA_ENCRYPTION_KEY_REMOTA" \
+PROVISION_USER_EMAIL="joao.dev@valens.local" \
+PROVISION_USER_PASSWORD="SENHA_FORTE_AQUI" \
+PROVISION_USER_NAME="João Benedito (Dev)" \
+PROVISION_USER_ROLE="break_glass_admin" \
+PROVISION_REASON="Validação operacional do ambiente workers.dev" \
+npm --prefix backend run provision:remote-enterprise-user
+```
+
 ---
 
 ## 3. ROLLBACK
