@@ -6,3 +6,15 @@
 @import './auth.css';
 @import './modals.css';
 @import './patients.css';
+@import './agenda.css';
+@import './referrals.css';
+@import './queue.css';
+@import './vaccines.css';
+@import './pharmacy.css';
+@import './insumos.css';
+@import './acstasks.css';
+@import './auditlog.css';
+@import './triage.css';
+@import './esus.css';
+@import './exams.css';
+@import './reception.css';

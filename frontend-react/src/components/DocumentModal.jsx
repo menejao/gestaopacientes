@@ -15,9 +15,9 @@ function DocumentModal({ patient, user, type, onClose }) {
           </div>
         </div>
         <div id="print-doc" style={{background:"var(--surface-2)",borderRadius:"var(--r-md)",padding:"2rem",fontFamily:"Georgia, serif",lineHeight:1.9,fontSize:".9rem"}}>
-          <div style={{textAlign:"center",marginBottom:"1.5rem",borderBottom:"2px solid var(--ink)",paddingBottom:"1rem"}}>
+          <div style={{textAlign:"center",marginBottom:"1.5rem",borderBottom:"2px solid var(--text)",paddingBottom:"1rem"}}>
             <div style={{fontWeight:800,fontSize:"1.15rem",textTransform:"uppercase",letterSpacing:".05em"}}>Unidade Básica de Saúde</div>
-            <div style={{fontSize:".85rem",color:"var(--text-2)",marginTop:".25rem"}}>{isAtestado?"ATESTADO MÉDICO":"DECLARAÇÃO DE COMPARECIMENTO"}</div>
+            <div style={{fontSize:".85rem",color:"var(--text-muted)",marginTop:".25rem"}}>{isAtestado?"ATESTADO MÉDICO":"DECLARAÇÃO DE COMPARECIMENTO"}</div>
           </div>
           {isAtestado?(
             <p>Atesto para os devidos fins que o(a) paciente <strong>{patient?.name}</strong>{patient?.cpf&&<span>, CPF {patient.cpf}</span>}, encontra-se sob meus cuidados médicos, necessitando de <strong>____ (____) dia(s)</strong> de repouso a partir de {today}.</p>
@@ -26,9 +26,9 @@ function DocumentModal({ patient, user, type, onClose }) {
           )}
           <p style={{marginTop:"1rem"}}>Por ser verdade, firmo o presente documento.</p>
           <div style={{marginTop:"3rem",display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
-            <div style={{fontSize:".82rem",color:"var(--text-3)"}}>Local: _______________, {today}</div>
+            <div style={{fontSize:".82rem",color:"var(--text-dim)"}}>Local: _______________, {today}</div>
             <div style={{textAlign:"center"}}>
-              <div style={{borderTop:"1px solid var(--ink)",paddingTop:".4rem",minWidth:200,fontSize:".8rem"}}>
+              <div style={{borderTop:"1px solid var(--text)",paddingTop:".4rem",minWidth:200,fontSize:".8rem"}}>
                 {user?.name||"Profissional"}<br/>
                 {roleLabel(user?.role)}{user?.councilNumber&&<span> · CRM/COREN {user.councilNumber}</span>}
               </div>
