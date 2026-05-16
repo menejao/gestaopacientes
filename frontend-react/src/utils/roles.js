@@ -53,12 +53,13 @@ export function isAcs(user) {
 }
 
 export function canManage(user) {
-  return ["nurse_manager", "doctor", "dentist"].includes(roleValue(user))
+  return isAdmin(user)
+    || ["nurse_manager", "doctor", "dentist"].includes(roleValue(user))
     || hasAnyCapability(user, ["protocols.manage", "team.manage", "users.manage.all", "users.manage.scoped"]);
 }
 
 export function isManager(user) {
-  return roleValue(user) === "nurse_manager" || hasCapability(user, "team.manage");
+  return isAdmin(user) || roleValue(user) === "nurse_manager" || hasCapability(user, "team.manage");
 }
 
 export function isGestor(user) {

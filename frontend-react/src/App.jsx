@@ -155,6 +155,8 @@ function AppInner() {
 
   const selectedPatient = patients.find(p=>p.id===selectedPatientId)||null;
   const isEquipeRosaUser = String(user?.teamId||user?.teamName||"").toLowerCase().includes("rosa");
+  const canManageUser = isAdmin(user) || canManage(user);
+  const canReadAuditLog = isAdmin(user) || user?.capabilities?.includes("audit.read");
 
   // Para Equipe Rosa: recomputa contagem de vacinas do protocolo usando apenas
   // as vacinas do indicador, a partir do histÃ³rico local do paciente.
@@ -745,7 +747,7 @@ function AppInner() {
   }
 
   async function submitTemplate(e) {
-    e.preventDefault(); if(!token||!canManage(user)) return;
+    e.preventDefault(); if(!token||!canManageUser) return;
     const category=String(templateForm.category||"").trim().toLowerCase(),label=String(templateForm.label||"").trim();
     if(!category||!label){setError("Categoria e nome sÃ£o obrigatÃ³rios.");return;}
     const payload={category,label,targets:{visits:Number(templateForm.visits||0),consultations:Number(templateForm.consultations||0),vaccines:Number(templateForm.vaccines||0)},deadlines:{visits:Number(templateForm.deadlinesVisits||0),consultations:Number(templateForm.deadlinesConsultations||0),vaccines:Number(templateForm.deadlinesVaccines||0)},vaccines:String(templateForm.vaccineList||"").split(",").map(v=>v.trim()).filter(Boolean)};
@@ -757,7 +759,7 @@ function AppInner() {
   }
 
   async function removeTemplate(t) {
-    if(!token||!canManage(user)||!t?.category||!confirm(`Excluir '${t.label||t.category}'?`)) return;
+    if(!token||!canManageUser||!t?.category||!confirm(`Excluir '${t.label||t.category}'?`)) return;
     setBusy(true); setError("");
     try { await deleteProtocolTemplate(token,t.category); await loadAll(); }
     catch(e){ setError(e.message||"Erro ao excluir"); } finally{ setBusy(false); }
@@ -1095,7 +1097,7 @@ function AppInner() {
           tab={tab} setTab={setTab}
           mobileOpen={mobileNavOpen} setMobileOpen={setMobileNavOpen}
           query={query} setQuery={setQuery}
-          user={user} canManageUser={canManage(user)}
+          user={user} canManageUser={canManageUser}
           onClearPatient={()=>setSelectedPatientId("")}
         />}
       >
@@ -1114,6 +1116,7 @@ function AppInner() {
           {tab==="exams_page"&&<ExamsPage patients={patients} users={users} user={user} token={token} onNavigatePatient={(id)=>{setTab("patients");setSelectedPatientId(id);}}/>}
           {tab==="gestor"&&<GestorPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
           {tab==="access_requests"&&(isAdmin(user)||isGestor(user)||user?.capabilities?.includes("access_requests.read"))&&<AccessRequestsPage token={token} user={user}/>}
+          {tab==="audit_log"&&canReadAuditLog&&<AuditLogPanel />}
           {tab==="reports"&&<ReportsPage patients={patients} users={users} templates={templates} protocolByPatient={protocolByPatient}/>}
           {tab==="diagnostics"&&(
             <DiagnosticsPage
@@ -1135,7 +1138,7 @@ function AppInner() {
               acsFilter={acsFilter} setAcsFilter={setAcsFilter}
               conditionFilter={conditionFilter} setConditionFilter={setConditionFilter}
               selectedPatientId={selectedPatientId} setSelectedPatientId={setSelectedPatientId}
-              canManageUser={canManage(user)} canWriteRecords={canWriteRecords(user)} onEdit={openEditPatient} onDelete={removePatient} onView={openViewPatient}
+              canManageUser={canManageUser} canWriteRecords={canWriteRecords(user)} onEdit={openEditPatient} onDelete={removePatient} onView={openViewPatient}
               patientTab={patientTab} setPatientTab={setPatientTab}
               appointments={appointments} tasks={tasks} messages={messages} history={history}
               patientProtocolSummary={rosaAdjustedSummary} sortedSpecialAlerts={sortedSpecialAlerts}
@@ -1152,8 +1155,8 @@ function AppInner() {
             />
           )}
 
-          {tab==="protocols"&&canManage(user)&&(
-            <ProtocolsTab templates={templates} canManageUser={canManage(user)} onEdit={openEditTemplate} onDelete={removeTemplate}/>
+          {tab==="protocols"&&canManageUser&&(
+            <ProtocolsTab templates={templates} canManageUser={canManageUser} onEdit={openEditTemplate} onDelete={removeTemplate}/>
           )}
 
           {tab==="acs"&&(
@@ -1165,7 +1168,7 @@ function AppInner() {
           )}
 
           {tab==="vaccines"&&(
-            <VaccinesPage patients={patients} users={users} templates={templates} token={token} canManageUser={canManage(user)} user={user}/>
+            <VaccinesPage patients={patients} users={users} templates={templates} token={token} canManageUser={canManageUser} user={user}/>
           )}
 
           {tab==="pharmacy"&&(
