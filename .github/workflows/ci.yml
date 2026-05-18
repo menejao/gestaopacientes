@@ -58,7 +58,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_API_URL: https://api.saudeubs.com.br
+          VITE_API_URL: https://api.vitras.com.br
 
   security-check:
     name: No secrets in git

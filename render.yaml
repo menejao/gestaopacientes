@@ -27,6 +27,12 @@ services:
         sync: false
       - key: BACKUP_EXPORT_KEY
         sync: false
+      - key: ENABLE_BACKUP_EXPORT
+        value: "true"
+      - key: ADMIN_SEED_KEY
+        sync: false
+      - key: ENABLE_ADMIN_SEED
+        value: "false"
       - key: COOKIE_SECURE
         value: "true"
       - key: COOKIE_SAME_SITE
@@ -42,7 +48,7 @@ services:
       - key: GLOBAL_RATE_LIMIT_MAX
         value: 600
       - key: TWOFA_ISSUER
-        value: SaudeUBS
+        value: Vitras
       - key: UPSTASH_REDIS_REST_URL
         sync: false
       - key: UPSTASH_REDIS_REST_TOKEN

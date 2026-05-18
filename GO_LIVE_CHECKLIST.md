@@ -38,6 +38,7 @@ Todas as variáveis a seguir devem estar configuradas no Render como Secrets (`s
 - [ ] `DATA_ENCRYPTION_KEY` — `openssl rand -hex 32`
 - [ ] `DATABASE_URL` — connection string Neon Pooler com `Pooling=false;SslMode=Require`
 - [ ] `BACKUP_EXPORT_KEY` — `openssl rand -hex 32`
+- [ ] `ADMIN_SEED_KEY` — `openssl rand -hex 32`
 - [ ] `FRONTEND_ORIGINS` — URL exata do frontend (sem trailing slash)
 
 ### Recomendadas
@@ -85,7 +86,7 @@ curl -s https://api.saudeubs.com.br/health | jq
 
 ### Verificação de secrets no código
 ```bash
-git grep -r "JWT_SECRET\|DATA_ENCRYPTION_KEY\|DATABASE_URL\|BACKUP_EXPORT_KEY" \
+git grep -r "JWT_SECRET\|DATA_ENCRYPTION_KEY\|DATABASE_URL\|BACKUP_EXPORT_KEY\|ADMIN_SEED_KEY" \
   -- '*.js' '*.ts' '*.json' '*.yaml' '*.toml' '*.env'
 # Zero resultados esperados (exceto referências a process.env)
 ```
@@ -127,7 +128,7 @@ node scripts/smoke-production.js --base https://saude-backend-staging.onrender.c
 - [ ] Criar agendamento → criar registro clínico
 - [ ] Verificar que usuário ACS não vê pacientes de outra equipe
 - [ ] Verificar que médico pode criar registro clínico
-- [ ] Acessar `/audit-logs` e confirmar que ações foram registradas
+- [ ] Acessar `/audit-logs` e confirmar que o envelope paginado retorna `items` com ações registradas
 - [ ] Testar `GET /admin/backup/export` com chave válida e inválida (deve retornar 403)
 
 ### Testes de regressão

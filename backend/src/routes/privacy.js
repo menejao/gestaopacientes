@@ -13,6 +13,20 @@ import { addAuditLog } from "../services/audit.js";
 
 const router = express.Router();
 
+function buildPrivacyRequestAuditSnapshot(item) {
+  if (!item) return null;
+  return {
+    id: String(item.id || ""),
+    teamId: String(item.teamId || ""),
+    patientId: String(item.patientId || ""),
+    type: String(item.type || ""),
+    status: String(item.status || ""),
+    createdBy: String(item.createdBy || ""),
+    decidedBy: String(item.decidedBy || ""),
+    completedAt: String(item.completedAt || "")
+  };
+}
+
 router.get("/privacy/requests", requireManager, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
@@ -73,7 +87,8 @@ router.post("/privacy/requests", requireManager, validate(PrivacyRequestCreateSc
     mutableDb.privacyRequests.push(requestItem);
     addAuditLog(mutableDb, req.user, "privacy.request_created", "privacy_request", requestItem.id, {
       patientId,
-      type
+      type,
+      after: buildPrivacyRequestAuditSnapshot(requestItem)
     });
     return requestItem;
   });
@@ -95,6 +110,7 @@ router.patch("/privacy/requests/:id", requireManager, async (req, res) => {
     const index = db.privacyRequests.findIndex((item) => item.id === id && item.teamId === req.user.teamId);
     if (index < 0) return null;
     const current = db.privacyRequests[index];
+    const before = buildPrivacyRequestAuditSnapshot(current);
     const next = { ...current };
 
     if (nextStatus) {
@@ -117,7 +133,9 @@ router.patch("/privacy/requests/:id", requireManager, async (req, res) => {
     db.privacyRequests[index] = next;
 
     addAuditLog(db, req.user, "privacy.request_updated", "privacy_request", id, {
-      changedFields: Object.keys(payload || {})
+      changedFields: Object.keys(payload || {}),
+      before,
+      after: buildPrivacyRequestAuditSnapshot(next)
     });
 
     return next;
@@ -139,6 +157,7 @@ router.post("/privacy/requests/:id/execute", requireManager, async (req, res) =>
     if (reqIndex < 0) return { error: { status: 404, message: "Solicitação não encontrada" } };
 
     const requestItem = db.privacyRequests[reqIndex];
+    const before = buildPrivacyRequestAuditSnapshot(requestItem);
     if (requestItem.status === "completed") {
       return { error: { status: 409, message: "Solicitação já concluída" } };
     }
@@ -164,7 +183,9 @@ router.post("/privacy/requests/:id/execute", requireManager, async (req, res) =>
       requestItem.executedBy = req.user.id;
 
       addAuditLog(db, req.user, "privacy.request_executed_access", "privacy_request", requestItem.id, {
-        patientId: patient.id
+        patientId: patient.id,
+        before,
+        after: buildPrivacyRequestAuditSnapshot(requestItem)
       });
       db.privacyRequests[reqIndex] = requestItem;
       return { request: requestItem, report };
@@ -189,7 +210,9 @@ router.post("/privacy/requests/:id/execute", requireManager, async (req, res) =>
 
       addAuditLog(db, req.user, "privacy.request_executed_correction", "privacy_request", requestItem.id, {
         patientId: patient.id,
-        changedFields: correction.changedFields
+        changedFields: correction.changedFields,
+        before,
+        after: buildPrivacyRequestAuditSnapshot(requestItem)
       });
       return { request: requestItem, patient: correction.next };
     }
@@ -212,7 +235,9 @@ router.post("/privacy/requests/:id/execute", requireManager, async (req, res) =>
 
       addAuditLog(db, req.user, "privacy.request_executed_deletion", "privacy_request", requestItem.id, {
         patientId: patient.id,
-        stats: anonymize.stats
+        stats: anonymize.stats,
+        before,
+        after: buildPrivacyRequestAuditSnapshot(requestItem)
       });
       return { request: requestItem };
     }

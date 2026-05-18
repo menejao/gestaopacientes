@@ -1,7 +1,14 @@
-import express from "express";
+﻿import express from "express";
 import { v4 as uuidv4 } from "uuid";
-import { readDb, withDb } from "../db.js";
-import { validate, PatientCreateSchema, PatientUpdateSchema, AppointmentCreateSchema, RecordCreateSchema } from "../schemas.js";
+import { readDb, withDb, listPatientsSnapshot, findPatientByIdSnapshot, listAppointmentsByPatientId } from "../db.js";
+import {
+  validate,
+  PatientCreateSchema,
+  PatientUpdateSchema,
+  AppointmentCreateSchema,
+  RecordCreateSchema,
+  CriticalActionReasonSchema
+} from "../schemas.js";
 import { requireManagerOrDoctor } from "../middlewares/auth.js";
 import {
   ensureDbShape, getProtocolTemplateMap, normalizeCategory, normalizeChronicConditions
@@ -19,10 +26,61 @@ import { addAuditLog } from "../services/audit.js";
 
 const router = express.Router();
 
+function buildPatientAuditSnapshot(patient) {
+  if (!patient) return null;
+  return {
+    id: String(patient.id || ""),
+    teamId: String(patient.teamId || ""),
+    name: String(patient.name || ""),
+    assignedAcsId: String(patient.assignedAcsId || ""),
+    careCategory: String(patient.careCategory || ""),
+    chronicConditions: Array.isArray(patient.chronicConditions) ? [...patient.chronicConditions] : [],
+    incompleteProfile: Boolean(patient.incompleteProfile),
+    inactive: Boolean(patient.inactive),
+    inactivationReason: String(patient.inactivationReason || ""),
+    birthDate: String(patient.birthDate || ""),
+    updatedAt: String(patient.updatedAt || patient.createdAt || "")
+  };
+}
+
+async function logPatientRead(req, patient, action, details = {}) {
+  if (!patient?.id) return;
+  await withDb((db) => {
+    ensureDbShape(db);
+    addAuditLog(db, req.user, action, "patient", patient.id, {
+      patientId: patient.id,
+      teamId: patient.teamId,
+      patientName: patient.name,
+      careCategory: patient.careCategory,
+      outcome: "success",
+      ...details
+    });
+  });
+}
+
 router.get("/patients", async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
-  const patients = getAllowedPatients(db, req.user, req.query);
+  const snapshotPatients = await listPatientsSnapshot({
+    teamId: req.user?.teamId || "",
+    microArea: req.query.microArea ? String(req.query.microArea).trim() : "",
+    assignedAcsId: req.query.acsId ? String(req.query.acsId).trim() : "",
+    careCategory: req.query.careCategory ? String(req.query.careCategory).trim() : ""
+  });
+  const patients = snapshotPatients.length ? getAllowedPatients({ ...db, patients: snapshotPatients }, req.user, req.query) : getAllowedPatients(db, req.user, req.query);
+  await withDb((auditDb) => {
+    ensureDbShape(auditDb);
+    addAuditLog(auditDb, req.user, "patient.list_read", "patient", req.user.teamId || "scoped", {
+      outcome: "success",
+      teamId: req.user.teamId,
+      totalReturned: patients.length,
+      filters: {
+        microArea: String(req.query.microArea || ""),
+        acsId: String(req.query.acsId || ""),
+        careCategory: String(req.query.careCategory || "")
+      }
+    });
+  });
   res.json(patients);
 });
 
@@ -48,6 +106,16 @@ router.get("/patients/protocol-summaries", async (req, res) => {
       : summary;
   }
 
+  await withDb((auditDb) => {
+    ensureDbShape(auditDb);
+    addAuditLog(auditDb, req.user, "patient.protocol_summaries_read", "patient", req.user.teamId || "scoped", {
+      outcome: "success",
+      teamId: req.user.teamId,
+      requestedCount: requestedIds.length,
+      returnedCount: Object.keys(summaries).length
+    });
+  });
+
   return res.json({
     count: Object.keys(summaries).length,
     summaries
@@ -61,17 +129,17 @@ router.post("/patients", requireManagerOrDoctor, validate(PatientCreateSchema), 
   const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
 
   if (!payload.name || !payload.phone) {
-    return res.status(400).json({ error: "Nome e telefone são obrigatórios" });
+    return res.status(400).json({ error: "Nome e telefone sÃ£o obrigatÃ³rios" });
   }
 
   const requestedTeamId = String(payload.teamId || "").trim();
   const patientTeamId = requestedTeamId || req.user.teamId;
   if (!patientTeamId) {
-    return res.status(400).json({ error: "Equipe responsável é obrigatória" });
+    return res.status(400).json({ error: "Equipe responsÃ¡vel Ã© obrigatÃ³ria" });
   }
   const teamExists = db.teams.some((t) => t.id === patientTeamId);
   if (!teamExists) {
-    return res.status(400).json({ error: "Equipe responsável inválida" });
+    return res.status(400).json({ error: "Equipe responsÃ¡vel invÃ¡lida" });
   }
 
   const patient = {
@@ -93,6 +161,10 @@ router.post("/patients", requireManagerOrDoctor, validate(PatientCreateSchema), 
     chronicConditions: normalizeChronicConditions(payload.chronicConditions),
     maritalStatus: payload.maritalStatus ? String(payload.maritalStatus).trim().toLowerCase() : "",
     incompleteProfile: Boolean(payload.incompleteProfile),
+    inactive: Boolean(payload.inactive),
+    inactivationReason: payload.inactivationReason ? String(payload.inactivationReason).trim() : "",
+    inactivatedBy: payload.inactivatedBy ? String(payload.inactivatedBy).trim() : "",
+    inactivatedAt: payload.inactivatedAt ? String(payload.inactivatedAt).trim() : "",
     sexAtBirth: payload.sexAtBirth ? String(payload.sexAtBirth).trim().toLowerCase() : "",
     genderIdentity: payload.genderIdentity ? String(payload.genderIdentity).trim().toLowerCase() : "",
     birthDate: payload.birthDate ? String(payload.birthDate).trim() : "",
@@ -130,7 +202,8 @@ router.post("/patients", requireManagerOrDoctor, validate(PatientCreateSchema), 
       teamId: patient.teamId,
       microArea: patient.microArea,
       assignedAcsId: patient.assignedAcsId,
-      careCategory: patient.careCategory
+      careCategory: patient.careCategory,
+      after: buildPatientAuditSnapshot(patient)
     });
   });
 
@@ -142,7 +215,7 @@ router.put("/patients/:id", validate(PatientUpdateSchema), async (req, res) => {
   const payload = req.body;
 
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Sem permissão para editar paciente" });
+    return res.status(403).json({ error: "Sem permissÃ£o para editar paciente" });
   }
 
   const updated = await withDb((db) => {
@@ -152,6 +225,7 @@ router.put("/patients/:id", validate(PatientUpdateSchema), async (req, res) => {
 
     const current = db.patients[index];
     if (!canAccessPatient(req.user, current)) return "forbidden";
+    const before = buildPatientAuditSnapshot(current);
     const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
     const doctorAllowed = new Set([
       "phone", "phoneAlt", "address", "comorbidities", "medications", "allergies",
@@ -189,6 +263,18 @@ router.put("/patients/:id", validate(PatientUpdateSchema), async (req, res) => {
       incompleteProfile: safePayload?.incompleteProfile !== undefined
         ? Boolean(safePayload.incompleteProfile)
         : Boolean(current.incompleteProfile),
+      inactive: safePayload?.inactive !== undefined
+        ? Boolean(safePayload.inactive)
+        : Boolean(current.inactive),
+      inactivationReason: safePayload?.inactivationReason !== undefined
+        ? String(safePayload.inactivationReason || "").trim()
+        : String(current.inactivationReason || ""),
+      inactivatedBy: safePayload?.inactivatedBy !== undefined
+        ? String(safePayload.inactivatedBy || "").trim()
+        : String(current.inactivatedBy || ""),
+      inactivatedAt: safePayload?.inactivatedAt !== undefined
+        ? String(safePayload.inactivatedAt || "").trim()
+        : String(current.inactivatedAt || ""),
       chronicConditions: safePayload?.chronicConditions !== undefined
         ? normalizeChronicConditions(safePayload.chronicConditions)
         : normalizeChronicConditions(current.chronicConditions),
@@ -235,19 +321,25 @@ router.put("/patients/:id", validate(PatientUpdateSchema), async (req, res) => {
       updatedBy: req.user.id
     };
 
+    if (next.inactive && !String(next.inactivationReason || "").trim()) {
+      return { error: { status: 400, message: "Justificativa obrigatória para desativar paciente" } };
+    }
+
     db.patients[index] = next;
     addAuditLog(db, req.user, "patient.updated", "patient", id, {
-      changedFields: Object.keys(safePayload || {})
+      changedFields: Object.keys(safePayload || {}),
+      before,
+      after: buildPatientAuditSnapshot(next)
     });
 
     return next;
   });
 
   if (!updated) {
-    return res.status(404).json({ error: "Paciente não encontrado" });
+    return res.status(404).json({ error: "Paciente nÃ£o encontrado" });
   }
   if (updated === "forbidden") {
-    return res.status(403).json({ error: "Sem permissão para editar paciente" });
+    return res.status(403).json({ error: "Sem permissÃ£o para editar paciente" });
   }
 
   return res.json(updated);
@@ -259,15 +351,36 @@ router.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
   const result = await withDb((db) => {
     ensureDbShape(db);
     const patientIndex = db.patients.findIndex((p) => p.id === id);
-    if (patientIndex < 0) return { error: "Paciente não encontrado" };
+    if (patientIndex < 0) return { error: "Paciente nÃ£o encontrado" };
 
     const patient = db.patients[patientIndex];
-    if (!canAccessPatient(req.user, patient)) return { error: "Sem permissão para excluir paciente" };
+    if (!canAccessPatient(req.user, patient)) return { error: "Sem permissÃ£o para excluir paciente" };
+    const before = buildPatientAuditSnapshot(patient);
     const teamPatientIds = new Set([patient.id]);
 
     const appointmentsBefore = db.appointments.length;
     db.appointments = db.appointments.filter((a) => !teamPatientIds.has(a.patientId));
     const appointmentsRemoved = appointmentsBefore - db.appointments.length;
+
+    const agendaEntriesBefore = db.agendaEntries.length;
+    db.agendaEntries = db.agendaEntries.filter((a) => !teamPatientIds.has(a.patientId));
+    const agendaEntriesRemoved = agendaEntriesBefore - db.agendaEntries.length;
+
+    const referralsBefore = db.referrals.length;
+    db.referrals = db.referrals.filter((item) => !teamPatientIds.has(item.patientId));
+    const referralsRemoved = referralsBefore - db.referrals.length;
+
+    const suppliesLogsBefore = db.suppliesLogs.length;
+    db.suppliesLogs = db.suppliesLogs.filter((item) => !teamPatientIds.has(item.patientId));
+    const suppliesLogsRemoved = suppliesLogsBefore - db.suppliesLogs.length;
+
+    const suppliesContinuousBefore = db.suppliesContinuous.length;
+    db.suppliesContinuous = db.suppliesContinuous.filter((item) => !teamPatientIds.has(item.patientId));
+    const suppliesContinuousRemoved = suppliesContinuousBefore - db.suppliesContinuous.length;
+
+    const examsBefore = db.exams.length;
+    db.exams = db.exams.filter((item) => !teamPatientIds.has(item.patientId));
+    const examsRemoved = examsBefore - db.exams.length;
 
     const tasksBefore = db.tasks.length;
     db.tasks = db.tasks.filter((t) => !teamPatientIds.has(t.patientId));
@@ -286,15 +399,26 @@ router.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
     addAuditLog(db, req.user, "patient.deleted", "patient", id, {
       name: patient.name,
       appointmentsRemoved,
+      agendaEntriesRemoved,
+      referralsRemoved,
+      suppliesLogsRemoved,
+      suppliesContinuousRemoved,
+      examsRemoved,
       tasksRemoved,
       messagesRemoved,
-      recordsRemoved
+      recordsRemoved,
+      before,
+      after: null
     });
 
     return {
       ok: true,
       removed: {
         appointments: appointmentsRemoved,
+        agendaEntries: agendaEntriesRemoved,
+        referrals: referralsRemoved,
+        suppliesLogs: suppliesLogsRemoved,
+        suppliesContinuous: suppliesContinuousRemoved,
         tasks: tasksRemoved,
         messages: messagesRemoved,
         clinicalRecords: recordsRemoved
@@ -303,7 +427,7 @@ router.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
   });
 
   if (result?.error) {
-    const status = String(result.error).toLowerCase().includes("permissão") ? 403 : 404;
+    const status = String(result.error).toLowerCase().includes("permissÃ£o") ? 403 : 404;
     return res.status(status).json({ error: result.error });
   }
   return res.json(result);
@@ -313,18 +437,24 @@ router.get("/patients/:id/appointments", async (req, res) => {
   const { id } = req.params;
   const db = await readDb();
   ensureDbShape(db);
-
-  const lookup = getPatientOrError(db, req.user, id);
+  const patient = await findPatientByIdSnapshot(id);
+  const lookup = patient ? { patient } : getPatientOrError(db, req.user, id);
   if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
+  if (patient && !canAccessPatient(req.user, patient)) {
+    return res.status(403).json({ error: "Sem permissÃ£o para este paciente" });
+  }
 
-  const appointments = db.appointments
-    .filter((a) => a.patientId === id)
+  const appointmentsSource = await listAppointmentsByPatientId(id);
+  const appointments = (appointmentsSource.length ? appointmentsSource : db.appointments.filter((a) => a.patientId === id))
     .sort((a, b) => b.date.localeCompare(a.date))
     .map((a) => ({
       ...a,
       demandType: normalizeDemandType(a.demandType)
     }));
 
+  await logPatientRead(req, lookup.patient, "patient.appointments_read", {
+    totalReturned: appointments.length
+  });
   return res.json(appointments);
 });
 
@@ -333,11 +463,11 @@ router.post("/patients/:id/appointments", validate(AppointmentCreateSchema), asy
   const payload = req.body;
 
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Sem permissão para criar atendimento" });
+    return res.status(403).json({ error: "Sem permissÃ£o para criar atendimento" });
   }
 
   if (!payload.date || !payload.summary) {
-    return res.status(400).json({ error: "Data e resumo são obrigatórios" });
+    return res.status(400).json({ error: "Data e resumo sÃ£o obrigatÃ³rios" });
   }
 
   const db = await readDb();
@@ -368,28 +498,29 @@ router.post("/patients/:id/appointments", validate(AppointmentCreateSchema), asy
   return res.status(201).json(appointment);
 });
 
-router.delete("/patients/:id/appointments/:appointmentId", async (req, res) => {
+router.delete("/patients/:id/appointments/:appointmentId", validate(CriticalActionReasonSchema), async (req, res) => {
   const patientId = String(req.params.id || "").trim();
   const appointmentId = String(req.params.appointmentId || "").trim();
 
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Sem permissão para excluir atendimento" });
+    return res.status(403).json({ error: "Sem permissÃ£o para excluir atendimento" });
   }
 
   const result = await withDb((db) => {
     ensureDbShape(db);
     const patient = db.patients.find((p) => p.id === patientId);
-    if (!patient) return { error: { status: 404, message: "Paciente não encontrado" } };
-    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissão para este paciente" } };
+    if (!patient) return { error: { status: 404, message: "Paciente nÃ£o encontrado" } };
+    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissÃ£o para este paciente" } };
 
     const index = db.appointments.findIndex((a) => a.id === appointmentId && a.patientId === patientId);
-    if (index < 0) return { error: { status: 404, message: "Atendimento não encontrado" } };
+    if (index < 0) return { error: { status: 404, message: "Atendimento nÃ£o encontrado" } };
 
     const removed = db.appointments[index];
     db.appointments.splice(index, 1);
     addAuditLog(db, req.user, "appointment.deleted", "appointment", appointmentId, {
       patientId,
-      summary: removed.summary || ""
+      summary: removed.summary || "",
+      reason: String(req.body.reason || "").trim()
     });
     return { ok: true };
   });
@@ -403,14 +534,14 @@ router.post("/patients/:id/records", validate(RecordCreateSchema), async (req, r
   const payload = req.body;
 
   if (!payload.type || !payload.date || !payload.title) {
-    return res.status(400).json({ error: "type, date e title são obrigatórios" });
+    return res.status(400).json({ error: "type, date e title sÃ£o obrigatÃ³rios" });
   }
 
   const allowedTypes = ["visit", "consultation", "vaccine", "procedure", "note"];
   const type = String(payload.type);
 
   if (!allowedTypes.includes(type)) {
-    return res.status(400).json({ error: "Tipo de registro inválido" });
+    return res.status(400).json({ error: "Tipo de registro invÃ¡lido" });
   }
 
   const db = await readDb();
@@ -473,33 +604,34 @@ router.post("/patients/:id/records", validate(RecordCreateSchema), async (req, r
   });
 });
 
-router.delete("/patients/:id/records/:recordId", async (req, res) => {
+router.delete("/patients/:id/records/:recordId", validate(CriticalActionReasonSchema), async (req, res) => {
   const patientId = String(req.params.id || "").trim();
   const recordId = String(req.params.recordId || "").trim();
 
   const result = await withDb((db) => {
     ensureDbShape(db);
     const patient = db.patients.find((p) => p.id === patientId);
-    if (!patient) return { error: { status: 404, message: "Paciente não encontrado" } };
-    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissão para este paciente" } };
+    if (!patient) return { error: { status: 404, message: "Paciente nÃ£o encontrado" } };
+    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissÃ£o para este paciente" } };
 
     const index = db.clinicalRecords.findIndex((r) => r.id === recordId && r.patientId === patientId);
-    if (index < 0) return { error: { status: 404, message: "Registro não encontrado" } };
+    if (index < 0) return { error: { status: 404, message: "Registro nÃ£o encontrado" } };
 
     const current = db.clinicalRecords[index];
     if (isAcs(req.user)) {
       const canDeleteOwnVisit = current.type === "visit" && current.createdBy === req.user.id;
       if (!canDeleteOwnVisit) {
-        return { error: { status: 403, message: "ACS pode excluir apenas visita própria registrada por ele" } };
+        return { error: { status: 403, message: "ACS pode excluir apenas visita prÃ³pria registrada por ele" } };
       }
     } else if (!(isManager(req.user) || isDoctor(req.user))) {
-      return { error: { status: 403, message: "Sem permissão para excluir registro" } };
+      return { error: { status: 403, message: "Sem permissÃ£o para excluir registro" } };
     }
 
     db.clinicalRecords.splice(index, 1);
     addAuditLog(db, req.user, "clinical_record.deleted", "clinical_record", recordId, {
       patientId,
-      type: current.type
+      type: current.type,
+      reason: String(req.body.reason || "").trim()
     });
     return { ok: true };
   });
@@ -516,7 +648,11 @@ router.get("/patients/:id/history", async (req, res) => {
   const lookup = getPatientOrError(db, req.user, id);
   if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
 
-  return res.json(buildPatientHistory(db, id));
+  const history = buildPatientHistory(db, id);
+  await logPatientRead(req, lookup.patient, "patient.history_read", {
+    totalReturned: history.length
+  });
+  return res.json(history);
 });
 
 router.get("/patients/:id/protocol-summary", async (req, res) => {
@@ -529,6 +665,9 @@ router.get("/patients/:id/protocol-summary", async (req, res) => {
 
   const history = buildPatientHistory(db, id);
   const summary = buildProtocolSummary(lookup.patient, history, getProtocolTemplateMap(db, req.user.teamId));
+  await logPatientRead(req, lookup.patient, "patient.protocol_summary_read", {
+    alertCount: Array.isArray(summary?.alerts) ? summary.alerts.length : 0
+  });
   if (lookup.patient.teamId && lookup.patient.teamId !== req.user.teamId) {
     return res.json(restrictSummaryAlertsForForeignTeam(summary));
   }
@@ -547,6 +686,9 @@ router.get("/patients/:id/messages", async (req, res) => {
     .filter((m) => m.patientId === id)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
+  await logPatientRead(req, lookup.patient, "patient.messages_read", {
+    totalReturned: messages.length
+  });
   return res.json(messages);
 });
 
@@ -555,11 +697,11 @@ router.post("/patients/:id/messages", async (req, res) => {
   const payload = req.body;
 
   if (isAcs(req.user)) {
-    return res.status(403).json({ error: "ACS não pode enviar mensagens neste módulo" });
+    return res.status(403).json({ error: "ACS nÃ£o pode enviar mensagens neste mÃ³dulo" });
   }
 
   if (!payload.text) {
-    return res.status(400).json({ error: "text é obrigatório" });
+    return res.status(400).json({ error: "text Ã© obrigatÃ³rio" });
   }
 
   const db = await readDb();
@@ -589,21 +731,21 @@ router.post("/patients/:id/messages", async (req, res) => {
 
 router.get("/metrics/demand/monthly", async (req, res) => {
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Apenas enfermeira e médica podem acessar este indicador" });
+    return res.status(403).json({ error: "Apenas enfermeira e mÃ©dica podem acessar este indicador" });
   }
   const db = await readDb();
   ensureDbShape(db);
   const month = String(req.query.month || "").trim();
   const metric = buildMonthlyDemandMetric(db, req.user.teamId, month);
   if (!metric) {
-    return res.status(400).json({ error: "Parâmetro month inválido. Use YYYY-MM." });
+    return res.status(400).json({ error: "ParÃ¢metro month invÃ¡lido. Use YYYY-MM." });
   }
   return res.json(metric);
 });
 
 router.get("/metrics/data-quality", async (req, res) => {
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Apenas enfermeira e médica podem acessar qualidade de dados" });
+    return res.status(403).json({ error: "Apenas enfermeira e mÃ©dica podem acessar qualidade de dados" });
   }
   const db = await readDb();
   ensureDbShape(db);
@@ -611,3 +753,5 @@ router.get("/metrics/data-quality", async (req, res) => {
 });
 
 export default router;
+
+

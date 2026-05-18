@@ -10,6 +10,19 @@ import { addAuditLog } from "../services/audit.js";
 
 const router = express.Router();
 
+function buildTaskAuditSnapshot(task) {
+  if (!task) return null;
+  return {
+    id: String(task.id || ""),
+    patientId: String(task.patientId || ""),
+    assigneeId: String(task.assigneeId || ""),
+    title: String(task.title || ""),
+    status: String(task.status || ""),
+    dueDate: String(task.dueDate || ""),
+    updatedAt: String(task.updatedAt || task.createdAt || "")
+  };
+}
+
 router.get("/tasks", async (req, res) => {
   const { patientId, assigneeId } = req.query;
   const db = await readDb();
@@ -63,7 +76,8 @@ router.post("/tasks", requireManagerOrDoctor, validate(TaskCreateSchema), async 
     mutableDb.tasks.push(task);
     addAuditLog(mutableDb, req.user, "task.created", "task", task.id, {
       patientId: task.patientId,
-      assigneeId: task.assigneeId
+      assigneeId: task.assigneeId,
+      after: buildTaskAuditSnapshot(task)
     });
   });
 
@@ -88,6 +102,7 @@ router.patch("/tasks/:id", validate(TaskPatchSchema), async (req, res) => {
     }
 
     if (isManager(req.user) || isDoctor(req.user)) {
+      const before = buildTaskAuditSnapshot(current);
       const nextForManager = {
         ...current,
         ...payload,
@@ -98,7 +113,9 @@ router.patch("/tasks/:id", validate(TaskPatchSchema), async (req, res) => {
 
       db.tasks[index] = nextForManager;
       addAuditLog(db, req.user, "task.updated", "task", id, {
-        changedFields: Object.keys(payload)
+        changedFields: Object.keys(payload),
+        before,
+        after: buildTaskAuditSnapshot(nextForManager)
       });
       return nextForManager;
     }

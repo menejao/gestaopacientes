@@ -16,7 +16,7 @@ Data de referência: 2026-05-14
 | **Backup manual** | Comando `curl` manual | Sob demanda | Responsabilidade do operador |
 
 ### Onde ficam os dados
-- **Banco primário:** Neon PostgreSQL — tabela `app_state` com coluna `data JSONB` (single-row pattern)
+- **Banco primário:** Neon PostgreSQL — estado principal em `app_state.data JSONB` com shadow tables relacionais para usuários, sessões, auditoria, pacientes, agenda e permissões
 - **Dados criptografados:** CPF, CNS, `twoFactorSecret`, `twoFactorPendingSecret` são cifrados em AES-256-GCM antes de persistir
 - **Chave de criptografia:** `DATA_ENCRYPTION_KEY` — **nunca no backup em texto claro**
 

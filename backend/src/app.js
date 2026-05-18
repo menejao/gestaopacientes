@@ -11,6 +11,12 @@ import authRouter from "./routes/auth.js";
 import meRouter from "./routes/me.js";
 import usersRouter from "./routes/users.js";
 import patientsRouter from "./routes/patients.js";
+import queueRouter from "./routes/queue.js";
+import agendaRouter from "./routes/agenda.js";
+import referralsRouter from "./routes/referrals.js";
+import pharmacyRouter from "./routes/pharmacy.js";
+import suppliesRouter from "./routes/supplies.js";
+import examsRouter from "./routes/exams.js";
 import tasksRouter from "./routes/tasks.js";
 import protocolsRouter from "./routes/protocols.js";
 import auditLogsRouter from "./routes/audit-logs.js";
@@ -48,6 +54,12 @@ app.use((req, res, next) => {
 
 app.use(meRouter);
 app.use(patientsRouter);
+app.use(queueRouter);
+app.use(agendaRouter);
+app.use(referralsRouter);
+app.use(pharmacyRouter);
+app.use(suppliesRouter);
+app.use(examsRouter);
 app.use(tasksRouter);
 app.use(protocolsRouter);
 app.use(auditLogsRouter);

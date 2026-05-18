@@ -132,15 +132,15 @@ curl -X POST https://api.saudeubs.com.br/privacy/retention/anonymize \
 ```bash
 # Últimas ações (como gestor ou médico)
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://api.saudeubs.com.br/audit-logs?limit=100" | jq
+  "https://api.saudeubs.com.br/audit-logs?limit=100" | jq '.items'
 
 # Por paciente específico
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://api.saudeubs.com.br/audit-logs?patientId=UUID" | jq
+  "https://api.saudeubs.com.br/audit-logs?patientId=UUID" | jq '.items'
 
 # Por usuário específico
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://api.saudeubs.com.br/audit-logs?userId=UUID" | jq
+  "https://api.saudeubs.com.br/audit-logs?action=me.read&limit=100" | jq '.items'
 
 # Exportar CSV
 curl -H "Authorization: Bearer $TOKEN" \

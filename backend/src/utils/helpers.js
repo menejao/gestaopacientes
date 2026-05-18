@@ -13,8 +13,14 @@ const ROLE_CAPABILITIES = {
     "dashboard.read",
     "patients.read.all",
     "patients.write",
+    "agenda.read",
+    "agenda.write",
+    "referrals.read",
+    "referrals.write",
     "records.read",
     "records.write",
+    "exams.read",
+    "exams.write",
     "appointments.write",
     "tasks.read",
     "tasks.write",
@@ -23,19 +29,31 @@ const ROLE_CAPABILITIES = {
     "protocols.manage",
     "reports.read",
     "diagnostics.read",
+    "pharmacy.read",
+    "supplies.read",
+    "supplies.write",
     "users.read.scoped",
     "users.manage.scoped",
     "audit.read",
     "privacy.manage",
     "team.manage",
+    "backup.export",
+    "admin.seed",
+    "metrics.internal.read",
     "ai.access"
   ],
   doctor: [
     "dashboard.read",
     "patients.read.all",
     "patients.write",
+    "agenda.read",
+    "agenda.write",
+    "referrals.read",
+    "referrals.write",
     "records.read",
     "records.write",
+    "exams.read",
+    "exams.write",
     "appointments.write",
     "tasks.read",
     "tasks.write",
@@ -44,6 +62,8 @@ const ROLE_CAPABILITIES = {
     "protocols.manage",
     "reports.read",
     "diagnostics.read",
+    "pharmacy.read",
+    "supplies.read",
     "users.read.scoped",
     "audit.read",
     "ai.access"
@@ -53,6 +73,10 @@ const ROLE_CAPABILITIES = {
     "patients.read.all",
     "records.read",
     "records.write",
+    "exams.read",
+    "exams.write",
+    "referrals.read",
+    "referrals.write",
     "reports.read",
     "diagnostics.read",
     "users.read.scoped",
@@ -61,39 +85,63 @@ const ROLE_CAPABILITIES = {
   gestor: [
     "dashboard.read",
     "patients.read.all",
+    "agenda.read",
+    "referrals.read",
+    "referrals.write",
     "records.read",
+    "exams.read",
     "reports.read",
     "diagnostics.read",
+    "pharmacy.read",
+    "supplies.read",
     "users.read.all",
     "audit.read",
-    "access_requests.read"
+    "access_requests.read",
+    "backup.export",
+    "admin.seed",
+    "metrics.internal.read"
   ],
   acs: [
     "dashboard.read",
     "patients.read.all",
     "records.read",
     "records.write",
+    "referrals.read",
+    "referrals.write",
     "tasks.read"
   ],
   nursing_tech: [
     "dashboard.read",
+    "queue.read",
+    "queue.write",
+    "agenda.read",
+    "referrals.read",
+    "referrals.write",
     "patients.read.all",
     "records.read",
+    "exams.read",
+    "exams.write",
     "reports.read"
+    ,
+    "supplies.read",
+    "supplies.write"
   ],
   pharmacist: [
     "dashboard.read",
     "pharmacy.read",
     "pharmacy.write",
-    "supplies.read"
+    "supplies.read",
+    "supplies.write"
   ],
   pharmacy_tech: [
     "dashboard.read",
     "pharmacy.read",
-    "supplies.read"
+    "supplies.read",
+    "supplies.write"
   ],
   receptionist: [
     "dashboard.read",
+    "patients.read.scoped",
     "queue.read",
     "queue.write",
     "agenda.read",
@@ -135,6 +183,7 @@ const ROLE_CAPABILITIES = {
     "users.read.all",
     "audit.read",
     "users.activity_log.read",
+    "metrics.internal.read",
     "session.impersonate"
   ],
   break_glass_admin: [
@@ -143,6 +192,8 @@ const ROLE_CAPABILITIES = {
     "patients.write",
     "records.read",
     "records.write",
+    "exams.read",
+    "exams.write",
     "appointments.write",
     "tasks.read",
     "tasks.write",
@@ -155,16 +206,22 @@ const ROLE_CAPABILITIES = {
     "queue.write",
     "agenda.read",
     "agenda.write",
+    "referrals.read",
+    "referrals.write",
     "pharmacy.read",
     "pharmacy.write",
     "supplies.read",
+    "supplies.write",
     "users.read.all",
     "users.manage.all",
     "audit.read",
     "privacy.manage",
     "team.manage",
+    "backup.export",
     "users.activity_log.read",
     "access_requests.read",
+    "admin.seed",
+    "metrics.internal.read",
     "session.impersonate",
     "session.break_glass.activate",
     "ai.access"
@@ -273,8 +330,7 @@ function canAccessScopedPatients(user) {
 }
 
 function isAnaAdminUser(user) {
-  const email = String(user?.email || "").trim().toLowerCase();
-  return hasCapability(user, "users.activity_log.read") || (isManager(user) && email === TEST_ADMIN_EMAIL);
+  return hasCapability(user, "users.activity_log.read");
 }
 
 /* ── Validators ── */
@@ -528,7 +584,6 @@ function matchesAnyAlias(text, aliases = []) {
 
 /* ── Constants ── */
 
-const TEST_ADMIN_EMAIL = "ana@clinica.local";
 const ALLOWED_SELF_REGISTER_ROLES = ["nurse_manager", "doctor", "gestor"];
 const PRIVACY_REQUEST_TYPES = new Set(["access", "correction", "deletion"]);
 const PRIVACY_REQUEST_STATUS = new Set(["pending", "in_review", "approved", "rejected", "completed"]);
@@ -580,7 +635,6 @@ export {
   parseRapidTestTrimester,
   detectRapidTestCoverage,
   matchesAnyAlias,
-  TEST_ADMIN_EMAIL,
   ROLE_CAPABILITIES,
   BREAK_GLASS_CAPABILITIES,
   ALLOWED_SELF_REGISTER_ROLES,

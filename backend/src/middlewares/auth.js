@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE, COOKIE_ACCESS_NAME } from "../config.js";
-import { canonicalRole, hasRole, hasCapability, hasAnyCapability } from "../utils/helpers.js";
+import { canonicalRole, hasRole, hasCapability, hasAnyCapability, getClientIp } from "../utils/helpers.js";
 import { parseCookies } from "../utils/session-cookies.js";
 
 function requireAuth(req, res, next) {
@@ -22,7 +22,16 @@ function requireAuth(req, res, next) {
     req.user = {
       ...payload,
       role: canonicalRole(payload.role),
-      requestId: req.requestId || ""
+      requestId: req.requestId || "",
+      authTransport: bearerToken ? "bearer" : "cookie",
+      requestMeta: {
+        requestId: req.requestId || "",
+        ip: getClientIp(req),
+        userAgent: String(req.headers["user-agent"] || "").slice(0, 512),
+        method: String(req.method || ""),
+        path: String(req.originalUrl || ""),
+        authTransport: bearerToken ? "bearer" : "cookie"
+      }
     };
     req.authTransport = bearerToken ? "bearer" : "cookie";
     return next();

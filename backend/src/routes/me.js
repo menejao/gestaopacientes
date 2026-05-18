@@ -19,13 +19,29 @@ import {
   hasCapability
 } from "../utils/helpers.js";
 import { validateCouncilData, verifyCouncilExternally } from "../utils/council.js";
-import { hashPassword, hashToken } from "../services/crypto.js";
+import { hashPassword, hashToken, verifyPassword } from "../services/crypto.js";
 import { generateTotpSecret, verifyTotpCode, buildOtpAuthUrl, normalizeTotpSecret } from "../services/totp.js";
 import { createToken, createRefreshToken } from "../services/tokens.js";
 import { addAuditLog } from "../services/audit.js";
 import { createCsrfToken, issueSessionCookies, parseCookies } from "../utils/session-cookies.js";
 
 const router = express.Router();
+
+function buildMeAuditSnapshot(user) {
+  if (!user) return null;
+  return {
+    id: String(user.id || ""),
+    teamId: String(user.teamId || ""),
+    name: String(user.name || ""),
+    email: String(user.email || ""),
+    role: canonicalRole(user.role),
+    councilType: String(user.councilType || ""),
+    councilNumber: String(user.councilNumber || ""),
+    councilUf: String(user.councilUf || ""),
+    twoFactorEnabled: Boolean(user.twoFactorEnabled),
+    updatedAt: String(user.updatedAt || user.createdAt || "")
+  };
+}
 
 function getRequestAccessContext(req, db) {
   return {
@@ -55,12 +71,13 @@ function buildSessionResponse(res, actorUser, db, sessionContext = {}, ip = "") 
     sessionId: refresh.sessionId
   });
   const user = buildAccessContextUser(actorUser, db, sessionContext);
+  const csrfToken = createCsrfToken();
   issueSessionCookies(res, {
     accessToken: token,
     refreshToken: refresh.raw,
-    csrfToken: createCsrfToken()
+    csrfToken
   });
-  return { user, token, refreshToken: refresh.raw, sessionId: refresh.sessionId };
+  return { user, token, refreshToken: refresh.raw, sessionId: refresh.sessionId, csrfToken };
 }
 
 function revokeCurrentRefreshToken(db, req) {
@@ -72,6 +89,64 @@ function revokeCurrentRefreshToken(db, req) {
     db.refreshTokens[index].revokedAt = new Date().toISOString();
   }
 }
+
+function revokeAllUserRefreshTokens(db, userId, exceptSessionId = "") {
+  let revokedCount = 0;
+  for (const token of db.refreshTokens) {
+    if (String(token.userId || "") !== String(userId || "")) continue;
+    if (exceptSessionId && String(token.id || "") === String(exceptSessionId)) continue;
+    if (!token.revokedAt) {
+      token.revokedAt = new Date().toISOString();
+      revokedCount += 1;
+    }
+  }
+  return revokedCount;
+}
+
+router.use(async (req, _res, next) => {
+  if (!req.user || req.method !== "GET") return next();
+  if (!["/me", "/me/access-context", "/me/2fa/status"].includes(req.path)) return next();
+
+  await withDb((db) => {
+    ensureDbShape(db);
+    const user = db.users.find((u) => u.id === req.user.id);
+    if (!user) return;
+
+    if (req.path === "/me") {
+      addAuditLog(db, req.user, "me.read", "user", user.id, {
+        teamId: user.teamId || "",
+        outcome: "success",
+        after: buildMeAuditSnapshot(user)
+      });
+      return;
+    }
+
+    if (req.path === "/me/access-context") {
+      const responseUser = buildAccessContextUser(user, db, getRequestAccessContext(req, db));
+      addAuditLog(db, req.user, "me.access_context_read", "auth", user.id, {
+        teamId: user.teamId || "",
+        outcome: "success",
+        after: {
+          scopeTeamId: String(responseUser.teamId || ""),
+          impersonationActive: Boolean(responseUser.impersonation?.active),
+          breakGlassActive: Boolean(responseUser.breakGlass?.active)
+        }
+      });
+      return;
+    }
+
+    addAuditLog(db, req.user, "auth.2fa_status_read", "user", user.id, {
+      teamId: user.teamId || "",
+      outcome: "success",
+      after: {
+        enabled: Boolean(user.twoFactorEnabled && user.twoFactorSecret),
+        pendingSetup: Boolean(user.twoFactorPendingSecret)
+      }
+    });
+  });
+
+  return next();
+});
 
 router.get("/me", requireAuth, async (req, res) => {
   const db = await readDb();
@@ -205,6 +280,11 @@ router.patch("/me", requireAuth, validate(MePatchSchema), async (req, res) => {
 
     const current = db.users[index];
     const next = { ...current };
+    const changingEmail = payload.email !== undefined && String(payload.email || "").trim().toLowerCase() !== String(current.email || "").trim().toLowerCase();
+    const changingPassword = payload.password !== undefined;
+    if ((changingEmail || changingPassword) && !verifyPassword(String(payload.currentPassword || ""), current.password)) {
+      return { error: { status: 401, message: "Senha atual invÃ¡lida para alterar e-mail ou senha" } };
+    }
 
     if (payload.name !== undefined) {
       const name = String(payload.name || "").trim();
@@ -282,10 +362,24 @@ router.patch("/me", requireAuth, validate(MePatchSchema), async (req, res) => {
 
     next.updatedAt = new Date().toISOString();
     db.users[index] = next;
+    const revokedSessions = (changingEmail || changingPassword)
+      ? revokeAllUserRefreshTokens(db, next.id, req.user?.sessionId || "")
+      : 0;
 
     addAuditLog(db, next, "user.profile_updated", "user", next.id, {
-      changedFields: Object.keys(payload || {})
+      changedFields: Object.keys(payload || {}),
+      revokedSessions,
+      before: buildMeAuditSnapshot(current),
+      after: buildMeAuditSnapshot(next)
     });
+    if (changingEmail || changingPassword) {
+      addAuditLog(db, next, "auth.sessions_revoked_after_profile_change", "auth", next.id, {
+        outcome: "success",
+        changedEmail: changingEmail,
+        changedPassword: changingPassword,
+        revokedSessions
+      });
+    }
 
     const token = createToken(next, db, getRequestAccessContext(req, db));
     return { user: buildAccessContextUser(next, db, getRequestAccessContext(req, db)), token };

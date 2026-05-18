@@ -10,10 +10,14 @@ function getPatientActivityDate(db, patientId) {
   const dates = [
     patient?.updatedAt,
     patient?.createdAt,
+    ...db.agendaEntries.filter((a) => a.patientId === patientId).map((a) => `${a.date || ""}T${a.time || "00:00"}`),
     ...db.appointments.filter((a) => a.patientId === patientId).map((a) => a.date || a.createdAt),
     ...db.clinicalRecords.filter((r) => r.patientId === patientId).map((r) => r.date || r.createdAt),
     ...db.messages.filter((m) => m.patientId === patientId).map((m) => m.createdAt),
-    ...db.tasks.filter((t) => t.patientId === patientId).map((t) => t.updatedAt || t.createdAt)
+    ...db.tasks.filter((t) => t.patientId === patientId).map((t) => t.updatedAt || t.createdAt),
+    ...db.referrals.filter((r) => r.patientId === patientId).map((r) => r.updatedAt || r.createdAt),
+    ...db.suppliesLogs.filter((r) => r.patientId === patientId).map((r) => r.ts),
+    ...db.exams.filter((r) => r.patientId === patientId).map((r) => r.updatedAt || r.createdAt)
   ].filter(Boolean);
 
   if (!dates.length) return null;
@@ -24,9 +28,14 @@ function getPatientActivityDate(db, patientId) {
 function buildPatientAccessReport(db, patient) {
   const patientId = patient.id;
   const appointments = db.appointments.filter((a) => a.patientId === patientId);
+  const agendaEntries = db.agendaEntries.filter((a) => a.patientId === patientId);
   const records = db.clinicalRecords.filter((r) => r.patientId === patientId);
   const messages = db.messages.filter((m) => m.patientId === patientId);
   const tasks = db.tasks.filter((t) => t.patientId === patientId);
+  const referrals = db.referrals.filter((r) => r.patientId === patientId);
+  const suppliesLogs = db.suppliesLogs.filter((r) => r.patientId === patientId);
+  const suppliesContinuous = db.suppliesContinuous.filter((r) => r.patientId === patientId);
+  const exams = db.exams.filter((r) => r.patientId === patientId);
   const lastActivityAt = getPatientActivityDate(db, patientId);
 
   return {
@@ -72,10 +81,15 @@ function buildPatientAccessReport(db, patient) {
       allergies: patient.allergies || ""
     },
     summary: {
+      agendaEntries: agendaEntries.length,
       appointments: appointments.length,
       clinicalRecords: records.length,
       messages: messages.length,
       tasks: tasks.length,
+      referrals: referrals.length,
+      suppliesLogs: suppliesLogs.length,
+      suppliesContinuous: suppliesContinuous.length,
+      exams: exams.length,
       lastActivityAt
     },
     appointments: appointments.map((a) => ({
@@ -211,18 +225,28 @@ function anonymizePatientBundle(db, user, patient, reason = "", requestId = "") 
   };
 
   const appointments = db.appointments.filter((a) => a.patientId === patient.id).length;
+  const agendaEntries = db.agendaEntries.filter((a) => a.patientId === patient.id).length;
   const clinicalRecords = db.clinicalRecords.filter((r) => r.patientId === patient.id).length;
   const messages = db.messages.filter((m) => m.patientId === patient.id).length;
   const tasks = db.tasks.filter((t) => t.patientId === patient.id).length;
+  const referrals = db.referrals.filter((r) => r.patientId === patient.id).length;
+  const suppliesLogs = db.suppliesLogs.filter((r) => r.patientId === patient.id).length;
+  const suppliesContinuous = db.suppliesContinuous.filter((r) => r.patientId === patient.id).length;
+  const exams = db.exams.filter((r) => r.patientId === patient.id).length;
 
+  db.agendaEntries = db.agendaEntries.filter((a) => a.patientId !== patient.id);
   db.appointments = db.appointments.filter((a) => a.patientId !== patient.id);
   db.clinicalRecords = db.clinicalRecords.filter((r) => r.patientId !== patient.id);
   db.messages = db.messages.filter((m) => m.patientId !== patient.id);
   db.tasks = db.tasks.filter((t) => t.patientId !== patient.id);
+  db.referrals = db.referrals.filter((r) => r.patientId !== patient.id);
+  db.suppliesLogs = db.suppliesLogs.filter((r) => r.patientId !== patient.id);
+  db.suppliesContinuous = db.suppliesContinuous.filter((r) => r.patientId !== patient.id);
+  db.exams = db.exams.filter((r) => r.patientId !== patient.id);
 
   return {
     changed: true,
-    stats: { appointments, clinicalRecords, messages, tasks }
+    stats: { agendaEntries, appointments, clinicalRecords, messages, tasks, referrals, suppliesLogs, suppliesContinuous, exams }
   };
 }
 

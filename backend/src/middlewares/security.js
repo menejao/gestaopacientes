@@ -22,7 +22,10 @@ function setupCors(app) {
   app.use(
     cors({
       origin(origin, callback) {
-        if (!origin) return callback(null, true);
+        if (!origin) {
+          if (!IS_PROD || CORS_ALLOW_ALL) return callback(null, true);
+          return callback(new Error("Origem sem header Origin nao permitida em producao"));
+        }
         if (!FRONTEND_ORIGINS.length) {
           if (!IS_PROD || CORS_ALLOW_ALL) return callback(null, true);
           return callback(new Error("Origem não permitida por CORS"));

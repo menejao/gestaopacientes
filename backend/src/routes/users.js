@@ -1,6 +1,6 @@
 import express from "express";
 import { v4 as uuidv4 } from "uuid";
-import { readDb, withDb } from "../db.js";
+import { readDb, withDb, listUsersSnapshot, findUserById, listRolePermissionsSnapshot } from "../db.js";
 import { USER_ONLINE_THRESHOLD_MS } from "../config.js";
 import { requireManager } from "../middlewares/auth.js";
 import { ensureDbShape, sanitizeUser } from "../utils/domain.js";
@@ -16,6 +16,82 @@ import { requireAuth } from "../middlewares/auth.js";
 
 const router = express.Router();
 
+function buildUserAuditSnapshot(user) {
+  if (!user) return null;
+  return {
+    id: String(user.id || ""),
+    teamId: String(user.teamId || ""),
+    name: String(user.name || ""),
+    email: String(user.email || ""),
+    role: canonicalRole(user.role),
+    councilType: String(user.councilType || ""),
+    councilNumber: String(user.councilNumber || ""),
+    councilUf: String(user.councilUf || ""),
+    twoFactorEnabled: Boolean(user.twoFactorEnabled),
+    updatedAt: String(user.updatedAt || user.createdAt || "")
+  };
+}
+
+function buildReadAuditActor(req) {
+  return {
+    ...req.user,
+    requestMeta: req.user?.requestMeta || {
+      ip: getClientIp(req),
+      userAgent: String(req.headers["user-agent"] || ""),
+      method: String(req.method || ""),
+      path: String(req.originalUrl || req.path || ""),
+      authTransport: String(req.user?.authTransport || "")
+    }
+  };
+}
+
+router.use(async (req, _res, next) => {
+  if (!req.user || req.method !== "GET") return next();
+  if (!["/users/activity-log"].includes(req.path) && !/^\/users\/[^/]+\/usage$/.test(req.path)) return next();
+
+  await withDb((db) => {
+    ensureDbShape(db);
+
+    if (req.path === "/users/activity-log") {
+      const now = Date.now();
+      const items = db.users
+        .map((u) => {
+          const lastSeenAt = String(u.lastSeenAt || u.lastLoginAt || "");
+          const lastSeenTs = Date.parse(lastSeenAt);
+          const online = Number.isFinite(lastSeenTs) ? (now - lastSeenTs <= USER_ONLINE_THRESHOLD_MS) : false;
+          return { id: u.id, online };
+        });
+
+      addAuditLog(db, buildReadAuditActor(req), "user.activity_log_read", "user", "", {
+        teamId: req.user?.teamId || "",
+        returnedCount: items.length,
+        onlineWindowSeconds: Math.floor(USER_ONLINE_THRESHOLD_MS / 1000),
+        outcome: "success"
+      });
+      return;
+    }
+
+    const pathParts = String(req.path || "").split("/").filter(Boolean);
+    const id = String(pathParts[1] || "").trim();
+    const target = db.users.find((u) => u.id === id && u.teamId === req.user.teamId);
+    if (!target) return;
+    const usage = getTeamUserUsage(db, target.id, req.user.teamId);
+    addAuditLog(db, buildReadAuditActor(req), "user.usage_read", "user", target.id, {
+      teamId: target.teamId || req.user?.teamId || "",
+      role: canonicalRole(target.role),
+      outcome: "success",
+      after: {
+        userId: target.id,
+        role: canonicalRole(target.role),
+        linkedTotal: usage.linkedTotal,
+        canDelete: usage.linkedTotal === 0
+      }
+    });
+  });
+
+  return next();
+});
+
 router.get("/teams/public", async (_req, res) => {
   const db = await readDb();
   ensureDbShape(db);
@@ -26,16 +102,27 @@ router.get("/teams/public", async (_req, res) => {
 });
 
 router.get("/users", requireAuth, async (req, res) => {
-  const db = await readDb();
-  ensureDbShape(db);
-  const canReadAllUsers =
-    canonicalRole(req.user?.role) === "gestor" || hasCapability(req.user, "users.read.all");
+  const snapshotUsers = await listUsersSnapshot();
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const canReadAllUsers = hasCapability(req.user, "users.read.all");
 
-  const safeUsers = db.users
-    .filter((u) => canReadAllUsers || u.teamId === req.user.teamId)
-    .map((u) => sanitizeUser(u, db));
+    const sourceUsers = snapshotUsers.length ? snapshotUsers : db.users;
+    const safeUsers = sourceUsers
+      .filter((u) => canReadAllUsers || u.teamId === req.user.teamId)
+      .map((u) => sanitizeUser(u, db));
 
-  return res.json(safeUsers.map(({ password, ...u }) => u));
+    addAuditLog(db, buildReadAuditActor(req), "user.list_read", "user", "", {
+      teamId: req.user?.teamId || "",
+      scope: canReadAllUsers ? "all" : "team",
+      returnedCount: safeUsers.length,
+      outcome: "success"
+    });
+
+    return safeUsers.map(({ password, ...u }) => u);
+  });
+
+  return res.json(result);
 });
 
 router.get("/users/activity-log", requireAuth, async (req, res) => {
@@ -160,7 +247,8 @@ router.post("/users", requireAuth, requireManager, async (req, res) => {
     db.users.push(user);
     addAuditLog(db, req.user, "user.created_by_manager", "user", user.id, {
       role: user.role,
-      teamId: user.teamId
+      teamId: user.teamId,
+      after: buildUserAuditSnapshot(user)
     });
     return { user, db };
   });
@@ -173,15 +261,17 @@ router.get("/users/:id/usage", requireAuth, requireManager, async (req, res) => 
   const id = String(req.params.id || "").trim();
   const db = await readDb();
   ensureDbShape(db);
-  const target = db.users.find((u) => u.id === id && u.teamId === req.user.teamId);
+  const target = (await findUserById(id)) || db.users.find((u) => u.id === id && u.teamId === req.user.teamId);
   if (!target) return res.status(404).json({ error: "Usuário não encontrado" });
   if (!["acs", "doctor"].includes(canonicalRole(target.role))) {
     return res.status(400).json({ error: "Somente ACS/Médico podem ser gerenciados nesta tela" });
   }
   const usage = getTeamUserUsage(db, target.id, req.user.teamId);
+  const capabilities = await listRolePermissionsSnapshot(target.role);
   return res.json({
     userId: target.id,
     role: canonicalRole(target.role),
+    capabilities,
     ...usage,
     canDelete: usage.linkedTotal === 0
   });
@@ -201,6 +291,7 @@ router.put("/users/:id", requireAuth, requireManager, async (req, res) => {
     }
 
     const next = { ...current };
+    const before = buildUserAuditSnapshot(current);
     if (payload.name !== undefined) {
       const name = String(payload.name || "").trim();
       if (!name) return { error: { status: 400, message: "Nome não pode ficar vazio" } };
@@ -268,7 +359,9 @@ router.put("/users/:id", requireAuth, requireManager, async (req, res) => {
     next.updatedAt = new Date().toISOString();
     db.users[index] = next;
     addAuditLog(db, req.user, "user.updated_by_manager", "user", next.id, {
-      changedFields: Object.keys(payload || {})
+      changedFields: Object.keys(payload || {}),
+      before,
+      after: buildUserAuditSnapshot(next)
     });
     return { user: sanitizeUser(next, db) };
   });
@@ -278,8 +371,12 @@ router.put("/users/:id", requireAuth, requireManager, async (req, res) => {
 
 router.delete("/users/:id", requireAuth, requireManager, async (req, res) => {
   const id = String(req.params.id || "").trim();
+  const reason = String(req.body?.reason || "").trim();
   if (id === req.user.id) {
     return res.status(400).json({ error: "Não é permitido excluir o próprio usuário" });
+  }
+  if (reason.length < 8) {
+    return res.status(400).json({ error: "Justificativa obrigatória para excluir usuário" });
   }
 
   const result = await withDb((db) => {
@@ -304,7 +401,12 @@ router.delete("/users/:id", requireAuth, requireManager, async (req, res) => {
     }
 
     db.users.splice(index, 1);
-    addAuditLog(db, req.user, "user.deleted_by_manager", "user", current.id, { role });
+    addAuditLog(db, req.user, "user.deleted_by_manager", "user", current.id, {
+      role,
+      before: buildUserAuditSnapshot(current),
+      after: null,
+      reason
+    });
     return { ok: true };
   });
 

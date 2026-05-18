@@ -296,23 +296,21 @@ Ver `SECRETS_ROTATION.md` para checklist completo.
 
 **1. Identificar o usuário:**
 ```bash
-# Via audit logs no banco (Neon SQL Editor):
-SELECT id, name, email, role, "lastLoginAt", "lastSeenAt", "lastSeenIp"
-FROM data  -- dados ficam no JSONB
--- Ou via GET /audit-logs com patientId/userId
+# Via shadow table relacional (Neon SQL Editor):
+SELECT id, name, email, role, payload->>'lastLoginAt' AS "lastLoginAt"
+FROM app_users
+WHERE inactive = false
+ORDER BY updated_at DESC;
+-- Ou via GET /audit-logs com filtros action/entity/patientId/teamId
 ```
 
 **2. Revogar todas as sessões:**
 ```bash
 # Opção A: Como gestor/enfermeira, via API (se disponível endpoint admin futuro)
-# Opção B: Diretamente no banco via Neon SQL Editor:
-# UPDATE data SET data = jsonb_set(data, '{refreshTokens}',
-#   (SELECT jsonb_agg(
-#     CASE WHEN t->>'userId' = 'USER_ID'
-#     THEN jsonb_set(t, '{revokedAt}', to_jsonb(now()::text))
-#     ELSE t END
-#   ) FROM jsonb_array_elements(data->'refreshTokens') t)
-# ) WHERE id = 1;
+# Opção B: Diretamente na shadow table relacional:
+# UPDATE app_refresh_tokens
+# SET revoked_at = NOW()
+# WHERE user_id = 'USER_ID' AND revoked_at IS NULL;
 ```
 
 **3. Alterar senha do usuário:**

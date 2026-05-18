@@ -1,13 +1,13 @@
-import express from "express";
+﻿import express from "express";
 import { v4 as uuidv4 } from "uuid";
-import { readDb, withDb } from "../db.js";
+import { readDb, withDb, findUserByEmail, findUserById, findRefreshTokenByHash } from "../db.js";
 import {
   TWOFA_CHALLENGE_TTL_MS,
   TWOFA_MAX_ATTEMPTS,
   PUBLIC_SELF_REGISTER_ROLES,
   COOKIE_REFRESH_NAME
 } from "../config.js";
-import { validate, LoginSchema, RegisterSchema } from "../schemas.js";
+import { validate, LoginSchema, RegisterSchema, AccessRequestCreateSchema } from "../schemas.js";
 import { authRateLimit } from "../middlewares/rate-limits.js";
 import { requireAuth } from "../middlewares/auth.js";
 import {
@@ -16,7 +16,8 @@ import {
   isValidEmail,
   roleNeedsCouncil,
   councilTypeForRole,
-  getClientIp
+  getClientIp,
+  hasCapability
 } from "../utils/helpers.js";
 import { ensureDbShape, buildAccessContextUser } from "../utils/domain.js";
 import { validateCouncilData, verifyCouncilExternally } from "../utils/council.js";
@@ -35,22 +36,106 @@ import {
 
 const router = express.Router();
 
+function buildAuditActorFromRequest(req, identity = {}) {
+  return {
+    id: String(identity.id || ""),
+    name: String(identity.name || identity.email || "anonymous"),
+    role: canonicalRole(identity.role || ""),
+    teamId: String(identity.teamId || ""),
+    teamName: String(identity.teamName || ""),
+    requestId: req.requestId || "",
+    authTransport: "anonymous",
+    requestMeta: {
+      requestId: req.requestId || "",
+      ip: getClientIp(req),
+      userAgent: String(req.headers["user-agent"] || "").slice(0, 512),
+      method: String(req.method || ""),
+      path: String(req.originalUrl || ""),
+      authTransport: "anonymous"
+    }
+  };
+}
+
 function issueSession(res, user, db, sessionContext = {}, refreshRaw = "", sessionId = "") {
   const token = createToken(user, db, {
     ...sessionContext,
     sessionId
   });
+  const csrfToken = createCsrfToken();
   issueSessionCookies(res, {
     accessToken: token,
     refreshToken: refreshRaw,
-    csrfToken: createCsrfToken()
+    csrfToken
   });
   return {
     user: buildAccessContextUser(user, db, sessionContext),
     token,
-    refreshToken: refreshRaw
+    refreshToken: refreshRaw,
+    csrfToken
   };
 }
+
+function requireAccessRequestsRead(req, res, next) {
+  if (!hasCapability(req.user, "access_requests.read")) {
+    return res.status(403).json({ error: "Sem permissão para administrar solicitações de acesso" });
+  }
+  return next();
+}
+
+router.post("/auth/access-requests", authRateLimit, validate(AccessRequestCreateSchema), async (req, res) => {
+  const payload = req.body || {};
+  const name = String(payload.name || "").trim();
+  const email = String(payload.email || "").trim().toLowerCase();
+  const jobTitle = canonicalRole(payload.jobTitle || "");
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: "E-mail inválido" });
+  }
+
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    if (db.users.some((user) => String(user.email || "").toLowerCase() === email)) {
+      return { error: "Já existe usuário cadastrado com este e-mail", status: 409 };
+    }
+    const duplicatedPending = db.accessRequests.find((item) => String(item.email || "").toLowerCase() === email && item.status === "pending");
+    if (duplicatedPending) {
+      return { error: "Já existe solicitação pendente para este e-mail", status: 409 };
+    }
+
+    const requestItem = {
+      id: uuidv4(),
+      name,
+      email,
+      jobTitle,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      createdByIp: getClientIp(req),
+      decidedAt: "",
+      decidedBy: "",
+      rejectionReason: ""
+    };
+    db.accessRequests.push(requestItem);
+    addAuditLog(
+      db,
+      buildAuditActorFromRequest(req, { email, name }),
+      "access_request.created",
+      "access_request",
+      requestItem.id,
+      {
+        email,
+        jobTitle,
+        outcome: "success"
+      }
+    );
+    return { requestItem };
+  });
+
+  if (result?.error) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(201).json(result.requestItem);
+});
 
 router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (req, res) => {
   const payload = req.body || {};
@@ -61,18 +146,18 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
   const councilType = councilTypeForRole(role);
 
   if (!name || !email || !password || !role) {
-    return res.status(400).json({ error: "name, email, password e role são obrigatórios" });
+    return res.status(400).json({ error: "name, email, password e role sÃ£o obrigatÃ³rios" });
   }
   if (!isValidEmail(email)) {
-    return res.status(400).json({ error: "E-mail inválido" });
+    return res.status(400).json({ error: "E-mail invÃ¡lido" });
   }
   if (!isStrongPassword(password)) {
     return res.status(400).json({
-      error: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial"
+      error: "Senha fraca: mÃ­nimo de 8 caracteres, 1 letra maiÃºscula, 1 nÃºmero e 1 caractere especial"
     });
   }
   if (!PUBLIC_SELF_REGISTER_ROLES.includes(role)) {
-    return res.status(400).json({ error: "Perfil não disponível para auto cadastro público" });
+    return res.status(400).json({ error: "Perfil nÃ£o disponÃ­vel para auto cadastro pÃºblico" });
   }
 
   const councilValidation = validateCouncilData(role, payload.councilNumber, payload.councilUf);
@@ -97,14 +182,14 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
     };
   if (!externalCheck.valid) {
     return res.status(400).json({
-      error: externalCheck.error || "Conselho não validado no provedor externo"
+      error: externalCheck.error || "Conselho nÃ£o validado no provedor externo"
     });
   }
 
   const result = await withDb((db) => {
     ensureDbShape(db);
     if (db.users.some((u) => String(u.email || "").toLowerCase() === email)) {
-      return { error: "E-mail já cadastrado", status: 409 };
+      return { error: "E-mail jÃ¡ cadastrado", status: 409 };
     }
 
     const duplicatedCouncil = roleNeedsCouncil(role) && db.users.some((u) => {
@@ -115,17 +200,17 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
         && String(u.councilUf || "").toUpperCase() === councilValidation.councilUf;
     });
     if (duplicatedCouncil) {
-      return { error: `${councilType} já cadastrado para outro usuário`, status: 409 };
+      return { error: `${councilType} jÃ¡ cadastrado para outro usuÃ¡rio`, status: 409 };
     }
 
     const requiresTeam = role !== "gestor";
     const teamId = String(payload.teamId || "").trim();
     const team = requiresTeam ? db.teams.find((t) => t.id === teamId) : null;
     if (requiresTeam && !teamId) {
-      return { error: "teamId é obrigatório para cadastro", status: 400 };
+      return { error: "teamId Ã© obrigatÃ³rio para cadastro", status: 400 };
     }
     if (requiresTeam && !team) {
-      return { error: "Equipe informada não existe", status: 400 };
+      return { error: "Equipe informada nÃ£o existe", status: 400 };
     }
 
     const user = {
@@ -172,11 +257,11 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
 });
 
 router.post("/auth/register/request-code", authRateLimit, async (_req, res) => {
-  return res.status(410).json({ error: "Fluxo de código desativado. Use /auth/register." });
+  return res.status(410).json({ error: "Fluxo de cÃ³digo desativado. Use /auth/register." });
 });
 
 router.post("/auth/register/confirm", authRateLimit, async (_req, res) => {
-  return res.status(410).json({ error: "Fluxo de código desativado. Use /auth/register." });
+  return res.status(410).json({ error: "Fluxo de cÃ³digo desativado. Use /auth/register." });
 });
 
 router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res) => {
@@ -185,9 +270,15 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
   ensureDbShape(db);
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const inputPassword = String(password || "");
-  let user = db.users.find(
-    (item) => String(item.email || "").toLowerCase() === normalizedEmail && verifyPassword(inputPassword, item.password)
-  );
+  let user = await findUserByEmail(normalizedEmail);
+  if (user && !verifyPassword(inputPassword, user.password)) {
+    user = null;
+  }
+  if (!user) {
+    user = db.users.find(
+      (item) => String(item.email || "").toLowerCase() === normalizedEmail && verifyPassword(inputPassword, item.password)
+    );
+  }
 
   if (!user) {
     const recovered = await ensureDemoManagerIfNeeded(email, password);
@@ -198,7 +289,18 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
   }
   if (!user) {
     trackLoginAttempt(false);
-    return res.status(401).json({ error: "Credenciais inválidas" });
+    await withDb((auditDb) => {
+      ensureDbShape(auditDb);
+      addAuditLog(
+        auditDb,
+        buildAuditActorFromRequest(req, { email: normalizedEmail }),
+        "auth.login_failed",
+        "auth",
+        normalizedEmail || "anonymous",
+        { outcome: "denied", email: normalizedEmail }
+      );
+    });
+    return res.status(401).json({ error: "Credenciais invÃ¡lidas" });
   }
 
   if (!isHashedPassword(user.password)) {
@@ -262,7 +364,7 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
       mutableDb.users[index].updatedAt = nowIso;
     }
     const tokenRecord = createRefreshToken(user.id, getClientIp(req), mutableDb);
-    addAuditLog(mutableDb, user, "auth.login", "auth", tokenRecord.sessionId, { userId: user.id });
+    addAuditLog(mutableDb, user, "auth.login", "auth", tokenRecord.sessionId, { userId: user.id, sessionId: tokenRecord.sessionId, refreshTokenId: tokenRecord.id });
     return tokenRecord;
   });
 
@@ -281,25 +383,25 @@ router.post("/auth/login/verify", authRateLimit, async (req, res) => {
   const challengeId = String(req.body?.challengeId || "").trim();
   const code = String(req.body?.code || "").replace(/\D+/g, "");
   if (!challengeId || code.length !== 6) {
-    return res.status(400).json({ error: "challengeId e code (6 dígitos) são obrigatórios" });
+    return res.status(400).json({ error: "challengeId e code (6 dÃ­gitos) sÃ£o obrigatÃ³rios" });
   }
 
   const result = await withDb((db) => {
     ensureDbShape(db);
     const challengeIndex = db.loginChallenges.findIndex((item) => String(item.id || "") === challengeId);
-    if (challengeIndex < 0) return { error: { status: 404, message: "Desafio de login não encontrado" } };
+    if (challengeIndex < 0) return { error: { status: 404, message: "Desafio de login nÃ£o encontrado" } };
     const challenge = db.loginChallenges[challengeIndex];
-    if (challenge.consumed) return { error: { status: 400, message: "Desafio de login já utilizado" } };
+    if (challenge.consumed) return { error: { status: 400, message: "Desafio de login jÃ¡ utilizado" } };
     if (Date.parse(String(challenge.expiresAt || "")) < Date.now()) {
       challenge.consumed = true;
       return { error: { status: 401, message: "Desafio de login expirado" } };
     }
 
     const userIndex = db.users.findIndex((u) => u.id === challenge.userId);
-    if (userIndex < 0) return { error: { status: 404, message: "Usuário do desafio não encontrado" } };
+    if (userIndex < 0) return { error: { status: 404, message: "UsuÃ¡rio do desafio nÃ£o encontrado" } };
     const user = db.users[userIndex];
     if (!user.twoFactorEnabled || !user.twoFactorSecret) {
-      return { error: { status: 400, message: "2FA não está habilitado para este usuário" } };
+      return { error: { status: 400, message: "2FA nÃ£o estÃ¡ habilitado para este usuÃ¡rio" } };
     }
 
     const ok = verifyTotpCode(user.twoFactorSecret, code);
@@ -308,7 +410,7 @@ router.post("/auth/login/verify", authRateLimit, async (req, res) => {
       if (challenge.attempts >= TWOFA_MAX_ATTEMPTS) {
         challenge.consumed = true;
       }
-      return { error: { status: 401, message: "Código 2FA inválido" } };
+      return { error: { status: 401, message: "CÃ³digo 2FA invÃ¡lido" } };
     }
 
     challenge.consumed = true;
@@ -335,28 +437,34 @@ router.post("/auth/login/verify", authRateLimit, async (req, res) => {
 
 router.post("/auth/refresh", authRateLimit, async (req, res) => {
   const rawToken = String(req.body?.refreshToken || parseCookies(req)[COOKIE_REFRESH_NAME] || "").trim();
-  if (!rawToken) return res.status(400).json({ error: "refreshToken é obrigatório" });
+  if (!rawToken) return res.status(400).json({ error: "refreshToken Ã© obrigatÃ³rio" });
+  const tokenHash = hashToken(rawToken);
+  const preloadedRecord = await findRefreshTokenByHash(tokenHash);
+  if (!preloadedRecord) return res.status(401).json({ error: "Refresh token invÃ¡lido" });
+  const preloadedUser = await findUserById(preloadedRecord.userId);
+  if (!preloadedUser) return res.status(401).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
 
   const result = await withDb((db) => {
     ensureDbShape(db);
-    const tokenHash = hashToken(rawToken);
     const index = db.refreshTokens.findIndex((item) => item.tokenHash === tokenHash);
-    if (index < 0) return { error: { status: 401, message: "Refresh token inválido" } };
+    if (index < 0) return { error: { status: 401, message: "Refresh token invÃ¡lido" } };
 
     const record = db.refreshTokens[index];
-    if (record.revokedAt) return { error: { status: 401, message: "Sessão encerrada" } };
+    if (record.revokedAt) return { error: { status: 401, message: "SessÃ£o encerrada" } };
     if (new Date(record.expiresAt) < new Date()) {
       db.refreshTokens[index].revokedAt = new Date().toISOString();
-      return { error: { status: 401, message: "Sessão expirada" } };
+      return { error: { status: 401, message: "SessÃ£o expirada" } };
     }
 
     const user = db.users.find((item) => item.id === record.userId);
-    if (!user) return { error: { status: 401, message: "Usuário não encontrado" } };
+    if (!user) return { error: { status: 401, message: "UsuÃ¡rio nÃ£o encontrado" } };
 
     db.refreshTokens[index].revokedAt = new Date().toISOString();
     const refresh = createRefreshToken(user.id, record.ip, db, record.sessionContext || {});
     addAuditLog(db, user, "auth.refresh", "auth", refresh.sessionId, {
       prevSession: record.id,
+      sessionId: refresh.sessionId,
+      refreshTokenId: refresh.id,
       impersonationTargetUserId: String(record.sessionContext?.impersonation?.targetUserId || ""),
       breakGlass: Boolean(record.sessionContext?.breakGlass?.active)
     });
@@ -391,6 +499,7 @@ router.post("/auth/logout", requireAuth, async (req, res) => {
     }
     addAuditLog(db, req.user, "auth.logout", "auth", req.user.id, {
       hadRefreshToken: Boolean(rawToken),
+      sessionId: String(req.user?.sessionId || ""),
       impersonationTargetUserId: String(req.user?.impersonation?.targetUserId || ""),
       breakGlass: Boolean(req.user?.breakGlass?.active)
     });
@@ -399,4 +508,81 @@ router.post("/auth/logout", requireAuth, async (req, res) => {
   return res.json({ ok: true });
 });
 
+router.get("/auth/access-requests", requireAuth, requireAccessRequestsRead, async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const requests = [...db.accessRequests].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+  await withDb((auditDb) => {
+    ensureDbShape(auditDb);
+    addAuditLog(auditDb, req.user, "access_request.list_read", "access_request", req.user.id, {
+      totalReturned: requests.length,
+      outcome: "success"
+    });
+  });
+
+  return res.json({ requests });
+});
+
+router.post("/auth/access-requests/:id/approve", requireAuth, requireAccessRequestsRead, async (req, res) => {
+  const requestId = String(req.params.id || "").trim();
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const index = db.accessRequests.findIndex((item) => item.id === requestId);
+    if (index < 0) return { error: { status: 404, message: "Solicitação não encontrada" } };
+    if (db.accessRequests[index].status !== "pending") {
+      return { error: { status: 409, message: "Solicitação já foi decidida" } };
+    }
+
+    db.accessRequests[index] = {
+      ...db.accessRequests[index],
+      status: "approved",
+      decidedAt: new Date().toISOString(),
+      decidedBy: req.user.id,
+      rejectionReason: ""
+    };
+    addAuditLog(db, req.user, "access_request.approved", "access_request", requestId, {
+      email: db.accessRequests[index].email,
+      jobTitle: db.accessRequests[index].jobTitle,
+      outcome: "success"
+    });
+    return { requestItem: db.accessRequests[index] };
+  });
+
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.json(result.requestItem);
+});
+
+router.post("/auth/access-requests/:id/reject", requireAuth, requireAccessRequestsRead, async (req, res) => {
+  const requestId = String(req.params.id || "").trim();
+  const rejectionReason = String(req.body?.reason || "").trim();
+  const result = await withDb((db) => {
+    ensureDbShape(db);
+    const index = db.accessRequests.findIndex((item) => item.id === requestId);
+    if (index < 0) return { error: { status: 404, message: "Solicitação não encontrada" } };
+    if (db.accessRequests[index].status !== "pending") {
+      return { error: { status: 409, message: "Solicitação já foi decidida" } };
+    }
+
+    db.accessRequests[index] = {
+      ...db.accessRequests[index],
+      status: "rejected",
+      decidedAt: new Date().toISOString(),
+      decidedBy: req.user.id,
+      rejectionReason
+    };
+    addAuditLog(db, req.user, "access_request.rejected", "access_request", requestId, {
+      email: db.accessRequests[index].email,
+      jobTitle: db.accessRequests[index].jobTitle,
+      rejectionReason,
+      outcome: "success"
+    });
+    return { requestItem: db.accessRequests[index] };
+  });
+
+  if (result?.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.json(result.requestItem);
+});
+
 export default router;
+

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\joão.benedito\\\\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\\\\Documentos\\\\Playground\\\\landing-valens\" -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object FullName, Length | Format-Table)",
+      "Bash(git -C \"C:\\\\Users\\\\joão.benedito\\\\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\\\\Documentos\\\\Playground\" add landing-valens/)",
+      "Bash(git -C \"C:\\\\Users\\\\joão.benedito\\\\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\\\\Documentos\\\\Playground\" status --short landing-valens/)",
+      "Bash(git -C \"C:\\\\Users\\\\joão.benedito\\\\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\\\\Documentos\\\\Playground\" restore --staged \"landing-valens/.claude/\")",
+      "Bash(git *)"
+    ]
+  }
+}

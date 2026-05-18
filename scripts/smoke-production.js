@@ -25,6 +25,8 @@ function getArg(name) {
 const BASE = getArg("--base") || "http://localhost:3001";
 const SMOKE_EMAIL = process.env.SMOKE_EMAIL || "";
 const SMOKE_PASSWORD = process.env.SMOKE_PASSWORD || "";
+const SMOKE_BACKUP_KEY = process.env.SMOKE_BACKUP_KEY || "";
+const SMOKE_ORIGIN = process.env.SMOKE_ORIGIN || "";
 
 // ── test runner ───────────────────────────────────────────────────────────────
 
@@ -129,9 +131,9 @@ await test("GET /admin/backup/export with wrong key returns 401 or 403", async (
 });
 
 await test("CORS preflight from allowed origin returns 204", async () => {
-  const origin = BASE.includes("localhost")
+  const origin = SMOKE_ORIGIN || (BASE.includes("localhost")
     ? "http://localhost:5174"
-    : "https://gestaopacientes.workers.dev";
+    : "https://gestaopacientes.meneguccijao.workers.dev");
   const res = await fetch(`${BASE}/auth/login`, {
     method: "OPTIONS",
     headers: {
@@ -146,6 +148,17 @@ await test("CORS preflight from allowed origin returns 204", async () => {
   );
   const acao = res.headers.get("access-control-allow-origin");
   assert(acao, `Missing access-control-allow-origin header`);
+});
+
+await test("CORS without Origin is blocked outside localhost", async () => {
+  if (BASE.includes("localhost")) return;
+  const res = await fetch(`${BASE}/auth/login`, {
+    method: "OPTIONS",
+    headers: {
+      "Access-Control-Request-Method": "POST"
+    }
+  });
+  assert(res.status >= 400, `Expected blocked preflight without Origin, got ${res.status}`);
 });
 
 // --- Authenticated tests (only if credentials provided) ---
@@ -186,16 +199,24 @@ if (SMOKE_EMAIL && SMOKE_PASSWORD) {
       assert(body?.role, "Missing role in /me response");
     });
 
-    await test("GET /audit-logs returns array", async () => {
+    await test("GET /audit-logs returns paginated envelope", async () => {
       const { res, body } = await get("/audit-logs", token);
       assert(res.status === 200, `Expected 200, got ${res.status}`);
-      assert(Array.isArray(body), `Expected array, got ${typeof body}`);
+      assert(body && typeof body === "object", `Expected object, got ${typeof body}`);
+      assert(Array.isArray(body.items), "Expected items array");
+      assert(typeof body.totalMatched === "number", "Expected totalMatched number");
     });
 
-    await test("GET /metrics/demand/monthly returns data", async () => {
-      const { res, body } = await get("/metrics/demand/monthly", token);
+    await test("GET /me/access-context returns contextual user", async () => {
+      const { res, body } = await get("/me/access-context", token);
       assert(res.status === 200, `Expected 200, got ${res.status}`);
-      assert(body !== null && typeof body === "object", `Expected object, got ${typeof body}`);
+      assert(body?.user?.id, "Missing contextual user");
+    });
+
+    await test("GET /audit-logs/export returns JSON envelope", async () => {
+      const { res, body } = await get("/audit-logs/export?limit=5", token);
+      assert(res.status === 200, `Expected 200, got ${res.status}`);
+      assert(Array.isArray(body?.items), "Expected export items array");
     });
 
     await test("GET /protocol/templates returns array or object", async () => {
@@ -212,6 +233,26 @@ if (SMOKE_EMAIL && SMOKE_PASSWORD) {
       );
       if (res.status === 200) assert(Array.isArray(body), "Expected array");
     });
+
+    await test("GET /metrics/internal returns object or 403 by capability", async () => {
+      const { res, body } = await get("/metrics/internal", token);
+      assert(res.status === 200 || res.status === 403, `Expected 200 or 403, got ${res.status}`);
+      if (res.status === 200) {
+        assert(body !== null && typeof body === "object", `Expected object, got ${typeof body}`);
+      }
+    });
+
+    if (SMOKE_BACKUP_KEY) {
+      await test("GET /admin/backup/export with valid key returns encrypted snapshot", async () => {
+        const res = await fetch(`${BASE}/admin/backup/export`, {
+          headers: { "x-backup-key": SMOKE_BACKUP_KEY }
+        });
+        const body = await res.json().catch(() => null);
+        assert(res.status === 200, `Expected 200, got ${res.status}`);
+        assert(typeof body?.generatedAt === "string", "Missing generatedAt");
+        assert(body?.encryptedSnapshot, "Missing encryptedSnapshot");
+      });
+    }
   }
 } else {
   console.log("\n  (Skipping authenticated tests — SMOKE_EMAIL/SMOKE_PASSWORD not set)");

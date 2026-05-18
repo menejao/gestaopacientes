@@ -9,10 +9,37 @@ import { addAuditLog } from "../services/audit.js";
 
 const router = express.Router();
 
+function buildProtocolTemplateAuditSnapshot(template) {
+  if (!template) return null;
+  return {
+    category: String(template.category || ""),
+    teamId: String(template.teamId || ""),
+    label: String(template.label || ""),
+    deleted: Boolean(template.deleted),
+    targets: template.targets || {},
+    deadlines: template.deadlines || {},
+    vaccines: Array.isArray(template.vaccines) ? [...template.vaccines] : []
+  };
+}
+
+async function logProtocolRead(req, action, entityId, details = {}) {
+  await withDb((db) => {
+    ensureDbShape(db);
+    addAuditLog(db, req.user, action, "protocol_template", entityId, {
+      outcome: "success",
+      teamId: req.user.teamId || "",
+      ...details
+    });
+  });
+}
+
 router.get("/protocol/templates", async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
   const items = Object.values(getProtocolTemplateMap(db, req.user.teamId));
+  await logProtocolRead(req, "protocol_template.list_read", req.user.teamId || "team", {
+    returnedCount: items.length
+  });
   res.json(items);
 });
 
@@ -33,6 +60,11 @@ router.get("/protocol/templates/:category/usage", requireManagerOrDoctor, async 
     const patient = db.patients.find((p) => p.id === r.patientId);
     return patient?.teamId === req.user.teamId;
   }).length;
+  await logProtocolRead(req, "protocol_template.usage_read", category, {
+    patientCount,
+    recordsCount,
+    teamDeleted
+  });
 
   return res.json({
     category,
@@ -51,6 +83,9 @@ router.get("/protocol/templates/:category/history", requireManagerOrDoctor, asyn
     .filter((entry) => !entry.teamId || entry.teamId === req.user.teamId)
     .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
     .slice(0, 25);
+  await logProtocolRead(req, "protocol_template.history_read", category, {
+    returnedCount: items.length
+  });
   return res.json({ items });
 });
 
@@ -71,7 +106,8 @@ router.post("/protocol/templates", requireManagerOrDoctor, async (req, res) => {
     db.protocolTemplates.push(created);
     snapshotProtocolTemplateVersion(db, req.user, "created", created);
     addAuditLog(db, req.user, "protocol_template.created", "protocol_template", created.category, {
-      label: created.label
+      label: created.label,
+      after: buildProtocolTemplateAuditSnapshot(created)
     });
     return created;
   });
@@ -92,6 +128,7 @@ router.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, 
     const index = db.protocolTemplates.findIndex((t) => t.category === category && t.teamId === req.user.teamId && !t.deleted);
     if (index >= 0) {
       const current = db.protocolTemplates[index];
+      const before = buildProtocolTemplateAuditSnapshot(current);
       snapshotProtocolTemplateVersion(db, req.user, "before_update", current);
       const next = {
         ...current,
@@ -102,7 +139,9 @@ router.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, 
       db.protocolTemplates[index] = next;
       snapshotProtocolTemplateVersion(db, req.user, "updated", next);
       addAuditLog(db, req.user, "protocol_template.updated", "protocol_template", category, {
-        changedFields: Object.keys(req.body || {})
+        changedFields: Object.keys(req.body || {}),
+        before,
+        after: buildProtocolTemplateAuditSnapshot(next)
       });
       return next;
     }
@@ -119,7 +158,8 @@ router.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, 
     db.protocolTemplates.push(createdOverride);
     snapshotProtocolTemplateVersion(db, req.user, "override_created", createdOverride);
     addAuditLog(db, req.user, "protocol_template.override_created", "protocol_template", category, {
-      changedFields: Object.keys(req.body || {})
+      changedFields: Object.keys(req.body || {}),
+      after: buildProtocolTemplateAuditSnapshot(createdOverride)
     });
     return createdOverride;
   });
@@ -130,8 +170,12 @@ router.put("/protocol/templates/:category", requireManagerOrDoctor, async (req, 
 
 router.delete("/protocol/templates/:category", requireManagerOrDoctor, async (req, res) => {
   const category = String(req.params.category || "").trim();
+  const reason = String(req.body?.reason || "").trim();
   if (category === "general") {
     return res.status(400).json({ error: "A categoria geral não pode ser excluída" });
+  }
+  if (reason.length < 8) {
+    return res.status(400).json({ error: "Justificativa obrigatória para excluir protocolo" });
   }
 
   const result = await withDb((db) => {
@@ -161,10 +205,14 @@ router.delete("/protocol/templates/:category", requireManagerOrDoctor, async (re
     }
 
     if (teamIndex >= 0) {
+      const before = buildProtocolTemplateAuditSnapshot(db.protocolTemplates[teamIndex]);
       snapshotProtocolTemplateVersion(db, req.user, "deleted", db.protocolTemplates[teamIndex]);
       db.protocolTemplates.splice(teamIndex, 1);
       addAuditLog(db, req.user, "protocol_template.deleted", "protocol_template", category, {
-        mode: "team_override_removed"
+        mode: "team_override_removed",
+        before,
+        after: null,
+        reason
       });
     } else {
       const existingTombstone = db.protocolTemplates.find((t) => t.category === category && t.teamId === req.user.teamId && t.deleted);
@@ -181,7 +229,13 @@ router.delete("/protocol/templates/:category", requireManagerOrDoctor, async (re
         snapshotProtocolTemplateVersion(db, req.user, "team_tombstone_created", tombstone);
       }
       addAuditLog(db, req.user, "protocol_template.deleted", "protocol_template", category, {
-        mode: "team_tombstone_on_global"
+        mode: "team_tombstone_on_global",
+        after: {
+          category,
+          teamId: req.user.teamId,
+          deleted: true
+        },
+        reason
       });
     }
     return { ok: true };

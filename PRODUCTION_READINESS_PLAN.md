@@ -53,6 +53,7 @@ Todas devem estar configuradas no painel do Render **como Secrets (sync: false)*
 | `DATA_ENCRYPTION_KEY` | Chave AES-256-GCM para CPF/CNS (64 hex chars = 32 bytes) | `openssl rand -hex 32` |
 | `DATABASE_URL` | Connection string Neon Pooler com SSL | Painel Neon → Connect |
 | `BACKUP_EXPORT_KEY` | Chave de acesso ao endpoint de backup (≥32 chars) | `openssl rand -hex 32` |
+| `ADMIN_SEED_KEY` | Chave obrigatória do endpoint administrativo de reset/populate | `openssl rand -hex 32` |
 | `FRONTEND_ORIGINS` | URL(s) do frontend separadas por vírgula | Ex: `https://app.saudeubs.com.br` |
 
 | Variável | Descrição | Obrigatório |
@@ -64,7 +65,6 @@ Todas devem estar configuradas no painel do Render **como Secrets (sync: false)*
 | `TWOFA_ISSUER` | Nome exibido no app 2FA (ex: SaudeUBS) | Recomendado definir |
 | `ACCESS_TOKEN_EXPIRES_IN` | TTL do JWT de acesso (ex: `15m`) | Recomendado |
 | `REFRESH_TOKEN_EXPIRES_IN` | TTL do refresh token (ex: `30d`) | Recomendado |
-| `ADMIN_SEED_KEY` | Protege endpoint de reset de demo | Recomendado |
 | `REQUEST_LOG_ENABLED` | `true` para logs de requests | `true` em prod |
 
 ---
@@ -139,7 +139,7 @@ Todas devem estar configuradas no painel do Render **como Secrets (sync: false)*
 | Remover/desabilitar conta demo após go-live | Alterar senha e desativar manualmente |
 | Ativar 2FA para todas as contas administrativas | Via `/me/2fa/setup` → `/me/2fa/enable` |
 | Documentar quem tem acesso e com qual role | Manter lista interna |
-| Configurar `TEST_ADMIN_EMAIL` apenas em dev/staging | Nunca em produção |
+| `ADMIN_SEED_KEY` presente no Render e nunca versionado | ✅ Obrigatório |
 
 ---
 

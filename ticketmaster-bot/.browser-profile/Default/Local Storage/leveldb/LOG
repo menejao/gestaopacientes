@@ -1,0 +1,50 @@
+2026/04/24-21:09:53.726 7eb4 Creating DB C:\Users\joão.benedito\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\Documentos\Playground\ticketmaster-bot\.browser-profile\Default\Local Storage\leveldb since it was missing.
+2026/04/24-21:09:53.769 7eb4 Reusing MANIFEST C:\Users\joão.benedito\OneDrive - GENIALNET GESTÃO E TECNOLOGIA LTDA - EPP\Documentos\Playground\ticketmaster-bot\.browser-profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/04/24-21:53:54.623 1924 Level-0 table #5: started
+2026/04/24-21:53:54.652 1924 Level-0 table #5: 58707 bytes OK
+2026/04/24-21:53:54.659 1924 Delete type=0 #3
+2026/04/24-22:37:54.606 1924 Level-0 table #7: started
+2026/04/24-22:37:54.635 1924 Level-0 table #7: 59213 bytes OK
+2026/04/24-22:37:54.642 1924 Delete type=0 #4
+2026/04/24-23:21:54.578 1924 Level-0 table #9: started
+2026/04/24-23:21:54.603 1924 Level-0 table #9: 59310 bytes OK
+2026/04/24-23:21:54.608 1924 Delete type=0 #6
+2026/04/25-00:05:54.528 1924 Level-0 table #11: started
+2026/04/25-00:05:54.556 1924 Level-0 table #11: 59216 bytes OK
+2026/04/25-00:05:54.562 1924 Delete type=0 #8
+2026/04/25-00:49:54.498 1924 Level-0 table #13: started
+2026/04/25-00:49:54.532 1924 Level-0 table #13: 59310 bytes OK
+2026/04/25-00:49:54.539 1924 Delete type=0 #10
+2026/04/25-01:33:54.485 1924 Level-0 table #15: started
+2026/04/25-01:33:54.521 1924 Level-0 table #15: 59216 bytes OK
+2026/04/25-01:33:54.530 1924 Delete type=0 #12
+2026/04/25-01:33:54.536 1924 Compacting 4@0 + 1@1 files
+2026/04/25-01:33:54.570 1924 Generated table #16@0: 3 keys, 1552 bytes
+2026/04/25-01:33:54.570 1924 Compacted 4@0 + 1@1 files => 1552 bytes
+2026/04/25-01:33:54.574 1924 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/04/25-01:33:54.579 1924 Delete type=2 #7
+2026/04/25-01:33:54.579 1924 Delete type=2 #9
+2026/04/25-01:33:54.580 1924 Delete type=2 #11
+2026/04/25-01:33:54.580 1924 Delete type=2 #13
+2026/04/25-01:33:54.580 1924 Delete type=2 #15
+2026/04/25-02:17:54.419 1924 Level-0 table #18: started
+2026/04/25-02:17:54.453 1924 Level-0 table #18: 59309 bytes OK
+2026/04/25-02:17:54.460 1924 Delete type=0 #14
+2026/04/25-03:01:54.396 1924 Level-0 table #20: started
+2026/04/25-03:01:54.428 1924 Level-0 table #20: 59217 bytes OK
+2026/04/25-03:01:54.434 1924 Delete type=0 #17
+2026/04/25-03:45:54.389 1924 Level-0 table #22: started
+2026/04/25-03:45:54.423 1924 Level-0 table #22: 59309 bytes OK
+2026/04/25-03:45:54.431 1924 Delete type=0 #19
+2026/04/25-04:29:54.373 1924 Level-0 table #24: started
+2026/04/25-04:29:54.408 1924 Level-0 table #24: 59217 bytes OK
+2026/04/25-04:29:54.417 1924 Delete type=0 #21
+2026/04/25-04:29:54.420 1924 Compacting 4@0 + 1@1 files
+2026/04/25-04:29:54.452 1924 Generated table #25@0: 3 keys, 1552 bytes
+2026/04/25-04:29:54.452 1924 Compacted 4@0 + 1@1 files => 1552 bytes
+2026/04/25-04:29:54.454 1924 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/04/25-04:29:54.459 1924 Delete type=2 #16
+2026/04/25-04:29:54.459 1924 Delete type=2 #18
+2026/04/25-04:29:54.460 1924 Delete type=2 #20
+2026/04/25-04:29:54.460 1924 Delete type=2 #22
+2026/04/25-04:29:54.461 1924 Delete type=2 #24

@@ -1,6 +1,7 @@
 # RELATÓRIO FINAL — FASE 5: PRODUÇÃO, OPERAÇÕES E GOVERNANÇA
 
 Data: 2026-05-14
+Atualização operacional: 2026-05-17
 
 ---
 
@@ -170,7 +171,14 @@ Script de 9 testes públicos (verificados localmente — exit 0):
 | GET /admin/backup/export key errada | 403 |
 | OPTIONS CORS preflight | 204 + access-control-allow-origin |
 
-Testes autenticados adicionais (GET /patients, /me, /audit-logs, /metrics, /protocol/templates) ativados via `SMOKE_EMAIL` + `SMOKE_PASSWORD`.
+Testes autenticados adicionais (GET /patients, /me, /me/access-context, /audit-logs, /audit-logs/export, /metrics/internal, /protocol/templates, /users) ativados via `SMOKE_EMAIL` + `SMOKE_PASSWORD`.
+
+Atualização 2026-05-17:
+- smoke script alinhado ao envelope paginado de `/audit-logs`
+- smoke script cobre `/me/access-context`
+- smoke script cobre export JSON de auditoria
+- smoke script aceita `SMOKE_BACKUP_KEY` para validar export de backup com chave válida
+- smoke script valida bloqueio de preflight sem `Origin` fora de localhost
 
 **Bônus:** Fix de BOM UTF-8 em `backend/src/db.js` — `data/db.json` com BOM causava falha em dev local.
 
@@ -223,7 +231,7 @@ bb4458f docs: add operational runbook
 | Política de Privacidade publicada | ⬜ Pendente — tarefa jurídica |
 | DPO designado | ⬜ Pendente — tarefa organizacional |
 
-> A implementação técnica está completa. Os bloqueadores restantes são de infraestrutura/custo (Render/Neon) e organizacionais (LGPD). O sistema está tecnicamente pronto para produção.
+> A implementação técnica está completa. Os bloqueadores restantes são de infraestrutura/custo (Render/Neon) e organizacionais (LGPD). O sistema está tecnicamente pronto para produção, com artefatos operacionais alinhados ao estado atual de autenticação, auditoria paginada e hardening de CORS/backup/seed admin.
 
 ---
 

@@ -37,6 +37,10 @@ const PatientBaseShape = {
   chronicConditions: z.array(z.string().trim().max(100)).max(20).optional(),
   maritalStatus: optionalShortString(50),
   incompleteProfile: z.boolean().optional(),
+  inactive: z.boolean().optional(),
+  inactivationReason: optionalShortString(1000),
+  inactivatedBy: optionalShortString(200),
+  inactivatedAt: optionalDateString(),
   sexAtBirth: optionalShortString(50),
   genderIdentity: optionalShortString(80),
   birthDate: optionalDateString(),
@@ -71,6 +75,10 @@ const PatientUpdateSchema = z.object({
   chronicConditions: z.array(z.string().trim().max(100)).max(20).optional(),
   maritalStatus: optionalShortString(50),
   incompleteProfile: z.boolean().optional(),
+  inactive: z.boolean().optional(),
+  inactivationReason: optionalShortString(1000),
+  inactivatedBy: optionalShortString(200),
+  inactivatedAt: optionalDateString(),
   sexAtBirth: optionalShortString(50),
   genderIdentity: optionalShortString(80),
   birthDate: optionalDateString(),
@@ -111,6 +119,113 @@ const AppointmentCreateSchema = z.object({
   nextStep: optionalShortString(4000)
 });
 
+const AgendaCreateSchema = z.object({
+  patientId: z.string().trim().min(1).max(100),
+  date: z.string().trim().min(1).max(50),
+  time: z.string().trim().min(1).max(20),
+  doctorId: optionalShortString(100),
+  type: z.enum(["consultation", "return", "procedure", "other"]).optional(),
+  notes: optionalShortString(4000),
+  status: z.enum(["scheduled", "arrived", "attending", "done", "absent"]).optional()
+});
+
+const AgendaPatchSchema = z.object({
+  date: z.string().trim().min(1).max(50).optional(),
+  time: z.string().trim().min(1).max(20).optional(),
+  doctorId: optionalShortString(100),
+  type: z.enum(["consultation", "return", "procedure", "other"]).optional(),
+  notes: optionalShortString(4000),
+  status: z.enum(["scheduled", "arrived", "attending", "done", "absent"]).optional()
+});
+
+const ReferralCreateSchema = z.object({
+  patientId: z.string().trim().min(1).max(100),
+  specialty: z.string().trim().min(1).max(120),
+  reason: z.string().trim().min(1).max(4000),
+  priority: z.enum(["urgent", "priority", "routine"]).optional(),
+  date: z.string().trim().min(1).max(50),
+  notes: optionalShortString(4000),
+  status: z.enum(["pending", "scheduled", "done", "cancelled"]).optional()
+});
+
+const ReferralPatchSchema = z.object({
+  specialty: z.string().trim().min(1).max(120).optional(),
+  reason: z.string().trim().min(1).max(4000).optional(),
+  priority: z.enum(["urgent", "priority", "routine"]).optional(),
+  date: z.string().trim().min(1).max(50).optional(),
+  notes: optionalShortString(4000),
+  status: z.enum(["pending", "scheduled", "done", "cancelled"]).optional()
+});
+
+const PharmacyStockCreateSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  category: z.string().trim().min(1).max(120),
+  unit: z.string().trim().min(1).max(60),
+  qty: z.number().min(0).max(100000),
+  minQty: z.number().min(0).max(100000),
+  location: z.string().trim().min(1).max(200)
+});
+
+const PharmacyStockUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(200).optional(),
+  category: z.string().trim().min(1).max(120).optional(),
+  unit: z.string().trim().min(1).max(60).optional(),
+  qty: z.number().min(0).max(100000).optional(),
+  minQty: z.number().min(0).max(100000).optional(),
+  location: z.string().trim().min(1).max(200).optional()
+});
+
+const PharmacyAdjustSchema = z.object({
+  delta: z.number().int().min(-100000).max(100000),
+  reason: z.string().trim().min(3).max(1000)
+});
+
+const PharmacyDispenseSchema = z.object({
+  itemId: z.string().trim().min(1).max(100),
+  qty: z.number().int().min(1).max(100000),
+  patientId: z.string().trim().min(1).max(100),
+  prescriberId: z.string().trim().min(1).max(100),
+  numReceita: z.string().trim().min(1).max(120),
+  lote: optionalShortString(120),
+  dtReceita: z.string().trim().min(1).max(50),
+  notes: optionalShortString(2000)
+});
+
+const SuppliesAdjustSchema = z.object({
+  qty: z.number().int().min(1).max(100000)
+});
+
+const SuppliesDispenseSchema = z.object({
+  patientId: z.string().trim().min(1).max(100),
+  items: z.array(z.object({
+    id: z.string().trim().min(1).max(100),
+    qty: z.number().int().min(1).max(100000)
+  })).min(1).max(60),
+  continuo: z.boolean().optional(),
+  obs: optionalShortString(2000)
+});
+
+const SuppliesCloseContinuousSchema = z.object({
+  reason: z.string().trim().min(8).max(1000)
+});
+
+const CriticalActionReasonSchema = z.object({
+  reason: z.string().trim().min(8).max(1000)
+});
+
+const ExamCreateSchema = z.object({
+  title: z.string().trim().min(1).max(300),
+  date: z.string().trim().min(1).max(50),
+  notes: optionalShortString(20000)
+});
+
+const ExamAttachmentCreateSchema = z.object({
+  name: z.string().trim().min(1).max(255),
+  contentType: z.string().trim().min(1).max(120),
+  size: z.number().int().min(1).max(15 * 1024 * 1024),
+  dataBase64: z.string().trim().min(1).max(25 * 1024 * 1024)
+});
+
 const RecordCreateSchema = z.object({
   type: z.enum(["visit", "consultation", "vaccine", "procedure", "note"]),
   date: z.string().trim().min(1).max(50),
@@ -118,6 +233,26 @@ const RecordCreateSchema = z.object({
   details: optionalShortString(20000),
   protocolTag: optionalShortString(100),
   metadata: z.record(z.any()).optional()
+});
+
+const QueueCreateSchema = z.object({
+  patientId: z.string().trim().min(1).max(100),
+  priority: z.enum(["urgent", "elderly", "pregnant", "child", "normal"]),
+  reason: optionalShortString(1000),
+  demandType: z.enum(["scheduled", "spontaneous"]).optional(),
+  destination: z.enum(["doctor", "nurse"]).optional(),
+  agendaRef: optionalShortString(100)
+});
+
+const QueuePatchSchema = z.object({
+  status: z.enum(["waiting", "triage", "ready", "attending", "done"]).optional(),
+  priority: z.enum(["urgent", "elderly", "pregnant", "child", "normal"]).optional(),
+  reason: optionalShortString(1000),
+  demandType: z.enum(["scheduled", "spontaneous"]).optional(),
+  destination: z.enum(["doctor", "nurse"]).optional(),
+  triageStart: optionalDateString(),
+  triageDone: optionalDateString(),
+  vitals: z.record(z.any()).optional()
 });
 
 const PrivacyRequestCreateSchema = z.object({
@@ -141,6 +276,12 @@ const ImpersonationStartSchema = z.object({
 
 const BreakGlassSchema = z.object({
   reason: z.string().trim().min(8).max(500)
+});
+
+const AccessRequestCreateSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: z.string().trim().min(1).max(255),
+  jobTitle: z.string().trim().min(1).max(100)
 });
 
 function validate(schema) {
@@ -168,10 +309,27 @@ export {
   TaskCreateSchema,
   TaskPatchSchema,
   AppointmentCreateSchema,
+  AgendaCreateSchema,
+  AgendaPatchSchema,
+  ReferralCreateSchema,
+  ReferralPatchSchema,
+  PharmacyStockCreateSchema,
+  PharmacyStockUpdateSchema,
+  PharmacyAdjustSchema,
+  PharmacyDispenseSchema,
+  SuppliesAdjustSchema,
+  SuppliesDispenseSchema,
+  SuppliesCloseContinuousSchema,
+  CriticalActionReasonSchema,
+  ExamCreateSchema,
+  ExamAttachmentCreateSchema,
   RecordCreateSchema,
+  QueueCreateSchema,
+  QueuePatchSchema,
   PrivacyRequestCreateSchema,
   MePatchSchema,
   ImpersonationStartSchema,
   BreakGlassSchema,
+  AccessRequestCreateSchema,
   validate
 };

@@ -1,6 +1,6 @@
 import express from "express";
 import { readDb, readDbForBackup, withDb } from "../db.js";
-import { BACKUP_EXPORT_KEY } from "../config.js";
+import { BACKUP_EXPORT_KEY, ADMIN_SEED_KEY, ENABLE_ADMIN_SEED, ENABLE_BACKUP_EXPORT } from "../config.js";
 import {
   ensureDbShape, getProtocolTemplateMap, sanitizeUser, getTeamNameById, buildAccessContextUser,
   DEFAULT_CARE_PROTOCOLS, DEMO_POPULATE_SIZE_COMPLETE, DEMO_POPULATE_SIZE_INCOMPLETE
@@ -20,7 +20,35 @@ import { getMetrics } from "../middlewares/logging.js";
 
 const router = express.Router();
 
-router.get("/admin/backup/export", async (req, res) => {
+function requireSensitiveAdmin(req, res, next) {
+  if (!req.user || !hasCapability(req.user, "backup.export")) {
+    return res.status(403).json({ error: "Acesso restrito a gestão autorizada" });
+  }
+  return next();
+}
+
+function buildAdminAuditActor(req) {
+  return {
+    ...(req.user || {}),
+    id: String(req.user?.id || "system"),
+    name: String(req.user?.name || "system"),
+    role: canonicalRole(req.user?.role || "system"),
+    teamId: String(req.user?.teamId || ""),
+    requestMeta: {
+      requestId: req.requestId || "",
+      ip: String(req.ip || req.socket?.remoteAddress || ""),
+      userAgent: String(req.headers["user-agent"] || "").slice(0, 512),
+      method: String(req.method || ""),
+      path: String(req.originalUrl || req.path || ""),
+      authTransport: String(req.user?.authTransport || "anonymous")
+    }
+  };
+}
+
+router.get("/admin/backup/export", requireAuth, requireSensitiveAdmin, async (req, res) => {
+  if (!ENABLE_BACKUP_EXPORT) {
+    return res.status(403).json({ error: "Exportação de backup desabilitada neste ambiente" });
+  }
   const providedKey = String(req.headers["x-backup-key"] || "").trim();
   if (!BACKUP_EXPORT_KEY || providedKey !== BACKUP_EXPORT_KEY) {
     return res.status(403).json({ error: "Acesso negado para exportação de backup" });
@@ -28,7 +56,15 @@ router.get("/admin/backup/export", async (req, res) => {
 
   const snapshot = await readDbForBackup();
   const generatedAt = new Date().toISOString();
-  const fileName = `backup-saudeubs-${generatedAt.slice(0, 10)}.json`;
+  const fileName = `backup-vitras-${generatedAt.slice(0, 10)}.json`;
+  await withDb((db) => {
+    ensureDbShape(db);
+    addAuditLog(db, buildAdminAuditActor(req), "backup.export", "backup", fileName, {
+      outcome: "success",
+      generatedAt,
+      driver: process.env.DATABASE_URL ? "postgres" : "file"
+    });
+  });
 
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
@@ -43,8 +79,7 @@ router.get("/bootstrap", requireAuth, async (req, res) => {
   const db = await readDb();
   ensureDbShape(db);
 
-  const canReadAllUsers =
-    canonicalRole(req.user?.role) === "gestor" || hasCapability(req.user, "users.read.all");
+  const canReadAllUsers = hasCapability(req.user, "users.read.all");
   const patients = getAllowedPatients(db, req.user, {});
   const users = db.users
     .filter((u) => canReadAllUsers || u.teamId === req.user.teamId)
@@ -58,6 +93,16 @@ router.get("/bootstrap", requireAuth, async (req, res) => {
   const dataQuality = (isManager(req.user) || isDoctor(req.user))
     ? buildDataQualityMetric(db, req.user.teamId)
     : null;
+  await withDb((auditDb) => {
+    ensureDbShape(auditDb);
+    addAuditLog(auditDb, buildAdminAuditActor(req), "admin.bootstrap_read", "bootstrap", req.user.id, {
+      outcome: "success",
+      teamId: req.user.teamId || "",
+      patientCount: patients.length,
+      userCount: users.length,
+      taskCount: tasks.length
+    });
+  });
 
   return res.json({
     serverTime: new Date().toISOString(),
@@ -79,8 +124,17 @@ router.get("/bootstrap", requireAuth, async (req, res) => {
   });
 });
 
-router.get("/integrations/council/status", requireAuth, (_req, res) => {
+router.get("/integrations/council/status", requireAuth, async (req, res) => {
   const config = getCouncilIntegrationConfig();
+  await withDb((db) => {
+    ensureDbShape(db);
+    addAuditLog(db, buildAdminAuditActor(req), "admin.council_status_read", "integration", "council", {
+      outcome: "success",
+      mode: config.mode,
+      provider: config.provider,
+      configured: Boolean(config.url)
+    });
+  });
   return res.json({
     mode: config.mode,
     provider: config.provider,
@@ -92,14 +146,15 @@ router.get("/integrations/council/status", requireAuth, (_req, res) => {
 });
 
 router.post("/admin/patients/reset-populate", requireAuth, async (req, res) => {
-  const role = canonicalRole(req.user?.role);
-  if (!["gestor", "nurse_manager"].includes(role)) {
-    return res.status(403).json({ error: "Somente gestor ou enfermeira podem executar esta rotina" });
+  if (!ENABLE_ADMIN_SEED) {
+    return res.status(403).json({ error: "Rotina administrativa desabilitada neste ambiente" });
+  }
+  if (!hasCapability(req.user, "admin.seed")) {
+    return res.status(403).json({ error: "Sessão atual não pode executar esta rotina administrativa" });
   }
 
-  const requiredKey = String(process.env.ADMIN_SEED_KEY || "").trim();
   const sentKey = String(req.headers["x-admin-seed-key"] || "").trim();
-  if (requiredKey && sentKey !== requiredKey) {
+  if (ADMIN_SEED_KEY && sentKey !== ADMIN_SEED_KEY) {
     return res.status(401).json({ error: "Chave administrativa inválida para população da base" });
   }
 
@@ -186,11 +241,17 @@ router.post("/admin/patients/reset-populate", requireAuth, async (req, res) => {
   return res.json({ ok: true, ...result });
 });
 
-router.get("/metrics/internal", requireAuth, (req, res) => {
-  const role = canonicalRole(req.user?.role);
-  if (!["gestor", "nurse_manager"].includes(role)) {
+router.get("/metrics/internal", requireAuth, async (req, res) => {
+  if (!hasCapability(req.user, "metrics.internal.read")) {
     return res.status(403).json({ error: "Acesso restrito a gestores" });
   }
+  await withDb((db) => {
+    ensureDbShape(db);
+    addAuditLog(db, buildAdminAuditActor(req), "admin.metrics_read", "metrics", req.user.teamId || "global", {
+      outcome: "success",
+      teamId: req.user.teamId || ""
+    });
+  });
   return res.json(getMetrics());
 });
 

@@ -10,7 +10,7 @@
     "provision:dev-user": "node --env-file=.env.dev scripts/provision-dev-user.mjs",
     "seed:dev-scenario": "node --env-file=.env.dev scripts/seed-dev-scenario.mjs",
     "provision:remote-enterprise-user": "node scripts/provision-remote-enterprise-user.mjs",
-    "test": "node --test test/health.test.js && node --test test/auth.test.js && node --test test/patients.test.js && node --test test/twofa.test.js && node --test test/backup.test.js",
+    "test": "node --test test/health.test.js && node --test test/auth.test.js && node --test test/patients.test.js && node --test test/queue.test.js && node --test test/agenda.test.js && node --test test/referrals.test.js && node --test test/pharmacy.test.js && node --test test/supplies.test.js && node --test test/exams.test.js && node --test test/access-requests.test.js && node --test test/twofa.test.js && node --test test/backup.test.js",
     "test:legacy": "node src/ai.test.js",
     "type-check": "tsc --noEmit"
   },

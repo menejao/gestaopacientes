@@ -153,6 +153,15 @@ function ensureDbShape(db) {
   ensureArray(db, "teams");
   ensureArray(db, "users");
   ensureArray(db, "patients");
+  ensureArray(db, "queueEntries");
+  ensureArray(db, "agendaEntries");
+  ensureArray(db, "referrals");
+  ensureArray(db, "pharmacyStock");
+  ensureArray(db, "pharmacyLogs");
+  ensureArray(db, "suppliesStock");
+  ensureArray(db, "suppliesLogs");
+  ensureArray(db, "suppliesContinuous");
+  ensureArray(db, "exams");
   ensureArray(db, "appointments");
   ensureArray(db, "tasks");
   ensureArray(db, "messages");
@@ -161,6 +170,7 @@ function ensureDbShape(db) {
   ensureArray(db, "protocolTemplates");
   ensureArray(db, "protocolTemplateVersions");
   ensureArray(db, "privacyRequests");
+  ensureArray(db, "accessRequests");
   ensureArray(db, "registerVerifications");
   ensureArray(db, "loginChallenges");
   ensureArray(db, "refreshTokens");

@@ -1,0 +1,584 @@
+{
+  "teams": [
+    {
+      "id": "team-default",
+      "name": "Equipe Enfermeira Ana",
+      "managerUserId": "u1",
+      "createdAt": "2026-05-15T13:49:24.525Z"
+    },
+    {
+      "id": "team-rosa",
+      "name": "Equipe Rosa",
+      "managerUserId": "",
+      "createdAt": "2026-05-15T13:49:24.526Z"
+    },
+    {
+      "id": "team-azul",
+      "name": "Equipe Azul",
+      "managerUserId": "",
+      "createdAt": "2026-05-15T13:49:24.526Z"
+    },
+    {
+      "id": "team-cinza",
+      "name": "Equipe Cinza",
+      "managerUserId": "",
+      "createdAt": "2026-05-15T13:49:24.526Z"
+    },
+    {
+      "id": "team-marrom",
+      "name": "Equipe Marrom",
+      "managerUserId": "",
+      "createdAt": "2026-05-15T13:49:24.526Z"
+    },
+    {
+      "id": "team-amarela",
+      "name": "Equipe Amarela",
+      "managerUserId": "",
+      "createdAt": "2026-05-15T13:49:24.526Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "ecb168f9-f6f0-4f1d-ac91-f3d08c8e8a60",
+      "name": "Smoke Gestor",
+      "role": "gestor",
+      "email": "smoke-1778878409@integration.test",
+      "password": "s1$caf0d99e4ae483d35d654668260d12a3$8b0eb6c4a1c2ea6432a6b3caeb3ba07c4e0f42f8b628534853a7cc7ba801672cb83cfbced91bda775bc9aa8b73115c1a6042b169fd336e91353559df0fb46869",
+      "teamId": "",
+      "councilType": "",
+      "councilNumber": "",
+      "councilUf": "",
+      "councilVerification": {
+        "checked": false,
+        "provider": "not-required",
+        "status": "skipped",
+        "verifiedAt": "2026-05-15T20:53:30.821Z"
+      },
+      "twoFactorEnabled": false,
+      "twoFactorSecret": "",
+      "twoFactorPendingSecret": "",
+      "twoFactorPendingCreatedAt": "",
+      "createdAt": "2026-05-15T20:53:30.821Z",
+      "lastLoginAt": "2026-05-15T20:53:30.821Z",
+      "lastSeenAt": "2026-05-15T20:53:30.821Z",
+      "lastSeenIp": "::ffff:127.0.0.1"
+    },
+    {
+      "id": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "name": "Smoke Nurse",
+      "role": "nurse_manager",
+      "email": "smoke-nurse-1778878625632@integration.test",
+      "password": "s1$553e0f8d940de31522dd10642f610670$fa00e285c80bd30d97ed0a050a80a8ac6f59f4a2b0c5d64c611fb522903a71113a0953cb5e410b9a1fd989b155b303b58ebfc37dfd0b304bc1d15f80e2845bb3",
+      "teamId": "team-default",
+      "councilType": "COREN",
+      "councilNumber": "874231",
+      "councilUf": "SP",
+      "councilVerification": {
+        "checked": false,
+        "provider": "disabled",
+        "status": "skipped",
+        "verifiedAt": "2026-05-15T20:57:05.852Z"
+      },
+      "twoFactorEnabled": false,
+      "twoFactorSecret": "",
+      "twoFactorPendingSecret": "",
+      "twoFactorPendingCreatedAt": "",
+      "createdAt": "2026-05-15T20:57:05.852Z",
+      "lastLoginAt": "2026-05-15T20:59:15.125Z",
+      "lastSeenAt": "2026-05-15T20:59:15.125Z",
+      "lastSeenIp": "::ffff:127.0.0.1",
+      "updatedAt": "2026-05-15T20:59:15.125Z"
+    }
+  ],
+  "patients": [],
+  "appointments": [],
+  "tasks": [],
+  "messages": [],
+  "auditLogs": [
+    {
+      "id": "d672e695-4a84-48f8-8d6f-52c688305107",
+      "action": "auth.register",
+      "entity": "auth",
+      "entityId": "270c4ed9-6e04-4837-b31a-355ffc016f81",
+      "userId": "ecb168f9-f6f0-4f1d-ac91-f3d08c8e8a60",
+      "userName": "Smoke Gestor",
+      "userRole": "gestor",
+      "details": {
+        "userId": "ecb168f9-f6f0-4f1d-ac91-f3d08c8e8a60"
+      },
+      "requestId": "",
+      "createdAt": "2026-05-15T20:53:30.825Z",
+      "prevHash": "",
+      "hash": "e482ced1be71e0ce7f4f2d6fc5dd6a63d6a11b69845630a93044819a2b613513"
+    },
+    {
+      "id": "32852ba4-f954-4f98-980f-5230f5485793",
+      "action": "auth.register",
+      "entity": "auth",
+      "entityId": "1e488e51-271e-477b-b5a5-dec54c834738",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8"
+      },
+      "requestId": "",
+      "createdAt": "2026-05-15T20:57:05.853Z",
+      "prevHash": "e482ced1be71e0ce7f4f2d6fc5dd6a63d6a11b69845630a93044819a2b613513",
+      "hash": "b96fdbbb6b144c7315c306f9d18f8cc910f3071ef9030d66dd4d79df2e8a9d46"
+    },
+    {
+      "id": "41b33889-af21-450b-9f50-3e9a8073c166",
+      "action": "auth.login",
+      "entity": "auth",
+      "entityId": "07a81a51-9033-44e9-bc3c-c06c84aba460",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8"
+      },
+      "requestId": "",
+      "createdAt": "2026-05-15T20:58:50.636Z",
+      "prevHash": "b96fdbbb6b144c7315c306f9d18f8cc910f3071ef9030d66dd4d79df2e8a9d46",
+      "hash": "da209394fd874538a2c41fe687b8507e667e154bf8e61ae9ad44da8e0bcea424"
+    },
+    {
+      "id": "6957d238-34e5-4f42-90e7-8e61f9c3ef53",
+      "action": "patient.created",
+      "entity": "patient",
+      "entityId": "54e5f3f4-7612-49fd-9059-cf8bf3fb8c33",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "name": "Paciente Smoke Test",
+        "teamId": "team-default",
+        "microArea": "A1",
+        "assignedAcsId": "",
+        "careCategory": "pregnant"
+      },
+      "requestId": "f50316f2-9b31-40ad-a802-24401cda10d7",
+      "createdAt": "2026-05-15T20:58:51.002Z",
+      "prevHash": "da209394fd874538a2c41fe687b8507e667e154bf8e61ae9ad44da8e0bcea424",
+      "hash": "2f3e84a19ba9602969c5c9b397df971ab699b31aeb7b07b7d3a086d78a151ef4"
+    },
+    {
+      "id": "9b0c9a1e-8e13-4153-9af0-122d248c6f0c",
+      "action": "patient.updated",
+      "entity": "patient",
+      "entityId": "54e5f3f4-7612-49fd-9059-cf8bf3fb8c33",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "changedFields": [
+          "medications",
+          "phone"
+        ]
+      },
+      "requestId": "731263b7-f554-43a5-9129-35111bed330f",
+      "createdAt": "2026-05-15T20:58:51.073Z",
+      "prevHash": "2f3e84a19ba9602969c5c9b397df971ab699b31aeb7b07b7d3a086d78a151ef4",
+      "hash": "3b46cc46018af0946877295881a8d623bdb1a256c34a5e5df5f82a71cd9629a5"
+    },
+    {
+      "id": "4358ae83-79d2-47b5-8b43-5ece81537f3c",
+      "action": "clinical_record.created",
+      "entity": "clinical_record",
+      "entityId": "0de0996f-ab20-41d3-9788-48f689e6def7",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "patientId": "54e5f3f4-7612-49fd-9059-cf8bf3fb8c33",
+        "type": "note",
+        "protocolTag": "pregnant"
+      },
+      "requestId": "5272acc8-1ba8-4fe4-b345-ef73e878048c",
+      "createdAt": "2026-05-15T20:58:51.138Z",
+      "prevHash": "3b46cc46018af0946877295881a8d623bdb1a256c34a5e5df5f82a71cd9629a5",
+      "hash": "fa5c41123abaeb20e5e6787c36198dcc6e914e87668fc3edffdf0e1e575ef508"
+    },
+    {
+      "id": "7a111df3-95f7-4cf5-be14-6d2d56e0dd6b",
+      "action": "clinical_record.deleted",
+      "entity": "clinical_record",
+      "entityId": "0de0996f-ab20-41d3-9788-48f689e6def7",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "patientId": "54e5f3f4-7612-49fd-9059-cf8bf3fb8c33",
+        "type": "note"
+      },
+      "requestId": "3a9292c6-17f3-4575-b7b0-9e31b64151b3",
+      "createdAt": "2026-05-15T20:58:51.275Z",
+      "prevHash": "fa5c41123abaeb20e5e6787c36198dcc6e914e87668fc3edffdf0e1e575ef508",
+      "hash": "4ad620dbb3fbcb219eae557e4d97e7fd8c3cf89d3c6fa570d81e2d0120f0facc"
+    },
+    {
+      "id": "a70fa274-23b4-4526-a988-5dac07a47be2",
+      "action": "patient.deleted",
+      "entity": "patient",
+      "entityId": "54e5f3f4-7612-49fd-9059-cf8bf3fb8c33",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "name": "Paciente Smoke Test",
+        "appointmentsRemoved": 0,
+        "tasksRemoved": 0,
+        "messagesRemoved": 0,
+        "recordsRemoved": 0
+      },
+      "requestId": "d5e6fc75-f015-4231-b2f3-61f32f834b4b",
+      "createdAt": "2026-05-15T20:58:51.292Z",
+      "prevHash": "4ad620dbb3fbcb219eae557e4d97e7fd8c3cf89d3c6fa570d81e2d0120f0facc",
+      "hash": "bc2ef36f94e20552b492f84e7407f06ae1affb26e1fdfb7f2ca831bee215848d"
+    },
+    {
+      "id": "120b9abf-8f3a-4b36-aeef-559f57ad3bb7",
+      "action": "auth.logout",
+      "entity": "auth",
+      "entityId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "hadRefreshToken": true
+      },
+      "requestId": "d8cb4ee1-d773-4307-abae-daa19fd154af",
+      "createdAt": "2026-05-15T20:58:51.320Z",
+      "prevHash": "bc2ef36f94e20552b492f84e7407f06ae1affb26e1fdfb7f2ca831bee215848d",
+      "hash": "e589b9e7bf021743eb922adf7b0c3ffd2fb86c29102193205d42630c622807d9"
+    },
+    {
+      "id": "dec468a3-0835-407c-aac3-7b8912fd13d6",
+      "action": "auth.login",
+      "entity": "auth",
+      "entityId": "78804472-7708-498a-9650-601df83d3a31",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8"
+      },
+      "requestId": "",
+      "createdAt": "2026-05-15T20:59:15.129Z",
+      "prevHash": "e589b9e7bf021743eb922adf7b0c3ffd2fb86c29102193205d42630c622807d9",
+      "hash": "06c8e8a7b186812d5fdcf9199caf7a128f5013d317cfc1951ebe345d63f2859f"
+    },
+    {
+      "id": "9cf11e4b-7c18-43fd-9cd2-2ee35a3aca7e",
+      "action": "patient.created",
+      "entity": "patient",
+      "entityId": "c8e0ed15-85ee-4a89-a169-642745765839",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "name": "Paciente Smoke Test",
+        "teamId": "team-default",
+        "microArea": "A1",
+        "assignedAcsId": "",
+        "careCategory": "pregnant"
+      },
+      "requestId": "9bdc7fa8-0de2-4a0d-b70a-296afc44f3bd",
+      "createdAt": "2026-05-15T20:59:15.291Z",
+      "prevHash": "06c8e8a7b186812d5fdcf9199caf7a128f5013d317cfc1951ebe345d63f2859f",
+      "hash": "032f4e2dbb840c3143ab023f23dd2155113eb16a97090009fa345d168025f02a"
+    },
+    {
+      "id": "d6e45c45-cb19-4137-82b5-4298013b7406",
+      "action": "patient.updated",
+      "entity": "patient",
+      "entityId": "c8e0ed15-85ee-4a89-a169-642745765839",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "changedFields": [
+          "medications",
+          "phone"
+        ]
+      },
+      "requestId": "11df3755-3c3d-4b71-9972-4cc54535dedd",
+      "createdAt": "2026-05-15T20:59:15.348Z",
+      "prevHash": "032f4e2dbb840c3143ab023f23dd2155113eb16a97090009fa345d168025f02a",
+      "hash": "24fc104c889ded06f3cefb5eb55246d5201e1d35eaca349ec2fc13a54e9acb6a"
+    },
+    {
+      "id": "8339e94b-9111-4cfa-806b-c98f7238b2fb",
+      "action": "clinical_record.created",
+      "entity": "clinical_record",
+      "entityId": "aa98e8bb-8ee3-40ea-b428-c6e18c653e6d",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "patientId": "c8e0ed15-85ee-4a89-a169-642745765839",
+        "type": "note",
+        "protocolTag": "pregnant"
+      },
+      "requestId": "996f4763-aff3-4033-9c38-1c0582ca54a0",
+      "createdAt": "2026-05-15T20:59:15.419Z",
+      "prevHash": "24fc104c889ded06f3cefb5eb55246d5201e1d35eaca349ec2fc13a54e9acb6a",
+      "hash": "91a7cd021767696a224d2b390c8a0f60810378a5653ffc591e60f756b6df96e3"
+    },
+    {
+      "id": "c00da585-74bd-4345-990f-7ddfef1be030",
+      "action": "clinical_record.deleted",
+      "entity": "clinical_record",
+      "entityId": "aa98e8bb-8ee3-40ea-b428-c6e18c653e6d",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "patientId": "c8e0ed15-85ee-4a89-a169-642745765839",
+        "type": "note"
+      },
+      "requestId": "c392e134-8a28-40ff-ae32-2ce9dfc8324a",
+      "createdAt": "2026-05-15T20:59:15.474Z",
+      "prevHash": "91a7cd021767696a224d2b390c8a0f60810378a5653ffc591e60f756b6df96e3",
+      "hash": "23e736ed75f8201bf5b1167dc861b116455b2575f25a76a0d964985b3bd3bfe2"
+    },
+    {
+      "id": "9b133a23-446d-475a-81d0-41dc5112694d",
+      "action": "patient.deleted",
+      "entity": "patient",
+      "entityId": "c8e0ed15-85ee-4a89-a169-642745765839",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "name": "Paciente Smoke Test",
+        "appointmentsRemoved": 0,
+        "tasksRemoved": 0,
+        "messagesRemoved": 0,
+        "recordsRemoved": 0
+      },
+      "requestId": "8f1eac42-dda0-4f81-b8e7-b40e8c43d71f",
+      "createdAt": "2026-05-15T20:59:15.501Z",
+      "prevHash": "23e736ed75f8201bf5b1167dc861b116455b2575f25a76a0d964985b3bd3bfe2",
+      "hash": "dbda8f572f6034473171dcb9f304a637a27bf637eb2d9d5fba5ab96d9e970658"
+    },
+    {
+      "id": "cfd6f828-c095-4266-b7ed-2822c3c150e1",
+      "action": "auth.logout",
+      "entity": "auth",
+      "entityId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "userName": "Smoke Nurse",
+      "userRole": "nurse_manager",
+      "details": {
+        "hadRefreshToken": true
+      },
+      "requestId": "58d36c0c-976b-4518-805c-b5714be7ab30",
+      "createdAt": "2026-05-15T20:59:15.537Z",
+      "prevHash": "dbda8f572f6034473171dcb9f304a637a27bf637eb2d9d5fba5ab96d9e970658",
+      "hash": "b054c35d6209e79d8c422b858cefaae0a3d0e279baca2d2a710dfa6c30b28c18"
+    }
+  ],
+  "clinicalRecords": [],
+  "protocolTemplates": [
+    {
+      "category": "general",
+      "label": "Geral",
+      "targets": {
+        "visits": 2,
+        "consultations": 2,
+        "vaccines": 1
+      },
+      "deadlines": {
+        "visits": 0,
+        "consultations": 0,
+        "vaccines": 0
+      },
+      "vaccines": [
+        "Influenza"
+      ],
+      "authority": "Ministério da Saúde",
+      "reference": "https://bvsms.saude.gov.br/bvs/publicacoes/politica_nacional_atencao_basica_2017.pdf",
+      "version": "PNAB-2017"
+    },
+    {
+      "category": "pregnant",
+      "label": "Gestante",
+      "targets": {
+        "visits": 3,
+        "consultations": 7,
+        "vaccines": 4
+      },
+      "deadlines": {
+        "visits": 0,
+        "consultations": 0,
+        "vaccines": 0
+      },
+      "vaccines": [
+        "dTpa",
+        "Influenza",
+        "COVID-19",
+        "Hepatite B"
+      ],
+      "authority": "Ministério da Saúde",
+      "reference": "https://bvsms.saude.gov.br/bvs/saudelegis/gm/2011/prt1459_24_06_2011.html",
+      "version": "Rede Cegonha"
+    },
+    {
+      "category": "puerperal",
+      "label": "Puérpera",
+      "targets": {
+        "visits": 1,
+        "consultations": 1,
+        "vaccines": 0
+      },
+      "deadlines": {
+        "visits": 0,
+        "consultations": 0,
+        "vaccines": 0
+      },
+      "vaccines": [],
+      "authority": "Ministério da Saúde",
+      "reference": "https://bvsms.saude.gov.br/bvs/saudelegis/gm/2011/prt1459_24_06_2011.html",
+      "version": "Rede Cegonha"
+    },
+    {
+      "category": "pap_only",
+      "label": "Rastreamento Feminino/Trans",
+      "targets": {
+        "visits": 0,
+        "consultations": 1,
+        "vaccines": 1
+      },
+      "deadlines": {
+        "visits": 0,
+        "consultations": 0,
+        "vaccines": 0
+      },
+      "vaccines": [
+        "HPV"
+      ],
+      "authority": "Ministério da Saúde",
+      "reference": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/c/cancer-do-colo-do-utero",
+      "version": "Rastreamento Colo e Mama"
+    },
+    {
+      "category": "child_followup",
+      "label": "Puericultura",
+      "targets": {
+        "visits": 2,
+        "consultations": 10,
+        "vaccines": 0
+      },
+      "deadlines": {
+        "visits": 0,
+        "consultations": 0,
+        "vaccines": 0
+      },
+      "vaccines": [
+        "BCG",
+        "Hepatite B",
+        "Penta",
+        "VIP",
+        "Pneumo 10",
+        "Rotavírus",
+        "Meningocócica",
+        "Influenza",
+        "COVID",
+        "Febre amarela",
+        "ACWY",
+        "Tríplice viral",
+        "DTP",
+        "Varicela",
+        "Hepatite A"
+      ],
+      "authority": "Ministério da Saúde",
+      "reference": "https://www.gov.br/saude/pt-br/vacinacao/calendario",
+      "version": "Calendário PNI"
+    },
+    {
+      "category": "chronic",
+      "label": "Condição Crônica",
+      "targets": {
+        "visits": 3,
+        "consultations": 3,
+        "vaccines": 2
+      },
+      "deadlines": {
+        "visits": 0,
+        "consultations": 0,
+        "vaccines": 0
+      },
+      "vaccines": [
+        "Influenza",
+        "COVID-19"
+      ],
+      "authority": "Ministério da Saúde",
+      "reference": "https://bvsms.saude.gov.br/bvs/publicacoes/plano_acoes_estrategicas_enfrentamento_dc_nt_2021_2030.pdf",
+      "version": "DCNT 2021-2030"
+    },
+    {
+      "category": "elderly",
+      "label": "Pessoa Idosa",
+      "targets": {
+        "visits": 2,
+        "consultations": 1,
+        "vaccines": 1
+      },
+      "deadlines": {
+        "visits": 0,
+        "consultations": 0,
+        "vaccines": 0
+      },
+      "vaccines": [
+        "Influenza"
+      ],
+      "authority": "Ministério da Saúde",
+      "reference": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/s/saude-da-pessoa-idosa",
+      "version": "Cuidado da Pessoa Idosa"
+    }
+  ],
+  "protocolTemplateVersions": [],
+  "privacyRequests": [],
+  "registerVerifications": [],
+  "loginChallenges": [],
+  "refreshTokens": [
+    {
+      "id": "270c4ed9-6e04-4837-b31a-355ffc016f81",
+      "userId": "ecb168f9-f6f0-4f1d-ac91-f3d08c8e8a60",
+      "tokenHash": "996c886604afd7cc278ad87d40ab5b2ebf164e0755aa46f5162585f7a2f447be",
+      "expiresAt": "2026-05-22T20:53:30.825Z",
+      "createdAt": "2026-05-15T20:53:30.825Z",
+      "revokedAt": null,
+      "ip": "::ffff:127.0.0.1"
+    },
+    {
+      "id": "1e488e51-271e-477b-b5a5-dec54c834738",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "tokenHash": "6dd5be97a7cab6faa1d3b55304eec8927be4124d69b82c21e0e2134b0cd85352",
+      "expiresAt": "2026-05-22T20:57:05.853Z",
+      "createdAt": "2026-05-15T20:57:05.853Z",
+      "revokedAt": null,
+      "ip": "::ffff:127.0.0.1"
+    },
+    {
+      "id": "07a81a51-9033-44e9-bc3c-c06c84aba460",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "tokenHash": "aee644edd8a17324d4259c9a4bcdc4bcc0e70ccf5cad625a0e77d09a0bfeda7b",
+      "expiresAt": "2026-05-22T20:58:50.636Z",
+      "createdAt": "2026-05-15T20:58:50.636Z",
+      "revokedAt": "2026-05-15T20:58:51.320Z",
+      "ip": "::ffff:127.0.0.1"
+    },
+    {
+      "id": "78804472-7708-498a-9650-601df83d3a31",
+      "userId": "9552bf8a-e853-4c40-a80a-034b4e8c2ae8",
+      "tokenHash": "2e90b1498cf9a8edacfc156bde4a3eb18d934da11cf1034a1a711a8e5e72d461",
+      "expiresAt": "2026-05-22T20:59:15.129Z",
+      "createdAt": "2026-05-15T20:59:15.129Z",
+      "revokedAt": "2026-05-15T20:59:15.537Z",
+      "ip": "::ffff:127.0.0.1"
+    }
+  ]
+}
