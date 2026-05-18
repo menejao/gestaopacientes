@@ -20,8 +20,19 @@
   height: 100%;
 }
 
-.agenda-page > .page-header {
+.agenda-page > .page-header,
+.agenda-page > .hero {
   margin: var(--s-6) var(--s-6) 0;
+}
+
+/* ── Label de mês ────────────────────────────────────────── */
+.agenda-month-label {
+  padding: var(--s-2) var(--s-6) 0;
+  font: 600 var(--t-xs) var(--font-sans);
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 /* ── Tira semanal de navegação ───────────────────────────── */
@@ -92,26 +103,35 @@
   opacity: .8;
 }
 
-/* ── Barra de filtros ────────────────────────────────────── */
-.agenda-filters {
+/* ── Toolbar contextual da agenda ────────────────────────── */
+.agenda-toolbar {
   display: flex;
-  align-items: flex-end;
-  gap: var(--s-3);
-  padding: 0 var(--s-6) var(--s-3);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-6);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
-.agenda-filters .field {
-  min-width: 200px;
-  max-width: 260px;
+.agenda-toolbar__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.agenda-toolbar__filters .field {
+  min-width: 180px;
+  max-width: 240px;
   margin: 0;
 }
 
-.agenda-filters__count {
+.agenda-toolbar__count {
   font: 500 var(--t-sm) var(--font-sans);
   color: var(--text-muted);
   white-space: nowrap;
-  padding-bottom: 6px;
+  flex-shrink: 0;
 }
 
 /* ── Timeline de agendamentos ────────────────────────────── */
@@ -294,18 +314,21 @@
 
 .agenda-pat-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 3px);
   left: 0;
   right: 0;
   z-index: 50;
   border: 1px solid var(--border);
-  border-top: none;
-  border-radius: 0 0 var(--r-md) var(--r-md);
+  border-radius: var(--r-md);
   background: var(--surface);
   box-shadow: var(--shadow-md);
-  max-height: 200px;
+  max-height: 220px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
+.agenda-pat-dropdown::-webkit-scrollbar { width: 4px; }
+.agenda-pat-dropdown::-webkit-scrollbar-track { background: transparent; }
+.agenda-pat-dropdown::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .agenda-pat-opt {
   display: flex;
@@ -348,18 +371,27 @@
 }
 
 .agenda-pat-empty {
-  padding: var(--s-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
   font: 400 var(--t-sm) var(--font-sans);
   color: var(--text-muted);
 }
 
-.agenda-pat-footer {
+.agenda-pat-new {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
   padding: var(--s-2) var(--s-3);
+  background: none;
+  border: none;
   border-top: 1px solid var(--border-subtle);
+  cursor: pointer;
+  text-align: left;
+  font: 600 var(--t-sm) var(--font-sans);
+  color: var(--accent-text);
+  transition: background var(--d-fast);
 }
+.agenda-pat-new:hover { background: var(--accent-soft); }
 
 /* ── Checkmark de paciente selecionado ───────────────────── */
 .agenda-pat-check {
@@ -414,9 +446,11 @@
   .agenda-week-strip {
     padding: var(--s-2) var(--s-4);
   }
-  .agenda-filters,
+  .agenda-month-label,
+  .agenda-toolbar,
   .agenda-timeline,
-  .agenda-page > .page-header {
+  .agenda-page > .page-header,
+  .agenda-page > .hero {
     padding-left: var(--s-4);
     padding-right: var(--s-4);
   }

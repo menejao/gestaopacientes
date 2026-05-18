@@ -42,6 +42,7 @@
   font: 400 var(--t-base) var(--font-sans);
   font-feature-settings: var(--font-feat);
   width: 100%;
+  overflow: hidden;
   transition:
     border-color var(--d-fast),
     background   var(--d-fast),
@@ -72,6 +73,23 @@
   outline: none;
   color: inherit;
   font: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* autofill: overlay background to hide browser chrome lines */
+.input input:-webkit-autofill,
+.input input:-webkit-autofill:hover,
+.input input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px var(--surface) inset;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  transition: background-color 9999s ease-in-out 0s;
+}
+/* cancel the global :focus-visible box-shadow — the outer .input handles the ring */
+.input input:focus-visible,
+.input select:focus-visible,
+.input textarea:focus-visible {
+  box-shadow: none;
 }
 .input input::placeholder { color: var(--text-dim); }
 

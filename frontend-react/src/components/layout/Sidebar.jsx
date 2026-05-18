@@ -1,4 +1,5 @@
 import { NAV_ICON, buildNavItems } from "../../config/nav";
+import Button from "../ui/Button";
 
 function Sidebar({ tab, setTab, mobileOpen, setMobileOpen, user, canManageUser, onClearPatient }) {
   const navItems = buildNavItems(user, canManageUser);
@@ -15,7 +16,7 @@ function Sidebar({ tab, setTab, mobileOpen, setMobileOpen, user, canManageUser, 
               </svg>
             </div>
             <div className="sidebar__brand-copy">
-              <strong>VALENS</strong>
+              <strong>Vitras</strong>
             </div>
           </div>
         </div>
@@ -26,12 +27,13 @@ function Sidebar({ tab, setTab, mobileOpen, setMobileOpen, user, canManageUser, 
             const showSection = item.section && item.section !== prevSection;
             return [
               showSection ? <div key={"sec-" + item.id} className="nav__label">{item.section}</div> : null,
-              <button key={item.id}
+              <Button key={item.id}
+                variant="ghost"
                 className={`nav__item${tab === item.id ? " is-active" : ""}`}
                 onClick={() => { setTab(item.id); setMobileOpen(false); if (item.id !== "patients" && onClearPatient) onClearPatient(); }}>
                 {NAV_ICON[item.id]}
                 {item.label}
-              </button>
+              </Button>
             ];
           })}
         </nav>

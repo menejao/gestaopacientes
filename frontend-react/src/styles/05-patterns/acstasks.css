@@ -2,8 +2,6 @@
 
 .acs-page {
   padding: var(--s-6);
-  max-width: 760px;
-  margin: 0 auto;
 }
 
 .acs-page > .page-header { margin-bottom: var(--s-5); }
@@ -20,7 +18,6 @@
 .acs-filters {
   display: flex;
   gap: var(--s-1);
-  margin-bottom: var(--s-4);
 }
 
 .acs-filter-btn {
@@ -144,6 +141,76 @@
   flex-shrink: 0;
 }
 
+/* ── Toolbar ──────────────────────────────────────────────────── */
+.acs-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.acs-type-filter {
+  font: 400 var(--t-sm) var(--font-sans);
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  appearance: none;
+  padding-right: var(--s-6);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2394a3b8' d='M0 0h10L5 6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+/* ── Task type badges ─────────────────────────────────────────── */
+.acs-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--s-2);
+  border-radius: var(--r-pill);
+  font: 600 .65rem var(--font-sans);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.acs-type-badge--blue   { background: var(--blue-50);   color: var(--blue-700);   border: 1px solid var(--blue-200);   }
+.acs-type-badge--amber  { background: var(--amber-50);  color: var(--amber-700);  border: 1px solid var(--amber-200);  }
+.acs-type-badge--violet { background: var(--violet-50); color: var(--violet-600); border: 1px solid var(--violet-200); }
+.acs-type-badge--green  { background: var(--green-50);  color: var(--green-700);  border: 1px solid var(--green-200);  }
+.acs-type-badge--pink   { background: #fdf2f8;          color: #9d174d;           border: 1px solid #fbcfe8;           }
+.acs-type-badge--orange { background: var(--orange-50); color: var(--orange-700); border: 1px solid var(--orange-200); }
+.acs-type-badge--teal   { background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-soft-2); }
+.acs-type-badge--slate  { background: var(--surface-3); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* ── Priority badge ───────────────────────────────────────────── */
+.acs-priority {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--s-2);
+  border-radius: var(--r-pill);
+  font: 700 .65rem var(--font-sans);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.acs-priority--urgent { background: var(--red-50); color: var(--red-700); border: 1px solid var(--red-200); }
+.acs-priority--fit-in { background: var(--cyan-50); color: var(--cyan-600); border: 1px solid var(--cyan-200); }
+.acs-priority--normal { background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border); }
+
+/* ── Task controls ────────────────────────────────────────────── */
+.acs-task__controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s-1);
+  flex-shrink: 0;
+}
+
 /* ── Empty / loading states ───────────────────────────────────── */
 .acs-empty {
   text-align: center;
@@ -151,11 +218,17 @@
   color: var(--text-dim);
 }
 
-.acs-empty__icon { margin-bottom: var(--s-2); opacity: .4; }
+.acs-empty__icon { margin-bottom: var(--s-3); opacity: .35; }
 
 .acs-empty__title {
   font: 600 var(--t-base) var(--font-sans);
   color: var(--text-muted);
+}
+
+.acs-empty__sub {
+  font: 400 var(--t-sm) var(--font-sans);
+  color: var(--text-dim);
+  margin-top: var(--s-1);
 }
 
 .acs-loading {

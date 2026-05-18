@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { deleteRecord, getPatientHistory, login } from "../api";
-import PageLayout from "../components/layout/PageLayout";
+import { deleteRecord, getPatientHistory, login, verifyLogin2fa } from "../api";
+
 import PageHeader from "../components/layout/PageHeader";
 import Alert from "../components/ui/Alert";
 import Button from "../components/ui/Button";
@@ -11,7 +11,16 @@ import RecordHeader from "../components/records/RecordHeader";
 import RecordTimeline from "../components/records/RecordTimeline";
 import { canAccessChart, canWriteRecords } from "../utils/roles";
 
-export default function RecordsPage({ patients, users, user, token, onNavigatePatient, selectedPatientId: controlledPatientId = "", onSelectPatientId }) {
+export default function RecordsPage({
+  patients,
+  users,
+  user,
+  token,
+  onNavigatePatient,
+  selectedPatientId: controlledPatientId = "",
+  onSelectPatientId,
+  onApplySessionPayload,
+}) {
   const [query, setQuery] = useState("");
   const [localSelectedPatientId, setLocalSelectedPatientId] = useState(controlledPatientId || "");
   const [records, setRecords] = useState([]);
@@ -21,8 +30,10 @@ export default function RecordsPage({ patients, users, user, token, onNavigatePa
 
   const [chartLocked, setChartLocked] = useState(true);
   const [lockPassword, setLockPassword] = useState("");
+  const [lockCode, setLockCode] = useState("");
   const [lockError, setLockError] = useState("");
   const [lockBusy, setLockBusy] = useState(false);
+  const [lockChallenge, setLockChallenge] = useState(null);
 
   const canAccess = canAccessChart(user);
   const canWrite = canWriteRecords(user);
@@ -36,6 +47,8 @@ export default function RecordsPage({ patients, users, user, token, onNavigatePa
   useEffect(() => {
     setChartLocked(true);
     setLockPassword("");
+    setLockCode("");
+    setLockChallenge(null);
     setLockError("");
   }, [localSelectedPatientId]);
 
@@ -53,11 +66,38 @@ export default function RecordsPage({ patients, users, user, token, onNavigatePa
     setLockBusy(true);
     setLockError("");
     try {
-      await login(user?.email, lockPassword);
+      const payload = await login(user?.email, lockPassword);
+      if (payload?.twoFactorRequired) {
+        setLockChallenge(payload);
+        return;
+      }
+      onApplySessionPayload?.(payload);
       setChartLocked(false);
       setLockPassword("");
     } catch {
       setLockError("Senha incorreta. Acesso negado.");
+    } finally {
+      setLockBusy(false);
+    }
+  }
+
+  async function handleVerifyUnlock(event) {
+    event.preventDefault();
+    if (!lockChallenge?.challengeId || lockCode.length !== 6) {
+      setLockError("Informe o código 2FA de 6 dígitos.");
+      return;
+    }
+    setLockBusy(true);
+    setLockError("");
+    try {
+      const payload = await verifyLogin2fa(lockChallenge.challengeId, lockCode);
+      onApplySessionPayload?.(payload);
+      setChartLocked(false);
+      setLockPassword("");
+      setLockCode("");
+      setLockChallenge(null);
+    } catch {
+      setLockError("Código 2FA inválido. Acesso negado.");
     } finally {
       setLockBusy(false);
     }
@@ -112,21 +152,39 @@ export default function RecordsPage({ patients, users, user, token, onNavigatePa
 
   if (!canAccess) {
     return (
-      <PageLayout className="records-page">
-        <PageHeader eyebrow="VALENS" title="Prontuário" subtitle="Acesso restrito a perfis com autorização clínica." />
+      <div className="records-page">
+        <PageHeader eyebrow="Vitras" title="Prontuário" subtitle="Acesso restrito a perfis com autorização clínica." />
         <Alert tone="danger">O prontuário eletrônico é acessível apenas por perfis autorizados da equipe clínica.</Alert>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout className="records-page">
+    <div className="records-page">
       <PageHeader
-        eyebrow="VALENS"
+        eyebrow="Vitras"
         title="Prontuário"
-        subtitle="Linha do tempo clínica com registros estruturados por paciente."
+        subtitle="Workspace clínico com timeline, filtros estruturados e acesso protegido por reautenticação."
         actions={selectedPatient ? <Button variant="secondary" onClick={() => onNavigatePatient(selectedPatient.id)}>Abrir paciente</Button> : null}
       />
+
+      <section className="page-kpis">
+        <div className="kpi card card--compact kpi--info">
+          <span className="kpi__label">Pacientes</span>
+          <strong className="kpi__value">{patients.length}</strong>
+          <span className="kpi__helper">{filteredPatients.length} visíveis</span>
+        </div>
+        <div className={`kpi card card--compact${selectedPatient ? " kpi--warning" : ""}`}>
+          <span className="kpi__label">Selecionado</span>
+          <strong className="kpi__value">{selectedPatient ? "1" : "0"}</strong>
+          <span className="kpi__helper">{selectedPatient?.name || "nenhum"}</span>
+        </div>
+        <div className="kpi card card--compact kpi--success">
+          <span className="kpi__label">Registros</span>
+          <strong className="kpi__value">{visibleRecords.length}</strong>
+          <span className="kpi__helper">{typeFilter || "todos os tipos"}</span>
+        </div>
+      </section>
 
       <RecordHeader
         query={query}
@@ -137,34 +195,42 @@ export default function RecordsPage({ patients, users, user, token, onNavigatePa
       />
 
       {selectedPatient && chartLocked ? (
-        <Card>
+        <Card className="card--operational">
           <div className="records-security-gate">
             <div className="records-security-gate__icon" aria-hidden="true">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <circle cx="12" cy="16" r="1.2" fill="currentColor"/>
+                <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="12" cy="16" r="1.2" fill="currentColor" />
               </svg>
             </div>
             <div className="records-security-gate__content">
               <p className="records-security-gate__title">Confirmação de identidade obrigatória</p>
               <p className="records-security-gate__desc">
-                O acesso ao prontuário de <strong>{selectedPatient.name}</strong> exige reautenticação por exigência da LGPD e das diretrizes de segurança clínica. Informe sua senha de acesso ao sistema para liberar a visualização.
+                O acesso ao prontuário de <strong>{selectedPatient.name}</strong> exige reautenticação por exigência da LGPD e das diretrizes de segurança clínica.
+                {lockChallenge ? " Informe agora o código 2FA para concluir a liberação." : " Informe sua senha de acesso ao sistema para iniciar a liberação."}
               </p>
-              <form className="records-security-gate__form" onSubmit={handleUnlock}>
-                <input
-                  type="password"
-                  className="input"
-                  placeholder="Senha de acesso"
-                  value={lockPassword}
-                  onChange={(e) => { setLockPassword(e.target.value); setLockError(""); }}
-                  autoComplete="current-password"
-                  disabled={lockBusy}
-                  style={{ maxWidth: 280 }}
-                />
-                {lockError && <span className="field__error">{lockError}</span>}
-                <Button variant="primary" type="submit" disabled={lockBusy}>
-                  {lockBusy ? "Verificando..." : "Liberar acesso"}
+              <form className="records-security-gate__form" onSubmit={lockChallenge ? handleVerifyUnlock : handleUnlock}>
+                <div className="input records-security-gate__input">
+                  <input
+                    type={lockChallenge ? "text" : "password"}
+                    placeholder={lockChallenge ? "Código 2FA" : "Senha de acesso"}
+                    value={lockChallenge ? lockCode : lockPassword}
+                    onChange={(e) => {
+                      if (lockChallenge) {
+                        setLockCode(e.target.value.replace(/\D+/g, "").slice(0, 6));
+                      } else {
+                        setLockPassword(e.target.value);
+                      }
+                      setLockError("");
+                    }}
+                    autoComplete={lockChallenge ? "one-time-code" : "current-password"}
+                    disabled={lockBusy}
+                  />
+                </div>
+                {lockError ? <span className="field__error">{lockError}</span> : null}
+                <Button variant="primary" type="submit" disabled={lockBusy || (lockChallenge ? lockCode.length !== 6 : !lockPassword.trim())}>
+                  {lockBusy ? "Verificando..." : (lockChallenge ? "Validar 2FA" : "Liberar acesso")}
                 </Button>
               </form>
               <p className="records-security-gate__lgpd">
@@ -179,7 +245,7 @@ export default function RecordsPage({ patients, users, user, token, onNavigatePa
 
           {error ? <Alert tone="danger">{error}</Alert> : null}
 
-          <Card className="card--noPad">
+          <Card className="card--noPad card--operational">
             <div className="card__header">
               <div>
                 <div className="card__title">Linha do tempo clínica</div>
@@ -199,6 +265,6 @@ export default function RecordsPage({ patients, users, user, token, onNavigatePa
           </Card>
         </>
       )}
-    </PageLayout>
+    </div>
   );
 }

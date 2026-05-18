@@ -42,7 +42,15 @@
   min-height: 280px;
 }
 
-.dashboard--valens {
+@media (max-width: 1024px) {
+  .dashboard__kpis { grid-template-columns: repeat(2, 1fr); }
+  .dashboard__grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .dashboard__kpis { grid-template-columns: 1fr; }
+}
+
+.dashboard--vitras {
   gap: var(--s-6);
 }
 
@@ -51,6 +59,38 @@
   align-items: center;
   gap: var(--s-2);
   flex-wrap: wrap;
+}
+
+.dashboard__executive {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.dashboard__executive-label {
+  display: inline-flex;
+  font: 700 var(--t-xs) var(--font-sans);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.72);
+}
+
+.dashboard__executive-value {
+  display: block;
+  font: 800 clamp(2rem, 3vw, 2.75rem) var(--font-sans);
+  color: #fff;
+}
+
+.dashboard__executive-text {
+  margin: 0;
+  color: rgba(255,255,255,.82);
+  font-size: var(--t-sm);
+  max-width: 38ch;
+}
+
+.dashboard__executive-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
 }
 
 .dashboard__demand-card {
@@ -234,6 +274,68 @@
   font-size: var(--t-sm);
 }
 
+/* Generic KPI grid — used below heroes across multiple pages */
+.page-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--s-3);
+}
+
+/* Access requests page container */
+.access-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  gap: var(--s-4);
+  padding-bottom: var(--s-6);
+}
+.access-page > .page-header,
+.access-page > .hero {
+  margin: var(--s-6) var(--s-6) 0;
+}
+.access-page > .page-kpis,
+.access-page > .card,
+.access-page > .alert {
+  margin: 0 var(--s-6);
+}
+
+/* Diagnostics page container */
+.diagnostics-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  gap: var(--s-4);
+  padding-bottom: var(--s-6);
+}
+.diagnostics-page > .page-header,
+.diagnostics-page > .hero {
+  margin: var(--s-6) var(--s-6) 0;
+}
+.diagnostics-page > .dashboard__kpis,
+.diagnostics-page > .card {
+  margin: 0 var(--s-6);
+}
+
+/* Reports page container */
+.reports-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+.reports-page > .page-header,
+.reports-page > .hero {
+  margin: var(--s-6) var(--s-6) 0;
+}
+.reports-page > .tabs {
+  margin: var(--s-4) var(--s-6) 0;
+}
+.reports-content {
+  padding: var(--s-5) var(--s-6) var(--s-6);
+}
+
 /* Reports stats grid — auto-fill responsive KPI cards */
 .reports-stats {
   display: grid;
@@ -245,6 +347,42 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-4);
+}
+
+.reports-hero-actions {
+  display: flex;
+  gap: var(--s-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.reports-hero-executive {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.reports-hero-executive__label {
+  font: 700 var(--t-xs) var(--font-sans);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.72);
+}
+
+.reports-hero-executive__value {
+  font: 800 clamp(1.8rem, 2.8vw, 2.5rem) var(--font-sans);
+  color: #fff;
+}
+
+.reports-hero-executive__text {
+  margin: 0;
+  color: rgba(255,255,255,.82);
+  font-size: var(--t-sm);
+  max-width: 40ch;
+}
+
+.diag-hero-latency {
+  font-size: var(--t-xs);
+  color: rgba(255,255,255,.8);
 }
 
 .reports-section-label {

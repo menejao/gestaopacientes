@@ -1,17 +1,15 @@
 import { useState } from "react";
-import PageLayout from "../components/layout/PageLayout";
+
 import PageHeader from "../components/layout/PageHeader";
 import Button from "../components/ui/Button";
 import { Tabs, Tab } from "../components/ui/Tabs";
-import { readLS } from "../utils/storage";
-import { AGENDA_KEY, REFERRALS_KEY } from "../config/constants";
 import { ageInMonths, protocolChip } from "../utils/clinical";
 import AuditLogPanel from "./AuditLogPanel";
 import EsusMirror from "./EsusMirror";
 
 function StatBox({ label, value, sub, tone = "" }) {
   return (
-    <div className={["kpi card", tone && `kpi--${tone}`].filter(Boolean).join(" ")}>
+    <div className={["kpi card card--compact", tone && `kpi--${tone}`].filter(Boolean).join(" ")}>
       <span className="kpi__label">{label}</span>
       <strong className="kpi__value">{value}</strong>
       {sub ? <span className="kpi__helper">{sub}</span> : null}
@@ -19,14 +17,9 @@ function StatBox({ label, value, sub, tone = "" }) {
   );
 }
 
-function ReportsPage({ patients, users, templates, protocolByPatient }) {
+function ReportsPage({ patients, users, templates, protocolByPatient, agenda = [], referrals = [], pharmacyStock = [], pharmacyLog = [] }) {
   const [period, setPeriod] = useState("month");
   const [tab, setTab] = useState("overview");
-
-  const agenda = readLS(AGENDA_KEY, []);
-  const referrals = readLS(REFERRALS_KEY, []);
-  const pharmaLog = readLS("saudeubs_pharmalog_v1", []);
-  const stock = readLS("saudeubs_pharmacy_v1", []);
 
   const now = new Date();
   function inPeriod(dateStr) {
@@ -51,8 +44,8 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
   const consultDone = agendaPeriod.filter((a) => a.status === "done").length;
   const consultAbsent = agendaPeriod.filter((a) => a.status === "absent").length;
   const referralsPeriod = referrals.filter((r) => inPeriod(r.createdAt));
-  const dispensasPeriod = pharmaLog.filter((l) => l.type === "dispensa" && inPeriod(l.ts));
-  const lowStock = (stock || []).filter((s) => s.qty <= s.minQty).length;
+  const dispensasPeriod = pharmacyLog.filter((l) => l.type === "dispensa" && inPeriod(l.ts));
+  const lowStock = (pharmacyStock || []).filter((s) => s.qty <= s.minQty).length;
   const acsCount = users.filter((u) => u.role === "acs").length;
   const docCount = users.filter((u) => ["doctor", "nurse_manager"].includes(u.role)).length;
 
@@ -71,13 +64,14 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
   const periodLabel = { month: "Mês atual", quarter: "Trimestre atual", year: "Ano atual" }[period];
 
   return (
-    <PageLayout>
+    <div className="reports-page">
       <PageHeader
-        eyebrow="VALENS"
+        eyebrow="Vitras"
         title="Relatórios"
-        subtitle="Indicadores operacionais e de saúde para prestação de contas."
-        actions={
-          <div style={{ display: "flex", gap: "var(--s-2)", alignItems: "center" }}>
+        subtitle="Indicadores operacionais e de saúde para leitura executiva, prestação de contas e monitoramento assistencial."
+        variant="workspace"
+        actions={(
+          <div className="reports-hero-actions">
             <div className="btn-group">
               {[["month", "Mês"], ["quarter", "Trimestre"], ["year", "Ano"]].map(([k, l]) => (
                 <Button key={k} variant="ghost" size="sm" className={period === k ? "is-active" : ""} onClick={() => setPeriod(k)}>
@@ -89,7 +83,7 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
               Exportar
             </Button>
           </div>
-        }
+        )}
       />
 
       <Tabs>
@@ -114,7 +108,7 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
               <StatBox label="Estoque crítico" value={lowStock} tone={lowStock > 0 ? "danger" : "success"} sub="Abaixo do mínimo" />
             </div>
             <div className="dashboard__grid">
-              <div className="card card--noPad">
+              <div className="card card--noPad card--operational">
                 <div className="card__header"><span className="card__title">Equipe</span></div>
                 <div className="card__body">
                   {[["ACS", acsCount], ["Médicos/Enf.", docCount], ["Total", users.length]].map(([l, v]) => (
@@ -125,7 +119,7 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
                   ))}
                 </div>
               </div>
-              <div className="card card--noPad">
+              <div className="card card--noPad card--operational">
                 <div className="card__header"><span className="card__title">Top especialidades encaminhadas</span></div>
                 <div className="card__body">
                   {!topSpecs.length ? (
@@ -145,7 +139,7 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
         {tab === "patients" && (
           <>
             <p className="reports-section-label">Distribuição por categoria de cuidado</p>
-            <div className="card card--noPad">
+            <div className="card card--noPad card--operational">
               <div className="card__body">
                 {Object.entries(catBreak).sort((a, b) => b[1] - a[1]).map(([cat, count]) => {
                   const pct = Math.round((count / totalPatients) * 100);
@@ -185,12 +179,12 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
             <p className="reports-section-label">Farmácia · {periodLabel}</p>
             <div className="reports-stats">
               <StatBox label="Dispensações" value={dispensasPeriod.length} tone="warning" />
-              <StatBox label="Itens em estoque" value={(stock || []).length} />
-              <StatBox label="Estoque zerado" value={(stock || []).filter((s) => s.qty === 0).length} tone="danger" />
+              <StatBox label="Itens em estoque" value={(pharmacyStock || []).length} />
+              <StatBox label="Estoque zerado" value={(pharmacyStock || []).filter((s) => s.qty === 0).length} tone="danger" />
               <StatBox label="Estoque baixo" value={lowStock} tone={lowStock > 0 ? "warning" : "success"} />
             </div>
             {dispensasPeriod.length > 0 && (
-              <div className="card card--noPad">
+              <div className="card card--noPad card--operational">
                 <div className="card__header"><span className="card__title">Medicamentos mais dispensados</span></div>
                 <div className="card__body">
                   {Object.entries(
@@ -211,14 +205,14 @@ function ReportsPage({ patients, users, templates, protocolByPatient }) {
         )}
 
         {tab === "esus" && (
-          <EsusMirror patients={patients} users={users} period={period} periodLabel={periodLabel} />
+            <EsusMirror patients={patients} users={users} agenda={agenda} referrals={referrals} pharmacyLog={pharmacyLog} period={period} periodLabel={periodLabel} />
         )}
 
         {tab === "audit" && (
-          <AuditLogPanel />
+          <AuditLogPanel embedded />
         )}
       </div>
-    </PageLayout>
+    </div>
   );
 }
 

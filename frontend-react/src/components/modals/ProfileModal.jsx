@@ -13,9 +13,9 @@ function ProfileModal({ open, user, profileForm, setProfileForm, profileError, p
             <h3>Editar perfil</h3>
             <p>Atualize seus dados de acesso</p>
           </div>
-          <button type="button" className="icon-btn" onClick={() => onClose()} aria-label="Fechar modal">
+          <Button type="button" variant="ghost" size="sm" iconOnly className="icon-btn" onClick={() => onClose()} aria-label="Fechar modal">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-          </button>
+          </Button>
         </div>
 
         <div className="profile-modal__avatar">

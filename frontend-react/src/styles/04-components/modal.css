@@ -45,6 +45,31 @@
 .modal--lg { max-width: 720px; }
 .modal--xl { max-width: 960px; }
 
+/* Tabbed modal — header/footer fixed, body scrolls, tab nav sticky */
+.modal--tabbed {
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+.modal--tabbed .modal__header {
+  padding: var(--s-4) var(--s-6);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.modal--tabbed .modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 0;
+  padding: 0;
+}
+.modal--tabbed .modal__footer {
+  padding: var(--s-4) var(--s-6);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+
 @keyframes modal-in {
   from { opacity: 0; transform: scale(.96) translateY(8px); }
   to   { opacity: 1; transform: scale(1)   translateY(0); }

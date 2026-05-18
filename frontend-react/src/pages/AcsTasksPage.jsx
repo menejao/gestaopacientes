@@ -4,6 +4,23 @@ import KPI from "../components/ui/KPI";
 import { parseLocalDate } from "../utils/dates";
 import { fmtDate } from "../utils/formatting";
 
+const TASK_TYPES = {
+  home_visit:      { label: "Visita Domiciliar",     color: "blue"   },
+  active_search:   { label: "Busca Ativa",            color: "amber"  },
+  return_visit:    { label: "Retorno",                color: "violet" },
+  vaccination:     { label: "Vacinação",              color: "green"  },
+  pregnant_follow: { label: "Acomp. Gestante",        color: "pink"   },
+  chronic_follow:  { label: "Hipert./Diabéticos",     color: "orange" },
+  child_follow:    { label: "Acomp. Infantil",        color: "teal"   },
+  other:           { label: "Outro",                  color: "slate"  },
+};
+
+const PRIORITY_CONFIG = {
+  urgent: { label: "Urgente",  cls: "acs-priority--urgent" },
+  normal: { label: "Normal",   cls: "acs-priority--normal" },
+  fit_in: { label: "Encaixe",  cls: "acs-priority--fit-in" },
+};
+
 function urgencyClass(dueDate, status, today) {
   if (status === "done") return "done";
   if (!dueDate) return "ok";
@@ -19,14 +36,26 @@ function urgencyLabel(dueDate, status, today) {
   const diff = Math.ceil((new Date(dueDate + "T00:00:00") - today) / 86400000);
   if (diff < 0) return `Atrasada ${Math.abs(diff)}d`;
   if (diff === 0) return "Hoje";
-  if (diff <= 3) return `${diff}d`;
   return `${diff}d`;
+}
+
+function TypeBadge({ type }) {
+  const cfg = TASK_TYPES[type];
+  if (!cfg) return null;
+  return <span className={`acs-type-badge acs-type-badge--${cfg.color}`}>{cfg.label}</span>;
+}
+
+function PriorityBadge({ priority }) {
+  const cfg = PRIORITY_CONFIG[priority];
+  if (!cfg) return null;
+  return <span className={`acs-priority ${cfg.cls}`}>{cfg.label}</span>;
 }
 
 function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
   const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [filter, setFilter]     = useState("pending");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   useEffect(() => {
     if (!token) return;
@@ -36,7 +65,13 @@ function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
     Promise.all(myPatients.map(p =>
       fetch(`/patients/${p.id}/tasks`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : [])
-        .then(tasks => (Array.isArray(tasks) ? tasks : []).map(t => ({ ...t, patientId: p.id, patientName: p.name, patientBirth: p.birthDate, patientCareCategory: p.careCategory })))
+        .then(tasks => (Array.isArray(tasks) ? tasks : []).map(t => ({
+          ...t,
+          patientId: p.id,
+          patientName: p.name,
+          patientBirth: p.birthDate,
+          patientCareCategory: p.careCategory,
+        })))
         .catch(() => [])
     ))
       .then(results => { setAllTasks(results.flat()); setLoading(false); })
@@ -46,14 +81,16 @@ function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
   const myTasks = allTasks.filter(t => !t.assigneeId || t.assigneeId === user?.id);
 
   const filtered = myTasks.filter(t => {
-    if (filter === "pending") return t.status !== "done";
-    if (filter === "done")    return t.status === "done";
-    return true;
+    const statusOk = filter === "all" || (filter === "pending" ? t.status !== "done" : t.status === "done");
+    const typeOk   = typeFilter === "all" || t.type === typeFilter;
+    return statusOk && typeOk;
   });
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
   const sorted = [...filtered].sort((a, b) => {
+    if (a.priority === "urgent" && b.priority !== "urgent") return -1;
+    if (b.priority === "urgent" && a.priority !== "urgent") return 1;
     const da = a.dueDate ? new Date(a.dueDate + "T00:00:00") : null;
     const db = b.dueDate ? new Date(b.dueDate + "T00:00:00") : null;
     if (!da && !db) return 0;
@@ -64,6 +101,7 @@ function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
 
   const overdueCount = myTasks.filter(t => t.status !== "done" && t.dueDate && parseLocalDate(t.dueDate) < today).length;
   const pendingCount = myTasks.filter(t => t.status !== "done").length;
+  const urgentCount  = myTasks.filter(t => t.status !== "done" && t.priority === "urgent").length;
   const doneCount    = myTasks.filter(t => t.status === "done").length;
 
   async function changeStatus(task, status) {
@@ -77,26 +115,40 @@ function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
     } catch {}
   }
 
+  const typeOptions = [["all", "Todos os tipos"], ...Object.entries(TASK_TYPES).map(([k, v]) => [k, v.label])];
+
   return (
     <div className="acs-page">
       <PageHeader
-        badge="Minha área"
+        eyebrow="Vitras · ACS"
         title="Tarefas"
-        subtitle="Atividades atribuídas a você pela equipe de enfermagem"
+        subtitle="Atividades e visitas atribuídas aos pacientes da sua microárea."
       />
 
       <div className="acs-kpis">
-        <KPI label="Pendentes" value={pendingCount} className="card" />
-        <KPI label="Em atraso" value={overdueCount} className={`card${overdueCount > 0 ? " kpi--danger" : ""}`} />
-        <KPI label="Concluídas" value={doneCount} className="card kpi--success" />
+        <KPI label="Pendentes"  value={pendingCount} className="card" />
+        <KPI label="Urgentes"   value={urgentCount}  className={`card${urgentCount > 0  ? " kpi--danger"  : ""}`} />
+        <KPI label="Em atraso"  value={overdueCount} className={`card${overdueCount > 0 ? " kpi--warning" : ""}`} />
+        <KPI label="Concluídas" value={doneCount}    className="card kpi--success" />
       </div>
 
-      <div className="acs-filters">
-        {[["pending", "Pendentes"], ["done", "Concluídas"], ["all", "Todas"]].map(([val, lbl]) => (
-          <button key={val} type="button" className={`acs-filter-btn${filter === val ? " is-active" : ""}`} onClick={() => setFilter(val)}>
-            {lbl}
-          </button>
-        ))}
+      <div className="acs-toolbar">
+        <div className="acs-filters">
+          {[["pending", "Pendentes"], ["done", "Concluídas"], ["all", "Todas"]].map(([val, lbl]) => (
+            <button key={val} type="button" className={`acs-filter-btn${filter === val ? " is-active" : ""}`} onClick={() => setFilter(val)}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+
+        <select
+          className="acs-type-filter"
+          value={typeFilter}
+          onChange={e => setTypeFilter(e.target.value)}
+          aria-label="Filtrar por tipo"
+        >
+          {typeOptions.map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
+        </select>
       </div>
 
       {loading ? (
@@ -104,42 +156,61 @@ function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
       ) : !sorted.length ? (
         <div className="acs-empty">
           <div className="acs-empty__icon">
-            <svg width="32" height="32" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <svg width="36" height="36" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
-          <div className="acs-empty__title">{filter === "done" ? "Nenhuma tarefa concluída" : "Nenhuma tarefa pendente"}</div>
+          <div className="acs-empty__title">
+            {filter === "done" ? "Nenhuma tarefa concluída" : "Nenhuma tarefa pendente"}
+          </div>
+          <div className="acs-empty__sub">
+            {filter === "done" ? "Conclua tarefas para vê-las aqui." : "Você está em dia com as atividades."}
+          </div>
         </div>
       ) : (
         <div className="acs-task-list">
           {sorted.map(t => {
-            const uc = urgencyClass(t.dueDate, t.status, today);
-            const ul = urgencyLabel(t.dueDate, t.status, today);
+            const uc   = urgencyClass(t.dueDate, t.status, today);
+            const ul   = urgencyLabel(t.dueDate, t.status, today);
             const done = t.status === "done";
             return (
               <div key={t.id} className={`acs-task acs-task--${uc}`}>
                 <div className="acs-task__head">
                   <div className="acs-task__body">
                     <div className="acs-task__title-row">
+                      {t.type && <TypeBadge type={t.type} />}
+                      {t.priority && t.priority !== "normal" && <PriorityBadge priority={t.priority} />}
                       <span className="acs-task__title">{t.title}</span>
                       {ul && !done && <span className="acs-task__urgency">{ul}</span>}
                     </div>
                     {t.notes && <p className="acs-task__notes">{t.notes}</p>}
                     <div className="acs-task__meta">
-                      <button type="button" className="acs-task__pat-btn" onClick={() => onNavigatePatient && onNavigatePatient(t.patientId)}>
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.4"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                      <button
+                        type="button"
+                        className="acs-task__pat-btn"
+                        onClick={() => onNavigatePatient && onNavigatePatient(t.patientId)}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                          <circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.4" />
+                          <path d="M2 14c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        </svg>
                         {t.patientName}
                       </button>
                       {t.dueDate && <span className="acs-task__due">Prazo: {fmtDate(t.dueDate)}</span>}
                     </div>
                   </div>
-                  <select
-                    className="acs-task__status"
-                    value={t.status || "pending"}
-                    onChange={e => changeStatus(t, e.target.value)}
-                  >
-                    <option value="pending">Pendente</option>
-                    <option value="in_progress">Em andamento</option>
-                    <option value="done">Concluída</option>
-                  </select>
+                  <div className="acs-task__controls">
+                    <select
+                      className="acs-task__status"
+                      value={t.status || "pending"}
+                      onChange={e => changeStatus(t, e.target.value)}
+                      aria-label="Status da tarefa"
+                    >
+                      <option value="pending">Pendente</option>
+                      <option value="in_progress">Em andamento</option>
+                      <option value="done">Concluída</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             );

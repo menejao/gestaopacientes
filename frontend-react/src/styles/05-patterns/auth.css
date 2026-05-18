@@ -166,6 +166,16 @@
   box-shadow: 0 0 0 3px rgba(220,38,38,.14);
 }
 
+/* autofill no auth card usa var(--bg), não var(--surface) */
+.auth-card .input input:-webkit-autofill,
+.auth-card .input input:-webkit-autofill:hover,
+.auth-card .input input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px var(--bg) inset;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 /* Select arrow teal no contexto auth */
 .auth-card .input select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%230f766e' d='M0 0h10L5 6z'/%3E%3C/svg%3E");

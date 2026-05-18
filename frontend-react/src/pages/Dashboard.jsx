@@ -4,14 +4,14 @@ import Card from "../components/ui/Card";
 import KPI from "../components/ui/KPI";
 import Table from "../components/ui/Table";
 import Avatar from "../components/ui/Avatar";
+import Button from "../components/ui/Button";
 import PageLayout from "../components/layout/PageLayout";
 import PageHeader from "../components/layout/PageHeader";
-import { readLS } from "../utils/storage";
-import { AGENDA_KEY, RECEPTION_USERS, PHARMA_USERS } from "../config/constants";
+import { RECEPTION_USERS, PHARMA_USERS } from "../config/constants";
 import { buildProactiveAlerts, protocolChip, catLabel } from "../utils/clinical";
 import { isAdmin, roleLabel } from "../utils/roles";
 
-function Dashboard({ patients, users, allUsers, templates, protocolByPatient, demandMonthly, currentUser, onNavigate }) {
+function Dashboard({ patients, users, allUsers, templates, protocolByPatient, demandMonthly, currentUser, onNavigate, agenda = [], pharmacyStock = [] }) {
   const assigned = patients.filter((p) => String(p.assignedAcsId || "").trim()).length;
   const unassigned = Math.max(patients.length - assigned, 0);
   const acsCount = users.filter((u) => u.role === "acs").length;
@@ -46,40 +46,39 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
   const alerts = buildProactiveAlerts(
     patients,
     protocolByPatient,
-    readLS("saudeubs_pharmacy_v1", []),
-    readLS(AGENDA_KEY, []),
+    pharmacyStock,
+    agenda,
   ).slice(0, 6);
 
   return (
-    <PageLayout className="dashboard dashboard--valens">
+    <PageLayout className="dashboard dashboard--vitras">
       <PageHeader
-        eyebrow="VALENS"
+        eyebrow="Vitras"
         title="Visão operacional da unidade"
         subtitle="Plataforma integrada para gestão da saúde pública. Monitore pacientes, equipe, protocolos e alertas clínicos com densidade institucional."
-        actions={
+        variant="workspace"
+        actions={(
           <div className="dashboard__header-actions">
-            <Chip tone={pc.critical > 0 ? "danger" : pc.attention > 0 ? "warn" : "ok"}>
-              {pc.critical} crítico{pc.critical !== 1 ? "s" : ""}
-            </Chip>
-            <Chip tone="muted">{pc.ok} em dia</Chip>
+            <Button size="sm" onClick={() => onNavigate?.("gestor")}>Abrir gestão à vista</Button>
+            <Button variant="secondary" size="sm" onClick={() => onNavigate?.("patients")}>Ir para pacientes</Button>
           </div>
-        }
+        )}
       />
 
       <section className="dashboard__kpis">
-        <KPI label="Pacientes ativos" value={patients.length} helper="Total cadastrado" className="card" />
-        <KPI label="Com ACS definido" value={assigned} helper={`Sem ACS: ${unassigned}`} className="card" />
+        <KPI label="Pacientes ativos" value={patients.length} helper="Total cadastrado" className="card card--compact" />
+        <KPI label="Com ACS definido" value={assigned} helper={`Sem ACS: ${unassigned}`} className="card card--compact" />
         <KPI
           label="Protocolos críticos"
           value={pc.critical}
           helper={`Atenção: ${pc.attention} · Em dia: ${pc.ok}`}
-          className={`card ${pc.critical ? "kpi--danger" : pc.attention ? "kpi--warning" : "kpi--success"}`}
+          className={`card card--compact ${pc.critical ? "kpi--danger" : pc.attention ? "kpi--warning" : "kpi--success"}`}
         />
-        <KPI label="Profissionais" value={users.length} helper={`ACS: ${acsCount} · Médicos: ${docCount}`} className="card" />
+        <KPI label="Profissionais" value={users.length} helper={`ACS: ${acsCount} · Médicos: ${docCount}`} className="card card--compact" />
       </section>
 
       {currentUser?.role === "nurse_manager" ? (
-        <Card className={`dashboard__demand-card card--noPad ${dmTone !== "neutral" ? `kpi--${dmTone}` : ""}`}>
+        <Card className={`dashboard__demand-card card--executive card--noPad ${dmTone !== "neutral" ? `kpi--${dmTone}` : ""}`}>
           <div className="card__header">
             <span className="card__title">Demanda programada</span>
             <Badge tone={dmTone}>{dmStatus}</Badge>
@@ -102,7 +101,7 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
       ) : null}
 
       {isAna ? (
-        <Card className="card--noPad">
+        <Card className="card--noPad card--operational">
           <div className="card__header">
             <div>
               <div className="card__title">Painel de contas</div>
@@ -159,26 +158,34 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
           </div>
           <div className="dashboard__alerts-grid">
             {alerts.map((a) => (
-              <button
+              <Button
                 key={a.id}
-                type="button"
+                variant="ghost"
                 className={`dashboard__alert-card dashboard__alert-card--${a.type}`}
                 onClick={() => a.patientId && onNavigate && onNavigate(a.patientId)}
                 disabled={!a.patientId}
               >
-                <span className="dashboard__alert-icon">{a.icon}</span>
+                <span className="dashboard__alert-icon">
+                  {a.type === "danger" ? (
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 5v3.5M8 11h.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  ) : a.type === "warn" ? (
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 2L14.5 13.5H1.5L8 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M8 7v2.5M8 11.5h.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 7.5v4M8 5h.01" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  )}
+                </span>
                 <span className="dashboard__alert-copy">
                   <strong>{a.title}</strong>
                   <span>{a.detail}</span>
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
         </section>
       ) : null}
 
       <section className="dashboard__grid">
-        <Card>
+        <Card className="card--operational">
           <div className="card__header">
             <span className="card__title">Pacientes prioritários</span>
             <Chip tone="danger">{pc.critical} crítico{pc.critical !== 1 ? "s" : ""}</Chip>
@@ -206,7 +213,7 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
           </div>
         </Card>
 
-        <Card>
+        <Card className="card--operational">
           <div className="card__header">
             <span className="card__title">Equipe ativa</span>
             <Chip tone="muted">{users.length} membros</Chip>

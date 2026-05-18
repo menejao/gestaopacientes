@@ -1,6 +1,7 @@
 import PageHero from "./layout/PageHero";
 import EmptyState from "./ui/EmptyState";
 import Avatar from "./ui/Avatar";
+import Button from "./ui/Button";
 
 function UserList({ title, users, isManagerUser, onEdit, onDelete }) {
   return (
@@ -26,8 +27,8 @@ function UserList({ title, users, isManagerUser, onEdit, onDelete }) {
                   </div>
                   {isManagerUser && (
                     <div className="actions">
-                      <button className="btn btn--secondary btn--sm" onClick={() => onEdit(u)()}>Editar</button>
-                      <button className="btn btn--danger btn--sm" onClick={() => onDelete(u)}>Excluir</button>
+                      <Button variant="secondary" size="sm" onClick={() => onEdit(u)()}>Editar</Button>
+                      <Button variant="danger" size="sm" onClick={() => onDelete(u)}>Excluir</Button>
                     </div>
                   )}
                 </li>

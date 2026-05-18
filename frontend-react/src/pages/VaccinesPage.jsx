@@ -163,20 +163,20 @@ function getConditionVaccines(careCategory) {
   return PNI_CALENDAR.filter(v => v.ageGroup === cond);
 }
 
-function getRosaIndicatorVaccines() {
+export function getRosaIndicatorVaccines() {
   return PNI_CALENDAR.filter(v => ROSA_INDICATOR_IDS.has(v.id));
 }
 
-function getRosaGestanteVaccines(gestWeeks) {
+export function getRosaGestanteVaccines(gestWeeks) {
   if (gestWeeks === null || gestWeeks < 20) return [];
   return PNI_CALENDAR.filter(v => v.id === "dt-g");
 }
 
-function getRosaIdosoVaccines() {
+export function getRosaIdosoVaccines() {
   return PNI_CALENDAR.filter(v => v.id === "influenza-i");
 }
 
-function getRosaHpvVaccines(ageMonths, sex) {
+export function getRosaHpvVaccines(ageMonths, sex) {
   const isFemale = String(sex || "").toLowerCase().includes("f");
   if (!isFemale || ageMonths < 108 || ageMonths > 168) return [];
   return PNI_CALENDAR.filter(v => v.id === "hpv");
@@ -382,13 +382,14 @@ function VaccinesPage({ patients, users, templates, token, canManageUser, user }
         <div className="vacc-panel">
           <div className="card card--noPad overflow-hidden">
             <div className="vacc-panel__search">
-              <span className="vacc-panel__search-icon"><IconSearch /></span>
-              <input
-                className="input vacc-panel__search-input"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar paciente..."
-              />
+              <div className="input">
+                <span className="input__icon"><IconSearch /></span>
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Buscar paciente..."
+                />
+              </div>
             </div>
             <div className="vacc-panel__list">
               {!filtered.length

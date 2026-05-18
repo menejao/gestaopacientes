@@ -1,5 +1,6 @@
 import PageHero from "./layout/PageHero";
 import EmptyState from "./ui/EmptyState";
+import Button from "./ui/Button";
 
 function ProtocolsTab({ templates, canManageUser, onEdit, onDelete }) {
   return (
@@ -9,7 +10,7 @@ function ProtocolsTab({ templates, canManageUser, onEdit, onDelete }) {
         title="Protocolos"
         subtitle="Metas e etapas de acompanhamento por categoria de paciente."
         actions={canManageUser && (
-          <button className="btn btn--primary btn--sm" onClick={() => onEdit(null)}>+ Novo protocolo</button>
+          <Button size="sm" onClick={() => onEdit(null)}>+ Novo protocolo</Button>
         )}
       />
       <div className="card card--noPad">
@@ -34,8 +35,8 @@ function ProtocolsTab({ templates, canManageUser, onEdit, onDelete }) {
                   </div>
                   {canManageUser && (
                     <div className="actions">
-                      <button className="btn btn--secondary btn--sm" onClick={() => onEdit(tpl)}>Editar</button>
-                      <button className="btn btn--danger btn--sm" onClick={() => onDelete(tpl)}>Excluir</button>
+                      <Button variant="secondary" size="sm" onClick={() => onEdit(tpl)}>Editar</Button>
+                      <Button variant="danger" size="sm" onClick={() => onDelete(tpl)}>Excluir</Button>
                     </div>
                   )}
                 </div>

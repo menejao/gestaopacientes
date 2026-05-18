@@ -4,8 +4,6 @@ import NotificationBell from "../ui/NotificationBell";
 import Avatar from "../ui/Avatar";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
-import { readLS } from "../../utils/storage";
-import { AGENDA_KEY } from "../../config/constants";
 import { catLabel } from "../../utils/clinical";
 import {
   roleLabel,
@@ -36,6 +34,8 @@ function Topbar({
   onDeactivateBreakGlass,
   patients,
   protocolByPatient,
+  pharmacyStock,
+  agenda,
   onNavigatePatient,
   apiHealth
 }) {
@@ -53,12 +53,12 @@ function Topbar({
   const breakGlass = isBreakGlassActive(user);
 
   return (
-    <header className="topbar topbar--valens">
-      <button className="mobile-menu-btn" type="button" onClick={() => setMobileOpen((value) => !value)} aria-label="Abrir navegação">
+    <header className="topbar topbar--vitras">
+      <Button className="mobile-menu-btn" variant="ghost" onClick={() => setMobileOpen((value) => !value)} aria-label="Abrir navegação">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d={mobileOpen ? "M2 2l12 12M2 14L14 2" : "M2 4h12M2 8h12M2 12h12"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
         </svg>
-      </button>
+      </Button>
 
       <div className="topbar__center">
         <GlobalSearch patients={patients || []} templates={templates || []} onNavigate={onNavigatePatient || (() => {})} />
@@ -83,14 +83,14 @@ function Topbar({
         <NotificationBell
           patients={patients || []}
           protocolByPatient={protocolByPatient || {}}
-          pharmacyStock={readLS("saudeubs_pharmacy_v1", [])}
-          agenda={readLS(AGENDA_KEY, [])}
+          pharmacyStock={pharmacyStock || []}
+          agenda={agenda || []}
           onNavigate={onNavigatePatient || (() => {})}
         />
         {selectedPatient ? <div className="topbar__divider" /> : null}
 
         <div className="topbar__account" onClick={(event) => event.stopPropagation()}>
-          <button className="topbar__account-trigger" type="button" onClick={() => setDropOpen((value) => !value)}>
+          <Button className="topbar__account-trigger" variant="ghost" onClick={() => setDropOpen((value) => !value)}>
             <Avatar name={user?.name} />
             <div className="topbar__account-copy">
               <span>{user?.name || "-"}</span>
@@ -102,7 +102,7 @@ function Topbar({
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" className="topbar__account-caret">
               <path d={dropOpen ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4"} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-          </button>
+          </Button>
 
           {dropOpen ? (
             <div className="topbar__account-menu">

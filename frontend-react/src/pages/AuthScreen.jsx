@@ -8,21 +8,20 @@ import Alert from "../components/ui/Alert";
 import KPI from "../components/ui/KPI";
 import { Tabs, Tab } from "../components/ui/Tabs";
 
-const VALENS_SUBTITLE = "Plataforma integrada para gestão da saúde pública";
+const VITRAS_SUBTITLE = "Plataforma integrada para gestão da saúde pública";
 
-// TODO: substituir por lista dinâmica do backend quando endpoint disponível
 const CARGO_OPTIONS = [
-  { value: "",             label: "Selecionar cargo / função..." },
-  { value: "doctor",       label: "Médico(a)" },
-  { value: "nurse_manager",label: "Enfermeiro(a)" },
+  { value: "", label: "Selecionar cargo / função..." },
+  { value: "doctor", label: "Médico(a)" },
+  { value: "nurse_manager", label: "Enfermeiro(a)" },
   { value: "nursing_tech", label: "Técnico(a) de Enfermagem" },
-  { value: "dentist",      label: "Dentista" },
-  { value: "pharmacist",   label: "Farmacêutico(a)" },
-  { value: "pharmacy_tech",label: "Técnico(a) de Farmácia" },
+  { value: "dentist", label: "Dentista" },
+  { value: "pharmacist", label: "Farmacêutico(a)" },
+  { value: "pharmacy_tech", label: "Técnico(a) de Farmácia" },
   { value: "receptionist", label: "Recepção / Administrativo" },
-  { value: "acs",          label: "ACS — Agente Comunitário de Saúde" },
-  { value: "gestor",       label: "Gestor(a)" },
-  { value: "coordinator",  label: "Coordenador(a)" },
+  { value: "acs", label: "ACS - Agente Comunitário de Saúde" },
+  { value: "gestor", label: "Gestor(a)" },
+  { value: "coordinator", label: "Coordenador(a)" },
 ];
 
 const IconMark = () => (
@@ -64,14 +63,18 @@ function ResetPasswordForm() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function handleRequest(e) {
-    e.preventDefault();
+  async function handleRequest(event) {
+    event.preventDefault();
     if (!email.trim()) return setErr("Informe e-mail institucional.");
-    setBusy(true); setErr("");
+    setBusy(true);
+    setErr("");
     try {
       const data = await requestPasswordReset(email);
       setMsg(data.message || "Verifique seu e-mail para continuar.");
-      if (data.resetToken) { setToken(data.resetToken); setStep("confirm"); }
+      if (data.resetToken) {
+        setToken(data.resetToken);
+        setStep("confirm");
+      }
     } catch (error) {
       setErr(error.message || "Erro de conexão.");
     } finally {
@@ -79,15 +82,16 @@ function ResetPasswordForm() {
     }
   }
 
-  async function handleConfirm(e) {
-    e.preventDefault();
+  async function handleConfirm(event) {
+    event.preventDefault();
     if (!token.trim()) return setErr("Informe token válido.");
     if (newPw.length < 8) return setErr("Senha deve ter pelo menos 8 caracteres.");
     if (newPw !== newPw2) return setErr("Senhas não coincidem.");
-    setBusy(true); setErr("");
+    setBusy(true);
+    setErr("");
     try {
       await confirmPasswordReset(token, newPw);
-      setMsg("Senha redefinida com sucesso. Faça login com nova senha.");
+      setMsg("Senha redefinida com sucesso. Faça login com a nova senha.");
       setStep("done");
     } catch (error) {
       setErr(error.message || "Falha ao redefinir senha.");
@@ -99,7 +103,7 @@ function ResetPasswordForm() {
   if (step === "done") {
     return (
       <div className="auth-reset-done">
-        <div className="auth-reset-done__icon">✓</div>
+        <div className="auth-reset-done__icon">OK</div>
         <h3>Credencial atualizada</h3>
         <p>{msg}</p>
       </div>
@@ -118,16 +122,14 @@ function ResetPasswordForm() {
       ) : (
         <>
           <Input label="Token de redefinição" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Cole o token recebido" />
-          <Input label="Nova senha" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} hint="Mínimo 8 caracteres, com maiúscula, número e símbolo." placeholder="••••••••" />
-          <Input label="Confirmar senha" type="password" value={newPw2} onChange={(e) => setNewPw2(e.target.value)} placeholder="••••••••" />
+          <Input label="Nova senha" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} hint="Mínimo 8 caracteres, com maiúscula, número e símbolo." placeholder="********" />
+          <Input label="Confirmar senha" type="password" value={newPw2} onChange={(e) => setNewPw2(e.target.value)} placeholder="********" />
         </>
       )}
       {err ? <Alert tone="danger">{err}</Alert> : null}
       {msg && step === "request" ? <Alert tone="success">{msg}</Alert> : null}
       <Button type="submit" variant="primary" size="lg" disabled={busy}>
-        {busy
-          ? (step === "request" ? "Enviando..." : "Redefinindo...")
-          : (step === "request" ? "Solicitar redefinição" : "Redefinir senha")}
+        {busy ? (step === "request" ? "Enviando..." : "Redefinindo...") : (step === "request" ? "Solicitar redefinição" : "Redefinir senha")}
       </Button>
     </form>
   );
@@ -139,21 +141,18 @@ function AccessRequestForm() {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState("");
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.jobTitle) {
       return setErr("Nome, e-mail e cargo são obrigatórios.");
     }
-    setBusy(true); setErr("");
+    setBusy(true);
+    setErr("");
     try {
       await requestAccess(form);
       setDone(true);
     } catch (error) {
-      if (error?.status === 404 || error?.status === 405 || error?.status === 501) {
-        setDone(true);
-      } else {
-        setErr(error.message || "Erro ao registrar solicitação.");
-      }
+      setErr(error.message || "Erro ao registrar solicitação.");
     } finally {
       setBusy(false);
     }
@@ -162,7 +161,7 @@ function AccessRequestForm() {
   if (done) {
     return (
       <div className="auth-reset-done">
-        <div className="auth-reset-done__icon">✓</div>
+        <div className="auth-reset-done__icon">OK</div>
         <h3>Solicitação enviada</h3>
         <p>Registrada para análise administrativa. Você receberá um e-mail com instruções após a aprovação.</p>
       </div>
@@ -177,7 +176,7 @@ function AccessRequestForm() {
       <Input
         label="Nome completo"
         value={form.name}
-        onChange={(e) => setForm(s => ({ ...s, name: e.target.value }))}
+        onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
         placeholder="Nome e sobrenome"
         autoComplete="name"
         autoFocus
@@ -186,17 +185,17 @@ function AccessRequestForm() {
         label="E-mail institucional"
         type="email"
         value={form.email}
-        onChange={(e) => setForm(s => ({ ...s, email: e.target.value }))}
+        onChange={(e) => setForm((current) => ({ ...current, email: e.target.value }))}
         placeholder="usuario@dominio.local"
         autoComplete="email"
       />
       <Select
         label="Cargo / função"
         value={form.jobTitle}
-        onChange={(e) => setForm(s => ({ ...s, jobTitle: e.target.value }))}
+        onChange={(e) => setForm((current) => ({ ...current, jobTitle: e.target.value }))}
       >
-        {CARGO_OPTIONS.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        {CARGO_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </Select>
       {err ? <Alert tone="danger">{err}</Alert> : null}
@@ -212,21 +211,22 @@ function AccessRequestForm() {
   );
 }
 
-function AuthScreen({ onLogin, error, busy }) {
+function AuthScreen({ onLogin, onVerifyTwoFactor, loginChallenge, onCancelTwoFactor, error, busy }) {
   const [authTab, setAuthTab] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
   const cardTitles = {
-    login:   "Entrar na plataforma",
+    login: "Entrar na plataforma",
     request: "Solicitar acesso",
-    reset:   "Recuperar credencial",
+    reset: "Recuperar credencial",
   };
 
   const cardSubtitles = {
-    login:   VALENS_SUBTITLE,
+    login: loginChallenge ? "Informe o código 2FA para concluir o acesso institucional." : VITRAS_SUBTITLE,
     request: "Solicitações são revisadas pela equipe administrativa antes da aprovação.",
-    reset:   "Fluxo seguro de redefinição de senha via e-mail institucional.",
+    reset: "Fluxo seguro de redefinição de senha via e-mail institucional.",
   };
 
   return (
@@ -236,8 +236,8 @@ function AuthScreen({ onLogin, error, busy }) {
           <div className="auth-brand-lockup">
             <div className="auth-brand-lockup__icon"><IconMark /></div>
             <div className="auth-brand-lockup__copy">
-              <strong>VALENS</strong>
-              <span>{VALENS_SUBTITLE}</span>
+              <strong>Vitras</strong>
+              <span>{VITRAS_SUBTITLE}</span>
             </div>
           </div>
         </div>
@@ -279,14 +279,46 @@ function AuthScreen({ onLogin, error, busy }) {
             </Tabs>
 
             {authTab === "login" ? (
-              <form className="auth-form auth-form--stacked" onSubmit={(e) => { e.preventDefault(); onLogin(email, password); }}>
-                <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@dominio.local" autoComplete="email" autoFocus />
-                <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
-                {error ? <Alert tone="danger">{error}</Alert> : null}
-                <Button type="submit" variant="primary" size="lg" disabled={busy}>
-                  {busy ? "Entrando..." : "Entrar"}
-                </Button>
-              </form>
+              loginChallenge ? (
+                <form className="auth-form auth-form--stacked" onSubmit={(event) => { event.preventDefault(); onVerifyTwoFactor(twoFactorCode); }}>
+                  <Alert tone="info">
+                    Código solicitado para <strong>{loginChallenge.email}</strong>.
+                  </Alert>
+                  <Input
+                    label="Código 2FA"
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D+/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    autoComplete="one-time-code"
+                    autoFocus
+                  />
+                  {error ? <Alert tone="danger">{error}</Alert> : null}
+                  <Button type="submit" variant="primary" size="lg" disabled={busy || twoFactorCode.length !== 6}>
+                    {busy ? "Validando..." : "Validar código"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="lg"
+                    disabled={busy}
+                    onClick={() => {
+                      setTwoFactorCode("");
+                      onCancelTwoFactor?.();
+                    }}
+                  >
+                    Voltar
+                  </Button>
+                </form>
+              ) : (
+                <form className="auth-form auth-form--stacked" onSubmit={(event) => { event.preventDefault(); onLogin(email, password); }}>
+                  <Input label="E-mail institucional" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@dominio.local" autoComplete="email" autoFocus />
+                  <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" autoComplete="current-password" />
+                  {error ? <Alert tone="danger">{error}</Alert> : null}
+                  <Button type="submit" variant="primary" size="lg" disabled={busy}>
+                    {busy ? "Entrando..." : "Entrar"}
+                  </Button>
+                </form>
+              )
             ) : authTab === "request" ? (
               <AccessRequestForm />
             ) : (
@@ -295,7 +327,7 @@ function AuthScreen({ onLogin, error, busy }) {
           </Card>
 
           <p className="auth-page-footer">
-            <a href="/activate" className="auth-footer-link">Primeiro acesso administrativo →</a>
+            <a href="/activate" className="auth-footer-link">Primeiro acesso administrativo -&gt;</a>
           </p>
         </div>
       </section>

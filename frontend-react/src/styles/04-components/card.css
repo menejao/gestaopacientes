@@ -30,6 +30,12 @@
 .card--flat   { background: transparent; box-shadow: none; }
 .card--padded { padding: var(--s-6); }
 .card--noPad  { padding: 0; }
+.card--compact { min-height: 96px; padding: var(--s-4); }
+.card--standard { min-height: 128px; }
+.card--tall { min-height: 180px; }
+.card--operational { background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%); }
+.card--executive { background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 88%, white) 0%, var(--surface) 100%); }
+.card--alert { border-color: var(--warning-bd); background: var(--warning-soft); }
 
 /* Cabeçalho/footer internos (para .card com padding: 0) */
 .card__header {
@@ -65,6 +71,10 @@
   position: relative;
   overflow: hidden;
   padding: var(--s-4);
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 .kpi::before {
   content: '';
@@ -103,4 +113,27 @@
   margin-top: var(--s-1);
   font: 500 var(--t-sm)/var(--lh-snug) var(--font-sans);
   color: var(--text-dim);
+}
+
+.kpi--compact {
+  min-height: 88px;
+  padding: var(--s-3);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+@media (max-width: 1024px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
 }

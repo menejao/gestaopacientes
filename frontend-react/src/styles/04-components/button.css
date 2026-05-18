@@ -56,6 +56,7 @@
 
 .btn--ghost { color: var(--text-muted); }
 .btn--ghost:hover { background: var(--surface-3); color: var(--text); }
+.btn--danger-hover:hover { color: var(--danger); background: var(--danger-soft); }
 
 .btn--danger {
   background: var(--danger-soft);

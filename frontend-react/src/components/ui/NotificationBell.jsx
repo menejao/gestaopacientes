@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { readLS, writeLS } from "../../utils/storage";
 import { buildProactiveAlerts } from "../../utils/clinical";
+import Button from "./Button";
 
-const NOTIF_SEEN_KEY = "saudeubs_notif_seen_v1";
-const NOTIF_CLEARED_AT_KEY = "saudeubs_notif_cleared_at_v1";
+const NOTIF_SEEN_KEY = "vitras_notif_seen_v1";
+const NOTIF_CLEARED_AT_KEY = "vitras_notif_cleared_at_v1";
 
 function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, onNavigate }) {
   const [open, setOpen] = useState(false);
@@ -70,7 +71,7 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
 
   return (
     <div ref={ref} className="notif-bell">
-      <button className="notif-bell__btn" onClick={() => setOpen(v => !v)}>
+      <Button className="notif-bell__btn" variant="ghost" onClick={() => setOpen(v => !v)}>
         <svg viewBox="0 0 20 20" fill="none" width="20" height="20">
           <path d="M10 2a6 6 0 00-6 6v3.5L2.5 14h15L16 11.5V8a6 6 0 00-6-6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
           <path d="M8 14.5a2 2 0 004 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -80,7 +81,7 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
             {unseenCount > 9 ? "9+" : unseenCount}
           </span>
         )}
-      </button>
+      </Button>
       {open && (
         <div className="notif-bell__panel">
           <div className="notif-bell__panel-head">
@@ -90,9 +91,9 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
                 <span className="notif-bell__unseen-count">{unseenCount} não visto{unseenCount !== 1 ? "s" : ""}</span>
               )}
               {unseenCount > 1 && (
-                <button className="notif-bell__clear-btn" onClick={clearAllSeen} title="Marcar todos como vistos">
+                <Button className="notif-bell__clear-btn" variant="ghost" onClick={clearAllSeen} title="Marcar todos como vistos">
                   Limpar todos
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -125,14 +126,17 @@ function NotificationBell({ patients, protocolByPatient, pharmacyStock, agenda, 
                     <div className="notif-bell__item-detail">{a.detail}</div>
                   </div>
                 </span>
-                <button
+                <Button
                   className="notif-bell__item-dismiss"
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
                   onClick={e => markSeen(a.id, e)}
                   title="Marcar como visto">
                   <svg viewBox="0 0 12 12" fill="none" width="9" height="9">
                     <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
                   </svg>
-                </button>
+                </Button>
               </div>
             );
           })}

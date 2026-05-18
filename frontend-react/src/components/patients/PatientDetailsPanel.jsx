@@ -1,6 +1,7 @@
 import Input from "../ui/Input";
 import Select from "../ui/Select";
 import Textarea from "../ui/Textarea";
+import Checkbox from "../ui/Checkbox";
 
 function PatientDetailsPanel({ patient, users, templates, catLabel, displayText, isChildCategory, fmtDate, calcAge }) {
   if (!patient) return null;
@@ -14,10 +15,7 @@ function PatientDetailsPanel({ patient, users, templates, catLabel, displayText,
         <span className="field__label">Condição crônica</span>
         <div className="patient-details__chronic-list">
           {[["diabetes", "Diabetes"], ["hypertension", "Hipertensão"]].map(([val, lbl]) => (
-            <label key={val} className="patient-details__checkbox">
-              <input type="checkbox" checked={(patient.chronicConditions || []).includes(val)} disabled />
-              {lbl}
-            </label>
+            <Checkbox key={val} className="patient-details__checkbox" checked={(patient.chronicConditions || []).includes(val)} disabled label={lbl} />
           ))}
         </div>
       </div>

@@ -1,26 +1,18 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { createPatient } from "../api";
-import { AGENDA_KEY } from "../config/constants";
-import { readLS, writeLS } from "../utils/storage";
 import { matchesPatientSearch, emptyPatientForm, isProfileIncomplete, ageInMonths } from "../utils/clinical";
 import { isUnavailableDay, unavailableReason } from "../utils/dates";
 import { formatCpf, formatPhone, initials } from "../utils/formatting";
+import { useAgenda } from "../hooks/useAgenda";
+import { AGENDA_HOURS, AGENDA_STATUS_LABELS, describeAgendaType } from "../utils/agenda";
 import Button from "../components/ui/Button";
+import Alert from "../components/ui/Alert";
 import Input from "../components/ui/Input";
 import Select from "../components/ui/Select";
 import Modal from "../components/ui/Modal";
 import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/layout/PageHeader";
-
-const AGENDA_HOURS = ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00"];
-
-const STATUS_LABEL = {
-  scheduled: "Agendado",
-  arrived:   "Chegou",
-  attending: "Em atend.",
-  done:      "Concluído",
-  absent:    "Faltou",
-};
 
 const IconPlus = () => (
   <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
@@ -68,7 +60,6 @@ const IconLock = () => (
 );
 
 function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreated, onNavigatePatient, teams = [] }) {
-  const [agenda, setAgenda]             = useState(() => readLS(AGENDA_KEY, []));
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [showForm, setShowForm]         = useState(false);
   const [form, setForm]                 = useState({ patientId: "", doctorId: "", date: "", time: "", type: "consultation", notes: "", status: "scheduled" });
@@ -79,6 +70,18 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
   const [showNewPat, setShowNewPat]     = useState(false);
   const [newPatForm, setNewPatForm]     = useState({ name: "", cpf: "", phone: "", careCategory: "general", birthDate: "", teamId: String(user?.teamId || "") });
   const [newPatErr, setNewPatErr]       = useState("");
+  const [blockedStatusMessage, setBlockedStatusMessage] = useState("");
+  const {
+    entries: agenda,
+    loading: agendaLoading,
+    error: agendaError,
+    setError: setAgendaError,
+    createEntry,
+    patchEntry,
+    removeEntry
+  } = useAgenda(token, { onError: () => {} });
+
+  const patWrapRef = useRef(null);
 
   const patResults = useMemo(() => {
     const q = patSearch.trim();
@@ -87,8 +90,6 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
   }, [patSearch, patients]);
 
   const doctors = users.filter(u => ["doctor", "nurse_manager", "nursing_tech"].includes(u.role));
-
-  function saveAgenda(newA) { setAgenda(newA); writeLS(AGENDA_KEY, newA); }
 
   function openNew(time = "", date = selectedDate) {
     setForm({ patientId: "", doctorId: "", date, time, type: "consultation", notes: "", status: "scheduled" });
@@ -103,6 +104,27 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
     setEditId(appt.id); setShowForm(true);
   }
 
+  async function createQuickPatient() {
+    const payload = {
+      ...emptyPatientForm(),
+      name: newPatForm.name.trim(),
+      cpf: newPatForm.cpf,
+      phone: newPatForm.phone,
+      birthDate: newPatForm.birthDate,
+      careCategory: newPatForm.careCategory,
+      teamId: String(newPatForm.teamId || user?.teamId || "").trim(),
+      incompleteProfile: true,
+      motherName: "", cns: "", phoneAlt: "", zipCode: "", address: "", number: "",
+      complement: "", neighborhood: "", city: "", state: "", sex: "", maritalStatus: "",
+      assignedAcsId: "", allergies: "", comorbidities: "", medications: "",
+      pregnancyStartDate: "", expectedDeliveryDate: "",
+    };
+    const created = await createPatient(token, payload);
+    if (onNewPatient) onNewPatient(created);
+    if (onPatientCreated) onPatientCreated();
+    return created;
+  }
+
   async function submit(e) {
     e.preventDefault();
     if (!form.patientId || !form.date || !form.time) return;
@@ -110,57 +132,38 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
     let resolvedPatientId = form.patientId;
 
     if (patSelected && String(form.patientId).startsWith("local_") && !patients.find(p => p.id === form.patientId)) {
-      const payload = {
-        name: patSelected.name,
-        cpf: patSelected.cpf || "",
-        phone: patSelected.phone || "",
-        birthDate: patSelected.birthDate || "",
-        careCategory: patSelected.careCategory || "general",
-        teamId: String(patSelected.teamId || user?.teamId || "").trim(),
-        incompleteProfile: true,
-        motherName: "", cns: "", phoneAlt: "", zipCode: "", address: "", number: "",
-        complement: "", neighborhood: "", city: "", state: "", sex: "", maritalStatus: "",
-        assignedAcsId: "", allergies: "", comorbidities: "", medications: "",
-        pregnancyStartDate: "", expectedDeliveryDate: "",
-      };
-
-      if (token && !String(token).startsWith("local_")) {
-        try {
-          const created = await createPatient(token, payload);
-          resolvedPatientId = created?.id || form.patientId;
-          if (onNewPatient) onNewPatient({ ...payload, id: resolvedPatientId });
-          if (onPatientCreated) onPatientCreated();
-        } catch {
-          const quickPat = { ...payload, id: form.patientId };
-          if (onNewPatient) onNewPatient(quickPat);
-          resolvedPatientId = form.patientId;
-        }
-      } else {
-        const quickPat = { ...payload, id: form.patientId };
-        if (onNewPatient) onNewPatient(quickPat);
-      }
+      const created = await createQuickPatient();
+      resolvedPatientId = created?.id || form.patientId;
     }
 
-    const pat = patients.find(p => p.id === resolvedPatientId) || patSelected;
-    const doc = users.find(u => u.id === form.doctorId);
-    const wasQuickCreated = String(form.patientId).startsWith("local_");
-    const isIncomplete = pat?.incompleteProfile === true || wasQuickCreated;
-    const entry = {
-      ...form,
-      patientId: resolvedPatientId,
-      id: editId || ("ag" + Date.now()),
-      patientName: pat?.name || "?",
-      doctorName: doc?.name || "",
-      incompletePatient: isIncomplete,
-      createdAt: new Date().toISOString(),
-    };
-    const base = editId ? agenda.filter(a => a.id !== editId) : agenda;
-    saveAgenda([...base, entry].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
-    setShowForm(false);
+    const payload = { ...form, patientId: resolvedPatientId };
+    try {
+      if (editId) await patchEntry(editId, payload);
+      else await createEntry(payload);
+      setAgendaError("");
+      setShowForm(false);
+    } catch (err) {
+      setAgendaError(err.message || "Erro ao salvar agendamento.");
+    }
   }
 
-  function remove(id) { saveAgenda(agenda.filter(a => a.id !== id)); }
-  function updateStatus(id, status) { saveAgenda(agenda.map(a => a.id === id ? { ...a, status } : a)); }
+  async function remove(id) {
+    try {
+      await removeEntry(id);
+      setAgendaError("");
+    } catch (err) {
+      setAgendaError(err.message || "Erro ao remover agendamento.");
+    }
+  }
+
+  async function updateStatus(id, status) {
+    try {
+      await patchEntry(id, { status });
+      setAgendaError("");
+    } catch (err) {
+      setAgendaError(err.message || "Erro ao atualizar agendamento.");
+    }
+  }
 
   const dayAppts = agenda
     .filter(a => a.date === selectedDate && (!filterDoc || a.doctorId === filterDoc))
@@ -176,6 +179,14 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
   const countByDay = {};
   weekDays.forEach(d => { countByDay[d] = agenda.filter(a => a.date === d).length; });
 
+  const patDropRect = (showForm && patSearch.length >= 2 && !patSelected)
+    ? patWrapRef.current?.getBoundingClientRect() ?? null
+    : null;
+
+  const monthLabel = new Date(selectedDate + "T12:00:00")
+    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+    .replace(/^\w/, c => c.toUpperCase());
+
   return (
     <div className="agenda-page">
       <PageHeader
@@ -189,6 +200,9 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
           </Button>
         }
       />
+
+      {/* Label de mês */}
+      <div className="agenda-month-label">{monthLabel}</div>
 
       {/* Tira semanal */}
       <div className="agenda-week-strip">
@@ -223,20 +237,24 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
         })}
       </div>
 
-      {/* Filtros */}
-      <div className="agenda-filters">
-        <Select value={filterDoc} onChange={e => setFilterDoc(e.target.value)}>
-          <option value="">Todos os profissionais</option>
-          {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </Select>
-        <span className="agenda-filters__count">
-          {dayAppts.length} agendamento{dayAppts.length !== 1 ? "s" : ""} em{" "}
-          {new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+      {/* Toolbar contextual */}
+      <div className="agenda-toolbar">
+        <div className="agenda-toolbar__filters">
+          <Select value={filterDoc} onChange={e => setFilterDoc(e.target.value)}>
+            <option value="">Todos os profissionais</option>
+            {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </Select>
+        </div>
+        <span className="agenda-toolbar__count">
+          {dayAppts.length} agendamento{dayAppts.length !== 1 ? "s" : ""}
         </span>
       </div>
 
       {/* Timeline */}
       <div className="agenda-timeline">
+        {agendaError ? <div className="alert alert--danger">{agendaError}</div> : null}
+        {blockedStatusMessage ? <Alert tone="warning">{blockedStatusMessage}</Alert> : null}
+
         {isUnavailableDay(selectedDate) && (
           <div className="agenda-unavail-banner">
             <span className="agenda-unavail-banner__icon"><IconLock /></span>
@@ -249,20 +267,22 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
           </div>
         )}
 
-        {!dayAppts.length ? (
+        {agendaLoading && !dayAppts.length && !isUnavailableDay(selectedDate) ? (
+          <div className="card card--operational">
+            <div className="card__body">
+              <p className="muted">Carregando agenda...</p>
+            </div>
+          </div>
+        ) : !dayAppts.length && !isUnavailableDay(selectedDate) ? (
           <EmptyState
-            title={isUnavailableDay(selectedDate) ? "Unidade fechada neste dia" : "Nenhum agendamento neste dia"}
-            description={
-              isUnavailableDay(selectedDate)
-                ? "Esta data está bloqueada para agendamentos."
-                : "Clique em Novo agendamento para adicionar uma consulta neste dia."
-            }
-            action={!isUnavailableDay(selectedDate) ? (
+            title="Nenhum agendamento neste dia"
+            description="Clique em Novo agendamento para adicionar uma consulta neste dia."
+            action={
               <Button onClick={() => openNew()}>
                 <IconPlus />
                 Agendar consulta
               </Button>
-            ) : null}
+            }
           />
         ) : (
           dayAppts.map(appt => {
@@ -302,16 +322,13 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                 <div className="agenda-appt__row">
                   <span className="agenda-appt__time">{appt.time}</span>
 
-                  <div className="agenda-appt__copy">
-                    <div className="agenda-appt__name">{appt.patientName}</div>
-                    <div className="agenda-appt__meta">
-                      {appt.type === "consultation" ? "Consulta"
-                        : appt.type === "return" ? "Retorno"
-                        : appt.type === "procedure" ? "Procedimento"
-                        : "Outro"}
-                      {appt.doctorName && ` · ${appt.doctorName}`}
-                      {appt.notes && ` · ${appt.notes}`}
-                    </div>
+                    <div className="agenda-appt__copy">
+                      <div className="agenda-appt__name">{appt.patientName}</div>
+                      <div className="agenda-appt__meta">
+                        {describeAgendaType(appt.type)}
+                        {appt.doctorName && ` · ${appt.doctorName}`}
+                        {appt.notes && ` · ${appt.notes}`}
+                      </div>
                   </div>
 
                   <div className="agenda-appt__actions">
@@ -320,16 +337,17 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                       value={appt.status}
                       onChange={e => {
                         if (incomplete && (e.target.value === "attending" || e.target.value === "done")) {
-                          alert("Cadastro incompleto. Complete o perfil do paciente antes de iniciar a consulta.");
+                          setBlockedStatusMessage("Cadastro incompleto. Complete perfil do paciente antes de iniciar consulta.");
                           return;
                         }
+                        setBlockedStatusMessage("");
                         updateStatus(appt.id, e.target.value);
                       }}
                     >
-                      {Object.entries(STATUS_LABEL).map(([k, v]) => {
-                        const blocked = incomplete && (k === "attending" || k === "done");
-                        return (
-                          <option key={k} value={k} disabled={blocked}>
+                        {Object.entries(AGENDA_STATUS_LABELS).map(([k, v]) => {
+                          const blocked = incomplete && (k === "attending" || k === "done");
+                          return (
+                            <option key={k} value={k} disabled={blocked}>
                             {v}{blocked ? " (bloqueado)" : ""}
                           </option>
                         );
@@ -378,7 +396,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
             {/* Busca de paciente */}
             <label className="field field--span-2">
               <span className="field__label">Paciente *</span>
-              <div className="agenda-pat-wrap">
+              <div className="agenda-pat-wrap" ref={patWrapRef}>
                 <div className="input">
                   <span className="input__icon"><IconSearch /></span>
                   <input
@@ -397,72 +415,67 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                     <span className="agenda-pat-check"><IconCheck /></span>
                   )}
                 </div>
-
-                {patSearch.length >= 2 && !patSelected && (
-                  <div className="agenda-pat-dropdown">
-                    {patResults.length === 0 ? (
-                      <div className="agenda-pat-empty">
-                        <span>Nenhum paciente encontrado.</span>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            const n = patSearch;
-                            setPatSearch("");
-                            setNewPatForm({ name: n, cpf: "", phone: "", careCategory: "general", birthDate: "", teamId: String(user?.teamId || "") });
-                            setNewPatErr("");
-                            setShowNewPat(true);
-                          }}
-                        >
-                          + Cadastrar novo paciente
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        {patResults.map(p => {
-                          const am = ageInMonths(p.birthDate);
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              className="agenda-pat-opt"
-                              onClick={() => { setPatSelected(p); setPatSearch(p.name); setForm(s => ({ ...s, patientId: p.id })); }}
-                            >
-                              <span className="agenda-pat-opt__avatar">{initials(p.name)}</span>
-                              <span>
-                                <div className="agenda-pat-opt__name">{p.name}</div>
-                                <div className="agenda-pat-opt__meta">
-                                  {p.careCategory || "Geral"}
-                                  {am !== null ? ` · ${am < 24 ? am + "m" : Math.floor(am / 12) + "a"}` : ""}
-                                  {p.cpf ? ` · CPF ${p.cpf}` : ""}
-                                </div>
-                              </span>
-                            </button>
-                          );
-                        })}
-                        <div className="agenda-pat-footer">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              const n = patSearch;
-                              setPatSearch("");
-                              setNewPatForm({ name: n, cpf: "", phone: "", careCategory: "general", birthDate: "", teamId: String(user?.teamId || "") });
-                              setNewPatErr("");
-                              setShowNewPat(true);
-                            }}
-                          >
-                            + Cadastrar novo paciente
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
             </label>
+
+            {patDropRect && createPortal(
+              <div
+                className="agenda-pat-dropdown"
+                style={{
+                  position: "fixed",
+                  top: patDropRect.bottom + 3,
+                  left: patDropRect.left,
+                  right: "auto",
+                  width: patDropRect.width,
+                  zIndex: 9999,
+                }}
+              >
+                {patResults.length === 0 ? (
+                  <div className="agenda-pat-empty">Nenhum paciente encontrado.</div>
+                ) : (
+                  patResults.map(p => {
+                    const am = ageInMonths(p.birthDate);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className="agenda-pat-opt"
+                        onClick={() => { setPatSelected(p); setPatSearch(p.name); setForm(s => ({ ...s, patientId: p.id })); }}
+                      >
+                        <span className="agenda-pat-opt__avatar">{initials(p.name)}</span>
+                        <span>
+                          <div className="agenda-pat-opt__name">{p.name}</div>
+                          <div className="agenda-pat-opt__meta">
+                            {p.careCategory || "Geral"}
+                            {am !== null ? ` · ${am < 24 ? am + "m" : Math.floor(am / 12) + "a"}` : ""}
+                            {p.cpf ? ` · CPF ${p.cpf}` : ""}
+                          </div>
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+                <button
+                  type="button"
+                  className="agenda-pat-new"
+                  onClick={() => {
+                    const n = patSearch;
+                    setPatSearch("");
+                    setNewPatForm({ name: n, cpf: "", phone: "", careCategory: "general", birthDate: "", teamId: String(user?.teamId || "") });
+                    setNewPatErr("");
+                    setShowNewPat(true);
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <circle cx="6.5" cy="5" r="3" stroke="currentColor" strokeWidth="1.4"/>
+                    <path d="M1 14c0-3.3 2.5-5 5.5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    <path d="M12 10v4M10 12h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                  Cadastrar novo paciente
+                </button>
+              </div>,
+              document.body
+            )}
 
             {/* Cadastro rápido */}
             {showNewPat && (
@@ -535,25 +548,19 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                 <div className="agenda-quick-patient__footer">
                   <Button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!newPatForm.name.trim()) { setNewPatErr("Nome obrigatório."); return; }
                       if (!String(newPatForm.teamId || "").trim()) { setNewPatErr("Selecione a equipe responsável."); return; }
-                      const np = {
-                        ...emptyPatientForm(),
-                        name: newPatForm.name.trim(),
-                        cpf: newPatForm.cpf,
-                        phone: newPatForm.phone,
-                        birthDate: newPatForm.birthDate,
-                        careCategory: newPatForm.careCategory,
-                        teamId: newPatForm.teamId,
-                        id: "local_" + Date.now(),
-                        incompleteProfile: true,
-                      };
-                      setPatSelected(np);
-                      setPatSearch(np.name);
-                      setForm(s => ({ ...s, patientId: np.id }));
-                      setShowNewPat(false);
-                      setNewPatErr("");
+                      try {
+                        const created = await createQuickPatient();
+                        setPatSelected(created);
+                        setPatSearch(created.name);
+                        setForm(s => ({ ...s, patientId: created.id }));
+                        setShowNewPat(false);
+                        setNewPatErr("");
+                      } catch (err) {
+                        setNewPatErr(err.message || "Erro ao cadastrar paciente.");
+                      }
                     }}
                   >
                     <IconCheck />

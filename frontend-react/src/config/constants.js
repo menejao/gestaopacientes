@@ -1,13 +1,13 @@
-export const SESSION_KEY      = "saudeubs_react_session";
-export const UI_STATE_KEY     = "saudeubs_react_ui";
-export const AGENDA_KEY       = "saudeubs_agenda_v1";
-export const RECEPTION_KEY    = "saudeubs_reception_v1";
-export const AUDIT_KEY        = "saudeubs_audit_v1";
+export const SESSION_KEY      = "vitras_react_session";
+export const UI_STATE_KEY     = "vitras_react_ui";
+export const AGENDA_KEY       = "vitras_agenda_v1";
+export const RECEPTION_KEY    = "vitras_reception_v1";
+export const AUDIT_KEY        = "vitras_audit_v1";
 export const AUDIT_MAX        = 5000;
-export const QUEUE_KEY        = "saudeubs_queue_v1";
-export const REFERRALS_KEY    = "saudeubs_referrals_v1";
-export const NOTIFS_KEY       = "saudeubs_notifs_v1";
-export const PATIENTS_PAGE_SIZE = 8;
+export const QUEUE_KEY        = "vitras_queue_v1";
+export const REFERRALS_KEY    = "vitras_referrals_v1";
+export const NOTIFS_KEY       = "vitras_notifs_v1";
+export const PATIENTS_PAGE_SIZE = 10;
 
 export const VACCINE_OPTIONS = [
   "BCG","Hepatite B","Hepatite A","dTpa","DTP","Penta","VIP",
@@ -26,7 +26,7 @@ export const PHARMA_USERS = [
   { id: "ph3", name: "Téc. de Farmácia",     email: "tecfarma@ubs.local", role: "pharmacy_tech" },
 ];
 
-export const TRIAGE_VITALS_KEY = "saudeubs_triage_vitals_v1";
+export const TRIAGE_VITALS_KEY = "vitras_triage_vitals_v1";
 
 export const PRIORITY_LABELS = { urgent:"Urgente", elderly:"Idoso/PCD", pregnant:"Gestante", child:"Criança", normal:"Normal" };
 export const PRIORITY_COLORS = {

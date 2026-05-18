@@ -1,5 +1,39 @@
 /* 05-patterns/auditlog.css */
 
+/* ── Page container ───────────────────────────────────────────── */
+.audit-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+.audit-page > .page-header,
+.audit-page > .hero {
+  margin: var(--s-6) var(--s-6) 0;
+}
+.audit-page > .audit-notice,
+.audit-page > .audit-toolbar,
+.audit-page > .audit-retention-card,
+.audit-page > .card {
+  margin: var(--s-4) var(--s-6) 0;
+}
+.audit-page > .audit-pagination {
+  margin: 0 var(--s-6) var(--s-4);
+}
+
+/* ── Embedded mode ────────────────────────────────────────────── */
+.audit-embedded { display: flex; flex-direction: column; gap: var(--s-3); }
+.audit-embedded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--s-2);
+}
+.audit-embedded-title {
+  font: 600 var(--t-sm) var(--font-sans);
+  color: var(--text-muted);
+}
+
 /* ── Header ───────────────────────────────────────────────────── */
 .audit-header {
   display: flex;
@@ -35,12 +69,103 @@
   margin-bottom: var(--s-4);
 }
 
+.audit-notice--danger {
+  background: var(--danger-soft);
+  border-color: var(--danger-bd);
+  color: var(--danger);
+}
+
 /* ── Filters toolbar ──────────────────────────────────────────── */
 .audit-toolbar {
   display: flex;
   gap: var(--s-2);
   margin-bottom: var(--s-4);
   flex-wrap: wrap;
+}
+
+.audit-retention-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.audit-retention-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.audit-retention-card__title {
+  font: 700 var(--t-sm) var(--font-sans);
+  color: var(--text);
+}
+
+.audit-retention-card__sub {
+  font: 400 var(--t-xs) var(--font-sans);
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.audit-retention-card__actions {
+  display: flex;
+  gap: var(--s-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.audit-retention-card__input {
+  min-width: 112px;
+}
+
+.audit-retention-card__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.audit-retention-card__stats {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  font: 400 var(--t-xs) var(--font-sans);
+  color: var(--text-muted);
+}
+
+.audit-retention-card__sample {
+  display: flex;
+  gap: var(--s-1);
+  flex-wrap: wrap;
+}
+
+.audit-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--s-3);
+  margin: 0 var(--s-6);
+}
+
+.audit-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+}
+
+.audit-summary-card__label {
+  font: 600 var(--t-xs) var(--font-sans);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.audit-summary-card__value {
+  font: 700 var(--t-lg) var(--font-sans);
+  color: var(--text);
 }
 
 /* ── Action badge ─────────────────────────────────────────────── */
@@ -62,6 +187,13 @@
 .audit-badge--info    { background: var(--info-soft);    color: var(--info);    border-color: var(--info-bd);    }
 .audit-badge--accent  { background: var(--accent-soft);  color: var(--accent-text); border-color: var(--accent-soft-2); }
 .audit-badge--neutral { background: var(--surface-2);    color: var(--text-muted);  border-color: var(--border); }
+
+.audit-badge-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+  align-items: center;
+}
 
 /* ── Table ────────────────────────────────────────────────────── */
 .audit-table {

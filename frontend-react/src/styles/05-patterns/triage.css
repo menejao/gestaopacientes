@@ -6,9 +6,34 @@
   height: 100%;
 }
 
-.triage-page > .page-header { margin: var(--s-6) var(--s-6) 0; }
+.triage-page > .page-header,
+.triage-page > .hero { margin: var(--s-6) var(--s-6) 0; }
 
-/* ── Online techs in header ───────────────────────────────────── */
+/* ── Status operacional na hero ───────────────────────────────── */
+.triage-online-status {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+.triage-online-status__label {
+  font: 500 var(--t-xs) var(--font-sans);
+  color: var(--text-dim);
+}
+
+.triage-online-status__sep {
+  font: 400 var(--t-xs) var(--font-sans);
+  color: var(--text-dim);
+  opacity: .5;
+}
+
+.triage-online-status__val {
+  font: 400 var(--t-xs) var(--font-sans);
+  color: var(--text-dim);
+}
+
+/* ── Online tech badges ───────────────────────────────────────── */
 .triage-online {
   display: flex;
   align-items: center;
@@ -45,18 +70,33 @@
 .triage-body {
   display: flex;
   gap: var(--s-5);
-  padding: 0 var(--s-6) var(--s-6);
+  padding: var(--s-5) var(--s-6) var(--s-6);
   flex: 1;
   min-height: 0;
 }
 
-/* ── Left: waiting list ───────────────────────────────────────── */
+.triage-body--empty {
+  align-items: stretch;
+}
+
+/* ── Left / full: waiting list ────────────────────────────────── */
 .triage-queue {
-  flex: 0 0 300px;
+  flex: 1;
+  max-width: 520px;
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
   overflow-y: auto;
+  min-height: 0;
+}
+
+.triage-body--split .triage-queue {
+  flex: 0 0 260px;
+  max-width: none;
+}
+
+.triage-body--empty .triage-queue {
+  max-width: none;
 }
 
 .triage-queue__label {
@@ -68,16 +108,23 @@
 }
 
 .triage-queue__empty {
-  text-align: center;
-  padding: var(--s-10) var(--s-4);
-  background: var(--surface-2);
-  border-radius: var(--r-md);
-  border: 1px dashed var(--border);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: var(--s-8) var(--s-4);
   font: 400 var(--t-sm) var(--font-sans);
   color: var(--text-dim);
+  text-align: center;
 }
 
-.triage-queue__empty-icon { font-size: var(--t-lg); margin-bottom: var(--s-2); }
+.triage-queue__empty-icon {
+  color: var(--text-dim);
+  opacity: .35;
+  margin-bottom: var(--s-1);
+}
 
 /* ── Queue entry card ─────────────────────────────────────────── */
 .triage-entry {
@@ -147,20 +194,12 @@
 }
 
 /* ── Right: vitals form ───────────────────────────────────────── */
-.triage-form-panel { flex: 1; min-width: 0; }
-
-.triage-form-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-dim);
-  text-align: center;
-  padding: var(--s-10);
+.triage-form-panel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  min-height: 0;
 }
-
-.triage-form-empty p { font: 400 var(--t-base) var(--font-sans); }
 
 /* ── Patient form header ──────────────────────────────────────── */
 .triage-pat-header {
@@ -265,7 +304,8 @@
 }
 
 @media (max-width: 768px) {
-  .triage-body { flex-direction: column; padding: 0 var(--s-4) var(--s-4); }
-  .triage-queue { flex: none; }
+  .triage-body { flex-direction: column; padding: var(--s-4) var(--s-4) var(--s-4); }
+  .triage-queue,
+  .triage-body--split .triage-queue { flex: none; max-width: none; }
   .triage-form__grid-4 { grid-template-columns: 1fr 1fr; }
 }

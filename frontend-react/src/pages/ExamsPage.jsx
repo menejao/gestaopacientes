@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { auditLog } from "../utils/storage";
+import { listExams, createExam, uploadExamAttachment, deleteExam } from "../api";
 import { catLabel, matchesPatientSearch } from "../utils/clinical";
 import { fmtDate } from "../utils/formatting";
 import PageHeader from "../components/layout/PageHeader";
@@ -7,13 +7,35 @@ import Avatar from "../components/ui/Avatar";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 
-const EXAM_TYPES = ["Hemograma completo","Glicemia em jejum","HbA1c","Colesterol total e frações","Triglicerídeos","Creatinina","Ureia","TGO/TGP","TSH/T4 livre","Urina rotina (EAS)","Urocultura","Raio-X tórax","Ultrassonografia abdominal","Ultrassonografia obstétrica","ECG","Espirometria","Mamografia","Papanicolau","PSA","Ferritina/Ferro sérico","Vitamina D","Coagulograma","Outros"];
+const EXAM_TYPES = ["Hemograma completo", "Glicemia em jejum", "HbA1c", "Colesterol total e frações", "Triglicerídeos", "Creatinina", "Ureia", "TGO/TGP", "TSH/T4 livre", "Urina rotina (EAS)", "Urocultura", "Raio-X tórax", "Ultrassonografia abdominal", "Ultrassonografia obstétrica", "ECG", "Espirometria", "Mamografia", "Papanicolau", "PSA", "Ferritina/Ferro sérico", "Vitamina D", "Coagulograma", "Outros"];
 
-function isImg(t) { return String(t || "").startsWith("image/"); }
+function isImg(type) {
+  return String(type || "").startsWith("image/");
+}
+
+function canManageExams(user) {
+  return ["doctor", "dentist", "nurse_manager", "nursing_tech", "break_glass_admin"].includes(String(user?.role || ""));
+}
+
+async function fileToPayload(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return {
+    name: file.name,
+    contentType: file.type || "application/octet-stream",
+    size: file.size,
+    dataBase64: btoa(binary)
+  };
+}
 
 function ExamCard({ exam, canManage, onDelete, onPreview }) {
   const isExternal = String(exam.details || "").includes("[EXAME EXTERNO");
   const details = exam.details?.replace(/^\[EXAME.*?\]\n?/, "") || "";
+
   return (
     <div className={`exams-card${isExternal ? " exams-card--externo" : ""}`}>
       <div className="exams-card__head">
@@ -28,7 +50,7 @@ function ExamCard({ exam, canManage, onDelete, onPreview }) {
             </span>
           )}
           {canManage && (
-            <button className="icon-btn" title="Excluir" onClick={() => onDelete(exam.id)}>
+            <button className="icon-btn" title="Excluir" onClick={() => onDelete(exam)} type="button">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M5 4V3h6v1M6 7v5M10 7v5M4 4l.5 9h7L12 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           )}
@@ -37,8 +59,8 @@ function ExamCard({ exam, canManage, onDelete, onPreview }) {
       {details && <pre className="exams-card__details">{details}</pre>}
       {Array.isArray(exam.attachments) && exam.attachments.length > 0 && (
         <div className="exams-card__attachments">
-          {exam.attachments.map((att, i) => (
-            <button key={i} type="button" className="exams-card__att-btn" onClick={() => onPreview(att)}>
+          {exam.attachments.map((att) => (
+            <button key={att.id || att.name} type="button" className="exams-card__att-btn" onClick={() => onPreview(att)}>
               {isImg(att.contentType)
                 ? <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="5.5" cy="6" r="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M1.5 11l3.5-3 3 3 2-2 3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 : <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.3"/><path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.3"/></svg>}
@@ -51,83 +73,126 @@ function ExamCard({ exam, canManage, onDelete, onPreview }) {
   );
 }
 
-function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
-  const [search, setSearch]         = useState("");
+function ExamsPage({ patients, user, token, onNavigatePatient }) {
+  const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
-  const [exams, setExams]           = useState([]);
-  const [loading, setLoading]       = useState(false);
-  const [addMode, setAddMode]       = useState(null);
-  const [form, setForm]             = useState({ type: "Hemograma completo", name: "", date: "", result: "", notes: "" });
-  const [files, setFiles]           = useState([]);
-  const [busy, setBusy]             = useState(false);
-  const [error, setError]           = useState("");
-  const [preview, setPreview]       = useState(null);
+  const [exams, setExams] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [addMode, setAddMode] = useState(null);
+  const [form, setForm] = useState({ type: "Hemograma completo", name: "", date: "", result: "", notes: "" });
+  const [files, setFiles] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [preview, setPreview] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const fileRef = useRef(null);
-  const authHeader = { Authorization: `Bearer ${token}` };
 
-  const canManage = ["doctor", "dentist", "nurse_manager", "nursing_tech"].includes(user?.role);
+  const canManage = canManageExams(user);
+  const filteredPats = patients.filter((patient) => matchesPatientSearch(patient, search)).slice(0, 60);
+  const selectedPatient = patients.find((patient) => patient.id === selectedId) || null;
 
-  const filteredPats    = patients.filter(p => matchesPatientSearch(p, search)).slice(0, 60);
-  const selectedPatient = patients.find(p => p.id === selectedId) || null;
-
-  async function loadExams(pid) {
-    if (!pid) { setExams([]); return; }
+  async function loadExams(patientId) {
+    if (!patientId) {
+      setExams([]);
+      return;
+    }
     setLoading(true);
+    setError("");
     try {
-      const res = await fetch(`/patients/${pid}/exams`, { headers: authHeader });
-      if (res.ok) setExams(await res.json());
-    } catch {}
-    finally { setLoading(false); }
+      setExams(await listExams(token, patientId));
+    } catch (err) {
+      setError(err.message || "Erro ao carregar exames.");
+      setExams([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function selectPatient(p) {
-    if (selectedId === p.id) { setSelectedId(null); setExams([]); return; }
-    setSelectedId(p.id); loadExams(p.id); setAddMode(null);
+  function selectPatient(patient) {
+    if (selectedId === patient.id) {
+      setSelectedId(null);
+      setExams([]);
+      setAddMode(null);
+      return;
+    }
+    setSelectedId(patient.id);
+    setAddMode(null);
+    setDeleteTarget(null);
+    void loadExams(patient.id);
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
     const title = form.type === "Outros" ? form.name.trim() : form.type;
-    if (!title || !form.date) { setError("Preencha tipo e data."); return; }
-    setBusy(true); setError("");
+    if (!title || !form.date) {
+      setError("Preencha tipo e data.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
     try {
-      const tag   = addMode === "externo" ? "[EXAME EXTERNO — trazido pelo paciente]" : "[EXAME REALIZADO NO POSTO]";
-      const notes = [tag, form.result.trim() ? `Resultado: ${form.result}` : "", form.notes.trim() ? `Obs: ${form.notes}` : ""].filter(Boolean).join("\n");
-      const res = await fetch(`/patients/${selectedId}/exams`, {
-        method: "POST", headers: { ...authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify({ title, date: form.date, notes }),
+      const tag = addMode === "externo" ? "[EXAME EXTERNO — trazido pelo paciente]" : "[EXAME REALIZADO NO POSTO]";
+      const notes = [
+        tag,
+        form.result.trim() ? `Resultado: ${form.result.trim()}` : "",
+        form.notes.trim() ? `Obs: ${form.notes.trim()}` : ""
+      ].filter(Boolean).join("\n");
+
+      const created = await createExam(token, selectedId, {
+        title,
+        date: form.date,
+        notes
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro");
-      const created = await res.json();
+
       for (const file of files) {
-        const fd = new FormData(); fd.append("file", file);
-        await fetch(`/patients/${selectedId}/exams/${created.id}/attachments`, { method: "POST", headers: authHeader, body: fd });
+        const payload = await fileToPayload(file);
+        await uploadExamAttachment(token, selectedId, created.id, payload);
       }
-      auditLog(addMode === "externo" ? "EXAME_EXTERNO_INSERIDO" : "EXAME_POSTO_REGISTRADO", { patientId: selectedId, title, date: form.date }, user);
+
       setForm({ type: "Hemograma completo", name: "", date: "", result: "", notes: "" });
-      setFiles([]); if (fileRef.current) fileRef.current.value = "";
-      setAddMode(null); await loadExams(selectedId);
-    } catch (err) { setError(err.message || "Erro."); }
-    finally { setBusy(false); }
-  }
-
-  async function handleDelete(id) {
-    if (!confirm("Excluir este exame?")) return;
-    try {
-      await fetch(`/patients/${selectedId}/exams/${id}`, { method: "DELETE", headers: authHeader });
-      auditLog("EXAME_EXCLUIDO", { patientId: selectedId, examId: id }, user);
+      setFiles([]);
+      if (fileRef.current) fileRef.current.value = "";
+      setAddMode(null);
       await loadExams(selectedId);
-    } catch { setError("Erro ao excluir."); }
+    } catch (err) {
+      setError(err.message || "Erro ao salvar exame.");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function fmtSize(b) { return b > 1048576 ? `${(b / 1048576).toFixed(1)}MB` : `${Math.round(b / 1024)}KB`; }
+  async function confirmDeleteExam() {
+    if (!deleteTarget) return;
+    if (deleteReason.trim().length < 5) {
+      return;
+    }
 
-  const posto   = exams.filter(e => !String(e.details || "").includes("[EXAME EXTERNO"));
-  const externo = exams.filter(e => String(e.details || "").includes("[EXAME EXTERNO"));
+    setDeleteBusy(true);
+    try {
+      await deleteExam(token, selectedId, deleteTarget.id, deleteReason.trim());
+      setDeleteTarget(null);
+      setDeleteReason("");
+      await loadExams(selectedId);
+    } catch (err) {
+      setError(err.message || "Erro ao excluir exame.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  function fmtSize(bytes) {
+    return bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)}MB` : `${Math.round(bytes / 1024)}KB`;
+  }
+
+  const posto = exams.filter((exam) => !String(exam.details || "").includes("[EXAME EXTERNO"));
+  const externo = exams.filter((exam) => String(exam.details || "").includes("[EXAME EXTERNO"));
 
   return (
     <div className="exams-page">
-      <PageHeader eyebrow="VALENS" title="Exames" subtitle="Exames realizados na unidade e exames externos trazidos pelos pacientes." />
+      <PageHeader eyebrow="Vitras" title="Exames" subtitle="Exames realizados na unidade e exames externos trazidos pelos pacientes." />
 
       <div className="exams-body">
         <div className="exams-sidebar">
@@ -135,16 +200,16 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
             <span className="exams-sidebar__search-icon">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4" stroke="currentColor" strokeWidth="1.3"/><path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
             </span>
-            <input className="input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar paciente..." />
+            <div className="input"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar paciente..." /></div>
           </div>
           <div className="exams-pat-list">
             {filteredPats.length === 0 && <p className="exams-pat-empty">Nenhum paciente encontrado.</p>}
-            {filteredPats.map(p => (
-              <button key={p.id} className={`exams-pat-item${selectedId === p.id ? " is-active" : ""}`} onClick={() => selectPatient(p)}>
-                <Avatar name={p.name} size="sm" />
+            {filteredPats.map((patient) => (
+              <button key={patient.id} className={`exams-pat-item${selectedId === patient.id ? " is-active" : ""}`} onClick={() => selectPatient(patient)} type="button">
+                <Avatar name={patient.name} size="sm" />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="exams-pat-item__name">{p.name}</div>
-                  <div className="exams-pat-item__sub">{catLabel([], p.careCategory)}</div>
+                  <div className="exams-pat-item__name">{patient.name}</div>
+                  <div className="exams-pat-item__sub">{catLabel([], patient.careCategory)}</div>
                 </div>
               </button>
             ))}
@@ -154,7 +219,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
         <div className="exams-panel">
           {!selectedPatient ? (
             <div className="exams-panel-empty">
-              <svg width="48" height="48" viewBox="0 0 16 16" fill="none" style={{ opacity: .25 }}>
+              <svg width="48" height="48" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.25 }}>
                 <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.2"/>
                 <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.2"/>
                 <circle cx="8" cy="9.5" r="2.5" stroke="currentColor" strokeWidth="1.1"/>
@@ -178,18 +243,10 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
 
               {canManage && (
                 <div className="exams-add-bar">
-                  <button
-                    type="button"
-                    className={`exams-add-btn exams-add-btn--posto${addMode === "posto" ? " is-active" : ""}`}
-                    onClick={() => setAddMode(addMode === "posto" ? null : "posto")}
-                  >
+                  <button type="button" className={`exams-add-btn exams-add-btn--posto${addMode === "posto" ? " is-active" : ""}`} onClick={() => setAddMode(addMode === "posto" ? null : "posto")}>
                     + Exame do posto
                   </button>
-                  <button
-                    type="button"
-                    className={`exams-add-btn exams-add-btn--externo${addMode === "externo" ? " is-active" : ""}`}
-                    onClick={() => setAddMode(addMode === "externo" ? null : "externo")}
-                  >
+                  <button type="button" className={`exams-add-btn exams-add-btn--externo${addMode === "externo" ? " is-active" : ""}`} onClick={() => setAddMode(addMode === "externo" ? null : "externo")}>
                     + Exame externo
                   </button>
                 </div>
@@ -204,37 +261,52 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
                     <div className="exams-add-form__grid">
                       <label className="exams-add-form__field">
                         Tipo de exame
-                        <select className="select" value={form.type} onChange={e => setForm(s => ({ ...s, type: e.target.value }))}>
-                          {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        <div className="input">
+                          <select value={form.type} onChange={(event) => setForm((state) => ({ ...state, type: event.target.value }))}>
+                            {EXAM_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                          </select>
+                        </div>
                       </label>
                       <label className="exams-add-form__field">
                         Data *
-                        <input className="input" type="date" value={form.date} onChange={e => setForm(s => ({ ...s, date: e.target.value }))} />
+                        <div className="input"><input type="date" value={form.date} onChange={(event) => setForm((state) => ({ ...state, date: event.target.value }))} /></div>
                       </label>
                     </div>
+
                     {form.type === "Outros" && (
-                      <input className="input" value={form.name} onChange={e => setForm(s => ({ ...s, name: e.target.value }))} placeholder="Nome do exame" />
+                      <div className="input"><input value={form.name} onChange={(event) => setForm((state) => ({ ...state, name: event.target.value }))} placeholder="Nome do exame" /></div>
                     )}
+
                     <label className="exams-add-form__field">
                       Resultado / laudo
-                      <textarea className="input" value={form.result} onChange={e => setForm(s => ({ ...s, result: e.target.value }))} placeholder="Descreva o resultado..." style={{ minHeight: 52 }} />
+                      <textarea className="input" value={form.result} onChange={(event) => setForm((state) => ({ ...state, result: event.target.value }))} placeholder="Descreva o resultado..." style={{ minHeight: 52 }} />
                     </label>
                     <label className="exams-add-form__field">
                       Observações
-                      <input className="input" value={form.notes} onChange={e => setForm(s => ({ ...s, notes: e.target.value }))} placeholder="Conduta, comparação..." />
+                      <div className="input"><input value={form.notes} onChange={(event) => setForm((state) => ({ ...state, notes: event.target.value }))} placeholder="Conduta, comparação..." /></div>
                     </label>
                     <label className="exams-add-form__field">
                       Anexar arquivo (imagem ou PDF, máx 15MB)
-                      <input type="file" ref={fileRef} accept="image/*,application/pdf" multiple onChange={e => {
-                        const f = Array.from(e.target.files || []);
-                        if (f.some(x => x.size > 15 * 1024 * 1024)) { setError("Arquivo muito grande"); return; }
-                        setError(""); setFiles(f);
-                      }} style={{ fontSize: "var(--t-xs)", padding: "var(--s-1) 0" }} />
+                      <input
+                        type="file"
+                        ref={fileRef}
+                        accept="image/*,application/pdf"
+                        multiple
+                        onChange={(event) => {
+                          const nextFiles = Array.from(event.target.files || []);
+                          if (nextFiles.some((file) => file.size > 15 * 1024 * 1024)) {
+                            setError("Arquivo muito grande");
+                            return;
+                          }
+                          setError("");
+                          setFiles(nextFiles);
+                        }}
+                        style={{ fontSize: "var(--t-xs)", padding: "var(--s-1) 0" }}
+                      />
                     </label>
                     {files.length > 0 && (
                       <div className="exams-add-form__tags">
-                        {files.map((f, i) => <span key={i} className="exams-add-form__tag">{f.name} · {fmtSize(f.size)}</span>)}
+                        {files.map((file) => <span key={`${file.name}-${file.size}`} className="exams-add-form__tag">{file.name} · {fmtSize(file.size)}</span>)}
                       </div>
                     )}
                     {error && <div className="alert alert--danger">{error}</div>}
@@ -255,8 +327,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
                   ? <p style={{ font: "400 var(--t-sm) var(--font-sans)", color: "var(--text-dim)" }}>Carregando...</p>
                   : !posto.length
                     ? <p style={{ font: "400 var(--t-sm) var(--font-sans)", color: "var(--text-dim)" }}>Nenhum exame registrado.</p>
-                    : posto.map(exam => <ExamCard key={exam.id} exam={exam} canManage={canManage} onDelete={handleDelete} onPreview={setPreview} />)
-                }
+                    : posto.map((exam) => <ExamCard key={exam.id} exam={exam} canManage={canManage} onDelete={setDeleteTarget} onPreview={setPreview} />)}
               </div>
 
               <div className="exams-section exams-section--externo">
@@ -266,19 +337,51 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
                 </div>
                 {!externo.length
                   ? <p style={{ font: "400 var(--t-sm) var(--font-sans)", color: "var(--text-dim)" }}>Nenhum exame externo registrado.</p>
-                  : externo.map(exam => <ExamCard key={exam.id} exam={exam} canManage={canManage} onDelete={handleDelete} onPreview={setPreview} />)
-                }
+                  : externo.map((exam) => <ExamCard key={exam.id} exam={exam} canManage={canManage} onDelete={setDeleteTarget} onPreview={setPreview} />)}
               </div>
             </>
           )}
         </div>
       </div>
 
+      {deleteTarget && (
+        <Modal
+          title="Excluir exame"
+          onClose={() => {
+            if (deleteBusy) return;
+            setDeleteTarget(null);
+            setDeleteReason("");
+          }}
+          actions={
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={() => {
+                if (deleteBusy) return;
+                setDeleteTarget(null);
+                setDeleteReason("");
+              }}>
+                Cancelar
+              </Button>
+              <Button type="button" variant="danger" size="sm" disabled={deleteBusy || deleteReason.trim().length < 5} onClick={confirmDeleteExam}>
+                {deleteBusy ? "Excluindo..." : "Excluir exame"}
+              </Button>
+            </>
+          }
+        >
+          <p style={{ marginTop: 0, color: "var(--text-dim)", font: "400 var(--t-sm) var(--font-sans)" }}>
+            Informe o motivo da exclusão para manter a rastreabilidade clínica.
+          </p>
+          <label className="exams-add-form__field">
+            Justificativa obrigatória
+            <textarea className="input" value={deleteReason} onChange={(event) => setDeleteReason(event.target.value)} placeholder="Ex.: anexo duplicado, lançamento incorreto, exame registrado em paciente errado." style={{ minHeight: 88 }} />
+          </label>
+        </Modal>
+      )}
+
       {preview && (
         <Modal
           title={preview.name}
           onClose={() => setPreview(null)}
-          actions={
+          actions={(
             <a
               href={preview.url}
               download={preview.name}
@@ -289,7 +392,7 @@ function ExamsPage({ patients, users, user, token, onNavigatePatient }) {
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v8M5 8l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 13h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
               Baixar
             </a>
-          }
+          )}
         >
           <div className="exams-preview">
             {isImg(preview.contentType)

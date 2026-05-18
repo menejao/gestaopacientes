@@ -1,13 +1,8 @@
 import { useState } from "react";
-import { readLS } from "../utils/storage";
-import { AGENDA_KEY, REFERRALS_KEY } from "../config/constants";
 import { ageInMonths } from "../utils/clinical";
 import Button from "../components/ui/Button";
 
-function EsusMirror({ patients, users, period, periodLabel }) {
-  const agenda    = readLS(AGENDA_KEY, []);
-  const referrals = readLS(REFERRALS_KEY, []);
-  const pharmaLog = readLS("saudeubs_pharmalog_v1", []);
+function EsusMirror({ patients, users, agenda = [], referrals = [], pharmacyLog = [], period, periodLabel }) {
   const [copied, setCopied] = useState("");
 
   const now = new Date();
@@ -33,7 +28,7 @@ function EsusMirror({ patients, users, period, periodLabel }) {
 
   const faiTotal  = consultasDone + retornosDone + procedimentos;
   const encTotal  = referrals.filter(r => inPeriod(r.createdAt)).length;
-  const dispensas = pharmaLog.filter(l => l.type === "dispensa" && inPeriod(l.ts)).length;
+  const dispensas = pharmacyLog.filter(l => l.type === "dispensa" && inPeriod(l.ts)).length;
   const gestantes = patients.filter(p => String(p.careCategory || "").toLowerCase() === "pregnant").length;
   const criancas  = patients.filter(p => { const am = ageInMonths(p.birthDate); return am !== null && am < 60; }).length;
 
@@ -43,12 +38,14 @@ function EsusMirror({ patients, users, period, periodLabel }) {
 
   function CopyBtn({ value, k }) {
     return (
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         className={`esus-copy-btn${copied === k ? " is-copied" : ""}`}
         onClick={() => copyToClipboard(String(value), k)}
       >
         {copied === k ? "Copiado" : "Copiar"}
-      </button>
+      </Button>
     );
   }
 
@@ -165,7 +162,7 @@ Dispensações: ${dispensas}
         </div>
 
         <div className="esus-notice">
-          <strong>Importante:</strong> Este espelho é gerado automaticamente a partir dos dados registrados no VALENS e serve como <strong>referência de apoio</strong> para o lançamento no e-SUS APS, RNDS e outros sistemas federais. Sempre confira os dados com a equipe antes do envio oficial.
+          <strong>Importante:</strong> Este espelho é gerado automaticamente a partir dos dados registrados no Vitras e serve como <strong>referência de apoio</strong> para o lançamento no e-SUS APS, RNDS e outros sistemas federais. Sempre confira os dados com a equipe antes do envio oficial.
         </div>
       </div>
     </div>

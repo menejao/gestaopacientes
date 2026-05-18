@@ -44,22 +44,6 @@
 .vacc-panel__search {
   padding: var(--s-2) var(--s-3);
   border-bottom: 1px solid var(--border);
-  position: relative;
-}
-
-.vacc-panel__search-icon {
-  position: absolute;
-  left: calc(var(--s-3) + var(--s-2));
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-dim);
-  pointer-events: none;
-}
-
-.vacc-panel__search-input {
-  padding-left: var(--s-7) !important;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 .vacc-panel__list { max-height: 72vh; overflow-y: auto; }

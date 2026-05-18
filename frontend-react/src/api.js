@@ -1,5 +1,6 @@
-export const API_URL = import.meta.env.VITE_API_URL || "https://saude-backend-gkj7.onrender.com";
+export const API_URL = import.meta.env.VITE_API_URL || "https://api.vitras.com.br";
 const COOKIE_SESSION_SENTINEL = "__cookie_session__";
+const SESSION_KEY = "vitras_react_session";
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 function sleep(ms) {
@@ -14,9 +15,18 @@ function shouldRetryStatus(status, customStatuses) {
 }
 
 function getCsrfToken() {
-  if (typeof document === "undefined") return "";
-  const pair = document.cookie.split("; ").find((item) => item.startsWith("valens_csrf="));
-  return pair ? decodeURIComponent(pair.split("=").slice(1).join("=")) : "";
+  if (typeof document !== "undefined") {
+    const pair = document.cookie.split("; ").find((item) => item.startsWith("vitras_csrf="));
+    if (pair) return decodeURIComponent(pair.split("=").slice(1).join("="));
+  }
+  if (typeof sessionStorage === "undefined") return "";
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return String(parsed?.csrfToken || "").trim();
+  } catch {
+    return "";
+  }
 }
 
 export async function api(path, options = {}, token = "") {
@@ -86,6 +96,13 @@ export async function login(email, password) {
   });
 }
 
+export async function verifyLogin2fa(challengeId, code) {
+  return api("/auth/login/verify", {
+    method: "POST",
+    body: JSON.stringify({ challengeId, code })
+  });
+}
+
 export async function register(payload) {
   return api("/auth/register", {
     method: "POST",
@@ -116,6 +133,134 @@ export async function listPatients(token) {
   return api("/patients", { method: "GET", retryCount: 2 }, token);
 }
 
+export async function listQueueEntries(token) {
+  return api("/queue", { method: "GET", retryCount: 2 }, token);
+}
+
+export async function createQueueEntry(token, payload) {
+  return api("/queue", { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export async function updateQueueEntry(token, id, payload) {
+  return api(`/queue/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export async function deleteQueueEntry(token, id) {
+  return api(`/queue/${id}`, { method: "DELETE" }, token);
+}
+
+export async function clearDoneQueueEntries(token) {
+  return api("/queue/clear-done", { method: "POST", body: JSON.stringify({}) }, token);
+}
+
+export async function listAgendaEntries(token, params = {}) {
+  const query = buildAuditQuery(params);
+  return api(`/agenda${query}`, { method: "GET", retryCount: 2 }, token);
+}
+
+export async function createAgendaEntry(token, payload) {
+  return api("/agenda", { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export async function updateAgendaEntry(token, id, payload) {
+  return api(`/agenda/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export async function deleteAgendaEntry(token, id) {
+  return api(`/agenda/${id}`, { method: "DELETE" }, token);
+}
+
+export async function listReferrals(token) {
+  return api("/referrals", { method: "GET", retryCount: 2 }, token);
+}
+
+export async function createReferral(token, payload) {
+  return api("/referrals", { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export async function updateReferral(token, id, payload) {
+  return api(`/referrals/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export async function deleteReferral(token, id) {
+  return api(`/referrals/${id}`, { method: "DELETE" }, token);
+}
+
+export async function listPharmacyStock(token) {
+  return api("/pharmacy/stock", { method: "GET", retryCount: 2 }, token);
+}
+
+export async function listPharmacyLogs(token) {
+  return api("/pharmacy/logs", { method: "GET", retryCount: 2 }, token);
+}
+
+export async function createPharmacyStockItem(token, payload) {
+  return api("/pharmacy/stock", { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export async function updatePharmacyStockItem(token, id, payload) {
+  return api(`/pharmacy/stock/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export async function adjustPharmacyStockItem(token, id, payload) {
+  return api(`/pharmacy/stock/${id}/adjust`, { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export async function dispensePharmacyItem(token, payload) {
+  return api("/pharmacy/dispense", { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export async function listSuppliesStock(token) {
+  return api("/supplies/stock", { method: "GET", retryCount: 2 }, token);
+}
+
+export async function listSuppliesLogs(token) {
+  return api("/supplies/logs", { method: "GET", retryCount: 2 }, token);
+}
+
+export async function listSuppliesContinuous(token) {
+  return api("/supplies/continuous", { method: "GET", retryCount: 2 }, token);
+}
+
+export async function adjustSuppliesStockItem(token, id, payload) {
+  return api(`/supplies/stock/${id}/adjust`, { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export async function dispenseSupplies(token, payload) {
+  return api("/supplies/dispense", { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export async function closeSuppliesContinuous(token, id, payload) {
+  return api(`/supplies/continuous/${id}/close`, { method: "POST", body: JSON.stringify(payload || {}) }, token);
+}
+
+export async function listExams(token, patientId) {
+  return api(`/patients/${patientId}/exams`, { method: "GET", retryCount: 2 }, token);
+}
+
+export async function createExam(token, patientId, payload) {
+  return api(`/patients/${patientId}/exams`, { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export async function uploadExamAttachment(token, patientId, examId, payload) {
+  return api(`/patients/${patientId}/exams/${examId}/attachments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x.vitras-exam-attachment+json"
+    },
+    body: JSON.stringify(payload)
+  }, token);
+}
+
+export async function deleteExam(token, patientId, examId, justification) {
+  return api(`/patients/${patientId}/exams/${examId}`, {
+    method: "DELETE",
+    headers: {
+      "X-Justification": String(justification || "")
+    }
+  }, token);
+}
+
 export async function createPatient(token, payload) {
   return api("/patients", { method: "POST", body: JSON.stringify(payload) }, token);
 }
@@ -140,8 +285,11 @@ export async function updateProtocolTemplate(token, category, payload) {
   return api(`/protocol/templates/${encodeURIComponent(category)}`, { method: "PUT", body: JSON.stringify(payload) }, token);
 }
 
-export async function deleteProtocolTemplate(token, category) {
-  return api(`/protocol/templates/${encodeURIComponent(category)}`, { method: "DELETE" }, token);
+export async function deleteProtocolTemplate(token, category, payload = {}) {
+  return api(`/protocol/templates/${encodeURIComponent(category)}`, {
+    method: "DELETE",
+    body: JSON.stringify(payload || {})
+  }, token);
 }
 
 export async function getProtocolSummaries(token, ids) {
@@ -165,8 +313,11 @@ export async function createAppointment(token, patientId, payload) {
   return api(`/patients/${patientId}/appointments`, { method: "POST", body: JSON.stringify(payload) }, token);
 }
 
-export async function deleteAppointment(token, patientId, appointmentId) {
-  return api(`/patients/${patientId}/appointments/${appointmentId}`, { method: "DELETE" }, token);
+export async function deleteAppointment(token, patientId, appointmentId, payload = {}) {
+  return api(`/patients/${patientId}/appointments/${appointmentId}`, {
+    method: "DELETE",
+    body: JSON.stringify(payload || {})
+  }, token);
 }
 
 export async function listTasks(token, patientId) {
@@ -193,8 +344,11 @@ export async function createRecord(token, patientId, payload) {
   return api(`/patients/${patientId}/records`, { method: "POST", body: JSON.stringify(payload) }, token);
 }
 
-export async function deleteRecord(token, patientId, recordId) {
-  return api(`/patients/${patientId}/records/${recordId}`, { method: "DELETE" }, token);
+export async function deleteRecord(token, patientId, recordId, payload = {}) {
+  return api(`/patients/${patientId}/records/${recordId}`, {
+    method: "DELETE",
+    body: JSON.stringify(payload || {})
+  }, token);
 }
 
 export async function listUsers(token) {
@@ -217,8 +371,11 @@ export async function getUserUsage(token, userId) {
   return api(`/users/${userId}/usage`, { method: "GET" }, token);
 }
 
-export async function deleteUser(token, userId) {
-  return api(`/users/${userId}`, { method: "DELETE" }, token);
+export async function deleteUser(token, userId, payload = {}) {
+  return api(`/users/${userId}`, {
+    method: "DELETE",
+    body: JSON.stringify(payload || {})
+  }, token);
 }
 
 export async function aiTeamPriorities(token) {
@@ -304,5 +461,49 @@ export async function deactivateBreakGlass(token) {
   return api("/me/break-glass/deactivate", {
     method: "POST",
     body: JSON.stringify({})
+  }, token);
+}
+
+function buildAuditQuery(params = {}) {
+  const search = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    const normalized = String(value).trim();
+    if (!normalized) return;
+    search.set(key, normalized);
+  });
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function fetchAuditLogs(token, params = {}) {
+  const query = buildAuditQuery(params);
+  return api(`/audit-logs${query}`, { method: "GET", retryCount: 1 }, token);
+}
+
+export async function exportAuditLogs(token, params = {}) {
+  const query = buildAuditQuery(params);
+  const headers = {};
+  if (token && token !== COOKIE_SESSION_SENTINEL) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`${API_URL}/audit-logs/export${query}`, {
+    method: "GET",
+    headers,
+    credentials: "include"
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body?.error || "Erro ao exportar auditoria");
+  }
+  const blob = await response.blob();
+  return {
+    blob,
+    filename: `audit-logs-${new Date().toISOString().slice(0, 10)}.${String(params.format || "json").trim().toLowerCase() === "csv" ? "csv" : "json"}`
+  };
+}
+
+export async function pruneAuditLogs(token, payload) {
+  return api("/audit-logs/retention/prune", {
+    method: "POST",
+    body: JSON.stringify(payload || {})
   }, token);
 }

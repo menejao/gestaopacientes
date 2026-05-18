@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import PageLayout from "../components/layout/PageLayout";
 import PageHeader from "../components/layout/PageHeader";
 import Badge from "../components/ui/Badge";
 import { roleLabel } from "../utils/roles";
@@ -31,45 +30,46 @@ function DiagnosticsPage({ apiHealth, token, user, patients, users, templates, l
   }, [patients]);
 
   return (
-    <PageLayout>
+    <div className="diagnostics-page">
       <PageHeader
         eyebrow="Sistema"
         title="Diagnósticos"
-        subtitle="Visão técnica: conectividade, sessão, carga e consistência de dados."
-        actions={
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--s-2)" }}>
+        subtitle="Visão técnica consolidada de conectividade, sessão, carga operacional e consistência de dados."
+        variant="workspace"
+        actions={(
+          <div className="reports-hero-actions">
             <Badge tone={healthTone}>{apiHealth?.label || "Verificando..."}</Badge>
             {latency > 0 && (
-              <span style={{ fontSize: "var(--t-xs)", color: "var(--text-dim)" }}>Latência: {latency} ms</span>
+              <span className="diag-hero-latency">Latência: {latency} ms</span>
             )}
           </div>
-        }
+        )}
       />
 
       <div className="dashboard__kpis">
-        <div className={`kpi card kpi--${healthTone}`}>
+        <div className={`kpi card card--compact kpi--${healthTone}`}>
           <span className="kpi__label">API</span>
           <strong className="kpi__value">{apiHealth?.label || "—"}</strong>
           <span className="kpi__helper">Verificado: {updatedAt}</span>
         </div>
-        <div className="kpi card">
+        <div className="kpi card card--compact">
           <span className="kpi__label">Sessão</span>
           <strong className="kpi__value">{token ? "Ativa" : "—"}</strong>
           <span className="kpi__helper">{roleLabel(user?.role)} · {sessionAgeMin === null ? "—" : `${sessionAgeMin} min`}</span>
         </div>
-        <div className="kpi card">
+        <div className="kpi card card--compact">
           <span className="kpi__label">Carga local</span>
           <strong className="kpi__value">{patients?.length || 0}</strong>
           <span className="kpi__helper">{users?.length || 0} usuários · {templates?.length || 0} protocolos · {totalRecords} registros</span>
         </div>
-        <div className="kpi card">
+        <div className="kpi card card--compact">
           <span className="kpi__label">Última carga</span>
           <strong className="kpi__value">{lastLoadAt ? new Date(lastLoadAt).toLocaleTimeString("pt-BR") : "—"}</strong>
           <span className="kpi__helper">Demanda: {Number(demandMonthly?.totals?.total ?? 0)} · Agend. {Number(demandMonthly?.totals?.scheduled ?? 0)} · Esp. {Number(demandMonthly?.totals?.walkin ?? 0)}</span>
         </div>
       </div>
 
-      <div className="card card--noPad">
+      <div className="card card--noPad card--operational">
         <div className="card__header"><span className="card__title">Detalhes da sessão</span></div>
         <div className="card__body">
           <div className="diag-detail-grid">
@@ -89,7 +89,7 @@ function DiagnosticsPage({ apiHealth, token, user, patients, users, templates, l
           </div>
         </div>
       </div>
-    </PageLayout>
+    </div>
   );
 }
 

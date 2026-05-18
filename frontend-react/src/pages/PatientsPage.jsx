@@ -1,220 +1,326 @@
-import { useMemo, useState, useEffect } from "react";
-import PageLayout from "../components/layout/PageLayout";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Button from "../components/ui/Button";
 import PageHeader from "../components/layout/PageHeader";
-import Card from "../components/ui/Card";
-import Alert from "../components/ui/Alert";
-import PatientsToolbar from "../components/patients/PatientsToolbar";
-import PatientFilters from "../components/patients/PatientFilters";
-import PatientSummaryCards from "../components/patients/PatientSummaryCards";
 import PatientsTable from "../components/patients/PatientsTable";
-import PatientEmptyState from "../components/patients/PatientEmptyState";
-import PatientDetailsPanel from "../components/patients/PatientDetailsPanel";
-import { calcAge, catLabel } from "../utils/clinical";
+import PatientDetailPanel from "../components/patients/PatientDetailPanel";
+import { calcAge, catLabel, gestationalAgeInfo, normalizeSearch, protocolChip } from "../utils/clinical";
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+function rosaSort(list, isEquipeRosa) {
+  if (!isEquipeRosa) {
+    return [...list].sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
+    );
+  }
+  const puericultura = [], gestantes = [], outros = [];
+  list.forEach((p) => {
+    const cat = String(p.careCategory || "").toLowerCase();
+    if (cat === "child_followup") puericultura.push(p);
+    else if (cat === "pregnant") gestantes.push(p);
+    else outros.push(p);
+  });
+  puericultura.sort((a, b) => {
+    const da = a.birthDate ? new Date(a.birthDate) : new Date("9999-01-01");
+    const db = b.birthDate ? new Date(b.birthDate) : new Date("9999-01-01");
+    return da - db;
+  });
+  gestantes.sort((a, b) => {
+    const ga = gestationalAgeInfo(a);
+    const gb = gestationalAgeInfo(b);
+    return (gb ? gb.weeks * 7 + gb.days : 0) - (ga ? ga.weeks * 7 + ga.days : 0);
+  });
+  outros.sort((a, b) =>
+    String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
+  );
+  return [...puericultura, ...gestantes, ...outros];
+}
 
 export default function PatientsPage(props) {
   const {
-    patients, users, query, setQuery, categoryFilter, setCategoryFilter, acsFilter, setAcsFilter,
-    conditionFilter, setConditionFilter, selectedPatientId, setSelectedPatientId, onEdit, onDelete, onView,
-    selectedPatient,
+    patients, users, templates, protocolByPatient,
+    query, setQuery, categoryFilter, setCategoryFilter,
+    acsFilter, setAcsFilter, conditionFilter, setConditionFilter,
+    selectedPatientId, setSelectedPatientId,
+    canManageUser, canWriteRecords,
+    onEdit, onDelete, onView,
+    patientTab, setPatientTab,
+    appointments, tasks, messages, history, sortedSpecialAlerts,
+    patientProtocolSummary,
+    recordForm, setRecordForm, recordVaccines, setRecordVaccines, onSubmitRecord,
+    appointmentForm, setAppointmentForm, onSubmitAppointment, onDeleteAppointment,
+    taskForm, setTaskForm, onSubmitTask,
+    messageText, setMessageText, onSubmitMessage,
+    onStatusChange, onDeleteRecord,
+    selectedPatient, userObj, token,
   } = props;
 
-  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
-  function handleCreatePatient() {
-    const openCreate = onEdit(null);
-    if (typeof openCreate === "function") openCreate();
-  }
-
-  const categories = useMemo(() => {
-    const unique = new Map();
-    patients.forEach((patient) => {
-      const key = patient.careCategory || "general";
-      if (!unique.has(key)) unique.set(key, { value: key, label: catLabel([], key) });
-    });
-    return [...unique.values()];
-  }, [patients]);
-
-  const acsUsers = useMemo(() => users.filter((user) => user.role === "acs"), [users]);
-
-  const filteredPatients = useMemo(() => {
-    return patients.filter((patient) => {
-      const haystack = `${patient.name || ""} ${patient.cpf || ""} ${patient.cns || ""} ${patient.phone || ""}`.toLowerCase();
-      const matchesQuery = !query || haystack.includes(query.toLowerCase());
-      const matchesCategory = !categoryFilter || patient.careCategory === categoryFilter;
-      const matchesAcs = !acsFilter || patient.assignedAcsId === acsFilter;
-      const conditions = patient.chronicConditions || [];
-      const matchesCondition =
-        !conditionFilter ||
-        (conditionFilter === "hypertension" && conditions.includes("hypertension")) ||
-        (conditionFilter === "diabetes" && conditions.includes("diabetes")) ||
-        (conditionFilter === "both" && conditions.includes("hypertension") && conditions.includes("diabetes"));
-      return matchesQuery && matchesCategory && matchesAcs && matchesCondition;
-    });
-  }, [patients, query, categoryFilter, acsFilter, conditionFilter]);
+  const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 1440);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterRef = useRef(null);
+  const isEquipeRosa = String(userObj?.teamId || userObj?.teamName || "").toLowerCase().includes("rosa");
 
   useEffect(() => {
-    setPage(1);
-  }, [filteredPatients.length, pageSize, query, categoryFilter, acsFilter, conditionFilter]);
+    function onResize() { setIsNarrow(window.innerWidth < 1440); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
-  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
+  useEffect(() => {
+    if (!filtersOpen) return;
+    function handleClick(e) {
+      if (!filterRef.current?.contains(e.target)) setFiltersOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [filtersOpen]);
+
+  const catOpts = useMemo(() => {
+    const unique = new Map();
+    (templates || []).forEach((t) => {
+      if (!unique.has(t.category)) unique.set(t.category, { value: t.category, label: t.label });
+    });
+    return [...unique.values()].filter((c) => c.value !== "chronic");
+  }, [templates]);
+
+  const acsUsers = useMemo(() => (users || []).filter((u) => u.role === "acs"), [users]);
+
+  const activeFilters = [categoryFilter, acsFilter].filter(Boolean).length;
+
+  const filtered = useMemo(() => {
+    return (patients || []).filter((p) => {
+      if (query.trim()) {
+        const acsName = (users || []).find((u) => u.id === p.assignedAcsId)?.name || "";
+        const cat = catLabel(templates || [], p.careCategory);
+        const hay = normalizeSearch(`${p.name || ""} ${p.phone || ""} ${acsName} ${cat}`);
+        if (!hay.includes(normalizeSearch(query))) return false;
+      }
+      if (categoryFilter && p.careCategory !== categoryFilter) return false;
+      if (acsFilter && p.assignedAcsId !== acsFilter) return false;
+      if (conditionFilter) {
+        const cc = Array.isArray(p.chronicConditions) ? p.chronicConditions : [];
+        if (conditionFilter === "hypertension" && !cc.includes("hypertension")) return false;
+        if (conditionFilter === "diabetes" && !cc.includes("diabetes")) return false;
+        if (conditionFilter === "both" && !(cc.includes("hypertension") && cc.includes("diabetes"))) return false;
+      }
+      return true;
+    });
+  }, [patients, query, categoryFilter, acsFilter, conditionFilter, users, templates]);
+
+  const sorted = useMemo(() => rosaSort(filtered, isEquipeRosa), [filtered, isEquipeRosa]);
+
+  useEffect(() => { setPage(1); }, [sorted.length]);
+
+  useEffect(() => {
+    if (selectedPatientId && !sorted.some((p) => p.id === selectedPatientId)) {
+      setSelectedPatientId?.("");
+    }
+  }, [sorted, selectedPatientId, setSelectedPatientId]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const paginatedPatients = filteredPatients.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const paged = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const activeFilterCount = [categoryFilter, acsFilter, conditionFilter].filter(Boolean).length;
+  function togglePatient(patientId) {
+    setSelectedPatientId?.((prev) => prev === patientId ? "" : patientId);
+    if (patientId !== selectedPatientId) setPatientTab?.("protocol");
+  }
 
-  const rangeStart = filteredPatients.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
-  const rangeEnd = Math.min(safePage * pageSize, filteredPatients.length);
+  function handleCreate() {
+    const fn = onEdit?.(null);
+    if (typeof fn === "function") fn();
+  }
+
+  function closePanel() {
+    setSelectedPatientId?.("");
+  }
+
+  const showSplit = !isNarrow && !!selectedPatient;
+  const showOverlay = isNarrow && !!selectedPatient;
+
+  const detailPanelProps = {
+    patient: selectedPatient,
+    users: users || [], templates: templates || [],
+    patientTab, setPatientTab,
+    appointments, tasks, messages, history, sortedSpecialAlerts,
+    patientProtocolSummary,
+    recordForm, setRecordForm, recordVaccines, setRecordVaccines, onSubmitRecord,
+    appointmentForm, setAppointmentForm, onSubmitAppointment,
+    taskForm, setTaskForm, onSubmitTask,
+    messageText, setMessageText, onSubmitMessage,
+    onDeleteAppointment, onStatusChange,
+    canManageUser, canWriteRecords,
+    userObj, onClose: closePanel,
+  };
 
   return (
-    <PageLayout className="patients-page">
+    <div className="patients-page">
+      {/* Hero section */}
       <PageHeader
-        eyebrow="VALENS"
+        eyebrow="Gestão de Pacientes"
         title="Pacientes"
-        subtitle="Acompanhe cadastros, filtros operacionais e contexto clínico da equipe."
+        subtitle="Carteira assistencial, cadastro operacional e abertura do atendimento clínico por paciente."
+        actions={
+          canManageUser ? (
+            <Button onClick={handleCreate}>+ Novo paciente</Button>
+          ) : null
+        }
       />
 
-      <PatientsToolbar
-        query={query}
-        setQuery={setQuery}
-        onCreate={handleCreatePatient}
-        selectedCount={filteredPatients.length}
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters((v) => !v)}
-        activeFilterCount={activeFilterCount}
-      />
-
-      {showFilters && (
-        <PatientFilters
-          categoryFilter={categoryFilter}
-          setCategoryFilter={setCategoryFilter}
-          acsFilter={acsFilter}
-          setAcsFilter={setAcsFilter}
-          conditionFilter={conditionFilter}
-          setConditionFilter={setConditionFilter}
-          categories={categories}
-          acsUsers={acsUsers}
-        />
-      )}
-
-      <PatientSummaryCards patients={patients} filteredPatients={filteredPatients} selectedPatient={selectedPatient} />
-
-      <div className="patients-page__content">
-        <Card className="patients-page__table card--noPad">
-          <div className="card__header">
-            <div>
-              <div className="card__title">Lista de pacientes</div>
-              <div className="card__subtitle">{filteredPatients.length} registro(s) visíveis na consulta atual</div>
+      <div className={`patients-layout${showSplit ? " patients-layout--split" : ""}`}>
+        {/* â"€â"€ LEFT: patient list â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+        <div className="card card--noPad">
+          {/* Toolbar */}
+          <div className="patients-toolbar">
+            <div className="input patients-toolbar__search">
+              <input
+                placeholder="Buscar por nome, telefone..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
             </div>
+
+            <div className="patients-toolbar__filter-wrap" ref={filterRef}>
+              <button
+                type="button"
+                className={`btn btn--secondary btn--sm${filtersOpen || activeFilters > 0 ? " is-active" : ""}`}
+                onClick={() => setFiltersOpen((p) => !p)}
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                Filtros
+                {activeFilters > 0 && (
+                  <span className="patients-toolbar__filter-badge">{activeFilters}</span>
+                )}
+              </button>
+
+              {filtersOpen && (
+                <div className="patients-filter-popover">
+                  <div className="patients-filter-popover__head">
+                    <span className="patients-filter-popover__title">Filtros</span>
+                    {(categoryFilter || acsFilter) && (
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        onClick={() => { setCategoryFilter(""); setAcsFilter(""); }}
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                  <div className="patients-filter-popover__body">
+                    <label className="field">
+                      <span className="field__label">Categoria</span>
+                      <div className="input">
+                        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                          <option value="">Todas as categorias</option>
+                          {catOpts.map((c) => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </label>
+                    <label className="field">
+                      <span className="field__label">ACS responsável</span>
+                      <div className="input">
+                        <select value={acsFilter} onChange={(e) => setAcsFilter(e.target.value)}>
+                          <option value="">Todos os ACS</option>
+                          {acsUsers.map((u) => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <span className="patients-toolbar__meta">
+              {sorted.length} paciente{sorted.length !== 1 ? "s" : ""}
+            </span>
           </div>
-          <div className="card__body" style={{ padding: 0 }}>
-            {paginatedPatients.length ? (
+
+          {/* Table */}
+          <div className="patients-table-wrap">
+            {!paged.length ? (
+              <div className="empty">Nenhum paciente encontrado.</div>
+            ) : (
               <PatientsTable
-                patients={paginatedPatients}
+                patients={paged}
                 selectedPatientId={selectedPatientId}
                 catLabel={catLabel}
+                templates={templates || []}
                 calcAge={calcAge}
-                users={users}
-                onSelect={setSelectedPatientId}
+                users={users || []}
+                protocolByPatient={protocolByPatient || {}}
+                protocolChip={protocolChip}
+                onToggleWorkspace={(patient) => togglePatient(patient.id)}
                 onView={onView}
                 onEdit={onEdit}
                 onDelete={onDelete}
               />
-            ) : (
-              <div style={{ padding: "var(--s-5)" }}>
-                <PatientEmptyState />
-              </div>
             )}
           </div>
-          {filteredPatients.length > 0 && (
-            <div className="pagination">
-              <div className="pagination__page-size">
-                <label className="pagination__page-size-label" htmlFor="patients-page-size">Por página</label>
-                <select
-                  id="patients-page-size"
-                  className="patients-page-size"
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                >
-                  {PAGE_SIZE_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-              <span className="pagination__info">
-                {rangeStart}–{rangeEnd} de {filteredPatients.length}
-              </span>
-              <div className="pagination__controls">
-                <button
-                  type="button"
-                  className="pagination__btn"
-                  onClick={() => setPage(1)}
-                  disabled={safePage <= 1}
-                  aria-label="Primeira página"
-                >
-                  «
-                </button>
-                <button
-                  type="button"
-                  className="pagination__btn"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={safePage <= 1}
-                  aria-label="Página anterior"
-                >
-                  ‹
-                </button>
-                <span className="pagination__current">{safePage} / {totalPages}</span>
-                <button
-                  type="button"
-                  className="pagination__btn"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={safePage >= totalPages}
-                  aria-label="Próxima página"
-                >
-                  ›
-                </button>
-                <button
-                  type="button"
-                  className="pagination__btn"
-                  onClick={() => setPage(totalPages)}
-                  disabled={safePage >= totalPages}
-                  aria-label="Última página"
-                >
-                  »
-                </button>
-              </div>
+          {/* Pagination */}
+          <div className="pagination">
+            <div className="pagination__page-size">
+              <span className="pagination__page-size-label">Linhas por página</span>
+              <select
+                className="patients-page-size"
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
             </div>
-          )}
-        </Card>
+            <span className="pagination__info">
+              {sorted.length === 0
+                ? "Sem resultados"
+                : `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, sorted.length)} de ${sorted.length}`}
+            </span>
+            <div className="pagination__controls">
+              <button
+                className="pagination__btn"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                ‹
+              </button>
+              <span className="pagination__current">Página {safePage} de {totalPages}</span>
+              <button
+                className="pagination__btn"
+                disabled={safePage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        </div>
 
-        <Card className="patients-page__details card--noPad">
-          <div className="card__header">
-            <div>
-              <div className="card__title">Detalhes do paciente</div>
-              <div className="card__subtitle">Ficha operacional e dados clínicos consolidados</div>
-            </div>
+        {showSplit && (
+          <div className="card card--noPad patient-side-panel">
+            <PatientDetailPanel {...detailPanelProps} />
           </div>
-          <div className="card__body">
-            {selectedPatient ? (
-              <PatientDetailsPanel
-                patient={selectedPatient}
-                users={users}
-                templates={[]}
-                catLabel={catLabel}
-                displayText={(value) => value || "-"}
-                isChildCategory={(value) => ["child", "infant"].includes(String(value || "").toLowerCase())}
-                fmtDate={(value) => value ? new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR") : "-"}
-                calcAge={calcAge}
-              />
-            ) : (
-              <Alert tone="info">Selecione um paciente na tabela para visualizar os dados completos.</Alert>
-            )}
-          </div>
-        </Card>
+        )}
       </div>
-    </PageLayout>
+
+      {/* Overlay — narrow screens */}
+      {showOverlay && (
+        <div className="patients-detail-overlay" onClick={closePanel}>
+          <div className="patients-detail-overlay__panel" onClick={(e) => e.stopPropagation()}>
+            <PatientDetailPanel {...detailPanelProps} />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
+
+

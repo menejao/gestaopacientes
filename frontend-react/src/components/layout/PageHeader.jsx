@@ -1,13 +1,50 @@
-function PageHeader({ eyebrow, title, subtitle, actions, className = "" }) {
+import InternalHero from "./InternalHero";
+import WorkspaceHero from "./WorkspaceHero";
+
+const WORKSPACE_TITLES = new Set([
+  "Visão operacional da unidade",
+  "Indicadores à Vista",
+  "Relatórios",
+  "Diagnósticos",
+]);
+
+function PageHeader({
+  eyebrow,
+  title,
+  subtitle,
+  actions,
+  search,
+  children,
+  variant = "internal",
+  className = "",
+}) {
+  const resolvedVariant = variant === "internal" && WORKSPACE_TITLES.has(String(title || "").trim())
+    ? "workspace"
+    : variant;
+
+  if (resolvedVariant === "workspace") {
+    return (
+      <WorkspaceHero
+        eyebrow={eyebrow}
+        title={title}
+        description={subtitle}
+        actions={actions}
+        className={className}
+      />
+    );
+  }
+
   return (
-    <header className={["page-header", className].filter(Boolean).join(" ")}>
-      <div className="page-header__copy">
-        {eyebrow ? <span className="page-header__eyebrow">{eyebrow}</span> : null}
-        {title ? <h1 className="page-header__title">{title}</h1> : null}
-        {subtitle ? <p className="page-header__subtitle">{subtitle}</p> : null}
-      </div>
-      {actions ? <div className="page-header__actions">{actions}</div> : null}
-    </header>
+    <InternalHero
+      eyebrow={eyebrow}
+      title={title}
+      description={subtitle}
+      actions={actions}
+      search={search}
+      className={className}
+    >
+      {children}
+    </InternalHero>
   );
 }
 

@@ -43,6 +43,8 @@ export function buildNavItems(user, canManageUser) {
   const canReadDiagnostics = admin || hasCapability(user, "diagnostics.read");
   const canReadAccessRequests = admin || hasCapability(user, "access_requests.read") || isGestor(user);
   const canReadAuditLog = admin || hasCapability(user, "audit.read");
+  const canReadPharmacy = admin || hasCapability(user, "pharmacy.read") || hasCapability(user, "pharmacy.write");
+  const canReadSupplies = admin || hasCapability(user, "supplies.read") || hasCapability(user, "supplies.write");
 
   if (isGestor(user) && !admin) {
     items.push({ id: "gestor", label: "Gestão à Vista", section: "" });
@@ -69,8 +71,8 @@ export function buildNavItems(user, canManageUser) {
   if (role === "acs" || admin) items.push({ id: "acs_tasks", label: admin ? "Tarefas ACS" : "Minhas tarefas", section: "" });
 
   if (!isPharmacist(user) || admin) items.push({ id: "vaccines", label: "Vacinas", section: "Preventivo" });
-  items.push({ id: "pharmacy", label: "Farmácia", section: "" });
-  if (["nurse_manager", "nursing_tech", "pharmacist", "pharmacy_tech"].includes(role) || admin) {
+  if (canReadPharmacy) items.push({ id: "pharmacy", label: "Farmácia", section: "" });
+  if (canReadSupplies) {
     items.push({ id: "insumos", label: "Insumos", section: "" });
   }
 

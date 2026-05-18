@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { matchesPatientSearch, gestationalAgeInfo } from "../../utils/clinical";
 import Avatar from "./Avatar";
+import Button from "./Button";
+import Input from "./Input";
 
 const IconSearch = () => (
   <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
@@ -35,21 +37,21 @@ function GlobalSearch({ patients, templates, onNavigate }) {
 
   return (
     <>
-      <button className="global-search__trigger" onClick={()=>setOpen(true)}>
+      <Button className="global-search__trigger" variant="ghost" onClick={()=>setOpen(true)}>
         <IconSearch/> Buscar paciente...
         <span className="global-search__kbd">Ctrl+K</span>
-      </button>
+      </Button>
       {open&&(
         <div className="global-search__overlay" onClick={()=>setOpen(false)}>
           <div ref={ref} className="global-search__panel" onClick={e=>e.stopPropagation()}>
             <div className="global-search__input-row">
               <IconSearch/>
-              <input ref={inputRef} className="global-search__input" value={q} onChange={e=>setQ(e.target.value)} placeholder="Nome, CPF, CNS ou telefone..."/>
-              <button className="icon-btn" onClick={()=>setOpen(false)}>
+              <Input ref={inputRef} inputClassName="global-search__input" value={q} onChange={e=>setQ(e.target.value)} placeholder="Nome, CPF, CNS ou telefone..."/>
+              <Button className="icon-btn" variant="ghost" size="sm" iconOnly onClick={()=>setOpen(false)}>
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                   <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
-              </button>
+              </Button>
             </div>
             {q.length>=2&&!results.length&&(
               <p className="global-search__empty">Nenhum paciente encontrado.</p>
@@ -57,7 +59,7 @@ function GlobalSearch({ patients, templates, onNavigate }) {
             {results.map(p=>{
               const g=gestationalAgeInfo(p);
               return(
-                <button key={p.id} className="global-search__result" onClick={()=>select(p)}>
+                <Button key={p.id} className="global-search__result" variant="ghost" onClick={()=>select(p)}>
                   <Avatar name={p.name}/>
                   <div className="global-search__result-copy">
                     <div className="global-search__result-name">{p.name}</div>
@@ -70,7 +72,7 @@ function GlobalSearch({ patients, templates, onNavigate }) {
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" className="global-search__result-chevron">
                     <path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                </button>
+                </Button>
               );
             })}
             {!q&&(

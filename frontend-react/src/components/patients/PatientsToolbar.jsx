@@ -3,7 +3,7 @@ import Input from "../ui/Input";
 
 const IconFilter = () => (
   <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
 
@@ -34,9 +34,9 @@ export default function PatientsToolbar({
         >
           <IconFilter />
           Filtros
-          {activeFilterCount > 0 && (
+          {activeFilterCount > 0 ? (
             <span className="patients-toolbar__filter-badge">{activeFilterCount}</span>
-          )}
+          ) : null}
         </Button>
         <Button variant="primary" onClick={onCreate}>Novo paciente</Button>
       </div>

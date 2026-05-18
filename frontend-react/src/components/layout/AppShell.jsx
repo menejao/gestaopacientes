@@ -1,7 +1,16 @@
+import Button from "../ui/Button";
+
 function AppShell({ sidebar, topbar, children, mobileNavOpen = false, onCloseMobileNav }) {
   return (
     <div className="app-shell">
-      {mobileNavOpen ? <button className="app-shell__scrim" type="button" onClick={onCloseMobileNav} aria-label="Fechar navegação" /> : null}
+      {mobileNavOpen ? (
+        <Button
+          className="app-shell__scrim"
+          variant="ghost"
+          onClick={onCloseMobileNav}
+          aria-label="Fechar navegação"
+        />
+      ) : null}
       {sidebar}
       <div className="app-shell__main">
         {topbar}

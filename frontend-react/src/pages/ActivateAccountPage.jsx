@@ -53,7 +53,7 @@ function LeftPanel({ eyebrow, heading, sub }) {
         <div className="auth-brand-lockup">
           <div className="auth-brand-lockup__icon"><IconMark /></div>
           <div className="auth-brand-lockup__copy">
-            <strong>VALENS</strong>
+            <strong>Vitras</strong>
             <span>{SUBTITLE}</span>
           </div>
         </div>

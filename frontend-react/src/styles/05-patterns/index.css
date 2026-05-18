@@ -1,10 +1,13 @@
 /* 05-patterns/index.css */
 
 @import './dashboard.css';
+@import './page-shell.css';
+@import './heroes.css';
 @import './form.css';
 @import './empty-state.css';
 @import './auth.css';
 @import './modals.css';
+@import './documents.css';
 @import './patients.css';
 @import './agenda.css';
 @import './referrals.css';
@@ -18,3 +21,4 @@
 @import './esus.css';
 @import './exams.css';
 @import './reception.css';
+@import './gestor.css';

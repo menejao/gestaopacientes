@@ -8,8 +8,17 @@
   height: 100%;
 }
 
-.queue-page > .page-header {
+.queue-page > .page-header,
+.queue-page > .hero {
   margin: var(--s-6) var(--s-6) 0;
+}
+
+.queue-hero-search {
+  width: min(420px, 100%);
+}
+
+.queue-hero-search .input {
+  width: 100%;
 }
 
 /* ── KPIs ───────────────────────────────────────────────── */
@@ -184,6 +193,11 @@
   opacity: .85;
 }
 
+.queue-selected-pat__copy {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ── Toggle de escolha (tipo/destino) ───────────────────── */
 .queue-toggle {
   display: grid;
@@ -243,6 +257,11 @@
   color: var(--warning);
 }
 
+.queue-demand-notice__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 /* ── Footer do formulário ───────────────────────────────── */
 .queue-form-footer {
   display: flex;
@@ -278,6 +297,7 @@
 
 @media (max-width: 640px) {
   .queue-page > .page-header,
+  .queue-page > .hero,
   .queue-kpis,
   .queue-list { padding-left: var(--s-4); padding-right: var(--s-4); }
 }

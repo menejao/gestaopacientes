@@ -69,7 +69,17 @@ export function gestationalAgeInfo(patient) {
 }
 
 export function catLabel(templates, category) {
-  return templates.find(t => t.category === category)?.label || category || "Geral";
+  const normalized = String(category || "").trim().toLowerCase();
+  const fallbackMap = {
+    pregnant: "Gestante",
+    puerperal: "Puérpera",
+    child_followup: "Criança em acompanhamento",
+    puericulture: "Criança em acompanhamento",
+    elderly: "Idoso",
+    general: "Geral",
+    chronic: "Condição crônica"
+  };
+  return templates.find(t => t.category === category)?.label || fallbackMap[normalized] || category || "Geral";
 }
 
 export function isChildCategory(category) {
@@ -95,6 +105,10 @@ export function emptyPatientForm() {
     gestationalAgeDumWeeks: "", gestationalAgeDumDays: "",
     gestationalAgeUsgWeeks: "", gestationalAgeUsgDays: "",
     usgDate1: "", usgDate2: "", usgDate3: "",
+    educationLevel: "", occupation: "",
+    familySituation: "", familySupport: "",
+    socialVulnerability: "", socialBenefit: "",
+    substanceDependency: "", domesticViolence: "",
   };
 }
 

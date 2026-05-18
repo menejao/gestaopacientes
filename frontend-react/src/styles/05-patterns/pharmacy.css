@@ -68,20 +68,6 @@
   flex: 1 1 200px;
 }
 
-.pharma-search__icon {
-  position: absolute;
-  left: var(--s-2);
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-dim);
-  pointer-events: none;
-}
-
-.pharma-search__input {
-  padding-left: var(--s-7) !important;
-  width: 100%;
-  box-sizing: border-box;
-}
 
 /* Filter toggle active state */
 .btn--ghost.is-active {
