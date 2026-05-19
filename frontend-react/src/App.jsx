@@ -1,6 +1,6 @@
 ﻿import { useMemo, useRef, useState } from "react";
 import { readUiState } from "./utils/storage";
-import { isReceptionist, isAdmin } from "./utils/roles";
+import { isReceptionist, isAdmin, canWriteRecords } from "./utils/roles";
 import AppShell from "./components/layout/AppShell";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
