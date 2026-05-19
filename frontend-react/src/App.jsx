@@ -92,7 +92,7 @@ function AppInner() {
   const { aiView, aiData, aiQuestion, setAiQuestion, loadAiPriorities, loadAiQuality, loadAiReport, submitAiQuestion } = useAiHandlers({ token, handleApiError, setBusy, setError });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const {
-    showProfileModal, profileForm, setProfileForm, profileBusy, profileError,
+    showProfileModal, setShowProfileModal, profileForm, setProfileForm, profileBusy, profileError,
     openProfile, submitProfile,
   } = useProfile({ token, user, setUser, persistCookieSession });
   const {
