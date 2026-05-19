@@ -29,6 +29,7 @@ export function TabContent({
   patients, setPatients, users, allUsers, templates, protocolByPatient,
   publicTeams, demandMonthly, lastLoadAt, apiHealth,
   appointments, tasks, messages, history,
+  patientDataLoading,
   selectedPatientId, setSelectedPatientId, selectedPatient,
   patientTab, setPatientTab,
   query, setQuery, categoryFilter, setCategoryFilter,
@@ -106,6 +107,7 @@ export function TabContent({
           onEdit={openEditPatient} onDelete={removePatient} onView={openViewPatient}
           patientTab={patientTab} setPatientTab={setPatientTab}
           appointments={appointments} tasks={tasks} messages={messages} history={history}
+          patientDataLoading={patientDataLoading}
           patientProtocolSummary={rosaAdjustedSummary} sortedSpecialAlerts={sortedSpecialAlerts}
           recordForm={recordForm} setRecordForm={setRecordForm}
           recordVaccines={recordVaccines} setRecordVaccines={setRecordVaccines}

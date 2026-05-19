@@ -17,9 +17,16 @@ const SENSITIVE_USER_FIELDS = ["twoFactorSecret", "twoFactorPendingSecret"];
 const pool = DATABASE_URL
   ? new Pool({
       connectionString: DATABASE_URL,
-      ssl: true
+      ssl: true,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
     })
   : null;
+
+let _dbCache = null;
+let _dbCacheAt = 0;
+const DB_CACHE_TTL_MS = 1500;
 
 let initialized = false;
 
@@ -125,7 +132,6 @@ function buildDefaultState() {
     { category: "general", label: "Geral", targets: { visits: 2, consultations: 2, vaccines: 1 }, vaccines: ["Influenza"], authority: "Ministerio da Saude", reference: "https://bvsms.saude.gov.br/bvs/publicacoes/politica_nacional_atencao_basica_2017.pdf", version: "PNAB-2017" },
     { category: "pregnant", label: "Gestante", targets: { visits: 6, consultations: 7, vaccines: 3 }, vaccines: ["dTpa", "Hepatite B", "Influenza"], authority: "Ministerio da Saude", reference: "https://bvsms.saude.gov.br/bvs/saudelegis/gm/2011/prt1459_24_06_2011.html", version: "Rede Cegonha" },
     { category: "puerperal", label: "Puerpera", targets: { visits: 2, consultations: 2, vaccines: 1 }, vaccines: ["dTpa"], authority: "Ministerio da Saude", reference: "https://bvsms.saude.gov.br/bvs/saudelegis/gm/2011/prt1459_24_06_2011.html", version: "Rede Cegonha" },
-    { category: "pap_only", label: "Somente Papanicolau", targets: { visits: 1, consultations: 1, vaccines: 0 }, vaccines: [], authority: "Ministerio da Saude", reference: "https://www.inca.gov.br/controle-do-cancer-do-colo-do-utero/acoes-de-controle/rastreamento", version: "Rastreamento vigente" },
     { category: "child_followup", label: "Puericultura", targets: { visits: 4, consultations: 6, vaccines: 6 }, vaccines: ["BCG", "Pentavalente", "Polio", "Rotavirus", "Pneumococica", "Meningococica"], authority: "Ministerio da Saude", reference: "https://www.gov.br/saude/pt-br/vacinacao/calendario", version: "Calendario PNI" },
     { category: "chronic", label: "Condicao Cronica", targets: { visits: 3, consultations: 3, vaccines: 2 }, vaccines: ["Influenza", "COVID-19"], authority: "Ministerio da Saude", reference: "https://bvsms.saude.gov.br/bvs/publicacoes/plano_acoes_estrategicas_enfrentamento_dc_nt_2021_2030.pdf", version: "DCNT 2021-2030" }
   ];
@@ -414,6 +420,10 @@ async function initialize() {
 
 async function readDbFromPostgres() {
   await initialize();
+  const now = Date.now();
+  if (_dbCache && (now - _dbCacheAt) < DB_CACHE_TTL_MS) {
+    return _dbCache;
+  }
   const result = await pool.query("SELECT data FROM app_state WHERE id = 1");
   const data = deserializeStateFromStorage(result.rows[0]?.data || {});
 
@@ -453,9 +463,13 @@ async function readDbFromPostgres() {
       client.release();
     }
     console.log("[db:seed] seed concluído");
+    _dbCache = seeded;
+    _dbCacheAt = Date.now();
     return seeded;
   }
 
+  _dbCache = data;
+  _dbCacheAt = Date.now();
   return data;
 }
 
@@ -494,9 +508,12 @@ async function withDb(mutator) {
       await syncShadowTables(client, db);
 
       await client.query("COMMIT");
+      _dbCache = db;
+      _dbCacheAt = Date.now();
       return mutatorResult;
     } catch (error) {
       await client.query("ROLLBACK");
+      _dbCache = null;
       throw error;
     } finally {
       client.release();

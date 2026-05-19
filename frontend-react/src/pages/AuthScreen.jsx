@@ -315,7 +315,14 @@ function AuthScreen({ onLogin, onVerifyTwoFactor, loginChallenge, onCancelTwoFac
                   <Input label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" autoComplete="current-password" />
                   {error ? <Alert tone="danger">{error}</Alert> : null}
                   <Button type="submit" variant="primary" size="lg" disabled={busy}>
-                    {busy ? "Entrando..." : "Entrar"}
+                    {busy ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ animation: "spin 0.8s linear infinite", display: "inline-block", verticalAlign: "middle", marginRight: "6px" }}>
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" strokeDasharray="50 30" strokeLinecap="round" />
+                        </svg>
+                        Entrando...
+                      </>
+                    ) : "Entrar"}
                   </Button>
                 </form>
               )

@@ -65,7 +65,28 @@ function ProgressBar({ label, done, goal }) {
   );
 }
 
-function ProtocolTab({ patient, alerts, protocolSummary }) {
+function ProtocolSkeleton() {
+  return (
+    <div className="skeleton-stack">
+      <div className="skeleton-block" style={{ height: "2.8rem", borderRadius: "var(--r-md)" }} />
+      <div className="skeleton-stack" style={{ gap: ".5rem" }}>
+        <div className="skeleton-line" style={{ width: "40%", height: ".6rem" }} />
+        {[1, 2, 3].map(i => (
+          <div key={i} style={{ marginBottom: ".6rem" }}>
+            <div className="skeleton-row" style={{ marginBottom: ".35rem" }}>
+              <div className="skeleton-line" style={{ flex: 1 }} />
+              <div className="skeleton-line" style={{ width: "3.5rem" }} />
+            </div>
+            <div className="skeleton-block" style={{ height: "8px", borderRadius: "4px" }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProtocolTab({ patient, alerts, protocolSummary, loading }) {
+  if (loading) return <ProtocolSkeleton />;
   if (!protocolSummary) {
     return <Alert tone="info">Nenhum dado de protocolo disponivel para este paciente.</Alert>;
   }
@@ -184,7 +205,22 @@ const HIST_TYPE_COLORS = {
 const HIST_INTERNAL_TYPES = new Set(["task", "message"]);
 const HIST_FILTER_TYPES = ["all","consultation","visit","vaccine","procedure","exam","exam_request","prescription","referral","note","task","message"];
 
-function HistoricoTab({ history, appointments, tasks, messages, canManageUser, onDeleteAppointment }) {
+function HistoricoTab({ history, appointments, tasks, messages, canManageUser, onDeleteAppointment, loading }) {
+  if (loading) {
+    return (
+      <div className="skeleton-stack">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="skeleton-row" style={{ alignItems: "flex-start", gap: ".8rem" }}>
+            <div className="skeleton-block" style={{ width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0 }} />
+            <div className="skeleton-stack" style={{ flex: 1, gap: ".4rem" }}>
+              <div className="skeleton-line" style={{ width: "60%" }} />
+              <div className="skeleton-line" style={{ width: "35%", height: ".6rem" }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
   const [filter, setFilter] = useState("all");
   const [showInternal, setShowInternal] = useState(true);
 
@@ -984,6 +1020,7 @@ export default function PatientDetailPanel({
   messages,
   history,
   sortedSpecialAlerts,
+  patientDataLoading,
   patientProtocolSummary,
   recordForm,
   setRecordForm,
@@ -1072,7 +1109,7 @@ export default function PatientDetailPanel({
 
       <div className="panel-block">
         {activeTab === "protocol" && (
-          <ProtocolTab patient={patient} alerts={sortedSpecialAlerts} protocolSummary={patientProtocolSummary} />
+          <ProtocolTab patient={patient} alerts={sortedSpecialAlerts} protocolSummary={patientProtocolSummary} loading={patientDataLoading} />
         )}
 
         {activeTab === "followup" && (
@@ -1097,6 +1134,7 @@ export default function PatientDetailPanel({
             messages={messages}
             canManageUser={canManageUser}
             onDeleteAppointment={onDeleteAppointment}
+            loading={patientDataLoading}
           />
         )}
 

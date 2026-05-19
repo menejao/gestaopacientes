@@ -29,6 +29,7 @@ export function useBootstrap(token, {
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
   const [patientProtocolSummary, setPatientProtocolSummary] = useState(null);
+  const [patientDataLoading, setPatientDataLoading] = useState(false);
 
   function reset() {
     setPatients([]); setUsers([]); setTemplates([]);
@@ -53,12 +54,7 @@ export function useBootstrap(token, {
       if (boot?.demandMonthly) {
         setDemandMonthly(boot.demandMonthly);
       }
-      try {
-        const fu = await listUsers(token);
-        if (Array.isArray(fu)) setAllUsers(fu.map(u => u.id === boot?.user?.id ? { ...u, online: true } : u));
-      } catch {
-        setAllUsers(us.map(u => u.id === boot?.user?.id ? { ...u, online: true } : u));
-      }
+      setAllUsers(us.map(u => u.id === boot?.user?.id ? { ...u, online: true } : u));
       if (pts.length) {
         const sums = await getProtocolSummaries(token, pts.map(p => p.id).filter(Boolean));
         setProtocolByPatient(sums?.summaries || {});
@@ -74,6 +70,7 @@ export function useBootstrap(token, {
   }
 
   async function loadSelectedPatientData(patientId) {
+    setPatientDataLoading(true);
     try {
       const [summary, hist, appts, taskItems, msgItems] = await Promise.all([
         getPatientProtocolSummary(token, patientId),
@@ -89,6 +86,8 @@ export function useBootstrap(token, {
       setMessages(Array.isArray(msgItems) ? msgItems : []);
     } catch (e) {
       if (!(await handleApiError(e))) setError(e.message || "Falha ao carregar dados do paciente");
+    } finally {
+      setPatientDataLoading(false);
     }
   }
 
@@ -125,6 +124,7 @@ export function useBootstrap(token, {
     demandMonthly, setDemandMonthly,
     lastLoadAt,
     appointments, tasks, messages, history, patientProtocolSummary,
+    patientDataLoading,
     loadAll,
     loadSelectedPatientData,
     reset,

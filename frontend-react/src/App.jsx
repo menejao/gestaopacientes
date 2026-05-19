@@ -59,6 +59,7 @@ function AppInner() {
     demandMonthly, setDemandMonthly,
     lastLoadAt,
     appointments, tasks, messages, history, patientProtocolSummary,
+    patientDataLoading,
     loadAll, loadSelectedPatientData,
     reset: resetBootstrap,
   } = useBootstrap(token, { handleApiError, setBusy, setError, refreshUserFromBoot, currentUserId: user?.id });
@@ -238,6 +239,7 @@ function AppInner() {
           patients={patients} setPatients={setPatients} users={users} allUsers={allUsers} templates={templates} protocolByPatient={protocolByPatient}
           publicTeams={publicTeams} demandMonthly={demandMonthly} lastLoadAt={lastLoadAt} apiHealth={apiHealth}
           appointments={appointments} tasks={tasks} messages={messages} history={history}
+          patientDataLoading={patientDataLoading}
           selectedPatientId={selectedPatientId} setSelectedPatientId={setSelectedPatientId} selectedPatient={selectedPatient}
           patientTab={patientTab} setPatientTab={setPatientTab}
           query={query} setQuery={setQuery} categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter}
