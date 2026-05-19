@@ -1,7 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
 import { IS_PROD } from "../config.js";
-import { withDb } from "../db.js";
-import { ensureDbShape } from "../utils/domain.js";
+import { isPostgresMode, withDb } from "../db.js";
+import {
+  ensureDbShape,
+  isJoaoDevVerificationUser,
+  JOAO_DEV_TARGET_TEAM_ID
+} from "../utils/domain.js";
 import { hashPassword, isHashedPassword } from "./crypto.js";
 
 async function migrateLegacyPlaintextPasswords() {
@@ -96,4 +100,36 @@ async function ensureDemoManagerIfNeeded(email, password) {
   });
 }
 
-export { migrateLegacyPlaintextPasswords, ensureDemoManagerIfNeeded };
+async function alignJoaoTeamOnStartup() {
+  const storage = isPostgresMode() ? "postgres" : "file";
+  console.log(`[startup:joao-align] storage=${storage}`);
+
+  await withDb((db) => {
+    const preAlign = (Array.isArray(db.users) ? db.users : []).filter(isJoaoDevVerificationUser);
+    if (!preAlign.length) {
+      console.log("[startup:joao-align] user not found before align");
+    } else {
+      for (const u of preAlign) {
+        console.log(`[startup:joao-align] before id=${u.id} email=${u.email} teamId=${u.teamId || "(empty)"}`);
+      }
+    }
+
+    ensureDbShape(db);
+
+    const postAlign = db.users.filter(isJoaoDevVerificationUser);
+    if (!postAlign.length) {
+      console.log("[startup:joao-align] user not found after align");
+    } else {
+      for (const u of postAlign) {
+        console.log(`[startup:joao-align] after  id=${u.id} email=${u.email} teamId=${u.teamId}`);
+      }
+    }
+
+    const outsideRosa = db.patients.filter(
+      (p) => String(p?.teamId || "") !== JOAO_DEV_TARGET_TEAM_ID
+    ).length;
+    console.log(`[startup:joao-align] patients outside team-rosa=${outsideRosa}`);
+  });
+}
+
+export { migrateLegacyPlaintextPasswords, ensureDemoManagerIfNeeded, alignJoaoTeamOnStartup };
