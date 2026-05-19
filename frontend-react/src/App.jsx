@@ -1,4 +1,4 @@
-﻿import { useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { readUiState } from "./utils/storage";
 import { isReceptionist, isAdmin, canWriteRecords } from "./utils/roles";
 import AppShell from "./components/layout/AppShell";
@@ -153,6 +153,12 @@ function AppInner() {
   const isEquipeRosaUser = String(user?.teamId||user?.teamName||"").toLowerCase().includes("rosa");
   const canReadAuditLog = isAdmin(user) || user?.capabilities?.includes("audit.read");
 
+  // Carrega dados do paciente selecionado sempre que a seleção muda
+  useEffect(() => {
+    if (selectedPatientId && token && !String(token).startsWith("local_")) {
+      loadSelectedPatientData(selectedPatientId);
+    }
+  }, [selectedPatientId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { rosaAdjustedSummary, sortedSpecialAlerts } = usePatientAlerts({ selectedPatient, patientProtocolSummary, history, isEquipeRosaUser });
 
