@@ -69,7 +69,7 @@ export function gestationalAgeInfo(patient) {
 }
 
 export function catLabel(templates, category) {
-  const normalized = String(category || "").trim().toLowerCase();
+  const normalized = String(category || "").trim().toLowerCase().replace(/\s+/g, "_");
   const fallbackMap = {
     pregnant: "Gestante",
     puerperal: "Puérpera",
@@ -77,9 +77,18 @@ export function catLabel(templates, category) {
     puericulture: "Criança em acompanhamento",
     elderly: "Idoso",
     general: "Geral",
-    chronic: "Condição crônica"
+    chronic: "Condição crônica",
+    pap_only: "Geral",
+    somente_papanicolau: "Geral"
   };
-  return templates.find(t => t.category === category)?.label || fallbackMap[normalized] || category || "Geral";
+  const matchedTemplate = (templates || []).find((t) => {
+    const templateCategory = String(t?.category || "").trim().toLowerCase().replace(/\s+/g, "_");
+    if (normalized === "pap_only" || normalized === "somente_papanicolau") {
+      return templateCategory === "general";
+    }
+    return templateCategory === normalized;
+  });
+  return matchedTemplate?.label || fallbackMap[normalized] || fallbackMap.general;
 }
 
 export function isChildCategory(category) {
