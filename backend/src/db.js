@@ -237,6 +237,15 @@ function buildPermissionMap() {
   return Object.fromEntries(roles.map((role) => [role, getRoleCapabilities(role)]));
 }
 
+function batchInsert(cols, rows) {
+  if (!rows.length) return null;
+  const stride = cols.length;
+  const placeholders = rows.map((_, i) =>
+    `(${cols.map((_, j) => `$${i * stride + j + 1}`).join(",")})`
+  ).join(",");
+  return { text: placeholders, values: rows.flat() };
+}
+
 async function syncShadowTables(client, state) {
   const users = Array.isArray(state?.users) ? state.users : [];
   const refreshTokens = Array.isArray(state?.refreshTokens) ? state.refreshTokens : [];
@@ -246,134 +255,121 @@ async function syncShadowTables(client, state) {
   const roleCapabilities = buildPermissionMap();
 
   await client.query("DELETE FROM app_users");
-  for (const user of users) {
+  const userRows = users.map((user) => [
+    String(user?.id || ""),
+    String(user?.teamId || ""),
+    String(user?.role || ""),
+    String(user?.email || ""),
+    String(user?.name || ""),
+    Boolean(user?.inactive),
+    Boolean(user?.twoFactorEnabled),
+    user?.createdAt || null,
+    user?.updatedAt || user?.createdAt || null,
+    JSON.stringify(user || {})
+  ]);
+  const userBatch = batchInsert(["id","team_id","role","email","name","inactive","two_factor_enabled","created_at","updated_at","payload"], userRows);
+  if (userBatch) {
     await client.query(
-      `
-        INSERT INTO app_users (
-          id, team_id, role, email, name, inactive, two_factor_enabled, created_at, updated_at, payload
-        )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)
-      `,
-      [
-        String(user?.id || ""),
-        String(user?.teamId || ""),
-        String(user?.role || ""),
-        String(user?.email || ""),
-        String(user?.name || ""),
-        Boolean(user?.inactive),
-        Boolean(user?.twoFactorEnabled),
-        user?.createdAt || null,
-        user?.updatedAt || user?.createdAt || null,
-        JSON.stringify(user || {})
-      ]
+      `INSERT INTO app_users (id,team_id,role,email,name,inactive,two_factor_enabled,created_at,updated_at,payload) VALUES ${userBatch.text}`,
+      userBatch.values
     );
   }
 
   await client.query("DELETE FROM app_refresh_tokens");
-  for (const token of refreshTokens) {
+  const tokenRows = refreshTokens.map((token) => [
+    String(token?.id || ""),
+    String(token?.userId || ""),
+    String(token?.tokenHash || ""),
+    String(token?.sessionContext?.scopeTeamId || ""),
+    token?.revokedAt || null,
+    token?.expiresAt || null,
+    token?.createdAt || null,
+    JSON.stringify(token || {})
+  ]);
+  const tokenBatch = batchInsert(["id","user_id","token_hash","scope_team_id","revoked_at","expires_at","created_at","payload"], tokenRows);
+  if (tokenBatch) {
     await client.query(
-      `
-        INSERT INTO app_refresh_tokens (
-          id, user_id, token_hash, scope_team_id, revoked_at, expires_at, created_at, payload
-        )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
-      `,
-      [
-        String(token?.id || ""),
-        String(token?.userId || ""),
-        String(token?.tokenHash || ""),
-        String(token?.sessionContext?.scopeTeamId || ""),
-        token?.revokedAt || null,
-        token?.expiresAt || null,
-        token?.createdAt || null,
-        JSON.stringify(token || {})
-      ]
+      `INSERT INTO app_refresh_tokens (id,user_id,token_hash,scope_team_id,revoked_at,expires_at,created_at,payload) VALUES ${tokenBatch.text}`,
+      tokenBatch.values
     );
   }
 
   await client.query("DELETE FROM app_patients");
-  for (const patient of patients) {
+  const patientRows = patients.map((patient) => [
+    String(patient?.id || ""),
+    String(patient?.teamId || ""),
+    String(patient?.assignedAcsId || ""),
+    String(patient?.careCategory || ""),
+    Boolean(patient?.inactive),
+    Boolean(patient?.incompleteProfile),
+    String(patient?.name || ""),
+    String(patient?.microArea || ""),
+    patient?.createdAt || null,
+    patient?.updatedAt || patient?.createdAt || null,
+    JSON.stringify(patient || {})
+  ]);
+  const patientBatch = batchInsert(["id","team_id","assigned_acs_id","care_category","inactive","incomplete_profile","name","micro_area","created_at","updated_at","payload"], patientRows);
+  if (patientBatch) {
     await client.query(
-      `
-        INSERT INTO app_patients (
-          id, team_id, assigned_acs_id, care_category, inactive, incomplete_profile, name, micro_area, created_at, updated_at, payload
-        )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)
-      `,
-      [
-        String(patient?.id || ""),
-        String(patient?.teamId || ""),
-        String(patient?.assignedAcsId || ""),
-        String(patient?.careCategory || ""),
-        Boolean(patient?.inactive),
-        Boolean(patient?.incompleteProfile),
-        String(patient?.name || ""),
-        String(patient?.microArea || ""),
-        patient?.createdAt || null,
-        patient?.updatedAt || patient?.createdAt || null,
-        JSON.stringify(patient || {})
-      ]
+      `INSERT INTO app_patients (id,team_id,assigned_acs_id,care_category,inactive,incomplete_profile,name,micro_area,created_at,updated_at,payload) VALUES ${patientBatch.text}`,
+      patientBatch.values
     );
   }
 
   await client.query("DELETE FROM app_appointments");
-  for (const appointment of appointments) {
+  const apptRows = appointments.map((appointment) => [
+    String(appointment?.id || ""),
+    String(appointment?.patientId || ""),
+    String(appointment?.createdBy || ""),
+    String(appointment?.demandType || ""),
+    String(appointment?.title || appointment?.summary || ""),
+    String(appointment?.date || ""),
+    appointment?.createdAt || null,
+    JSON.stringify(appointment || {})
+  ]);
+  const apptBatch = batchInsert(["id","patient_id","created_by","demand_type","title","date","created_at","payload"], apptRows);
+  if (apptBatch) {
     await client.query(
-      `
-        INSERT INTO app_appointments (
-          id, patient_id, created_by, demand_type, title, date, created_at, payload
-        )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
-      `,
-      [
-        String(appointment?.id || ""),
-        String(appointment?.patientId || ""),
-        String(appointment?.createdBy || ""),
-        String(appointment?.demandType || ""),
-        String(appointment?.title || appointment?.summary || ""),
-        String(appointment?.date || ""),
-        appointment?.createdAt || null,
-        JSON.stringify(appointment || {})
-      ]
+      `INSERT INTO app_appointments (id,patient_id,created_by,demand_type,title,date,created_at,payload) VALUES ${apptBatch.text}`,
+      apptBatch.values
     );
   }
 
   await client.query("DELETE FROM app_audit_logs");
-  for (const log of auditLogs) {
+  const auditRows = auditLogs.map((log) => [
+    String(log?.id || ""),
+    String(log?.action || ""),
+    String(log?.category || ""),
+    String(log?.severity || ""),
+    String(log?.entity || ""),
+    String(log?.entityId || ""),
+    String(log?.teamId || ""),
+    String(log?.userId || ""),
+    String(log?.outcome || ""),
+    log?.createdAt || null,
+    JSON.stringify(log || {})
+  ]);
+  const auditBatch = batchInsert(["id","action","category","severity","entity","entity_id","team_id","user_id","outcome","created_at","payload"], auditRows);
+  if (auditBatch) {
     await client.query(
-      `
-        INSERT INTO app_audit_logs (
-          id, action, category, severity, entity, entity_id, team_id, user_id, outcome, created_at, payload
-        )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)
-      `,
-      [
-        String(log?.id || ""),
-        String(log?.action || ""),
-        String(log?.category || ""),
-        String(log?.severity || ""),
-        String(log?.entity || ""),
-        String(log?.entityId || ""),
-        String(log?.teamId || ""),
-        String(log?.userId || ""),
-        String(log?.outcome || ""),
-        log?.createdAt || null,
-        JSON.stringify(log || {})
-      ]
+      `INSERT INTO app_audit_logs (id,action,category,severity,entity,entity_id,team_id,user_id,outcome,created_at,payload) VALUES ${auditBatch.text}`,
+      auditBatch.values
     );
   }
 
   await client.query("DELETE FROM app_role_permissions");
+  const permRows = [];
   for (const [role, capabilities] of Object.entries(roleCapabilities)) {
     for (const capability of capabilities) {
-      await client.query(
-        `
-          INSERT INTO app_role_permissions (role, capability)
-          VALUES ($1, $2)
-        `,
-        [role, capability]
-      );
+      permRows.push([role, capability]);
     }
+  }
+  const permBatch = batchInsert(["role","capability"], permRows);
+  if (permBatch) {
+    await client.query(
+      `INSERT INTO app_role_permissions (role,capability) VALUES ${permBatch.text}`,
+      permBatch.values
+    );
   }
 }
 
