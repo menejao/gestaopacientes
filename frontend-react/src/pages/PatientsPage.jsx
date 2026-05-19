@@ -5,6 +5,11 @@ import PatientsTable from "../components/patients/PatientsTable";
 import PatientDetailPanel from "../components/patients/PatientDetailPanel";
 import { calcAge, catLabel, gestationalAgeInfo, normalizeSearch, protocolChip } from "../utils/clinical";
 
+function normalizePatientCategory(value) {
+  const normalized = String(value || "").trim().toLowerCase().replace(/\s+/g, "_");
+  if (normalized === "pap_only" || normalized === "somente_papanicolau") return "general";
+  return normalized || "general";
+}
 
 function rosaSort(list, isEquipeRosa) {
   if (!isEquipeRosa) {
@@ -79,9 +84,11 @@ export default function PatientsPage(props) {
   const catOpts = useMemo(() => {
     const unique = new Map();
     (templates || []).forEach((t) => {
-      if (!unique.has(t.category)) unique.set(t.category, { value: t.category, label: t.label });
+      const value = normalizePatientCategory(t.category);
+      if (value === "chronic") return;
+      if (!unique.has(value)) unique.set(value, { value, label: catLabel(templates || [], value) });
     });
-    return [...unique.values()].filter((c) => c.value !== "chronic");
+    return [...unique.values()];
   }, [templates]);
 
   const acsUsers = useMemo(() => (users || []).filter((u) => u.role === "acs"), [users]);
@@ -96,7 +103,7 @@ export default function PatientsPage(props) {
         const hay = normalizeSearch(`${p.name || ""} ${p.phone || ""} ${acsName} ${cat}`);
         if (!hay.includes(normalizeSearch(query))) return false;
       }
-      if (categoryFilter && p.careCategory !== categoryFilter) return false;
+      if (categoryFilter && normalizePatientCategory(p.careCategory) !== normalizePatientCategory(categoryFilter)) return false;
       if (acsFilter && p.assignedAcsId !== acsFilter) return false;
       if (conditionFilter) {
         const cc = Array.isArray(p.chronicConditions) ? p.chronicConditions : [];
@@ -124,7 +131,6 @@ export default function PatientsPage(props) {
 
   function togglePatient(patientId) {
     setSelectedPatientId?.((prev) => prev === patientId ? "" : patientId);
-    if (patientId !== selectedPatientId) setPatientTab?.("protocol");
   }
 
   function handleCreate() {
@@ -149,9 +155,9 @@ export default function PatientsPage(props) {
     appointmentForm, setAppointmentForm, onSubmitAppointment,
     taskForm, setTaskForm, onSubmitTask,
     messageText, setMessageText, onSubmitMessage,
-    onDeleteAppointment, onStatusChange,
+    onDeleteAppointment, onStatusChange, onDeleteRecord,
     canManageUser, canWriteRecords,
-    userObj, onClose: closePanel,
+    userObj, token, onClose: closePanel,
   };
 
   return (
@@ -322,5 +328,3 @@ export default function PatientsPage(props) {
     </div>
   );
 }
-
-
