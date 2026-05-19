@@ -51,7 +51,7 @@ function ProgressBar({ label, done, goal }) {
     <div className="protocol-progress">
       <div className="protocol-progress__head">
         <span className="protocol-progress__label">{label}</span>
-        <span className="protocol-progress__count">{done}/{goal}</span>
+        <span className="protocol-progress__count">{done}/{goal} · <span style={{ color, fontWeight: 700 }}>{pct}%</span></span>
       </div>
       <div className="protocol-progress__track">
         <div className="protocol-progress__fill" style={{ width: `${pct}%`, background: color }} />
@@ -106,6 +106,7 @@ function ProtocolTab({ patient, alerts, protocolSummary }) {
       )}
 
       <div className="pat-protocol__bars">
+        <div className="panel-block-label">Métricas de acompanhamento</div>
         <ProgressBar label="Visitas" done={protocolSummary.completed?.visits || 0} goal={protocolSummary.targets?.visits || 0} />
         <ProgressBar label="Consultas" done={protocolSummary.completed?.consultations || 0} goal={protocolSummary.targets?.consultations || 0} />
         <ProgressBar label="Vacinas" done={protocolSummary.completed?.vaccines || 0} goal={protocolSummary.targets?.vaccines || 0} />
@@ -113,6 +114,7 @@ function ProtocolTab({ patient, alerts, protocolSummary }) {
 
       {alerts?.length > 0 && (
         <div className="pat-alerts">
+          <div className="panel-block-label">Alertas clínicos</div>
           {alerts.map((alert, index) => (
             <div
               key={alert.id || index}
@@ -555,13 +557,15 @@ function ExamRequestModal({ patient, user, token, onClose }) {
             <Select className="field field--span-2" label="Exame" value={exam.type} onChange={e => updateExam(idx, "type", e.target.value)}>
               {EXAM_TYPES.map(item => <option key={item} value={item}>{item}</option>)}
             </Select>
-            <Select className="field" label="Prioridade" value={exam.urgency} onChange={e => updateExam(idx, "urgency", e.target.value)}>
-              <option value="routine">Rotina</option>
-              <option value="priority">Prioritario</option>
-              <option value="urgent">Urgente</option>
-            </Select>
-            {exams.length > 1 ? <div className="field patients-form-actions"><Button variant="ghost" type="button" onClick={() => removeExam(idx)}>Remover</Button></div> : null}
-            {exam.type === "Outros" ? <Input className="field field--span-2" label="Nome do exame" value={exam.name} onChange={e => updateExam(idx, "name", e.target.value)} /> : null}
+            <div className="field" style={{ display: "flex", flexDirection: "column", gap: ".35rem" }}>
+              <Select label="Prioridade" value={exam.urgency} onChange={e => updateExam(idx, "urgency", e.target.value)}>
+                <option value="routine">Rotina</option>
+                <option value="priority">Prioritario</option>
+                <option value="urgent">Urgente</option>
+              </Select>
+              {exams.length > 1 ? <Button variant="ghost" size="sm" type="button" onClick={() => removeExam(idx)}>Remover</Button> : null}
+            </div>
+            {exam.type === "Outros" ? <Input className="field field--span-3" label="Nome do exame" value={exam.name} onChange={e => updateExam(idx, "name", e.target.value)} /> : null}
             <Textarea className="field field--span-3 patients-textarea" label="Observacao" rows={2} value={exam.notes} onChange={e => updateExam(idx, "notes", e.target.value)} placeholder="Observacao especifica (opcional)" />
           </div>
         ))}
@@ -621,7 +625,6 @@ function PrescriptionModal({ patient, user, token, onClose }) {
             {med.name === "Outros (digitar)" ? <Input className="field field--span-3" label="Nome do medicamento" value={med.custom} onChange={e => updateMed(idx, "custom", e.target.value)} /> : null}
             <Input className="field" label="Dose *" value={med.dosage} onChange={e => updateMed(idx, "dosage", e.target.value)} placeholder="Ex: 500mg" />
             <Input className="field" label="Frequencia *" value={med.frequency} onChange={e => updateMed(idx, "frequency", e.target.value)} placeholder="Ex: 1x ao dia" />
-            <Input className="field" label="Duracao" value={med.duration} onChange={e => updateMed(idx, "duration", e.target.value)} placeholder="Ex: 7 dias" />
             <Select className="field" label="Via" value={med.route} onChange={e => updateMed(idx, "route", e.target.value)}>
               <option value="">-</option>
               <option value="Oral">Oral</option>
@@ -634,7 +637,8 @@ function PrescriptionModal({ patient, user, token, onClose }) {
               <option value="Retal">Retal</option>
               <option value="Ocular">Ocular</option>
             </Select>
-            <Textarea className="field field--span-2 patients-textarea" label="Observacao" rows={2} value={med.notes} onChange={e => updateMed(idx, "notes", e.target.value)} placeholder="Tomar em jejum, com alimentos..." />
+            <Input className="field field--span-3" label="Duracao" value={med.duration} onChange={e => updateMed(idx, "duration", e.target.value)} placeholder="Ex: 7 dias, uso continuo..." />
+            <Textarea className="field field--span-3 patients-textarea" label="Observacao" rows={2} value={med.notes} onChange={e => updateMed(idx, "notes", e.target.value)} placeholder="Tomar em jejum, com alimentos..." />
           </div>
         ))}
         <div className="field-grid">
@@ -724,9 +728,18 @@ function AcoesClinicasTab({ patient, user, users, token, canManageUser, canWrite
   const canExam = canManageUser || canWriteRecords;
 
   const actions = [
-    canExam ? { id: "exam", title: "Pedir exame", desc: "Solicite exames laboratoriais ou de imagem com prioridade e justificativa." } : null,
-    canPrescribe ? { id: "prescription", title: "Prescrever medicamento", desc: "Emita prescricao com medicamentos, dosagem, frequencia e via." } : null,
-    canRefer ? { id: "referral", title: "Encaminhar ao medico", desc: "Encaminhe o paciente a medico ou dentista da unidade com justificativa." } : null,
+    canExam ? {
+      id: "exam", title: "Pedir exame", desc: "Solicite exames laboratoriais ou de imagem com prioridade e justificativa.",
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M9 3v10l-4 7h14l-4-7V3"/><circle cx="12" cy="17.5" r=".75" fill="currentColor" stroke="none"/></svg>,
+    } : null,
+    canPrescribe ? {
+      id: "prescription", title: "Prescrever medicamento", desc: "Emita prescricao com medicamentos, dosagem, frequencia e via.",
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg>,
+    } : null,
+    canRefer ? {
+      id: "referral", title: "Encaminhar ao medico", desc: "Encaminhe o paciente a medico ou dentista da unidade com justificativa.",
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>,
+    } : null,
   ].filter(Boolean);
 
   return (
@@ -734,6 +747,7 @@ function AcoesClinicasTab({ patient, user, users, token, canManageUser, canWrite
       <div className="assistencial-launcher">
         {actions.map(action => (
           <Button key={action.id} type="button" variant="secondary" className="assistencial-card" onClick={() => setModal(action.id)}>
+            <span className="assistencial-card__icon">{action.icon}</span>
             <span className="assistencial-card__body">
               <span className="assistencial-card__title">{action.title}</span>
               <span className="assistencial-card__desc">{action.desc}</span>

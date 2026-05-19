@@ -7,6 +7,7 @@ const TEAM_NAME = "Equipe Rosa";
 const JOAO_ID = "seed-user-joao";
 const DRA_ID = "seed-user-dra";
 const ACS_ID = "seed-user-acs";
+const ENF_ID = "seed-user-enf";
 
 function upsert(arr, item) {
   const idx = arr.findIndex((x) => x.id === item.id);
@@ -103,16 +104,49 @@ const MEDIO_DEFS = [
 ];
 
 const BAIXO_DEFS = [
-  { idx: "21", name: "Camila Rodrigues Soares",     birthDate: "1992-03-11", sexAtBirth: "female", phone: "(11) 98765-0021", address: "Rua das Acácias, 500",            cpf: "333.333.021-21", cat: "pap_only" },
+  { idx: "21", name: "Camila Rodrigues Soares",     birthDate: "1992-03-11", sexAtBirth: "female", phone: "(11) 98765-0021", address: "Rua das Acácias, 500",            cpf: "333.333.021-21", cat: "general" },
   { idx: "22", name: "Thiago de Oliveira Braga",    birthDate: "1988-08-23", sexAtBirth: "male",   phone: "(11) 98765-0022", address: "Rua Henrique, 214",               cpf: "333.333.022-22", cat: "general" },
   { idx: "23", name: "Amanda Cristina Lopes",       birthDate: "1995-01-07", sexAtBirth: "female", phone: "(11) 98765-0023", address: "Rua Clementina, 38",              cpf: "333.333.023-23", cat: "general" },
   { idx: "24", name: "Rafael Augusto Teixeira",     birthDate: "1990-05-30", sexAtBirth: "male",   phone: "(11) 98765-0024", address: "Av. Brasil, 1980",                cpf: "333.333.024-24", cat: "general" },
-  { idx: "25", name: "Juliana Meireles Costa",      birthDate: "1993-11-15", sexAtBirth: "female", phone: "(11) 98765-0025", address: "Rua Camargo, 71",                 cpf: "333.333.025-25", cat: "pap_only" },
+  { idx: "25", name: "Juliana Meireles Costa",      birthDate: "1993-11-15", sexAtBirth: "female", phone: "(11) 98765-0025", address: "Rua Camargo, 71",                 cpf: "333.333.025-25", cat: "general" },
   { idx: "26", name: "Lucas Gabriel Santos",        birthDate: "1997-04-02", sexAtBirth: "male",   phone: "(11) 98765-0026", address: "Rua Floresta, 4",                 cpf: "333.333.026-26", cat: "general" },
   { idx: "27", name: "Beatriz Alves Duarte",        birthDate: "1991-09-18", sexAtBirth: "female", phone: "(11) 98765-0027", address: "Rua do Sol, 127",                 cpf: "333.333.027-27", cat: "general" },
   { idx: "28", name: "Mateus Rodrigo Freitas",      birthDate: "1989-07-04", sexAtBirth: "male",   phone: "(11) 98765-0028", address: "Rua Alegre, 66",                  cpf: "333.333.028-28", cat: "general" },
-  { idx: "29", name: "Fernanda Cristina Araújo",   birthDate: "1994-12-22", sexAtBirth: "female", phone: "(11) 98765-0029", address: "Rua Santos Dumont, 310",           cpf: "333.333.029-29", cat: "pap_only" },
+  { idx: "29", name: "Fernanda Cristina Araújo",   birthDate: "1994-12-22", sexAtBirth: "female", phone: "(11) 98765-0029", address: "Rua Santos Dumont, 310",           cpf: "333.333.029-29", cat: "general" },
   { idx: "30", name: "Diego Henrique Monteiro",     birthDate: "1986-02-14", sexAtBirth: "male",   phone: "(11) 98765-0030", address: "Rua Panorâmica, 19",              cpf: "333.333.030-30", cat: "general" },
+];
+
+// Categorias operacionais adicionais
+const EXTRA_DEFS = [
+  // Gestante
+  {
+    idx: "preg-01", id: "seed-p-preg-01",
+    name: "Ana Beatriz Ferreira Campos", birthDate: "1996-08-14", sexAtBirth: "female",
+    phone: "(11) 98765-0101", address: "Rua das Violetas, 52, apto 8", cpf: "444.444.101-01",
+    careCategory: "pregnant",
+    pregnancyStartDate: (() => { const d = new Date(); d.setDate(d.getDate() - 189); return d.toISOString().slice(0, 10); })(),
+    expectedDeliveryDate: (() => { const d = new Date(); d.setDate(d.getDate() + 91); return d.toISOString().slice(0, 10); })(),
+    gestationalAgeDumWeeks: 27, gestationalAgeDumDays: 0,
+    chronicConditions: [],
+  },
+  // Puérpera
+  {
+    idx: "puer-01", id: "seed-p-puer-01",
+    name: "Claudia Mendes Rocha", birthDate: "1993-03-22", sexAtBirth: "female",
+    phone: "(11) 98765-0102", address: "Rua Dom Pedro II, 118", cpf: "444.444.102-02",
+    careCategory: "puerperal",
+    chronicConditions: [],
+  },
+  // Criança em acompanhamento
+  {
+    idx: "child-01", id: "seed-p-child-01",
+    name: "Miguel Oliveira Barbosa", birthDate: (() => { const d = new Date(); d.setDate(d.getDate() - 115); return d.toISOString().slice(0, 10); })(),
+    sexAtBirth: "male",
+    phone: "(11) 98765-0103", address: "Rua Esperança, 74", cpf: "444.444.103-03",
+    motherName: "Juliana Oliveira Barbosa",
+    careCategory: "child_followup",
+    chronicConditions: [],
+  },
 ];
 
 function buildPatient(def, careCategory, chronicConditions) {
@@ -210,16 +244,40 @@ export async function seedDemoTeamRosa() {
       password: hashPassword("Demo@2026"),
     });
 
+    upsert(db.users, {
+      ...baseUser,
+      id: ENF_ID,
+      name: "Enf. Patrícia Lima",
+      email: "patricia.enf@vitras.com.br",
+      role: "nurse_manager",
+      teamId: TEAM_ID,
+      teamName: TEAM_NAME,
+      password: hashPassword("Demo@2026"),
+      councilType: "COREN",
+      councilNumber: "12345",
+      councilUf: "SP",
+    });
+
     // ── Patients ─────────────────────────────────────────────────────────
     for (const def of ALTO_DEFS) {
-      upsert(db.patients, buildPatient(def, "chronic", ["hypertension", "diabetes"]));
+      upsert(db.patients, buildPatient(def, "elderly", ["hypertension", "diabetes"]));
     }
     for (const def of MEDIO_DEFS) {
-      const cat = def.cond?.length ? "chronic" : "elderly";
-      upsert(db.patients, buildPatient(def, cat, def.cond || []));
+      upsert(db.patients, buildPatient(def, "elderly", def.cond || []));
     }
     for (const def of BAIXO_DEFS) {
       upsert(db.patients, buildPatient(def, def.cat || "general", []));
+    }
+    // Extra: gestante, puérpera, criança
+    for (const def of EXTRA_DEFS) {
+      upsert(db.patients, {
+        ...buildPatient(def, def.careCategory, def.chronicConditions || []),
+        ...(def.pregnancyStartDate ? { pregnancyStartDate: def.pregnancyStartDate } : {}),
+        ...(def.expectedDeliveryDate ? { expectedDeliveryDate: def.expectedDeliveryDate } : {}),
+        ...(def.gestationalAgeDumWeeks != null ? { gestationalAgeDumWeeks: def.gestationalAgeDumWeeks } : {}),
+        ...(def.gestationalAgeDumDays != null ? { gestationalAgeDumDays: def.gestationalAgeDumDays } : {}),
+        ...(def.motherName ? { motherName: def.motherName } : {}),
+      });
     }
 
     // ── Clinical records ─────────────────────────────────────────────────
@@ -241,6 +299,27 @@ export async function seedDemoTeamRosa() {
       ...BAIXO_DEFS.map((def) => ({
         id: `seed-rec-${def.idx}-c1`, patientId: `seed-p-${def.idx}`, type: "consultation", title: "Consulta Médica", details: "Consulta de rotina. Paciente sem queixas.", date: dAgo(50), protocolTag: def.cat || "general", createdBy: DRA_ID,
       })),
+      // Gestante
+      { id: "seed-rec-preg-01-c1", patientId: "seed-p-preg-01", type: "consultation", title: "1ª Consulta Pré-natal", details: "Paciente em 8ª semana gestacional. Solicitado painel pré-natal completo. Iniciado ácido fólico 5mg.", date: dAgo(133), protocolTag: "pregnant", createdBy: DRA_ID },
+      { id: "seed-rec-preg-01-c2", patientId: "seed-p-preg-01", type: "consultation", title: "Consulta Pré-natal — 2ª consulta", details: "16ª semana. PA 110/70, BCF 142bpm. Morfológico de 1º trimestre normal. Orientações nutricionais.", date: dAgo(77), protocolTag: "pregnant", createdBy: DRA_ID },
+      { id: "seed-rec-preg-01-c3", patientId: "seed-p-preg-01", type: "consultation", title: "Consulta Pré-natal — 3ª consulta", details: "24ª semana. PA 115/75, AU 24cm, BCF 138bpm. Teste de tolerância à glicose normal. Movimentos fetais presentes.", date: dAgo(21), protocolTag: "pregnant", createdBy: DRA_ID },
+      { id: "seed-rec-preg-01-v1", patientId: "seed-p-preg-01", type: "visit", title: "Visita ACS", details: "Gestante orientada sobre sinais de alerta, caderneta da gestante atualizada.", date: dAgo(56), protocolTag: "pregnant", createdBy: ACS_ID },
+      { id: "seed-rec-preg-01-v2", patientId: "seed-p-preg-01", type: "visit", title: "Visita ACS", details: "Verificação de adesão ao pré-natal. Gestante realizando consultas regulares.", date: dAgo(14), protocolTag: "pregnant", createdBy: ACS_ID },
+      { id: "seed-rec-preg-01-vac", patientId: "seed-p-preg-01", type: "vaccine", title: "dTpa (gestante)", details: "Vacina antitetânica/pertussis — dose gestante. Sem intercorrências.", date: dAgo(42), protocolTag: "pregnant", createdBy: ENF_ID },
+      { id: "seed-rec-preg-01-exam", patientId: "seed-p-preg-01", type: "exam_request", title: "Pedido de exame: USG obstétrica morfológica 2º trim.", details: "USG obstétrica morfológica 2º trimestre + Doppler. Justificativa: acompanhamento pré-natal rotineiro.", date: dAgo(21), protocolTag: "pregnant", createdBy: DRA_ID },
+      // Puérpera
+      { id: "seed-rec-puer-01-c1", patientId: "seed-p-puer-01", type: "consultation", title: "Consulta Puerperal — 1ª semana", details: "Parto vaginal sem intercorrências. Puérpera com lóquios normais. Amamentação estabelecida. Ferida perineal cicatrizando.", date: dAgo(20), protocolTag: "puerperal", createdBy: DRA_ID },
+      { id: "seed-rec-puer-01-c2", patientId: "seed-p-puer-01", type: "consultation", title: "Consulta Puerperal — enfermagem", details: "Avaliação de mama. Amamentação exclusiva. Orientações sobre cuidados com o bebê e coto umbilical.", date: dAgo(14), protocolTag: "puerperal", createdBy: ENF_ID },
+      { id: "seed-rec-puer-01-v1", patientId: "seed-p-puer-01", type: "visit", title: "Visita ACS — puerpério", details: "Visita domiciliar no puerpério imediato. Mãe e bebê bem. Orientações sobre sinais de alerta.", date: dAgo(18), protocolTag: "puerperal", createdBy: ACS_ID },
+      { id: "seed-rec-puer-01-v2", patientId: "seed-p-puer-01", type: "visit", title: "Visita ACS — puerpério", details: "Confirmação de consulta puerperal agendada. Vacinação do RN verificada.", date: dAgo(10), protocolTag: "puerperal", createdBy: ACS_ID },
+      // Criança
+      { id: "seed-rec-child-01-c1", patientId: "seed-p-child-01", type: "consultation", title: "Consulta Puericultura — 1ª semana de vida", details: "Triagem neonatal solicitada. Peso 3,250 kg, comprimento 50 cm. Orientações ao responsável sobre amamentação.", date: dAgo(108), protocolTag: "child_followup", createdBy: DRA_ID },
+      { id: "seed-rec-child-01-c2", patientId: "seed-p-child-01", type: "consultation", title: "Consulta Puericultura — 1 mês", details: "Peso 4,1 kg. Ganho adequado. BCF, reflexos, fontanela normais. Introdução do banho de sol orientada.", date: dAgo(85), protocolTag: "child_followup", createdBy: DRA_ID },
+      { id: "seed-rec-child-01-c3", patientId: "seed-p-child-01", type: "consultation", title: "Consulta Puericultura — 2 meses", details: "Peso 5,2 kg, comprimento 58 cm. Desenvolvimento neurológico dentro do esperado. Sorriso social presente.", date: dAgo(55), protocolTag: "child_followup", createdBy: DRA_ID },
+      { id: "seed-rec-child-01-v1", patientId: "seed-p-child-01", type: "visit", title: "Visita ACS — recém-nascido", details: "Visita puerperal. Bebê sendo amamentado exclusivamente. Ambiente domiciliar adequado.", date: dAgo(105), protocolTag: "child_followup", createdBy: ACS_ID },
+      { id: "seed-rec-child-01-v2", patientId: "seed-p-child-01", type: "visit", title: "Visita ACS — acompanhamento", details: "Criança ganhando peso. Mãe orientada sobre consulta dos 3 meses e vacinação.", date: dAgo(28), protocolTag: "child_followup", createdBy: ACS_ID },
+      { id: "seed-rec-child-01-vac1", patientId: "seed-p-child-01", type: "vaccine", title: "Vacinas 2 meses: Penta + VIP + Pneumo 10 + Rotavirus", details: "Penta (1ª dose), VIP (1ª dose), Pneumo 10 (1ª dose), Rotavírus (1ª dose). Sem intercorrências.", date: dAgo(55), protocolTag: "child_followup", createdBy: ENF_ID },
+      { id: "seed-rec-child-01-vac2", patientId: "seed-p-child-01", type: "vaccine", title: "BCG + Hepatite B", details: "BCG (dose única) e Hepatite B (dose ao nascer). Aplicadas na maternidade.", date: dAgo(113), protocolTag: "child_followup", createdBy: ENF_ID },
     ];
 
     for (const rec of recDefs) {
@@ -265,11 +344,16 @@ export async function seedDemoTeamRosa() {
       ...BAIXO_DEFS.map((def) => ({
         id: `seed-appt-${def.idx}-1`, patientId: `seed-p-${def.idx}`, date: dAgo(45), summary: "Consulta preventiva", demandType: "spontaneous", conduct: "Sem alterações.", createdBy: DRA_ID,
       })),
+      { id: "seed-appt-preg-01-1", patientId: "seed-p-preg-01", date: dAgo(77), summary: "Pré-natal 2ª consulta", demandType: "scheduled", conduct: "Morfológico normal. Continuar suplementação.", nextStep: "Retorno com 24 semanas para TOTG.", createdBy: DRA_ID },
+      { id: "seed-appt-preg-01-2", patientId: "seed-p-preg-01", date: dAgo(21), summary: "Pré-natal 3ª consulta", demandType: "scheduled", conduct: "TOTG normal. Ganho de peso adequado.", nextStep: "Retorno com 32 semanas.", createdBy: DRA_ID },
+      { id: "seed-appt-puer-01-1", patientId: "seed-p-puer-01", date: dAgo(20), summary: "Consulta puerperal precoce", demandType: "scheduled", conduct: "Puerpério normal. Amamentação exclusiva mantida.", nextStep: "Retorno em 30 dias para consulta puerperal tardia.", createdBy: DRA_ID },
+      { id: "seed-appt-child-01-1", patientId: "seed-p-child-01", date: dAgo(85), summary: "Puericultura 1 mês", demandType: "scheduled", conduct: "Desenvolvimento normal. Vacinas em dia.", nextStep: "Consulta dos 2 meses + vacinas.", createdBy: DRA_ID },
+      { id: "seed-appt-child-01-2", patientId: "seed-p-child-01", date: dAgo(55), summary: "Puericultura 2 meses + vacinas", demandType: "scheduled", conduct: "Criança saudável. Vacinas 2 meses aplicadas.", nextStep: "Consulta dos 4 meses em breve.", createdBy: DRA_ID },
     ];
 
     for (const appt of apptDefs) {
       if (!hasId(db.appointments, appt.id)) {
-        db.appointments.push({ ...appt, nextStep: "", createdAt: `${appt.date}T09:00:00.000Z` });
+        db.appointments.push({ nextStep: "", ...appt, createdAt: `${appt.date}T09:00:00.000Z` });
       }
     }
 

@@ -1074,7 +1074,7 @@
 .protocol-progress__label { font-size: .75rem; font-weight: 600; color: var(--text-2, var(--text-muted)); }
 .protocol-progress__count { font-size: .72rem; font-family: var(--font-mono, monospace); color: var(--text-2, var(--text-muted)); }
 .protocol-progress__track {
-  height: 6px;
+  height: 8px;
   background: var(--surface-3, var(--surface-2));
   border-radius: 99px;
   overflow: hidden;
