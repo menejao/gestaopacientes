@@ -96,7 +96,7 @@ function AppInner() {
     openProfile, submitProfile,
   } = useProfile({ token, user, setUser, persistCookieSession });
   const {
-    secureAccessMode, secureAccessBusy, secureAccessError, setSecureAccessError,
+    secureAccessMode, setSecureAccessMode, secureAccessBusy, secureAccessError, setSecureAccessError,
     openSecureAccess, submitSecureAccess, stopSecureImpersonation, stopBreakGlass,
   } = useSecureAccess({ token, user, applySessionFromPayload, loadAll, setError });
   const canUseAgenda = Boolean(
