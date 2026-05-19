@@ -46,12 +46,17 @@ function formatExactAge(birthDate) {
 
 function ProgressBar({ label, done, goal }) {
   const pct = goal > 0 ? Math.min(100, Math.round((done / goal) * 100)) : 0;
-  const color = pct >= 100 ? "var(--success)" : pct >= 50 ? "var(--warning)" : "var(--danger)";
+  const color = pct >= 100 ? "var(--success)" : pct >= 60 ? "var(--warning)" : "var(--danger)";
+  const chipCls = goal === 0 ? "proto-chip--na" : pct >= 100 ? "proto-chip--ok" : pct >= 60 ? "proto-chip--watch" : "proto-chip--critical";
+  const chipLabel = goal === 0 ? "N/A" : pct >= 100 ? "Em dia" : pct >= 60 ? "Atenção" : "Crítico";
   return (
     <div className="protocol-progress">
       <div className="protocol-progress__head">
         <span className="protocol-progress__label">{label}</span>
-        <span className="protocol-progress__count">{done}/{goal}</span>
+        <div className="protocol-progress__meta">
+          <span className="protocol-progress__count">{done}/{goal}</span>
+          <span className={`proto-chip ${chipCls}`}>{chipLabel}</span>
+        </div>
       </div>
       <div className="protocol-progress__track">
         <div className="protocol-progress__fill" style={{ width: `${pct}%`, background: color }} />
@@ -90,23 +95,37 @@ function ProtocolTab({ patient, alerts, protocolSummary }) {
       lostIndicators.push({ msg: "2ª consulta de puericultura — do 2º ao 6º mês de vida (prazo encerrado)", age: idadeFmt });
   }
 
+  const ALERT_ICON = {
+    danger: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="#dc2626"/><path d="M8 4.5v3.5M8 10.5h.01" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+    warning: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M7.05 2.5c.42-.73 1.48-.73 1.9 0l5.3 9.17c.43.74-.1 1.66-.95 1.66H1.7c-.85 0-1.38-.92-.95-1.66L7.05 2.5z" fill="#f59e0b"/><path d="M8 6.5v3M8 11h.01" stroke="#fff" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+    info: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="#0284c7"/><path d="M8 7v4M8 5.5h.01" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  };
+  const ALERT_BADGE = { danger: "Crítico", warning: "Atenção", info: "Info" };
+
   return (
     <div className="pat-protocol">
       {lostIndicators.length > 0 && (
-        <div className="patients-panel-stack" style={{ marginBottom: "var(--s-3)" }}>
-          <div className="field__hint" style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Indicadores perdidos — Idade atual: {lostIndicators[0].age}
+        <div className="pat-lost-block">
+          <div className="pat-lost-block__head">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="7" fill="#7c3aed" fillOpacity=".15" stroke="#7c3aed" strokeWidth="1.2"/>
+              <path d="M8 5v3.5M8 10.5h.01" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <span className="pat-lost-block__label">
+              Indicadores perdidos · Não recuperáveis · Idade: {lostIndicators[0].age}
+            </span>
           </div>
           {lostIndicators.map((item) => (
-            <Alert key={item.msg} tone="warning">
-              {item.msg} — nao recuperavel
-            </Alert>
+            <div key={item.msg} className="pat-lost-item">
+              <span className="pat-lost-item__dot" />
+              <span>{item.msg}</span>
+            </div>
           ))}
         </div>
       )}
 
       <div className="pat-protocol__bars">
-        <div className="panel-block-label">Métricas de acompanhamento</div>
+        <span className="pat-section-label">Métricas de acompanhamento</span>
         <ProgressBar label="Visitas" done={protocolSummary.completed?.visits || 0} goal={protocolSummary.targets?.visits || 0} />
         <ProgressBar label="Consultas" done={protocolSummary.completed?.consultations || 0} goal={protocolSummary.targets?.consultations || 0} />
         <ProgressBar label="Vacinas" done={protocolSummary.completed?.vaccines || 0} goal={protocolSummary.targets?.vaccines || 0} />
@@ -114,18 +133,20 @@ function ProtocolTab({ patient, alerts, protocolSummary }) {
 
       {alerts?.length > 0 && (
         <div className="pat-alerts">
-          <div className="panel-block-label">Alertas clínicos</div>
-          {alerts.map((alert, index) => (
-            <div
-              key={alert.id || index}
-              className={`pat-alert pat-alert--${
-                alert.severity === "high" ? "danger" : alert.severity === "medium" ? "warning" : "info"
-              }`}
-            >
-              <div className="pat-alert__title">{alert.title}</div>
-              {alert.detail ? <div className="pat-alert__detail">{alert.detail}</div> : null}
-            </div>
-          ))}
+          <span className="pat-section-label">Alertas clínicos</span>
+          {alerts.map((alert, index) => {
+            const sev = alert.severity === "high" ? "danger" : alert.severity === "medium" ? "warning" : "info";
+            return (
+              <div key={alert.id || index} className={`pat-alert pat-alert--${sev}`}>
+                <span className="pat-alert__icon-wrap">{ALERT_ICON[sev]}</span>
+                <div className="pat-alert__body">
+                  <div className="pat-alert__title">{alert.title}</div>
+                  {alert.detail ? <div className="pat-alert__detail">{alert.detail}</div> : null}
+                </div>
+                <span className="pat-alert__badge">{ALERT_BADGE[sev]}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -742,37 +763,44 @@ function AcoesClinicasTab({ patient, user, users, token, canManageUser, canWrite
     } : null,
   ].filter(Boolean);
 
+  const CARD_TYPE_CLASS = { exam: "assistencial-card--exam", prescription: "assistencial-card--prescription", referral: "assistencial-card--referral" };
+  const DONE_LABEL = { exam: "Pedido de exame emitido", prescription: "Prescrição emitida", referral: "Encaminhamento registrado" };
+
   return (
     <div className="patients-panel-stack">
       <div className="assistencial-launcher">
         {actions.map(action => (
-          <Button key={action.id} type="button" variant="secondary" className="assistencial-card" onClick={() => setModal(action.id)}>
+          <Button key={action.id} type="button" variant="secondary"
+            className={`assistencial-card ${CARD_TYPE_CLASS[action.id] || ""}`}
+            onClick={() => setModal(action.id)}>
             <span className="assistencial-card__icon">{action.icon}</span>
             <span className="assistencial-card__body">
               <span className="assistencial-card__title">{action.title}</span>
               <span className="assistencial-card__desc">{action.desc}</span>
+            </span>
+            <span className="assistencial-card__arrow">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M6 3.5l4.5 4.5L6 12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </span>
           </Button>
         ))}
       </div>
 
       {done.length > 0 && (
-        <div className="card card--soft">
-          <div className="field__hint" style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "var(--s-2)" }}>
-            Registrado nesta sessao
-          </div>
-          <div className="patients-panel-stack">
-            {done.map((item, idx) => (
-              <div key={`${item.type}-${idx}`} className="pat-list-item">
-                <div className="pat-list-item__main">
-                  <div className="pat-list-item__title">
-                    {item.type === "exam" ? "Pedido de exame" : item.type === "prescription" ? "Prescricao" : "Encaminhamento interno"}
-                  </div>
-                </div>
-                <div className="pat-list-item__meta">{item.ts}</div>
-              </div>
-            ))}
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
+          <span className="pat-section-label">Registrado nesta sessão</span>
+          {done.map((item, idx) => (
+            <div key={`${item.type}-${idx}`} className="session-log-item">
+              <span className="session-log-item__icon">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+              <span className="session-log-item__title">{DONE_LABEL[item.type] || item.type}</span>
+              <span className="session-log-item__time">{item.ts}</span>
+            </div>
+          ))}
         </div>
       )}
 
