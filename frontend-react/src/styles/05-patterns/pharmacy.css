@@ -69,8 +69,8 @@
 }
 
 
-/* Filter toggle active state */
-.btn--ghost.is-active {
+/* Filter toggle active state — scoped to pharmacy page to avoid bleeding into sidebar nav */
+.pharmacy-page .btn--ghost.is-active {
   background: var(--warning-soft);
   border-color: var(--warning-bd);
   color: var(--warning);
