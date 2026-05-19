@@ -78,7 +78,7 @@ const DEMO_POPULATE_SIZE_COMPLETE = 50;
 const DEMO_POPULATE_SIZE_INCOMPLETE = 10;
 const JOAO_DEV_TARGET_TEAM_ID = "team-rosa";
 const JOAO_DEV_TARGET_TEAM_NAME = "Equipe Rosa";
-const JOAO_DEV_CANONICAL_EMAIL = "joao.dev@valens.local";
+const JOAO_DEV_CANONICAL_EMAIL = "joao@vitras.com.br";
 
 function buildDefaultProtocolTemplates() {
   const ministryRefs = {
