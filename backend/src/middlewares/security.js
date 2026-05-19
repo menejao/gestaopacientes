@@ -23,8 +23,7 @@ function setupCors(app) {
     cors({
       origin(origin, callback) {
         if (!origin) {
-          if (!IS_PROD || CORS_ALLOW_ALL) return callback(null, true);
-          return callback(new Error("Origem sem header Origin nao permitida em producao"));
+          return callback(null, true);
         }
         if (!FRONTEND_ORIGINS.length) {
           if (!IS_PROD || CORS_ALLOW_ALL) return callback(null, true);
