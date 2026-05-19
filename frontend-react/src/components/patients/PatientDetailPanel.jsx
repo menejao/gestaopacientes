@@ -51,7 +51,7 @@ function ProgressBar({ label, done, goal }) {
     <div className="protocol-progress">
       <div className="protocol-progress__head">
         <span className="protocol-progress__label">{label}</span>
-        <span className="protocol-progress__count">{done}/{goal} · <span style={{ color, fontWeight: 700 }}>{pct}%</span></span>
+        <span className="protocol-progress__count">{done}/{goal}</span>
       </div>
       <div className="protocol-progress__track">
         <div className="protocol-progress__fill" style={{ width: `${pct}%`, background: color }} />
