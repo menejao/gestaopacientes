@@ -52,19 +52,6 @@ export function useBootstrap(token, {
       setPatients(pts); setUsers(us); setTemplates(tpls);
       if (boot?.demandMonthly) {
         setDemandMonthly(boot.demandMonthly);
-      } else if (pts.length) {
-        try {
-          const now = new Date();
-          const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-          const allAppts = (await Promise.all(pts.map(p => listAppointments(token, p.id).catch(() => []))))
-            .flat()
-            .filter(a => String(a.date || "").startsWith(ym))
-            .filter(a => a.demandType !== "retroactive");
-          const sched = allAppts.filter(a => a.demandType === "scheduled" || (!a.demandType)).length;
-          const spont = allAppts.filter(a => a.demandType === "spontaneous").length;
-          const total = allAppts.length;
-          if (total > 0) setDemandMonthly({ totals: { total, scheduled: sched, spontaneous: spont } });
-        } catch {}
       }
       try {
         const fu = await listUsers(token);

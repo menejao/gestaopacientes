@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   adjustSuppliesStockItem,
   closeSuppliesContinuous,
@@ -22,6 +22,9 @@ function sortContinuous(entries = []) {
 
 export function useSupplies(token, options = {}) {
   const { enabled = true, pollMs = 15000, onError } = options;
+  const onErrorRef = useRef(onError);
+  useEffect(() => { onErrorRef.current = onError; });
+
   const [stock, setStock] = useState([]);
   const [log, setLog] = useState([]);
   const [continuous, setContinuous] = useState([]);
@@ -45,12 +48,12 @@ export function useSupplies(token, options = {}) {
     } catch (err) {
       const message = err?.message || "Erro ao carregar insumos.";
       setError(message);
-      if (typeof onError === "function") onError(message);
+      if (typeof onErrorRef.current === "function") onErrorRef.current(message);
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [enabled, token, onError]);
+  }, [enabled, token]);
 
   useEffect(() => {
     if (!enabled || !token) return undefined;

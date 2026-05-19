@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   adjustPharmacyStockItem,
   createPharmacyStockItem,
@@ -18,6 +18,9 @@ function sortLogs(entries = []) {
 
 export function usePharmacy(token, options = {}) {
   const { enabled = true, pollMs = 15000, onError } = options;
+  const onErrorRef = useRef(onError);
+  useEffect(() => { onErrorRef.current = onError; });
+
   const [stock, setStock] = useState([]);
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -38,12 +41,12 @@ export function usePharmacy(token, options = {}) {
     } catch (err) {
       const message = err?.message || "Erro ao carregar farmacia.";
       setError(message);
-      if (typeof onError === "function") onError(message);
+      if (typeof onErrorRef.current === "function") onErrorRef.current(message);
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [enabled, token, onError]);
+  }, [enabled, token]);
 
   useEffect(() => {
     if (!enabled || !token) return undefined;

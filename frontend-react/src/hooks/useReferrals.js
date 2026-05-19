@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createReferral,
   deleteReferral,
@@ -16,6 +16,9 @@ function sortReferrals(entries = []) {
 
 export function useReferrals(token, options = {}) {
   const { enabled = true, pollMs = 15000, onError } = options;
+  const onErrorRef = useRef(onError);
+  useEffect(() => { onErrorRef.current = onError; });
+
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(Boolean(enabled));
   const [error, setError] = useState("");
@@ -31,12 +34,12 @@ export function useReferrals(token, options = {}) {
     } catch (err) {
       const message = err?.message || "Erro ao carregar encaminhamentos.";
       setError(message);
-      if (typeof onError === "function") onError(message);
+      if (typeof onErrorRef.current === "function") onErrorRef.current(message);
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [enabled, token, onError]);
+  }, [enabled, token]);
 
   useEffect(() => {
     if (!enabled || !token) return undefined;

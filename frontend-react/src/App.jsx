@@ -101,13 +101,13 @@ function AppInner() {
   } = useSecureAccess({ token, user, applySessionFromPayload, loadAll, setError });
   const canUseAgenda = Boolean(
     token &&
-    user &&
+    user?.teamId &&
     (user?.capabilities?.includes("agenda.read") || user?.capabilities?.includes("agenda.write"))
   );
-  const { entries: agendaEntries = [] } = useAgenda(token, { enabled: canUseAgenda, onError: () => {} });
+  const { entries: agendaEntries = [] } = useAgenda(token, { enabled: canUseAgenda });
   const canUseReferrals = Boolean(
     token &&
-    user &&
+    user?.teamId &&
     (user?.capabilities?.includes("referrals.read") || user?.capabilities?.includes("referrals.write"))
   );
   const {
@@ -117,10 +117,10 @@ function AppInner() {
     createEntry: createReferralEntry,
     patchEntry: patchReferralEntry,
     removeEntry: removeReferralEntry,
-  } = useReferrals(token, { enabled: canUseReferrals, onError: () => {} });
+  } = useReferrals(token, { enabled: canUseReferrals });
   const canUsePharmacy = Boolean(
     token &&
-    user &&
+    user?.teamId &&
     (user?.capabilities?.includes("pharmacy.read") || user?.capabilities?.includes("pharmacy.write"))
   );
   const {
@@ -132,10 +132,10 @@ function AppInner() {
     updateItem: updatePharmacyItem,
     adjustItem: adjustPharmacyItem,
     dispenseItem: dispensePharmacyItem,
-  } = usePharmacy(token, { enabled: canUsePharmacy, onError: () => {} });
+  } = usePharmacy(token, { enabled: canUsePharmacy });
   const canUseSupplies = Boolean(
     token &&
-    user &&
+    user?.teamId &&
     (user?.capabilities?.includes("supplies.read") || user?.capabilities?.includes("supplies.write"))
   );
   const {
@@ -147,7 +147,7 @@ function AppInner() {
     adjustStock: adjustSuppliesStock,
     dispense: dispenseSupplies,
     closeContinuous: closeSuppliesContinuous,
-  } = useSupplies(token, { enabled: canUseSupplies, onError: () => {} });
+  } = useSupplies(token, { enabled: canUseSupplies });
 
   const selectedPatient = patients.find(p=>p.id===selectedPatientId)||null;
   const isEquipeRosaUser = String(user?.teamId||user?.teamName||"").toLowerCase().includes("rosa");
