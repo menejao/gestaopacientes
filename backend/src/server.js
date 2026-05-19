@@ -1,7 +1,6 @@
 import app from "./app.js";
 import { PORT } from "./config.js";
 import { migrateLegacyPlaintextPasswords, alignJoaoTeamOnStartup } from "./services/startup.js";
-import { seedDemoTeamRosa } from "./services/seed-demo.js";
 import { runMigrations } from "./migrations/runner.js";
 
 function withTimeout(label, promise, ms = 30000) {
@@ -31,12 +30,6 @@ async function startServer() {
     console.log("[startup] alignJoaoTeamOnStartup — início");
     await withTimeout("alignJoaoTeamOnStartup", alignJoaoTeamOnStartup());
     console.log("[startup] alignJoaoTeamOnStartup — OK");
-
-    if (process.env.SEED_DEMO_DATA === "true") {
-      console.log("[startup] seedDemoTeamRosa — início");
-      await withTimeout("seedDemoTeamRosa", seedDemoTeamRosa());
-      console.log("[startup] seedDemoTeamRosa — OK");
-    }
 
     console.log("[startup] app.listen — chamando");
     app.listen(PORT, () => {
