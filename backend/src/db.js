@@ -385,18 +385,35 @@ async function initialize() {
   if (initialized) return;
 
   if (DB_DRIVER === "postgres") {
+    console.log("[db:init] pool.connect — início");
     const client = await pool.connect();
+    console.log("[db:init] pool.connect — OK");
     try {
+      console.log("[db:init] ensurePostgresState — início");
       await ensurePostgresState(client);
+      console.log("[db:init] ensurePostgresState — OK");
+
+      console.log("[db:init] SELECT app_state — início");
       const result = await client.query("SELECT data FROM app_state WHERE id = 1");
+      console.log("[db:init] SELECT app_state — OK");
+
+      console.log("[db:init] deserializeStateFromStorage — início");
       const snapshot = deserializeStateFromStorage(result.rows[0]?.data || {});
+      const userCount = Array.isArray(snapshot?.users) ? snapshot.users.length : 0;
+      const patientCount = Array.isArray(snapshot?.patients) ? snapshot.patients.length : 0;
+      console.log(`[db:init] deserialize — OK users=${userCount} patients=${patientCount}`);
+
+      console.log("[db:init] syncShadowTables — início");
       await syncShadowTables(client, snapshot);
+      console.log("[db:init] syncShadowTables — OK");
     } finally {
       client.release();
+      console.log("[db:init] client.release — OK");
     }
   }
 
   initialized = true;
+  console.log(`[db:init] initialized — driver=${DB_DRIVER}`);
 }
 
 async function readDbFromPostgres() {
@@ -407,17 +424,21 @@ async function readDbFromPostgres() {
   const usersEmpty = !Array.isArray(data.users) || data.users.length === 0;
   const patientsEmpty = !Array.isArray(data.patients) || data.patients.length === 0;
   if (usersEmpty || patientsEmpty) {
+    console.log(`[db:seed] app_state vazio (users=${usersEmpty} patients=${patientsEmpty}) — seeding`);
     let seeded = buildDefaultState();
     try {
+      console.log("[db:seed] readDbFromFile — início");
       const fileSnapshot = await readDbFromFile();
       const hasUsersInFile = Array.isArray(fileSnapshot?.users) && fileSnapshot.users.length > 0;
       const hasPatientsInFile = Array.isArray(fileSnapshot?.patients) && fileSnapshot.patients.length > 0;
+      console.log(`[db:seed] readDbFromFile — OK usersInFile=${hasUsersInFile} patientsInFile=${hasPatientsInFile}`);
       if (hasUsersInFile || hasPatientsInFile) {
         seeded = fileSnapshot;
       }
-    } catch {
-      // segue com estado padrão
+    } catch (e) {
+      console.log(`[db:seed] readDbFromFile — falhou (${e?.message}) — usando buildDefaultState`);
     }
+    console.log(`[db:seed] gravando no Postgres users=${seeded.users?.length} patients=${seeded.patients?.length}`);
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -425,7 +446,9 @@ async function readDbFromPostgres() {
         "UPDATE app_state SET data = $1::jsonb, updated_at = NOW() WHERE id = 1",
         [JSON.stringify(seeded)]
       );
+      console.log("[db:seed] syncShadowTables — início");
       await syncShadowTables(client, seeded);
+      console.log("[db:seed] syncShadowTables — OK");
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
@@ -433,6 +456,7 @@ async function readDbFromPostgres() {
     } finally {
       client.release();
     }
+    console.log("[db:seed] seed concluído");
     return seeded;
   }
 
