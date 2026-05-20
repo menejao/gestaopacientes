@@ -2,7 +2,7 @@
  * Migration runner for Postgres mode.
  * No-ops in file mode (migrations are only needed for schema changes in Postgres).
  *
- * Usage: called automatically from server.js before the app starts.
+ * Usage: called from server.js when RUN_MIGRATIONS=true.
  *
  * Each migration file exports:
  *   export const id = "001_create_app_state";
@@ -13,16 +13,34 @@ import { Pool } from "pg";
 
 const DATABASE_URL = String(process.env.DATABASE_URL || "").trim();
 
+// AWS RDS uses an AWS-issued CA. Setting rejectUnauthorized=false allows SSL
+// without requiring the AWS bundle to be in the Node trust store.
+// Override with DB_SSL_REJECT_UNAUTHORIZED=true if your env has the cert bundle.
+const DB_SSL_REJECT_UNAUTHORIZED =
+  String(process.env.DB_SSL_REJECT_UNAUTHORIZED || "false").trim().toLowerCase() === "true";
+
+function buildSslConfig() {
+  if (!DATABASE_URL) return undefined;
+  return { rejectUnauthorized: DB_SSL_REJECT_UNAUTHORIZED };
+}
+
 async function runMigrations() {
   if (!DATABASE_URL) {
-    return; // file mode — nothing to migrate
+    console.log("[migration] modo arquivo — sem migrations SQL");
+    return;
   }
 
-  const pool = new Pool({ connectionString: DATABASE_URL, ssl: true });
+  const pool = new Pool({
+    connectionString: DATABASE_URL,
+    ssl: buildSslConfig(),
+    max: 2,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 10000,
+  });
+
   const client = await pool.connect();
 
   try {
-    // Bootstrap: create the migrations control table if it doesn't exist
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         id TEXT PRIMARY KEY,
@@ -30,7 +48,6 @@ async function runMigrations() {
       )
     `);
 
-    // Discover and apply pending migrations in order
     const { migrations } = await import("./index.js");
 
     for (const migration of migrations) {
@@ -38,7 +55,10 @@ async function runMigrations() {
         "SELECT id FROM schema_migrations WHERE id = $1",
         [migration.id]
       );
-      if (rows.length > 0) continue; // already applied
+      if (rows.length > 0) {
+        console.log(`[migration] ${migration.id} — já aplicada, pulando`);
+        continue;
+      }
 
       console.log(`[migration] applying ${migration.id}...`);
       await client.query("BEGIN");
@@ -52,9 +72,11 @@ async function runMigrations() {
         console.log(`[migration] ${migration.id} — OK`);
       } catch (err) {
         await client.query("ROLLBACK");
-        throw new Error(`Migration ${migration.id} failed: ${err.message}`);
+        throw new Error(`Migration ${migration.id} falhou: ${err.message}`);
       }
     }
+
+    console.log("[migration] todas as migrations aplicadas");
   } finally {
     client.release();
     await pool.end();

@@ -15,30 +15,58 @@ function withTimeout(label, promise, ms = 30000) {
   });
 }
 
-async function startServer() {
-  try {
-    console.log("[startup] iniciando servidor");
+async function runStartupTasks() {
+  const shouldRunMigrations =
+    String(process.env.RUN_MIGRATIONS || "").trim().toLowerCase() === "true";
 
+  if (shouldRunMigrations) {
     console.log("[startup] runMigrations — início");
-    await withTimeout("runMigrations", runMigrations());
-    console.log("[startup] runMigrations — OK");
+    try {
+      await withTimeout("runMigrations", runMigrations(), 60000);
+      console.log("[startup] runMigrations — OK");
+    } catch (err) {
+      console.error("[startup] runMigrations — FALHA (não-fatal):", err.message);
+    }
+  } else {
+    console.log("[startup] runMigrations — ignorado (defina RUN_MIGRATIONS=true para executar)");
+  }
 
-    console.log("[startup] migrateLegacyPlaintextPasswords — início");
-    await withTimeout("migrateLegacyPlaintextPasswords", migrateLegacyPlaintextPasswords());
+  console.log("[startup] migrateLegacyPlaintextPasswords — início");
+  try {
+    await withTimeout("migrateLegacyPlaintextPasswords", migrateLegacyPlaintextPasswords(), 30000);
     console.log("[startup] migrateLegacyPlaintextPasswords — OK");
+  } catch (err) {
+    console.error("[startup] migrateLegacyPlaintextPasswords — FALHA (não-fatal):", err.message);
+  }
 
-    console.log("[startup] alignJoaoTeamOnStartup — início");
-    await withTimeout("alignJoaoTeamOnStartup", alignJoaoTeamOnStartup());
+  console.log("[startup] alignJoaoTeamOnStartup — início");
+  try {
+    await withTimeout("alignJoaoTeamOnStartup", alignJoaoTeamOnStartup(), 30000);
     console.log("[startup] alignJoaoTeamOnStartup — OK");
-
-    console.log("[startup] app.listen — chamando");
-    app.listen(PORT, () => {
-      console.log(`[startup] app.listen — OK — API rodando em http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error("Falha ao inicializar API:", error);
-    process.exit(1);
+  } catch (err) {
+    console.error("[startup] alignJoaoTeamOnStartup — FALHA (não-fatal):", err.message);
   }
 }
 
-startServer();
+async function startServer() {
+  console.log("[startup] iniciando servidor");
+
+  // Listen first — /health responde imediatamente, sem bloquear em migrations.
+  await new Promise((resolve, reject) => {
+    app.listen(PORT, (err) => {
+      if (err) { reject(err); return; }
+      console.log(`[startup] server listening on http://localhost:${PORT}`);
+      resolve();
+    });
+  });
+
+  // Startup tasks em background — falhas não derrubam o processo.
+  runStartupTasks().catch((err) => {
+    console.error("[startup] startup tasks — erro inesperado:", err.message);
+  });
+}
+
+startServer().catch((err) => {
+  console.error("[startup] falha crítica ao subir o servidor:", err);
+  process.exit(1);
+});
