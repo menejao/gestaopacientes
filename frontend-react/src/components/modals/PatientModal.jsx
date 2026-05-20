@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Button from "../ui/Button";
 import Modal from "../ui/Modal";
+import AppSelect from "../ui/AppSelect";
+import AppDatePicker from "../ui/AppDatePicker";
 
 const TABS = [
   { id: "identity", label: "Identificação" },
@@ -146,25 +148,17 @@ export default function PatientModal({
         {activeTab === "identity" && (
           <>
             <Section title="Vínculo e equipe">
-              <Field label="Grupo / Categoria *">
-                <div className="input">
-                  <select value={form.careCategory} onChange={upd("careCategory")} {...lockProps(readOnly)}>
-                    {(catOpts.length ? catOpts.filter((c) => c.value !== "chronic") : [{ value: "general", label: "Geral" }]).map((c) => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </Field>
-              <Field label="ACS responsável">
-                <div className="input">
-                  <select value={form.assignedAcsId} onChange={upd("assignedAcsId")} {...lockProps(readOnly)}>
-                    <option value="">Não atribuído</option>
-                    {users.filter((u) => u.role === "acs").map((u) => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </Field>
+              <AppSelect label="Grupo / Categoria *" value={form.careCategory} onChange={upd("careCategory")} disabled={readOnly}>
+                {(catOpts.length ? catOpts.filter((c) => c.value !== "chronic") : [{ value: "general", label: "Geral" }]).map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </AppSelect>
+              <AppSelect label="ACS responsável" value={form.assignedAcsId} onChange={upd("assignedAcsId")} disabled={readOnly}>
+                <option value="">Não atribuído</option>
+                {users.filter((u) => u.role === "acs").map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </AppSelect>
               <div className="field field--span-2">
                 <span className="field__label">Condições crônicas</span>
                 <ChronicPills
@@ -217,46 +211,32 @@ export default function PatientModal({
                 </Field>
               )}
 
-              <Field label="Data de nascimento">
-                <div className="input"><input type="date" value={form.birthDate} onChange={upd("birthDate")} {...lockProps(readOnly)} /></div>
-              </Field>
-              <Field label="Sexo biológico">
-                <div className="input">
-                  <select value={form.sex} onChange={upd("sex")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    <option value="feminino">Feminino</option>
-                    <option value="masculino">Masculino</option>
-                    <option value="intersexo">Intersexo</option>
-                  </select>
-                </div>
-              </Field>
-              <Field label="Raça / Cor">
-                <div className="input">
-                  <select value={form.raceColor} onChange={upd("raceColor")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    <option value="branca">Branca</option>
-                    <option value="preta">Preta</option>
-                    <option value="parda">Parda</option>
-                    <option value="amarela">Amarela</option>
-                    <option value="indigena">Indígena</option>
-                    <option value="nao_declarado">Não declarado</option>
-                  </select>
-                </div>
-              </Field>
+              <AppDatePicker label="Data de nascimento" value={form.birthDate} onChange={upd("birthDate")} disabled={readOnly} />
+              <AppSelect label="Sexo biológico" value={form.sex} onChange={upd("sex")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                <option value="feminino">Feminino</option>
+                <option value="masculino">Masculino</option>
+                <option value="intersexo">Intersexo</option>
+              </AppSelect>
+              <AppSelect label="Raça / Cor" value={form.raceColor} onChange={upd("raceColor")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                <option value="branca">Branca</option>
+                <option value="preta">Preta</option>
+                <option value="parda">Parda</option>
+                <option value="amarela">Amarela</option>
+                <option value="indigena">Indígena</option>
+                <option value="nao_declarado">Não declarado</option>
+              </AppSelect>
               {!isChild && (
-                <Field label="Estado civil">
-                  <div className="input">
-                    <select value={form.maritalStatus} onChange={upd("maritalStatus")} {...lockProps(readOnly)}>
-                      <option value="">Não informado</option>
-                      <option value="solteiro">Solteiro(a)</option>
-                      <option value="casado">Casado(a)</option>
-                      <option value="uniao_estavel">União estável</option>
-                      <option value="divorciado">Divorciado(a)</option>
-                      <option value="separado">Separado(a)</option>
-                      <option value="viuvo">Viúvo(a)</option>
-                    </select>
-                  </div>
-                </Field>
+                <AppSelect label="Estado civil" value={form.maritalStatus} onChange={upd("maritalStatus")} disabled={readOnly}>
+                  <option value="">Não informado</option>
+                  <option value="solteiro">Solteiro(a)</option>
+                  <option value="casado">Casado(a)</option>
+                  <option value="uniao_estavel">União estável</option>
+                  <option value="divorciado">Divorciado(a)</option>
+                  <option value="separado">Separado(a)</option>
+                  <option value="viuvo">Viúvo(a)</option>
+                </AppSelect>
               )}
               <Field label="Município de nascimento">
                 <div className="input"><input value={form.birthCity} onChange={upd("birthCity")} {...lockProps(readOnly)} /></div>
@@ -330,33 +310,23 @@ export default function PatientModal({
           <>
             {isPregnant && (
               <Section title="Dados gestacionais">
-                <Field label="DUM">
-                  <div className="input"><input type="date" value={form.pregnancyStartDate} onChange={upd("pregnancyStartDate")} {...lockProps(readOnly)} /></div>
-                </Field>
-                <Field label="DPP">
-                  <div className="input"><input type="date" value={form.expectedDeliveryDate} onChange={upd("expectedDeliveryDate")} {...lockProps(readOnly)} /></div>
-                </Field>
+                <AppDatePicker label="DUM" value={form.pregnancyStartDate} onChange={upd("pregnancyStartDate")} disabled={readOnly} />
+                <AppDatePicker label="DPP" value={form.expectedDeliveryDate} onChange={upd("expectedDeliveryDate")} disabled={readOnly} />
                 <Field label="IG DUM — Semanas">
                   <div className="input"><input type="number" min="0" max="45" value={form.gestationalAgeDumWeeks} onChange={upd("gestationalAgeDumWeeks")} {...lockProps(readOnly)} /></div>
                 </Field>
                 <Field label="IG DUM — Dias">
                   <div className="input"><input type="number" min="0" max="6" value={form.gestationalAgeDumDays} onChange={upd("gestationalAgeDumDays")} {...lockProps(readOnly)} /></div>
                 </Field>
-                <Field label="Data 1ª USG">
-                  <div className="input"><input type="date" value={form.usgDate1} onChange={upd("usgDate1")} {...lockProps(readOnly)} /></div>
-                </Field>
+                <AppDatePicker label="Data 1ª USG" value={form.usgDate1} onChange={upd("usgDate1")} disabled={readOnly} />
                 <Field label="IG USG — Semanas">
                   <div className="input"><input type="number" min="0" max="45" value={form.gestationalAgeUsgWeeks} onChange={upd("gestationalAgeUsgWeeks")} {...lockProps(readOnly)} /></div>
                 </Field>
                 <Field label="IG USG — Dias">
                   <div className="input"><input type="number" min="0" max="6" value={form.gestationalAgeUsgDays} onChange={upd("gestationalAgeUsgDays")} {...lockProps(readOnly)} /></div>
                 </Field>
-                <Field label="Data 2ª USG">
-                  <div className="input"><input type="date" value={form.usgDate2} onChange={upd("usgDate2")} {...lockProps(readOnly)} /></div>
-                </Field>
-                <Field label="Data 3ª USG">
-                  <div className="input"><input type="date" value={form.usgDate3} onChange={upd("usgDate3")} {...lockProps(readOnly)} /></div>
-                </Field>
+                <AppDatePicker label="Data 2ª USG" value={form.usgDate2} onChange={upd("usgDate2")} disabled={readOnly} />
+                <AppDatePicker label="Data 3ª USG" value={form.usgDate3} onChange={upd("usgDate3")} disabled={readOnly} />
               </Section>
             )}
             <Section title="Dados clínicos">
@@ -385,128 +355,84 @@ export default function PatientModal({
               <Field label="Frequência de visita ACS">
                 <div className="input"><input value={form.homeVisitFreq || ""} onChange={upd("homeVisitFreq")} {...lockProps(readOnly)} /></div>
               </Field>
-              <Field label="Tipo de moradia">
-                <div className="input">
-                  <select value={form.housingType || ""} onChange={upd("housingType")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    {["Alvenaria", "Madeira", "Taipa", "Improvisada", "Outro"].map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-              </Field>
-              <Field label="Abastecimento de água">
-                <div className="input">
-                  <select value={form.waterSupply || ""} onChange={upd("waterSupply")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    {["Rede pública", "Poço/nascente", "Outros"].map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-              </Field>
-              <Field label="Esgotamento sanitário">
-                <div className="input">
-                  <select value={form.sewage || ""} onChange={upd("sewage")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    {["Rede pública", "Fossa séptica", "Fossa rudimentar", "Céu aberto", "Outro"].map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-              </Field>
-              <Field label="Destino do lixo">
-                <div className="input">
-                  <select value={form.garbage || ""} onChange={upd("garbage")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    {["Coletado", "Queimado", "Enterrado", "Céu aberto", "Outro"].map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-              </Field>
-              <Field label="Energia elétrica">
-                <div className="input">
-                  <select value={form.electricity || ""} onChange={upd("electricity")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    {["Sim", "Não", "Irregular"].map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-              </Field>
+              <AppSelect label="Tipo de moradia" value={form.housingType || ""} onChange={upd("housingType")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                {["Alvenaria", "Madeira", "Taipa", "Improvisada", "Outro"].map((o) => <option key={o} value={o}>{o}</option>)}
+              </AppSelect>
+              <AppSelect label="Abastecimento de água" value={form.waterSupply || ""} onChange={upd("waterSupply")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                {["Rede pública", "Poço/nascente", "Outros"].map((o) => <option key={o} value={o}>{o}</option>)}
+              </AppSelect>
+              <AppSelect label="Esgotamento sanitário" value={form.sewage || ""} onChange={upd("sewage")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                {["Rede pública", "Fossa séptica", "Fossa rudimentar", "Céu aberto", "Outro"].map((o) => <option key={o} value={o}>{o}</option>)}
+              </AppSelect>
+              <AppSelect label="Destino do lixo" value={form.garbage || ""} onChange={upd("garbage")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                {["Coletado", "Queimado", "Enterrado", "Céu aberto", "Outro"].map((o) => <option key={o} value={o}>{o}</option>)}
+              </AppSelect>
+              <AppSelect label="Energia elétrica" value={form.electricity || ""} onChange={upd("electricity")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                {["Sim", "Não", "Irregular"].map((o) => <option key={o} value={o}>{o}</option>)}
+              </AppSelect>
             </Section>
 
             <Section title="Informações psicossociais">
-              <Field label="Escolaridade">
-                <div className="input">
-                  <select value={form.educationLevel || ""} onChange={upd("educationLevel")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    <option value="sem_escolaridade">Sem escolaridade</option>
-                    <option value="fundamental_incompleto">Fundamental incompleto</option>
-                    <option value="fundamental_completo">Fundamental completo</option>
-                    <option value="medio_incompleto">Médio incompleto</option>
-                    <option value="medio_completo">Médio completo</option>
-                    <option value="superior_incompleto">Superior incompleto</option>
-                    <option value="superior_completo">Superior completo</option>
-                    <option value="pos_graduacao">Pós-graduação</option>
-                  </select>
-                </div>
-              </Field>
+              <AppSelect label="Escolaridade" value={form.educationLevel || ""} onChange={upd("educationLevel")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                <option value="sem_escolaridade">Sem escolaridade</option>
+                <option value="fundamental_incompleto">Fundamental incompleto</option>
+                <option value="fundamental_completo">Fundamental completo</option>
+                <option value="medio_incompleto">Médio incompleto</option>
+                <option value="medio_completo">Médio completo</option>
+                <option value="superior_incompleto">Superior incompleto</option>
+                <option value="superior_completo">Superior completo</option>
+                <option value="pos_graduacao">Pós-graduação</option>
+              </AppSelect>
               <Field label="Ocupação">
                 <div className="input">
                   <input value={form.occupation || ""} onChange={upd("occupation")} placeholder="Ex.: agricultor, estudante, aposentado..." {...lockProps(readOnly)} />
                 </div>
               </Field>
-              <Field label="Situação familiar">
-                <div className="input">
-                  <select value={form.familySituation || ""} onChange={upd("familySituation")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    <option value="mora_sozinho">Mora sozinho</option>
-                    <option value="familia_nuclear">Família nuclear</option>
-                    <option value="familia_extensa">Família extensa</option>
-                    <option value="unipessoal">Unipessoal</option>
-                    <option value="outro">Outro</option>
-                  </select>
-                </div>
-              </Field>
-              <Field label="Apoio familiar">
-                <div className="input">
-                  <select value={form.familySupport || ""} onChange={upd("familySupport")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    <option value="adequado">Adequado</option>
-                    <option value="parcial">Parcial</option>
-                    <option value="ausente">Ausente</option>
-                  </select>
-                </div>
-              </Field>
-              <Field label="Vulnerabilidade social">
-                <div className="input">
-                  <select value={form.socialVulnerability || ""} onChange={upd("socialVulnerability")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    <option value="baixa">Baixa</option>
-                    <option value="moderada">Moderada</option>
-                    <option value="alta">Alta</option>
-                  </select>
-                </div>
-              </Field>
+              <AppSelect label="Situação familiar" value={form.familySituation || ""} onChange={upd("familySituation")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                <option value="mora_sozinho">Mora sozinho</option>
+                <option value="familia_nuclear">Família nuclear</option>
+                <option value="familia_extensa">Família extensa</option>
+                <option value="unipessoal">Unipessoal</option>
+                <option value="outro">Outro</option>
+              </AppSelect>
+              <AppSelect label="Apoio familiar" value={form.familySupport || ""} onChange={upd("familySupport")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                <option value="adequado">Adequado</option>
+                <option value="parcial">Parcial</option>
+                <option value="ausente">Ausente</option>
+              </AppSelect>
+              <AppSelect label="Vulnerabilidade social" value={form.socialVulnerability || ""} onChange={upd("socialVulnerability")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                <option value="baixa">Baixa</option>
+                <option value="moderada">Moderada</option>
+                <option value="alta">Alta</option>
+              </AppSelect>
               <Field label="Benefício social">
                 <div className="input">
                   <input value={form.socialBenefit || ""} onChange={upd("socialBenefit")} placeholder="Ex.: Bolsa Família, BPC, LOAS..." {...lockProps(readOnly)} />
                 </div>
               </Field>
-              <Field label="Dependência química">
-                <div className="input">
-                  <select value={form.substanceDependency || ""} onChange={upd("substanceDependency")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    <option value="nao">Não</option>
-                    <option value="alcool">Álcool</option>
-                    <option value="tabaco">Tabaco</option>
-                    <option value="outras_drogas">Outras drogas</option>
-                    <option value="multiplas">Múltiplas substâncias</option>
-                  </select>
-                </div>
-              </Field>
-              <Field label="Situação de violência">
-                <div className="input">
-                  <select value={form.domesticViolence || ""} onChange={upd("domesticViolence")} {...lockProps(readOnly)}>
-                    <option value="">Não informado</option>
-                    <option value="nao">Não</option>
-                    <option value="suspeita">Suspeita</option>
-                    <option value="confirmada">Confirmada</option>
-                  </select>
-                </div>
-              </Field>
+              <AppSelect label="Dependência química" value={form.substanceDependency || ""} onChange={upd("substanceDependency")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                <option value="nao">Não</option>
+                <option value="alcool">Álcool</option>
+                <option value="tabaco">Tabaco</option>
+                <option value="outras_drogas">Outras drogas</option>
+                <option value="multiplas">Múltiplas substâncias</option>
+              </AppSelect>
+              <AppSelect label="Situação de violência" value={form.domesticViolence || ""} onChange={upd("domesticViolence")} disabled={readOnly}>
+                <option value="">Não informado</option>
+                <option value="nao">Não</option>
+                <option value="suspeita">Suspeita</option>
+                <option value="confirmada">Confirmada</option>
+              </AppSelect>
             </Section>
           </>
         )}
