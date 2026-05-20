@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createRecord, createTask } from "../../api";
 import { parseLocalDate } from "../../utils/dates";
 import { googleCalendarUrl } from "../../utils/dates";
@@ -155,19 +155,56 @@ function ProtocolTab({ patient, alerts, protocolSummary, loading }) {
       {alerts?.length > 0 && (
         <div className="pat-alerts">
           <span className="pat-section-label">Alertas clínicos</span>
-          {alerts.map((alert, index) => {
-            const sev = alert.severity === "high" ? "danger" : alert.severity === "medium" ? "warning" : "info";
-            return (
-              <div key={alert.id || index} className={`pat-alert pat-alert--${sev}`}>
-                <span className="pat-alert__icon-wrap">{ALERT_ICON[sev]}</span>
-                <div className="pat-alert__body">
-                  <div className="pat-alert__title">{alert.title}</div>
-                  {alert.detail ? <div className="pat-alert__detail">{alert.detail}</div> : null}
+          {(() => {
+            const critical = alerts.filter(a => a.severity === "high");
+            const attention = alerts.filter(a => a.severity === "medium");
+            const pending = alerts.filter(a => !a.severity || a.severity === "low");
+
+            function renderAlert(alert, index) {
+              const isRisk = alert.category === "risk";
+              const sev = alert.severity === "high" ? "danger" : alert.severity === "medium" ? "warning" : "info";
+              const badge = isRisk ? "Risco" : ALERT_BADGE[sev];
+              return (
+                <div key={alert.id || index} className={`pat-alert pat-alert--${sev}${isRisk ? " pat-alert--risk" : ""}`}>
+                  <span className="pat-alert__icon-wrap">{ALERT_ICON[sev]}</span>
+                  <div className="pat-alert__body">
+                    <div className="pat-alert__title">{alert.title}</div>
+                    {alert.detail ? <div className="pat-alert__detail">{alert.detail}</div> : null}
+                  </div>
+                  <span className="pat-alert__badge">{badge}</span>
                 </div>
-                <span className="pat-alert__badge">{ALERT_BADGE[sev]}</span>
-              </div>
+              );
+            }
+
+            return (
+              <>
+                {critical.length > 0 && (
+                  <div className="pat-alert-group">
+                    <span className="pat-alert-group__head pat-alert-group__head--danger">
+                      Crítico · {critical.length}
+                    </span>
+                    {critical.map(renderAlert)}
+                  </div>
+                )}
+                {attention.length > 0 && (
+                  <div className="pat-alert-group">
+                    <span className="pat-alert-group__head pat-alert-group__head--warning">
+                      Atenção · {attention.length}
+                    </span>
+                    {attention.map(renderAlert)}
+                  </div>
+                )}
+                {pending.length > 0 && (
+                  <div className="pat-alert-group">
+                    <span className="pat-alert-group__head pat-alert-group__head--info">
+                      Pendente / A cumprir · {pending.length}
+                    </span>
+                    {pending.map(renderAlert)}
+                  </div>
+                )}
+              </>
             );
-          })}
+          })()}
         </div>
       )}
 
@@ -590,6 +627,106 @@ function getRoleColor(role) {
   return map[role] || "#64748b";
 }
 
+function ProfessionalCombobox({ targets, value, onChange }) {
+  const [query, setQuery]   = useState("");
+  const [open, setOpen]     = useState(false);
+  const wrapRef  = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handle(e) {
+      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const filtered = !query.trim()
+    ? targets
+    : targets.filter(t => {
+        const q = query.toLowerCase();
+        return (
+          String(t.name || "").toLowerCase().includes(q) ||
+          (INTERNAL_ROLE_LABEL[t.role] || t.role || "").toLowerCase().includes(q)
+        );
+      });
+
+  const selected = targets.find(t => t.id === value);
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next) setTimeout(() => inputRef.current?.focus(), 50);
+  }
+
+  return (
+    <div ref={wrapRef} className="pcb">
+      <button type="button" className={`pcb__trigger${open ? " pcb__trigger--open" : ""}`} onClick={toggle}>
+        {selected ? (
+          <span className="pcb__selected">
+            <span className="pcb__avatar" style={{ "--rc": getRoleColor(selected.role) }}>{initials(selected.name)}</span>
+            <span className="pcb__selected-info">
+              <span className="pcb__selected-name">{selected.name}</span>
+              <span className="pcb__selected-role">{INTERNAL_ROLE_LABEL[selected.role] || selected.role}</span>
+            </span>
+          </span>
+        ) : (
+          <span className="pcb__placeholder">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+            Buscar profissional ou especialidade…
+          </span>
+        )}
+        <svg className="pcb__chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div className="pcb__dropdown">
+          <div className="pcb__search-wrap">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+            <input
+              ref={inputRef}
+              className="pcb__search"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Nome ou especialidade…"
+              autoComplete="off"
+            />
+          </div>
+          <div className="pcb__list">
+            {!filtered.length ? (
+              <div className="pcb__empty">Nenhum profissional encontrado</div>
+            ) : filtered.map(t => (
+              <button key={t.id} type="button"
+                className={`pcb__option${t.id === value ? " pcb__option--active" : ""}`}
+                onClick={() => { onChange(t.id); setOpen(false); setQuery(""); }}>
+                <span className="pcb__option-avatar" style={{ "--rc": getRoleColor(t.role) }}>{initials(t.name)}</span>
+                <span className="pcb__option-body">
+                  <span className="pcb__option-name">{t.name}</span>
+                  <span className="pcb__option-role">{INTERNAL_ROLE_LABEL[t.role] || t.role}</span>
+                </span>
+                {t.id === value && (
+                  <svg className="pcb__check" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M3 8l4 4 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const EXAM_URGENCY_OPTS = [
   { v: "routine", l: "Rotina" },
   { v: "priority", l: "Prioritário" },
@@ -845,20 +982,8 @@ function InternalReferralModal({ patient, user, users, token, onClose }) {
       ) : (
         <div className="aclin-modal-stack">
           <div className="aclin-section">
-            <span className="aclin-section-label">Para quem?</span>
-            <div className="aclin-user-grid">
-              {targets.map(t => (
-                <button key={t.id} type="button"
-                  className={`aclin-user-card${targetId === t.id ? " aclin-user-card--selected" : ""}`}
-                  onClick={() => setTargetId(t.id)}>
-                  <span className="aclin-user-card__avatar" style={{ "--aclin-role-color": getRoleColor(t.role) }}>
-                    {initials(t.name)}
-                  </span>
-                  <span className="aclin-user-card__name">{t.name}</span>
-                  <span className="aclin-user-card__role">{INTERNAL_ROLE_LABEL[t.role] || t.role}</span>
-                </button>
-              ))}
-            </div>
+            <span className="aclin-section-label">Encaminhar para</span>
+            <ProfessionalCombobox targets={targets} value={targetId} onChange={setTargetId} />
           </div>
 
           <div className="aclin-section">
@@ -1211,21 +1336,21 @@ export default function PatientDetailPanel({
         <div className="panel-patient-avatar">{initials(patient.name)}</div>
         <div className="panel-patient-info">
           <div className="panel-patient-name">
-            {patient.name}
+            <span className="panel-patient-name__text">{patient.name}</span>
             {age ? <span className="panel-patient-age">{age}</span> : null}
             {isProfileIncomplete(patient) ? (
-              <span className="panel-patient-incomplete">Cadastro incompleto</span>
+              <span className="panel-patient-incomplete">Incompleto</span>
             ) : null}
-            <div className="panel-patient-doc-actions">
-              <Button size="sm" onClick={() => setShowPatientCard(true)}>Cartao SUS</Button>
-              <Button variant="secondary" size="sm" onClick={() => setDocType("comparecimento")}>Declaracao</Button>
-              {canManageUser ? <Button variant="secondary" size="sm" onClick={() => setDocType("atestado")}>Atestado</Button> : null}
-            </div>
           </div>
           <div className="panel-patient-meta">
             <span>{catLabel(templates, patient.careCategory)}</span>
-            <span>-</span>
+            <span>·</span>
             <span>ACS: {acsName}</span>
+          </div>
+          <div className="panel-patient-doc-actions">
+            <Button size="sm" onClick={() => setShowPatientCard(true)}>Cartão SUS</Button>
+            <Button variant="secondary" size="sm" onClick={() => setDocType("comparecimento")}>Declaração</Button>
+            {canManageUser ? <Button variant="secondary" size="sm" onClick={() => setDocType("atestado")}>Atestado</Button> : null}
           </div>
         </div>
         <Button variant="ghost" size="sm" iconOnly title="Fechar painel" aria-label="Fechar painel" onClick={onClose}>

@@ -161,16 +161,21 @@ export function suggestNextVisitDate(history, template) {
 export function deriveProtocolAlerts(summary) {
   if (!summary) return [];
   const special = Array.isArray(summary.specialAlerts) ? summary.specialAlerts : [];
-  if (special.length) return special.map((a, i) => ({
+  const specMapped = special.map((a, i) => ({
     id: a?.id || `s-${i}`,
     title: a?.title || "Alerta clínico",
     detail: a?.detail || "",
     severity: String(a?.severity || "low").toLowerCase(),
+    category: a?.category || undefined,
   }));
-  const schedule = summary.schedule || {}, out = [];
-  for (const [key, label] of [["visits","visitas"],["consultations","consultas"],["vaccines","vacinas"]]) {
+  const specIds = new Set(specMapped.map(a => a.id));
+  const schedule = summary.schedule || {};
+  const out = [...specMapped];
+  for (const [key, label] of [["visits","Visitas"],["consultations","Consultas"],["vaccines","Vacinas"]]) {
     const s = schedule?.[key];
+    const schedId = `sch-${key}`;
     if (!s || Number(s.pending || 0) <= 0) continue;
+    if (specIds.has(schedId)) continue;
     const overdue = Number(s.overdueDays || 0);
     const daysLeft = typeof s.daysLeft === "number" ? Number(s.daysLeft) : null;
     let computedDaysLeft = daysLeft;
@@ -191,9 +196,9 @@ export function deriveProtocolAlerts(summary) {
       const limitDate = endOfYear.toLocaleDateString("pt-BR");
       detail = `Prazo anual até ${limitDate} (${computedDaysLeft} dia(s) restantes)`;
     } else {
-      detail = "Sem prazo";
+      detail = "Sem prazo definido";
     }
-    out.push({ id: `sch-${key}`, title: `${label}: ${Number(s.pending || 0)} pendente(s)`, detail, severity });
+    out.push({ id: schedId, title: `${label}: ${Number(s.pending || 0)} pendente(s)`, detail, severity });
   }
   return out;
 }

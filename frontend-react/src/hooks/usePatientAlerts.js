@@ -149,6 +149,62 @@ export function usePatientAlerts({ selectedPatient, patientProtocolSummary, hist
             });
           alerts = [...alerts, ...vaccineAlerts];
         }
+
+        // Gestante: risco de perda de indicador de pré-natal + odontologia
+        if (cat === "pregnant") {
+          const gi = gestationalAgeInfo(selectedPatient);
+          const weeks = gi ? gi.weeks : null;
+          if (weeks !== null) {
+            const consultsDone   = Number(rosaAdjustedSummary?.completed?.consultations ?? 0);
+            const consultsTarget = Number(rosaAdjustedSummary?.targets?.consultations ?? 0);
+            // Mínimo de consultas por IG (PNAB/WHO)
+            const PREN_MIN = [[38,6],[34,5],[30,4],[26,3],[20,2],[12,1],[0,0]];
+            const minRequired = (PREN_MIN.find(([w]) => weeks >= w) || [0,0])[1];
+
+            const alreadyHasConsultAlert = alerts.some(a =>
+              String(a.id || "").includes("pren") || String(a.id || "").includes("consult") || String(a.title || "").toLowerCase().includes("pré-natal")
+            );
+
+            if (!alreadyHasConsultAlert) {
+              if (consultsDone < minRequired) {
+                const deficit = minRequired - consultsDone;
+                alerts.push({
+                  id: "pren-risco",
+                  title: `Pré-natal: déficit de ${deficit} consulta(s)`,
+                  detail: `IG ${weeks}s — mínimo esperado: ${minRequired} · realizadas: ${consultsDone}. Risco de perda de indicador municipal.`,
+                  severity: "high",
+                  category: "risk",
+                });
+              } else if (consultsTarget > consultsDone) {
+                const remaining = consultsTarget - consultsDone;
+                const weeksLeft = Math.max(0, 40 - weeks);
+                alerts.push({
+                  id: "pren-pendente",
+                  title: `Pré-natal: ${remaining} consulta(s) pendente(s)`,
+                  detail: `IG ${weeks}s · ${consultsDone}/${consultsTarget} realizadas · ~${weeksLeft}s restantes de gestação.`,
+                  severity: weeksLeft <= 4 ? "medium" : "low",
+                });
+              }
+            }
+
+            // Consulta odontológica — requisito do pré-natal
+            const hasDentalVisit = (history || []).some(h =>
+              String(h.type || "").toLowerCase() === "consultation" &&
+              (String(h.title || "").toLowerCase().includes("odonto") ||
+               String(h.title || "").toLowerCase().includes("dent"))
+            );
+            const alreadyHasOdontoAlert = alerts.some(a => String(a.id || "").includes("odonto"));
+            if (!hasDentalVisit && !alreadyHasOdontoAlert) {
+              alerts.push({
+                id: "pren-odonto",
+                title: "Consulta odontológica não realizada",
+                detail: `IG ${weeks}s — exigência do pré-natal. ${weeks >= 28 ? "Prazo crítico: agendar com urgência." : "Agendar ainda nesta gestação."}`,
+                severity: weeks >= 28 ? "high" : weeks >= 16 ? "medium" : "low",
+                category: "risk",
+              });
+            }
+          }
+        }
       }
 
       return [...alerts].sort((a, b) => {
