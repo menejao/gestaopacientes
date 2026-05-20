@@ -13,6 +13,7 @@
   display: flex;
   flex: 1;
   min-height: 0;
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* ── Patient sidebar ──────────────────────────────────────────── */
@@ -195,6 +196,13 @@
 }
 
 .exams-add-form__actions { display: flex; gap: var(--s-1); }
+
+/* ── Section empty / loading ──────────────────────────────────── */
+.exams-section-empty {
+  font: 400 var(--t-sm) var(--font-sans);
+  color: var(--text-dim);
+  padding: var(--s-3) 0 var(--s-1);
+}
 
 /* ── Section labels ───────────────────────────────────────────── */
 .exams-section { margin-bottom: var(--s-5); }

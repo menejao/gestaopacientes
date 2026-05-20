@@ -246,7 +246,7 @@ export async function uploadExamAttachment(token, patientId, examId, payload) {
   return api(`/patients/${patientId}/exams/${examId}/attachments`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/x.vitras-exam-attachment+json"
+      "Content-Type": "application/x.valens-exam-attachment+json"
     },
     body: JSON.stringify(payload)
   }, token);
