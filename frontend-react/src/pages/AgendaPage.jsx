@@ -212,9 +212,9 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
           const isSel      = d === selectedDate;
           const unavailable = isUnavailableDay(d);
           return (
-            <button
+            <Button
               key={d}
-              type="button"
+              variant="ghost"
               className={[
                 "agenda-day-btn",
                 isSel                    ? "is-sel"     : "",
@@ -232,7 +232,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
               ) : !unavailable && countByDay[d] > 0 ? (
                 <span className="agenda-day-btn__tag">{countByDay[d]}×</span>
               ) : null}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -276,13 +276,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
         ) : !dayAppts.length && !isUnavailableDay(selectedDate) ? (
           <EmptyState
             title="Nenhum agendamento neste dia"
-            description="Clique em Novo agendamento para adicionar uma consulta neste dia."
-            action={
-              <Button onClick={() => openNew()}>
-                <IconPlus />
-                Agendar consulta
-              </Button>
-            }
+            description="Use 'Novo agendamento' no cabeçalho para criar uma consulta."
           />
         ) : (
           dayAppts.map(appt => {
@@ -332,7 +326,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                   </div>
 
                   <div className="agenda-appt__actions">
-                    <select
+                    <Select
                       className="agenda-status-sel"
                       value={appt.status}
                       onChange={e => {
@@ -352,25 +346,29 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                           </option>
                         );
                       })}
-                    </select>
+                    </Select>
 
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--sm btn--icon"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      iconOnly
+                      className="agenda-appt__edit-btn"
                       onClick={() => openEdit(appt)}
                       aria-label="Editar agendamento"
                     >
                       <IconPencil />
-                    </button>
+                    </Button>
 
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--sm btn--icon agenda-appt__remove-btn"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      iconOnly
+                      className="agenda-appt__remove-btn"
                       onClick={() => remove(appt.id)}
                       aria-label="Remover agendamento"
                     >
                       <IconTrash />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -399,7 +397,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
               <div className="agenda-pat-wrap" ref={patWrapRef}>
                 <div className="input">
                   <span className="input__icon"><IconSearch /></span>
-                  <input
+                  <Input
                     value={patSearch}
                     onChange={e => {
                       setPatSearch(e.target.value);
@@ -436,9 +434,9 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                   patResults.map(p => {
                     const am = ageInMonths(p.birthDate);
                     return (
-                      <button
+                      <Button
                         key={p.id}
-                        type="button"
+                        variant="ghost"
                         className="agenda-pat-opt"
                         onClick={() => { setPatSelected(p); setPatSearch(p.name); setForm(s => ({ ...s, patientId: p.id })); }}
                       >
@@ -451,12 +449,12 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                             {p.cpf ? ` · CPF ${p.cpf}` : ""}
                           </div>
                         </span>
-                      </button>
+                      </Button>
                     );
                   })
                 )}
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   className="agenda-pat-new"
                   onClick={() => {
                     const n = patSearch;
@@ -472,7 +470,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                     <path d="M12 10v4M10 12h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
                   </svg>
                   Cadastrar novo paciente
-                </button>
+                </Button>
               </div>,
               document.body
             )}
@@ -482,8 +480,10 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
               <div className="field--span-2 agenda-quick-patient">
                 <div className="agenda-quick-patient__header">
                   <span className="agenda-quick-patient__title">+ Cadastro rápido de paciente</span>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
                     className="icon-btn"
                     onClick={() => setShowNewPat(false)}
                     aria-label="Fechar cadastro rápido"
@@ -491,7 +491,7 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                       <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="agenda-quick-patient__grid">
