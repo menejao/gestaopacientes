@@ -283,7 +283,7 @@ router.patch("/me", requireAuth, validate(MePatchSchema), async (req, res) => {
     const changingEmail = payload.email !== undefined && String(payload.email || "").trim().toLowerCase() !== String(current.email || "").trim().toLowerCase();
     const changingPassword = payload.password !== undefined;
     if ((changingEmail || changingPassword) && !verifyPassword(String(payload.currentPassword || ""), current.password)) {
-      return { error: { status: 401, message: "Senha atual invÃ¡lida para alterar e-mail ou senha" } };
+      return { error: { status: 401, message: "Senha atual inválida para alterar e-mail ou senha" } };
     }
 
     if (payload.name !== undefined) {

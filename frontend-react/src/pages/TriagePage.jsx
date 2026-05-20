@@ -82,7 +82,7 @@ function TriagePage({ patients, users, user, token }) {
         triageDone: new Date().toISOString(),
         vitals: {
           ...vitals,
-          by: user?.name || "TÃ©c. Enf.",
+          by: user?.name || "Téc. Enf.",
           at: new Date().toISOString(),
           patientId: selected.patientId
         }
@@ -108,13 +108,13 @@ function TriagePage({ patients, users, user, token }) {
   return (
     <PageShell className="triage-page">
       <PageHeader
-        eyebrow="TÃ©c. de Enfermagem"
+        eyebrow="Téc. de Enfermagem"
         title="Monitoramento e Triagem"
-        subtitle="AferiÃ§Ã£o de sinais vitais antes do atendimento."
+        subtitle="Aferição de sinais vitais antes do atendimento."
       >
         <div className="triage-online-status">
-          <span className="triage-online-status__label">TÃ©cnicos online</span>
-          <span className="triage-online-status__sep" aria-hidden="true">Â·</span>
+          <span className="triage-online-status__label">Técnicos online</span>
+          <span className="triage-online-status__sep" aria-hidden="true">·</span>
           {onlineTechs.length === 0
             ? <span className="triage-online-status__val">Nenhum</span>
             : onlineTechs.map((entry) => (
@@ -145,9 +145,12 @@ function TriagePage({ patients, users, user, token }) {
           {pendingTriage.length === 0 ? (
             <div className="triage-queue__empty">
               <div className="triage-queue__empty-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
               </div>
-              <div>Nenhum paciente aguardando</div>
+              <div className="triage-queue__empty-title">Fila vazia</div>
+              <div className="triage-queue__empty-desc">Nenhum paciente aguardando triagem no momento.</div>
             </div>
           ) : pendingTriage.map((entry) => {
             const isMe = entry.status === "triage" && entry.triageBy === user?.id;
@@ -160,10 +163,10 @@ function TriagePage({ patients, users, user, token }) {
                 onClick={() => { if (!isBusy && entry.status !== "triage") startTriage(entry); }}
               >
                 <div className="triage-entry__name">{entry.patientName}</div>
-                <div className="triage-entry__sub">Chegou {formatQueueClock(entry.arrivedAt)} Â· hÃ¡ {formatQueueWait(entry.arrivedAt)}</div>
-                {isMe && <div className="triage-entry__status">â†’ Em triagem por vocÃª</div>}
-                {isBusy && <div className="triage-entry__status">Em triagem: {shortName(techName || "outro tÃ©cnico")}</div>}
-                {!isMe && !isBusy && <div className="triage-entry__cta">Clique para iniciar â†’</div>}
+                <div className="triage-entry__sub">Chegou {formatQueueClock(entry.arrivedAt)} · há {formatQueueWait(entry.arrivedAt)}</div>
+                {isMe && <div className="triage-entry__status">→ Em triagem por você</div>}
+                {isBusy && <div className="triage-entry__status">Em triagem: {shortName(techName || "outro técnico")}</div>}
+                {!isMe && !isBusy && <div className="triage-entry__cta">Clique para iniciar →</div>}
               </div>
             );
           })}
@@ -175,7 +178,7 @@ function TriagePage({ patients, users, user, token }) {
                 <div key={entry.id} className="triage-ready__entry">
                   <div>
                     <div className="triage-ready__name">{entry.patientName}</div>
-                    <div className="triage-ready__time">ConcluÃ­do Â· {formatQueueClock(entry.triageDone)}</div>
+                    <div className="triage-ready__time">Concluído · {formatQueueClock(entry.triageDone)}</div>
                   </div>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
@@ -196,8 +199,8 @@ function TriagePage({ patients, users, user, token }) {
                   <div>
                     <div className="triage-pat-name">{selected.patientName}</div>
                     <div className="triage-pat-sub">
-                      Triagem iniciada Ã s {formatQueueClock(selected.triageStart || new Date().toISOString())}
-                      {selectedPatient?.birthDate ? ` Â· Nasc. ${selectedPatient.birthDate}` : ""}
+                      Triagem iniciada às {formatQueueClock(selected.triageStart || new Date().toISOString())}
+                      {selectedPatient?.birthDate ? ` · Nasc. ${selectedPatient.birthDate}` : ""}
                     </div>
                   </div>
                 </div>
@@ -210,7 +213,7 @@ function TriagePage({ patients, users, user, token }) {
 
               <form className="triage-form" onSubmit={finishTriage}>
                 <div>
-                  <div className="triage-form__section-title">PressÃ£o Arterial e FC</div>
+                  <div className="triage-form__section-title">Pressão Arterial e FC</div>
                   <div className="triage-form__grid-4">
                     <div className="triage-form__field">
                       <span className="field__label">PA (mmHg)</span>
@@ -235,13 +238,13 @@ function TriagePage({ patients, users, user, token }) {
                   </div>
                   {bmiValue !== null && (
                     <div className={`triage-bmi triage-bmi--${bmiClass(bmiValue)}`}>
-                      IMC: {bmiValue} â€” {bmiLabel(bmiValue)}
+                      IMC: {bmiValue} — {bmiLabel(bmiValue)}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <div className="triage-form__section-title">Dor (0â€“10)</div>
+                  <div className="triage-form__section-title">Dor (0–10)</div>
                   <div className="triage-pain">
                     {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
                       <Button

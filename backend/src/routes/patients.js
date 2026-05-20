@@ -129,17 +129,17 @@ router.post("/patients", requireManagerOrDoctor, validate(PatientCreateSchema), 
   const protocolMap = getProtocolTemplateMap(db, req.user.teamId);
 
   if (!payload.name || !payload.phone) {
-    return res.status(400).json({ error: "Nome e telefone sÃ£o obrigatÃ³rios" });
+    return res.status(400).json({ error: "Nome e telefone são obrigatórios" });
   }
 
   const requestedTeamId = String(payload.teamId || "").trim();
   const patientTeamId = requestedTeamId || req.user.teamId;
   if (!patientTeamId) {
-    return res.status(400).json({ error: "Equipe responsÃ¡vel Ã© obrigatÃ³ria" });
+    return res.status(400).json({ error: "Equipe responsável é obrigatória" });
   }
   const teamExists = db.teams.some((t) => t.id === patientTeamId);
   if (!teamExists) {
-    return res.status(400).json({ error: "Equipe responsÃ¡vel invÃ¡lida" });
+    return res.status(400).json({ error: "Equipe responsável inválida" });
   }
 
   const patient = {
@@ -215,7 +215,7 @@ router.put("/patients/:id", validate(PatientUpdateSchema), async (req, res) => {
   const payload = req.body;
 
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Sem permissÃ£o para editar paciente" });
+    return res.status(403).json({ error: "Sem permissão para editar paciente" });
   }
 
   const updated = await withDb((db) => {
@@ -336,10 +336,10 @@ router.put("/patients/:id", validate(PatientUpdateSchema), async (req, res) => {
   });
 
   if (!updated) {
-    return res.status(404).json({ error: "Paciente nÃ£o encontrado" });
+    return res.status(404).json({ error: "Paciente não encontrado" });
   }
   if (updated === "forbidden") {
-    return res.status(403).json({ error: "Sem permissÃ£o para editar paciente" });
+    return res.status(403).json({ error: "Sem permissão para editar paciente" });
   }
 
   return res.json(updated);
@@ -351,10 +351,10 @@ router.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
   const result = await withDb((db) => {
     ensureDbShape(db);
     const patientIndex = db.patients.findIndex((p) => p.id === id);
-    if (patientIndex < 0) return { error: "Paciente nÃ£o encontrado" };
+    if (patientIndex < 0) return { error: "Paciente não encontrado" };
 
     const patient = db.patients[patientIndex];
-    if (!canAccessPatient(req.user, patient)) return { error: "Sem permissÃ£o para excluir paciente" };
+    if (!canAccessPatient(req.user, patient)) return { error: "Sem permissão para excluir paciente" };
     const before = buildPatientAuditSnapshot(patient);
     const teamPatientIds = new Set([patient.id]);
 
@@ -427,7 +427,7 @@ router.delete("/patients/:id", requireManagerOrDoctor, async (req, res) => {
   });
 
   if (result?.error) {
-    const status = String(result.error).toLowerCase().includes("permissÃ£o") ? 403 : 404;
+    const status = String(result.error).toLowerCase().includes("permissão") ? 403 : 404;
     return res.status(status).json({ error: result.error });
   }
   return res.json(result);
@@ -441,7 +441,7 @@ router.get("/patients/:id/appointments", async (req, res) => {
   const lookup = patient ? { patient } : getPatientOrError(db, req.user, id);
   if (lookup.error) return res.status(lookup.error.status).json({ error: lookup.error.message });
   if (patient && !canAccessPatient(req.user, patient)) {
-    return res.status(403).json({ error: "Sem permissÃ£o para este paciente" });
+    return res.status(403).json({ error: "Sem permissão para este paciente" });
   }
 
   const appointmentsSource = await listAppointmentsByPatientId(id);
@@ -463,11 +463,11 @@ router.post("/patients/:id/appointments", validate(AppointmentCreateSchema), asy
   const payload = req.body;
 
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Sem permissÃ£o para criar atendimento" });
+    return res.status(403).json({ error: "Sem permissão para criar atendimento" });
   }
 
   if (!payload.date || !payload.summary) {
-    return res.status(400).json({ error: "Data e resumo sÃ£o obrigatÃ³rios" });
+    return res.status(400).json({ error: "Data e resumo são obrigatórios" });
   }
 
   const db = await readDb();
@@ -503,17 +503,17 @@ router.delete("/patients/:id/appointments/:appointmentId", validate(CriticalActi
   const appointmentId = String(req.params.appointmentId || "").trim();
 
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Sem permissÃ£o para excluir atendimento" });
+    return res.status(403).json({ error: "Sem permissão para excluir atendimento" });
   }
 
   const result = await withDb((db) => {
     ensureDbShape(db);
     const patient = db.patients.find((p) => p.id === patientId);
-    if (!patient) return { error: { status: 404, message: "Paciente nÃ£o encontrado" } };
-    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissÃ£o para este paciente" } };
+    if (!patient) return { error: { status: 404, message: "Paciente não encontrado" } };
+    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissão para este paciente" } };
 
     const index = db.appointments.findIndex((a) => a.id === appointmentId && a.patientId === patientId);
-    if (index < 0) return { error: { status: 404, message: "Atendimento nÃ£o encontrado" } };
+    if (index < 0) return { error: { status: 404, message: "Atendimento não encontrado" } };
 
     const removed = db.appointments[index];
     db.appointments.splice(index, 1);
@@ -551,14 +551,14 @@ router.post("/patients/:id/records", validate(RecordCreateSchema), async (req, r
   const payload = req.body;
 
   if (!payload.type || !payload.date || !payload.title) {
-    return res.status(400).json({ error: "type, date e title sÃ£o obrigatÃ³rios" });
+    return res.status(400).json({ error: "type, date e title são obrigatórios" });
   }
 
   const allowedTypes = ["visit", "consultation", "vaccine", "procedure", "note", "prescription", "exam_request", "referral", "nursing", "evolution", "attendance_attest", "medical_attest"];
   const type = String(payload.type);
 
   if (!allowedTypes.includes(type)) {
-    return res.status(400).json({ error: "Tipo de registro invÃ¡lido" });
+    return res.status(400).json({ error: "Tipo de registro inválido" });
   }
 
   const db = await readDb();
@@ -628,20 +628,20 @@ router.delete("/patients/:id/records/:recordId", validate(CriticalActionReasonSc
   const result = await withDb((db) => {
     ensureDbShape(db);
     const patient = db.patients.find((p) => p.id === patientId);
-    if (!patient) return { error: { status: 404, message: "Paciente nÃ£o encontrado" } };
-    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissÃ£o para este paciente" } };
+    if (!patient) return { error: { status: 404, message: "Paciente não encontrado" } };
+    if (!canAccessPatient(req.user, patient)) return { error: { status: 403, message: "Sem permissão para este paciente" } };
 
     const index = db.clinicalRecords.findIndex((r) => r.id === recordId && r.patientId === patientId);
-    if (index < 0) return { error: { status: 404, message: "Registro nÃ£o encontrado" } };
+    if (index < 0) return { error: { status: 404, message: "Registro não encontrado" } };
 
     const current = db.clinicalRecords[index];
     if (isAcs(req.user)) {
       const canDeleteOwnVisit = current.type === "visit" && current.createdBy === req.user.id;
       if (!canDeleteOwnVisit) {
-        return { error: { status: 403, message: "ACS pode excluir apenas visita prÃ³pria registrada por ele" } };
+        return { error: { status: 403, message: "ACS pode excluir apenas visita própria registrada por ele" } };
       }
     } else if (!(isManager(req.user) || isDoctor(req.user))) {
-      return { error: { status: 403, message: "Sem permissÃ£o para excluir registro" } };
+      return { error: { status: 403, message: "Sem permissão para excluir registro" } };
     }
 
     db.clinicalRecords.splice(index, 1);
@@ -714,11 +714,11 @@ router.post("/patients/:id/messages", async (req, res) => {
   const payload = req.body;
 
   if (isAcs(req.user)) {
-    return res.status(403).json({ error: "ACS nÃ£o pode enviar mensagens neste mÃ³dulo" });
+    return res.status(403).json({ error: "ACS não pode enviar mensagens neste módulo" });
   }
 
   if (!payload.text) {
-    return res.status(400).json({ error: "text Ã© obrigatÃ³rio" });
+    return res.status(400).json({ error: "text é obrigatório" });
   }
 
   const db = await readDb();
@@ -748,21 +748,21 @@ router.post("/patients/:id/messages", async (req, res) => {
 
 router.get("/metrics/demand/monthly", async (req, res) => {
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Apenas enfermeira e mÃ©dica podem acessar este indicador" });
+    return res.status(403).json({ error: "Apenas enfermeira e médica podem acessar este indicador" });
   }
   const db = await readDb();
   ensureDbShape(db);
   const month = String(req.query.month || "").trim();
   const metric = buildMonthlyDemandMetric(db, req.user.teamId, month);
   if (!metric) {
-    return res.status(400).json({ error: "ParÃ¢metro month invÃ¡lido. Use YYYY-MM." });
+    return res.status(400).json({ error: "Parâmetro month inválido. Use YYYY-MM." });
   }
   return res.json(metric);
 });
 
 router.get("/metrics/data-quality", async (req, res) => {
   if (!(isManager(req.user) || isDoctor(req.user))) {
-    return res.status(403).json({ error: "Apenas enfermeira e mÃ©dica podem acessar qualidade de dados" });
+    return res.status(403).json({ error: "Apenas enfermeira e médica podem acessar qualidade de dados" });
   }
   const db = await readDb();
   ensureDbShape(db);

@@ -72,7 +72,7 @@ if (IS_PROD && !process.env.DATA_ENCRYPTION_KEY) {
   );
 }
 if (IS_PROD && COOKIE_SAME_SITE === "none" && !COOKIE_SECURE) {
-  throw new Error("COOKIE_SECURE=true obrigatÃ³rio em produÃ§Ã£o quando COOKIE_SAME_SITE=none");
+  throw new Error("COOKIE_SECURE=true obrigatório em produção quando COOKIE_SAME_SITE=none");
 }
 if (IS_PROD && !BACKUP_EXPORT_KEY) {
   throw new Error("BACKUP_EXPORT_KEY obrigatorio em producao");

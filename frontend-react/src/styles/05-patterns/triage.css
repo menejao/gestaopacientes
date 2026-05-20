@@ -9,6 +9,8 @@
 .triage-page > .page-header,
 .triage-page > .hero { margin: var(--s-6) var(--s-6) 0; }
 
+.triage-page .page-kpi-grid { margin: 0 var(--s-6); }
+
 /* ── Status operacional na hero ───────────────────────────────── */
 .triage-online-status {
   display: flex;
@@ -113,17 +115,27 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--s-2);
-  padding: var(--s-8) var(--s-4);
-  font: 400 var(--t-sm) var(--font-sans);
-  color: var(--text-dim);
+  gap: var(--s-3);
+  padding: var(--s-10) var(--s-6);
   text-align: center;
 }
 
 .triage-queue__empty-icon {
   color: var(--text-dim);
-  opacity: .35;
-  margin-bottom: var(--s-1);
+  opacity: .25;
+  margin-bottom: var(--s-2);
+}
+
+.triage-queue__empty-title {
+  font: 600 var(--t-base) var(--font-sans);
+  color: var(--text-muted);
+}
+
+.triage-queue__empty-desc {
+  font: 400 var(--t-sm) var(--font-sans);
+  color: var(--text-dim);
+  max-width: 28ch;
+  line-height: var(--lh-relaxed);
 }
 
 /* ── Queue entry card ─────────────────────────────────────────── */

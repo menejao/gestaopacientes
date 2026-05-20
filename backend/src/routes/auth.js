@@ -146,18 +146,18 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
   const councilType = councilTypeForRole(role);
 
   if (!name || !email || !password || !role) {
-    return res.status(400).json({ error: "name, email, password e role sÃ£o obrigatÃ³rios" });
+    return res.status(400).json({ error: "name, email, password e role são obrigatórios" });
   }
   if (!isValidEmail(email)) {
-    return res.status(400).json({ error: "E-mail invÃ¡lido" });
+    return res.status(400).json({ error: "E-mail inválido" });
   }
   if (!isStrongPassword(password)) {
     return res.status(400).json({
-      error: "Senha fraca: mÃ­nimo de 8 caracteres, 1 letra maiÃºscula, 1 nÃºmero e 1 caractere especial"
+      error: "Senha fraca: mínimo de 8 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial"
     });
   }
   if (!PUBLIC_SELF_REGISTER_ROLES.includes(role)) {
-    return res.status(400).json({ error: "Perfil nÃ£o disponÃ­vel para auto cadastro pÃºblico" });
+    return res.status(400).json({ error: "Perfil não disponível para auto cadastro público" });
   }
 
   const councilValidation = validateCouncilData(role, payload.councilNumber, payload.councilUf);
@@ -182,14 +182,14 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
     };
   if (!externalCheck.valid) {
     return res.status(400).json({
-      error: externalCheck.error || "Conselho nÃ£o validado no provedor externo"
+      error: externalCheck.error || "Conselho não validado no provedor externo"
     });
   }
 
   const result = await withDb((db) => {
     ensureDbShape(db);
     if (db.users.some((u) => String(u.email || "").toLowerCase() === email)) {
-      return { error: "E-mail jÃ¡ cadastrado", status: 409 };
+      return { error: "E-mail já cadastrado", status: 409 };
     }
 
     const duplicatedCouncil = roleNeedsCouncil(role) && db.users.some((u) => {
@@ -200,17 +200,17 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
         && String(u.councilUf || "").toUpperCase() === councilValidation.councilUf;
     });
     if (duplicatedCouncil) {
-      return { error: `${councilType} jÃ¡ cadastrado para outro usuÃ¡rio`, status: 409 };
+      return { error: `${councilType} já cadastrado para outro usuário`, status: 409 };
     }
 
     const requiresTeam = role !== "gestor";
     const teamId = String(payload.teamId || "").trim();
     const team = requiresTeam ? db.teams.find((t) => t.id === teamId) : null;
     if (requiresTeam && !teamId) {
-      return { error: "teamId Ã© obrigatÃ³rio para cadastro", status: 400 };
+      return { error: "teamId é obrigatório para cadastro", status: 400 };
     }
     if (requiresTeam && !team) {
-      return { error: "Equipe informada nÃ£o existe", status: 400 };
+      return { error: "Equipe informada não existe", status: 400 };
     }
 
     const user = {
@@ -257,11 +257,11 @@ router.post("/auth/register", authRateLimit, validate(RegisterSchema), async (re
 });
 
 router.post("/auth/register/request-code", authRateLimit, async (_req, res) => {
-  return res.status(410).json({ error: "Fluxo de cÃ³digo desativado. Use /auth/register." });
+  return res.status(410).json({ error: "Fluxo de código desativado. Use /auth/register." });
 });
 
 router.post("/auth/register/confirm", authRateLimit, async (_req, res) => {
-  return res.status(410).json({ error: "Fluxo de cÃ³digo desativado. Use /auth/register." });
+  return res.status(410).json({ error: "Fluxo de código desativado. Use /auth/register." });
 });
 
 router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res) => {
@@ -300,7 +300,7 @@ router.post("/auth/login", authRateLimit, validate(LoginSchema), async (req, res
         { outcome: "denied", email: normalizedEmail }
       );
     });
-    return res.status(401).json({ error: "Credenciais invÃ¡lidas" });
+    return res.status(401).json({ error: "Credenciais inválidas" });
   }
 
   if (!isHashedPassword(user.password)) {
@@ -383,25 +383,25 @@ router.post("/auth/login/verify", authRateLimit, async (req, res) => {
   const challengeId = String(req.body?.challengeId || "").trim();
   const code = String(req.body?.code || "").replace(/\D+/g, "");
   if (!challengeId || code.length !== 6) {
-    return res.status(400).json({ error: "challengeId e code (6 dÃ­gitos) sÃ£o obrigatÃ³rios" });
+    return res.status(400).json({ error: "challengeId e code (6 dígitos) são obrigatórios" });
   }
 
   const result = await withDb((db) => {
     ensureDbShape(db);
     const challengeIndex = db.loginChallenges.findIndex((item) => String(item.id || "") === challengeId);
-    if (challengeIndex < 0) return { error: { status: 404, message: "Desafio de login nÃ£o encontrado" } };
+    if (challengeIndex < 0) return { error: { status: 404, message: "Desafio de login não encontrado" } };
     const challenge = db.loginChallenges[challengeIndex];
-    if (challenge.consumed) return { error: { status: 400, message: "Desafio de login jÃ¡ utilizado" } };
+    if (challenge.consumed) return { error: { status: 400, message: "Desafio de login já utilizado" } };
     if (Date.parse(String(challenge.expiresAt || "")) < Date.now()) {
       challenge.consumed = true;
       return { error: { status: 401, message: "Desafio de login expirado" } };
     }
 
     const userIndex = db.users.findIndex((u) => u.id === challenge.userId);
-    if (userIndex < 0) return { error: { status: 404, message: "UsuÃ¡rio do desafio nÃ£o encontrado" } };
+    if (userIndex < 0) return { error: { status: 404, message: "Usuário do desafio não encontrado" } };
     const user = db.users[userIndex];
     if (!user.twoFactorEnabled || !user.twoFactorSecret) {
-      return { error: { status: 400, message: "2FA nÃ£o estÃ¡ habilitado para este usuÃ¡rio" } };
+      return { error: { status: 400, message: "2FA não está habilitado para este usuário" } };
     }
 
     const ok = verifyTotpCode(user.twoFactorSecret, code);
@@ -410,7 +410,7 @@ router.post("/auth/login/verify", authRateLimit, async (req, res) => {
       if (challenge.attempts >= TWOFA_MAX_ATTEMPTS) {
         challenge.consumed = true;
       }
-      return { error: { status: 401, message: "CÃ³digo 2FA invÃ¡lido" } };
+      return { error: { status: 401, message: "Código 2FA inválido" } };
     }
 
     challenge.consumed = true;
@@ -437,27 +437,27 @@ router.post("/auth/login/verify", authRateLimit, async (req, res) => {
 
 router.post("/auth/refresh", authRateLimit, async (req, res) => {
   const rawToken = String(req.body?.refreshToken || parseCookies(req)[COOKIE_REFRESH_NAME] || "").trim();
-  if (!rawToken) return res.status(400).json({ error: "refreshToken Ã© obrigatÃ³rio" });
+  if (!rawToken) return res.status(400).json({ error: "refreshToken é obrigatório" });
   const tokenHash = hashToken(rawToken);
   const preloadedRecord = await findRefreshTokenByHash(tokenHash);
-  if (!preloadedRecord) return res.status(401).json({ error: "Refresh token invÃ¡lido" });
+  if (!preloadedRecord) return res.status(401).json({ error: "Refresh token inválido" });
   const preloadedUser = await findUserById(preloadedRecord.userId);
-  if (!preloadedUser) return res.status(401).json({ error: "UsuÃ¡rio nÃ£o encontrado" });
+  if (!preloadedUser) return res.status(401).json({ error: "Usuário não encontrado" });
 
   const result = await withDb((db) => {
     ensureDbShape(db);
     const index = db.refreshTokens.findIndex((item) => item.tokenHash === tokenHash);
-    if (index < 0) return { error: { status: 401, message: "Refresh token invÃ¡lido" } };
+    if (index < 0) return { error: { status: 401, message: "Refresh token inválido" } };
 
     const record = db.refreshTokens[index];
-    if (record.revokedAt) return { error: { status: 401, message: "SessÃ£o encerrada" } };
+    if (record.revokedAt) return { error: { status: 401, message: "Sessão encerrada" } };
     if (new Date(record.expiresAt) < new Date()) {
       db.refreshTokens[index].revokedAt = new Date().toISOString();
-      return { error: { status: 401, message: "SessÃ£o expirada" } };
+      return { error: { status: 401, message: "Sessão expirada" } };
     }
 
     const user = db.users.find((item) => item.id === record.userId);
-    if (!user) return { error: { status: 401, message: "UsuÃ¡rio nÃ£o encontrado" } };
+    if (!user) return { error: { status: 401, message: "Usuário não encontrado" } };
 
     db.refreshTokens[index].revokedAt = new Date().toISOString();
     const refresh = createRefreshToken(user.id, record.ip, db, record.sessionContext || {});
