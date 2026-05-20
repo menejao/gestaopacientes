@@ -17,12 +17,19 @@ const SENSITIVE_USER_FIELDS = ["twoFactorSecret", "twoFactorPendingSecret"];
 const pool = DATABASE_URL
   ? new Pool({
       connectionString: DATABASE_URL,
-      ssl: true,
+      ssl: { rejectUnauthorized: false },
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
     })
   : null;
+
+// Prevent unhandled pool errors from crashing the process.
+if (pool) {
+  pool.on("error", (err) => {
+    console.error("[db:pool] idle client error:", err.message, err.code);
+  });
+}
 
 let _dbCache = null;
 let _dbCacheAt = 0;
