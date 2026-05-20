@@ -14,9 +14,27 @@ const ENC_PREFIX = "enc1:";
 const SENSITIVE_PATIENT_FIELDS = ["cpf", "cns", "cnsCpf"];
 const SENSITIVE_USER_FIELDS = ["twoFactorSecret", "twoFactorPendingSecret"];
 
-const pool = DATABASE_URL
+// Strip SSL-related query params from the connection string so they cannot
+// override the explicit ssl:{rejectUnauthorized:false} config below.
+// AWS RDS / Neon / Supabase append sslmode=require or sslmode=verify-full
+// which causes SELF_SIGNED_CERT_IN_CHAIN in Node when the AWS CA bundle
+// is not in the system trust store.
+function stripSslParams(url) {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    ["sslmode", "sslcert", "sslkey", "sslrootcert", "sslpassword"].forEach((p) => u.searchParams.delete(p));
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+const DATABASE_URL_CLEAN = stripSslParams(DATABASE_URL);
+
+const pool = DATABASE_URL_CLEAN
   ? new Pool({
-      connectionString: DATABASE_URL,
+      connectionString: DATABASE_URL_CLEAN,
       ssl: { rejectUnauthorized: false },
       max: 10,
       idleTimeoutMillis: 30000,
@@ -24,8 +42,8 @@ const pool = DATABASE_URL
     })
   : null;
 
-// Prevent unhandled pool errors from crashing the process.
 if (pool) {
+  console.log("[db] SSL enabled — rejectUnauthorized=false (RDS/Neon compatible)");
   pool.on("error", (err) => {
     console.error("[db:pool] idle client error:", err.message, err.code);
   });

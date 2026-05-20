@@ -13,15 +13,15 @@ import { Pool } from "pg";
 
 const DATABASE_URL = String(process.env.DATABASE_URL || "").trim();
 
-// AWS RDS uses an AWS-issued CA. Setting rejectUnauthorized=false allows SSL
-// without requiring the AWS bundle to be in the Node trust store.
-// Override with DB_SSL_REJECT_UNAUTHORIZED=true if your env has the cert bundle.
-const DB_SSL_REJECT_UNAUTHORIZED =
-  String(process.env.DB_SSL_REJECT_UNAUTHORIZED || "false").trim().toLowerCase() === "true";
-
-function buildSslConfig() {
-  if (!DATABASE_URL) return undefined;
-  return { rejectUnauthorized: DB_SSL_REJECT_UNAUTHORIZED };
+function stripSslParams(url) {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    ["sslmode", "sslcert", "sslkey", "sslrootcert", "sslpassword"].forEach((p) => u.searchParams.delete(p));
+    return u.toString();
+  } catch {
+    return url;
+  }
 }
 
 async function runMigrations() {
@@ -31,8 +31,8 @@ async function runMigrations() {
   }
 
   const pool = new Pool({
-    connectionString: DATABASE_URL,
-    ssl: buildSslConfig(),
+    connectionString: stripSslParams(DATABASE_URL),
+    ssl: { rejectUnauthorized: false },
     max: 2,
     connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 10000,
