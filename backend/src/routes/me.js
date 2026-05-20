@@ -389,6 +389,22 @@ router.patch("/me", requireAuth, validate(MePatchSchema), async (req, res) => {
   return res.json(result);
 });
 
+router.post("/me/verify-password", requireAuth, async (req, res) => {
+  const { password } = req.body || {};
+  if (!password) return res.status(400).json({ error: "Senha obrigatória." });
+  const result = await withDb(async (db) => {
+    ensureDbShape(db);
+    const user = db.users.find((u) => u.id === req.user.id);
+    if (!user) return { error: { status: 404, message: "Usuário não encontrado" } };
+    if (!verifyPassword(String(password), user.password)) {
+      return { error: { status: 401, message: "Senha incorreta." } };
+    }
+    return { ok: true };
+  });
+  if (result.error) return res.status(result.error.status).json({ error: result.error.message });
+  return res.json(result);
+});
+
 router.post("/me/impersonation/start", requireAuth, validate(ImpersonationStartSchema), async (req, res) => {
   if (!hasCapability(req.user, "session.impersonate")) {
     return res.status(403).json({ error: "Sessão atual não pode assumir contexto de outro usuário" });

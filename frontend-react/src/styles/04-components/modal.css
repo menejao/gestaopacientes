@@ -42,6 +42,7 @@
   animation: modal-in var(--d-slow) var(--ease-out);
 }
 
+.modal--sm { max-width: 400px; }
 .modal--lg { max-width: 720px; }
 .modal--xl { max-width: 960px; }
 

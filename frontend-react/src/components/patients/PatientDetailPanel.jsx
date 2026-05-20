@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { createRecord, createTask } from "../../api";
+import { createRecord, createTask, verifyCurrentPassword } from "../../api";
+import { printExamRequest, printPrescription } from "../../utils/printDoc";
 import { parseLocalDate } from "../../utils/dates";
 import { googleCalendarUrl } from "../../utils/dates";
 import { initials } from "../../utils/formatting";
@@ -745,6 +746,7 @@ function ExamRequestModal({ patient, user, token, onClose }) {
   const [justification, setJustification] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(null);
 
   function addExam() { setExams(s => [...s, { type: "Hemograma completo", name: "", urgency: "routine", notes: "" }]); }
   function removeExam(i) { setExams(s => s.filter((_, idx) => idx !== i)); }
@@ -765,8 +767,38 @@ function ExamRequestModal({ patient, user, token, onClose }) {
         justification ? `\nJustificativa clinica: ${justification}` : "",
       ].filter(Boolean).join("\n");
       await createRecord(token, patient.id, { type: "exam_request", date: today, time: new Date().toTimeString().slice(0, 5), title: `Pedido de exame: ${title}`, details, immutable: true, professionalName: user?.name || "", professionalCouncil: getCouncilLabel(user) });
-      onClose(true);
+      setSaved({ valid, justification });
     } catch (error) { setErr(error?.message || "Erro ao salvar."); } finally { setBusy(false); }
+  }
+
+  function handlePrint() {
+    printExamRequest({
+      patient,
+      items: (saved?.valid || []).map(exam => ({
+        name: exam.type === "Outros" ? exam.name.trim() : exam.type,
+        detail: [exam.urgency === "urgent" ? "URGENTE" : exam.urgency === "priority" ? "PRIORITÁRIO" : "", exam.notes].filter(Boolean).join(" — ") || undefined,
+      })),
+      justification: saved?.justification,
+      professional: user,
+    });
+  }
+
+  if (saved) {
+    return (
+      <Modal title="Pedido de exame" onClose={() => onClose(true)} className="modal--lg"
+        actions={<>
+          <Button variant="secondary" type="button" onClick={() => onClose(true)}>Fechar</Button>
+          <Button type="button" onClick={handlePrint}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{ marginRight: 6 }}><rect x="3" y="9" width="10" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M3 9V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v4" stroke="currentColor" strokeWidth="1.3"/><path d="M5 4V2h6v2" stroke="currentColor" strokeWidth="1.3"/><circle cx="12" cy="7" r=".75" fill="currentColor"/></svg>
+            Imprimir pedido
+          </Button>
+        </>}>
+        <div className="aclin-modal-stack">
+          <Alert tone="success">Pedido de exame registrado com sucesso.</Alert>
+          <p style={{ fontSize: "var(--fs-sm)", color: "var(--text-2)" }}>Clique em <strong>Imprimir pedido</strong> para gerar o documento imprimível.</p>
+        </div>
+      </Modal>
+    );
   }
 
   return (
@@ -825,18 +857,30 @@ function PrescriptionModal({ patient, user, token, onClose }) {
   const [validity, setValidity] = useState("30");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState("form"); // "form" | "password" | "saved"
+  const [password, setPassword] = useState("");
+  const [savedMeds, setSavedMeds] = useState(null);
 
   function addMed() { setMeds(s => [...s, { name: "", custom: "", dosage: "", frequency: "", duration: "", route: "", notes: "" }]); }
   function removeMed(i) { setMeds(s => s.filter((_, idx) => idx !== i)); }
   function updateMed(i, k, v) { setMeds(s => s.map((m, idx) => idx === i ? { ...m, [k]: v } : m)); }
 
-  async function submit(e) {
+  function requestConfirm(e) {
     e.preventDefault();
     const valid = meds.filter(med => (med.name && med.name !== "Outros (digitar)") || med.custom.trim());
     if (!valid.length) { setErr("Adicione ao menos um medicamento."); return; }
     if (valid.find(med => !med.dosage.trim() || !med.frequency.trim())) { setErr("Preencha dose e frequência para todos os medicamentos."); return; }
+    setErr(""); setStep("password");
+  }
+
+  async function confirmAndSave(e) {
+    e.preventDefault();
+    if (!password) { setErr("Informe sua senha para confirmar."); return; }
     setBusy(true); setErr("");
     try {
+      const verify = await verifyCurrentPassword(token, password);
+      if (!verify?.ok) { setErr("Senha incorreta. Tente novamente."); setBusy(false); return; }
+      const valid = meds.filter(med => (med.name && med.name !== "Outros (digitar)") || med.custom.trim());
       const title = valid.map(med => med.name === "Outros (digitar)" ? med.custom.trim() : med.name).join(", ");
       const details = [
         `PRESCRICAO MEDICA - emitida em ${new Date().toLocaleDateString("pt-BR")}`,
@@ -849,15 +893,67 @@ function PrescriptionModal({ patient, user, token, onClose }) {
         }),
       ].join("\n");
       await createRecord(token, patient.id, { type: "prescription", date: today, time: new Date().toTimeString().slice(0, 5), title: `Prescricao: ${title}`, details, immutable: true, professionalName: user?.name || "", professionalCouncil: getCouncilLabel(user) });
-      onClose(true);
+      setSavedMeds(valid);
+      setStep("saved");
     } catch (error) { setErr(error?.message || "Erro ao salvar."); } finally { setBusy(false); }
+  }
+
+  function handlePrint() {
+    printPrescription({
+      patient,
+      medications: (savedMeds || []).map(med => ({
+        name: med.name === "Outros (digitar)" ? med.custom.trim() : med.name,
+        dosage: med.dosage,
+        instructions: [med.route ? `Via ${med.route}` : "", `${med.frequency}${med.duration ? ` por ${med.duration}` : ""}`, med.notes].filter(Boolean).join(" · "),
+      })),
+      professional: user,
+    });
+  }
+
+  if (step === "saved") {
+    return (
+      <Modal title="Prescrição de medicamentos" onClose={() => onClose(true)} className="modal--lg"
+        actions={<>
+          <Button variant="secondary" type="button" onClick={() => onClose(true)}>Fechar</Button>
+          <Button type="button" onClick={handlePrint}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{ marginRight: 6 }}><rect x="3" y="9" width="10" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M3 9V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v4" stroke="currentColor" strokeWidth="1.3"/><path d="M5 4V2h6v2" stroke="currentColor" strokeWidth="1.3"/><circle cx="12" cy="7" r=".75" fill="currentColor"/></svg>
+            Imprimir prescrição
+          </Button>
+        </>}>
+        <div className="aclin-modal-stack">
+          <Alert tone="success">Prescrição registrada com sucesso.</Alert>
+          <p style={{ fontSize: "var(--fs-sm)", color: "var(--text-2)" }}>Clique em <strong>Imprimir prescrição</strong> para gerar o documento imprimível.</p>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (step === "password") {
+    return (
+      <Modal title="Confirmar identidade" onClose={() => { setStep("form"); setPassword(""); setErr(""); }} className="modal--sm"
+        actions={<>
+          <Button variant="secondary" type="button" onClick={() => { setStep("form"); setPassword(""); setErr(""); }}>Voltar</Button>
+          <Button type="button" onClick={confirmAndSave} disabled={busy}>{busy ? "Verificando..." : "Confirmar e emitir"}</Button>
+        </>}>
+        <div className="aclin-modal-stack">
+          <div className="aclin-pw-confirm">
+            <div className="aclin-pw-confirm__icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="16" r="1.2" fill="currentColor"/></svg>
+            </div>
+            <p className="aclin-pw-confirm__text">Prescrições exigem confirmação de identidade. Informe sua senha para prosseguir.</p>
+          </div>
+          <Input label="Sua senha" type="password" value={password} onChange={e => setPassword(e.target.value)} autoFocus onKeyDown={e => e.key === "Enter" && confirmAndSave(e)} />
+          {err && <Alert tone="danger">{err}</Alert>}
+        </div>
+      </Modal>
+    );
   }
 
   return (
     <Modal title="Prescrição de medicamentos" onClose={() => onClose(false)} className="modal--lg"
       actions={<>
         <Button variant="secondary" type="button" onClick={() => onClose(false)}>Cancelar</Button>
-        <Button type="button" onClick={submit} disabled={busy}>{busy ? "Registrando..." : "Emitir prescrição"}</Button>
+        <Button type="button" onClick={requestConfirm} disabled={busy}>Revisar e confirmar</Button>
       </>}>
       <div className="aclin-modal-stack">
         {meds.map((med, idx) => (

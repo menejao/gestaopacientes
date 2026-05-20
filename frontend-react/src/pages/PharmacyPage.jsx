@@ -1,5 +1,7 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { isPharmacist } from "../utils/roles";
+import { fetchPrescriptions } from "../api";
+import { printPrescription } from "../utils/printDoc";
 import PageHeader from "../components/layout/PageHeader";
 import PageShell from "../components/layout/PageShell";
 import PageToolbar from "../components/layout/PageToolbar";
@@ -282,6 +284,7 @@ function StockEditModal({ item, mode, categories, units, onConfirm, onClose }) {
 
 function PharmacyPage({
   user,
+  token,
   patients = [],
   users = [],
   stock = [],
@@ -296,6 +299,18 @@ function PharmacyPage({
   onDispense,
 }) {
   const [pharmaTab, setPharmaTab] = useState("stock");
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [rxSearch, setRxSearch] = useState("");
+  const [rxLoading, setRxLoading] = useState(false);
+
+  useEffect(() => {
+    if (pharmaTab !== "prescriptions" || !token) return;
+    setRxLoading(true);
+    fetchPrescriptions(token)
+      .then(r => setPrescriptions(r?.prescriptions || []))
+      .catch(() => {})
+      .finally(() => setRxLoading(false));
+  }, [pharmaTab, token]);
   const [catFilter, setCatFilter] = useState("Todas");
   const [search, setSearch] = useState("");
   const [showLowOnly, setShowLowOnly] = useState(false);
@@ -414,6 +429,7 @@ function PharmacyPage({
         <Tabs>
           <Tab active={pharmaTab === "stock"} onClick={() => setPharmaTab("stock")}>Estoque</Tab>
           <Tab active={pharmaTab === "log"} onClick={() => setPharmaTab("log")}>Log de Movimentacoes</Tab>
+          <Tab active={pharmaTab === "prescriptions"} onClick={() => setPharmaTab("prescriptions")}>Prescricoes</Tab>
         </Tabs>
       </PageToolbar>
 
@@ -550,6 +566,60 @@ function PharmacyPage({
                         {entry.type === "edicao" ? <span>Dados atualizados</span> : null}
                       </td>
                       <td className="muted small">{entry.pharma}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+        {pharmaTab === "prescriptions" && (
+          <>
+            <PageToolbar className="pharma-toolbar">
+              <div className="pharma-search">
+                <Input value={rxSearch} onChange={e => setRxSearch(e.target.value)} placeholder="Buscar paciente ou medicamento..." />
+              </div>
+            </PageToolbar>
+            <div className="card card--noPad overflow-hidden">
+              <table className="patients-table" style={{ width: "100%" }}>
+                <thead>
+                  <tr>
+                    <th>Paciente</th>
+                    <th>Medicamentos</th>
+                    <th>Profissional</th>
+                    <th>Data</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rxLoading ? (
+                    <tr><td colSpan={5} style={{ textAlign: "center", padding: "2rem", color: "var(--text-2)" }}>Carregando prescricoes...</td></tr>
+                  ) : prescriptions.filter(rx => {
+                    if (!rxSearch) return true;
+                    const q = rxSearch.toLowerCase();
+                    return String(rx.patientName || "").toLowerCase().includes(q) || String(rx.title || "").toLowerCase().includes(q);
+                  }).length === 0 ? (
+                    <tr><td colSpan={5} style={{ textAlign: "center", padding: "2rem", color: "var(--text-2)" }}>Nenhuma prescricao encontrada.</td></tr>
+                  ) : prescriptions.filter(rx => {
+                    if (!rxSearch) return true;
+                    const q = rxSearch.toLowerCase();
+                    return String(rx.patientName || "").toLowerCase().includes(q) || String(rx.title || "").toLowerCase().includes(q);
+                  }).map(rx => (
+                    <tr key={rx.id}>
+                      <td><strong>{rx.patientName}</strong></td>
+                      <td className="small" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(rx.title || "").replace(/^Prescricao:\s*/i, "")}</td>
+                      <td className="muted small">{rx.professionalName || "—"}</td>
+                      <td className="muted small">{rx.date ? new Date(rx.date + "T12:00:00").toLocaleDateString("pt-BR") : "—"}</td>
+                      <td>
+                        <Button size="sm" variant="ghost" onClick={() => printPrescription({
+                          patient: { name: rx.patientName, id: rx.patientId },
+                          medications: String(rx.title || "").replace(/^Prescricao:\s*/i, "").split(", ").map(n => ({ name: n })),
+                          professional: { name: rx.professionalName, councilNumber: rx.professionalCouncil },
+                        })}>
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="9" width="10" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M3 9V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v4" stroke="currentColor" strokeWidth="1.3"/><path d="M5 4V2h6v2" stroke="currentColor" strokeWidth="1.3"/><circle cx="12" cy="7" r=".75" fill="currentColor"/></svg>
+                          Imprimir
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

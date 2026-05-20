@@ -529,6 +529,23 @@ router.delete("/patients/:id/appointments/:appointmentId", validate(CriticalActi
   return res.json({ ok: true });
 });
 
+router.get("/records/prescriptions", async (req, res) => {
+  const db = await readDb();
+  ensureDbShape(db);
+  const allowedPatients = getAllowedPatients(db, req.user, {});
+  const prescriptions = [];
+  for (const p of allowedPatients) {
+    const recs = (db.clinicalRecords || []).filter(r =>
+      r.patientId === p.id && String(r.type || "").toLowerCase() === "prescription"
+    );
+    for (const r of recs) {
+      prescriptions.push({ ...r, patientName: p.name, patientId: p.id });
+    }
+  }
+  prescriptions.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  return res.json({ prescriptions });
+});
+
 router.post("/patients/:id/records", validate(RecordCreateSchema), async (req, res) => {
   const { id } = req.params;
   const payload = req.body;
@@ -537,7 +554,7 @@ router.post("/patients/:id/records", validate(RecordCreateSchema), async (req, r
     return res.status(400).json({ error: "type, date e title sÃ£o obrigatÃ³rios" });
   }
 
-  const allowedTypes = ["visit", "consultation", "vaccine", "procedure", "note"];
+  const allowedTypes = ["visit", "consultation", "vaccine", "procedure", "note", "prescription", "exam_request", "referral", "nursing", "evolution"];
   const type = String(payload.type);
 
   if (!allowedTypes.includes(type)) {

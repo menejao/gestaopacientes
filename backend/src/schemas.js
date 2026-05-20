@@ -227,7 +227,7 @@ const ExamAttachmentCreateSchema = z.object({
 });
 
 const RecordCreateSchema = z.object({
-  type: z.enum(["visit", "consultation", "vaccine", "procedure", "note"]),
+  type: z.enum(["visit", "consultation", "vaccine", "procedure", "note", "prescription", "exam_request", "referral", "nursing", "evolution"]),
   date: z.string().trim().min(1).max(50),
   title: z.string().trim().min(1).max(500),
   details: optionalShortString(20000),

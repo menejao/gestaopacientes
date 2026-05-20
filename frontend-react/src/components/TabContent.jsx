@@ -139,7 +139,7 @@ export function TabContent({
 
       {tab === "pharmacy" && (
         <PharmacyPage
-          user={user} patients={patients} users={usersResolved} templates={templates} history={history}
+          user={user} token={token} patients={patients} users={usersResolved} templates={templates} history={history}
           stock={pharmacyStock} log={pharmacyLog} loading={pharmacyLoading} error={pharmacyError}
           canRead={canUsePharmacy} canWrite={Boolean(user?.capabilities?.includes("pharmacy.write"))}
           onCreateStockItem={createPharmacyItem} onUpdateStockItem={updatePharmacyItem}

@@ -344,6 +344,10 @@ export async function createRecord(token, patientId, payload) {
   return api(`/patients/${patientId}/records`, { method: "POST", body: JSON.stringify(payload) }, token);
 }
 
+export async function fetchPrescriptions(token) {
+  return api("/records/prescriptions", { method: "GET" }, token);
+}
+
 export async function deleteRecord(token, patientId, recordId, payload = {}) {
   return api(`/patients/${patientId}/records/${recordId}`, {
     method: "DELETE",
@@ -365,6 +369,10 @@ export async function updateUser(token, userId, payload) {
 
 export async function updateMe(token, payload) {
   return api("/me", { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export async function verifyCurrentPassword(token, password) {
+  return api("/me/verify-password", { method: "POST", body: JSON.stringify({ password }) }, token);
 }
 
 export async function getUserUsage(token, userId) {
