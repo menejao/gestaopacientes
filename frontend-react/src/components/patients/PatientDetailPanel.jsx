@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createRecord, createTask, verifyCurrentPassword } from "../../api";
-import { printExamRequest, printPrescription } from "../../utils/printDoc";
+import { printExamRequest, printPrescription, printAttendanceAttest, printMedicalAttest } from "../../utils/printDoc";
 import { parseLocalDate } from "../../utils/dates";
 import { googleCalendarUrl } from "../../utils/dates";
 import { initials } from "../../utils/formatting";
@@ -10,6 +10,7 @@ import { VACCINE_OPTIONS } from "../../config/constants";
 import { inferVaccineDoseTitle } from "../../pages/VaccinesPage";
 import Alert from "../ui/Alert";
 import Button from "../ui/Button";
+import Checkbox from "../ui/Checkbox";
 import Input from "../ui/Input";
 import Modal from "../ui/Modal";
 import Select from "../ui/Select";
@@ -223,6 +224,7 @@ const HIST_TYPE_LABELS = {
   message: "Mensagem interna", exam: "Exame", exam_request: "Pedido de exame",
   prescription: "Prescrição", referral: "Encaminhamento",
   nursing: "Evolução de enfermagem", evolution: "Evolução clínica", home_visit: "Visita domiciliar",
+  attendance_attest: "Declaração de comparecimento", medical_attest: "Atestado médico",
 };
 const HIST_TYPE_COLORS = {
   consultation:  ["#1d4ed8", "#eff6ff", "#bfdbfe"],
@@ -316,8 +318,7 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
           {allEvents.length} {filter === "all" ? "eventos" : "registros"} · {allEvents.filter(e => !e.internalOnly).length} clínicos
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: ".35rem", fontSize: ".72rem", color: "var(--text-3)", cursor: "pointer", userSelect: "none" }}>
-          <input type="checkbox" checked={showInternal} onChange={e => setShowInternal(e.target.checked)}
-            style={{ width: 12, height: 12, accentColor: "var(--teal-600)" }} />
+          <Checkbox checked={showInternal} onChange={e => setShowInternal(e.target.checked)} />
           Mostrar registros internos (tarefas e mensagens)
         </label>
       </div>
@@ -335,7 +336,7 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
 
       <div style={{ display: "flex", gap: ".3rem", flexWrap: "wrap", marginBottom: "1rem" }}>
         {HIST_FILTER_TYPES.map(f => (
-          <button key={f} type="button" onClick={() => setFilter(f)}
+          <Button key={f} type="button" onClick={() => setFilter(f)} variant={filter === f ? "primary" : "secondary"} size="sm"
             style={{
               fontSize: ".71rem", padding: ".2rem .55rem", borderRadius: 999, cursor: "pointer",
               fontWeight: filter === f ? 700 : 400,
@@ -344,7 +345,7 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
               border: `1px solid ${filter === f ? "var(--teal-500)" : "var(--border)"}`,
             }}>
             {f === "all" ? "Todos" : HIST_TYPE_LABELS[f] || f}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -377,13 +378,13 @@ function HistoricoTab({ history, appointments, tasks, messages, canManageUser, o
                     {fmtDate(ev.date)}{ev.time ? ` · ${ev.time}` : ""}
                   </span>
                   {canManageUser && ev.source === "appointment" && (
-                    <button
+                    <Button
                       style={{ background: "none", border: "none", cursor: "pointer", opacity: .6, padding: ".1rem", display: "flex", alignItems: "center" }}
-                      title="Excluir" onClick={() => onDeleteAppointment?.(ev.id)}>
+                      title="Excluir" onClick={() => onDeleteAppointment?.(ev.id)} variant="ghost" size="sm">
                       <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
                         <path d="M3 4h10M5 4V3h6v1M6 7v5M10 7v5M4 4l.5 9h7L12 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -422,10 +423,10 @@ function FollowupTab({ patient, users, recordForm, setRecordForm, recordVaccines
           <label style={{ fontSize: ".78rem", fontWeight: 600, display: "flex", flexDirection: "column", gap: ".25rem" }}>
             Tipo de atendimento
             {acsMode ? (
-              <input className="input" value="Visita domiciliar" disabled />
+              <Input value="Visita domiciliar" disabled />
             ) : (
               <div className="input">
-                <select value={recordForm.type || "consultation"} onChange={e => {
+                <Select value={recordForm.type || "consultation"} onChange={e => {
                   const t = e.target.value;
                   const defaultTitle = t === "consultation"
                     ? (userObj?.role === "doctor" ? "Consulta médica" : userObj?.role === "dentist" ? "Consulta odontológica" : "Consulta de enfermagem")
@@ -438,7 +439,7 @@ function FollowupTab({ patient, users, recordForm, setRecordForm, recordVaccines
                   <option value="vaccine">Vacina</option>
                   <option value="procedure">Procedimento</option>
                   <option value="note">Observação / nota</option>
-                </select>
+                </Select>
               </div>
             )}
           </label>
@@ -453,7 +454,7 @@ function FollowupTab({ patient, users, recordForm, setRecordForm, recordVaccines
             <label style={{ fontSize: ".78rem", fontWeight: 600, display: "flex", flexDirection: "column", gap: ".25rem" }}>
               Tipo de consulta
               <div className="input">
-                <select value={recordForm.consultKind || "medica"} onChange={e => {
+                <Select value={recordForm.consultKind || "medica"} onChange={e => {
                   const k = e.target.value;
                   const titleMap = { medica: "Consulta médica", enfermagem: "Consulta de enfermagem", dentista: "Consulta odontológica" };
                   setRecordForm(s => ({ ...s, consultKind: k, title: titleMap[k] || "Consulta médica", consultDoctor: "", consultSpecialty: "" }));
@@ -461,7 +462,7 @@ function FollowupTab({ patient, users, recordForm, setRecordForm, recordVaccines
                   <option value="medica">Consulta médica</option>
                   <option value="enfermagem">Consulta de enfermagem</option>
                   <option value="dentista">Consulta odontológica (Dentista)</option>
-                </select>
+                </Select>
               </div>
             </label>
             {(recordForm.consultKind === "medica" || !recordForm.consultKind) && (
@@ -469,7 +470,7 @@ function FollowupTab({ patient, users, recordForm, setRecordForm, recordVaccines
                 <label style={{ fontSize: ".78rem", fontWeight: 600, display: "flex", flexDirection: "column", gap: ".25rem" }}>
                   Médico(a) responsável
                   <div className="input">
-                    <select value={recordForm.consultDoctor || ""} onChange={e => setRecordForm(s => ({ ...s, consultDoctor: e.target.value }))}>
+                    <Select value={recordForm.consultDoctor || ""} onChange={e => setRecordForm(s => ({ ...s, consultDoctor: e.target.value }))}>
                       <option value="">— Selecionar —</option>
                       {(users || []).filter(u => u.role === "doctor").map(u => (
                         <option key={u.id} value={u.name}>{u.name}{u.teamName ? ` (${u.teamName})` : ""}</option>
@@ -480,19 +481,19 @@ function FollowupTab({ patient, users, recordForm, setRecordForm, recordVaccines
                           <option value="Dra. Fernanda Costa">Dra. Fernanda Costa</option>
                         </>
                       )}
-                    </select>
+                    </Select>
                   </div>
                 </label>
                 <label style={{ fontSize: ".78rem", fontWeight: 600, display: "flex", flexDirection: "column", gap: ".25rem" }}>
                   Especialidade
                   <div className="input">
-                    <select value={recordForm.consultSpecialty || ""} onChange={e => setRecordForm(s => ({ ...s, consultSpecialty: e.target.value }))}>
+                    <Select value={recordForm.consultSpecialty || ""} onChange={e => setRecordForm(s => ({ ...s, consultSpecialty: e.target.value }))}>
                       <option value="">— Selecionar —</option>
                       <option value="Ginecologia">Ginecologia</option>
                       <option value="Médico da família">Médico da família</option>
                       <option value="Médico geral">Médico geral</option>
                       <option value="Pediatria">Pediatria</option>
-                    </select>
+                    </Select>
                   </div>
                 </label>
               </div>
@@ -501,12 +502,12 @@ function FollowupTab({ patient, users, recordForm, setRecordForm, recordVaccines
               <label style={{ fontSize: ".78rem", fontWeight: 600, display: "flex", flexDirection: "column", gap: ".25rem" }}>
                 Profissional de enfermagem
                 <div className="input">
-                  <select value={recordForm.consultDoctor || ""} onChange={e => setRecordForm(s => ({ ...s, consultDoctor: e.target.value }))}>
+                  <Select value={recordForm.consultDoctor || ""} onChange={e => setRecordForm(s => ({ ...s, consultDoctor: e.target.value }))}>
                     <option value="">— Selecionar —</option>
                     {(users || []).filter(u => ["nurse_manager", "nursing_tech"].includes(u.role)).map(u => (
                       <option key={u.id} value={u.name}>{u.name} — {u.role === "nurse_manager" ? "Enfermeira" : "Téc. Enfermagem"}{u.teamName ? ` (${u.teamName})` : ""}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </label>
             )}
@@ -546,9 +547,8 @@ function FollowupTab({ patient, users, recordForm, setRecordForm, recordVaccines
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".3rem", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: ".65rem .75rem", maxHeight: 200, overflowY: "auto" }}>
               {VACCINE_OPTIONS.map(v => (
                 <label key={v} style={{ display: "flex", alignItems: "center", gap: ".4rem", fontSize: ".8rem", cursor: "pointer", padding: ".25rem .35rem", borderRadius: "var(--r-sm)", background: recordVaccines.includes(v) ? "var(--teal-50)" : "transparent", border: recordVaccines.includes(v) ? "1px solid var(--teal-200)" : "1px solid transparent" }}>
-                  <input type="checkbox" checked={recordVaccines.includes(v)}
-                    onChange={e => setRecordVaccines(prev => e.target.checked ? [...prev, v] : prev.filter(x => x !== v))}
-                    style={{ accentColor: "var(--teal-600)", width: 13, height: 13, cursor: "pointer", flexShrink: 0 }} />
+                  <Checkbox checked={recordVaccines.includes(v)}
+                    onChange={e => setRecordVaccines(prev => e.target.checked ? [...prev, v] : prev.filter(x => x !== v))} />
                   {v}
                 </label>
               ))}
@@ -663,7 +663,7 @@ function ProfessionalCombobox({ targets, value, onChange }) {
 
   return (
     <div ref={wrapRef} className="pcb">
-      <button type="button" className={`pcb__trigger${open ? " pcb__trigger--open" : ""}`} onClick={toggle}>
+      <Button type="button" className={`pcb__trigger${open ? " pcb__trigger--open" : ""}`} onClick={toggle} variant="ghost" size="sm">
         {selected ? (
           <span className="pcb__selected">
             <span className="pcb__avatar" style={{ "--rc": getRoleColor(selected.role) }}>{initials(selected.name)}</span>
@@ -684,7 +684,7 @@ function ProfessionalCombobox({ targets, value, onChange }) {
         <svg className="pcb__chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-      </button>
+      </Button>
 
       {open && (
         <div className="pcb__dropdown">
@@ -693,7 +693,7 @@ function ProfessionalCombobox({ targets, value, onChange }) {
               <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.4"/>
               <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
-            <input
+            <Input
               ref={inputRef}
               className="pcb__search"
               value={query}
@@ -706,7 +706,7 @@ function ProfessionalCombobox({ targets, value, onChange }) {
             {!filtered.length ? (
               <div className="pcb__empty">Nenhum profissional encontrado</div>
             ) : filtered.map(t => (
-              <button key={t.id} type="button"
+              <Button key={t.id} type="button" variant="ghost" size="sm"
                 className={`pcb__option${t.id === value ? " pcb__option--active" : ""}`}
                 onClick={() => { onChange(t.id); setOpen(false); setQuery(""); }}>
                 <span className="pcb__option-avatar" style={{ "--rc": getRoleColor(t.role) }}>{initials(t.name)}</span>
@@ -719,7 +719,7 @@ function ProfessionalCombobox({ targets, value, onChange }) {
                     <path d="M3 8l4 4 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 )}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -816,9 +816,9 @@ function ExamRequestModal({ patient, user, token, onClose }) {
                 {EXAM_TYPES.map(item => <option key={item} value={item}>{item}</option>)}
               </Select>
               {exams.length > 1 && (
-                <button type="button" className="aclin-remove-btn" onClick={() => removeExam(idx)} aria-label="Remover exame">
+                <Button type="button" className="aclin-remove-btn" onClick={() => removeExam(idx)} aria-label="Remover exame" variant="ghost" size="sm">
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                </button>
+                </Button>
               )}
             </div>
             {exam.type === "Outros" && (
@@ -828,21 +828,21 @@ function ExamRequestModal({ patient, user, token, onClose }) {
               <span className="aclin-field-label">Prioridade</span>
               <div className="aclin-pill-group">
                 {EXAM_URGENCY_OPTS.map(opt => (
-                  <button key={opt.v} type="button"
+                  <Button key={opt.v} type="button" variant={exam.urgency === opt.v ? "primary" : "secondary"} size="sm"
                     className={`aclin-pill${exam.urgency === opt.v ? " aclin-pill--active" : ""}${opt.v === "urgent" ? " aclin-pill--danger" : ""}`}
                     onClick={() => updateExam(idx, "urgency", opt.v)}>
                     {opt.l}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
             <Textarea label="Observação" rows={2} value={exam.notes} onChange={e => updateExam(idx, "notes", e.target.value)} placeholder="Observação específica (opcional)" className="patients-textarea" />
           </div>
         ))}
-        <button type="button" className="aclin-add-btn" onClick={addExam}>
+        <Button type="button" className="aclin-add-btn" onClick={addExam} variant="secondary" size="sm">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           Adicionar exame
-        </button>
+        </Button>
         <div className="aclin-divider" />
         <Textarea label="Justificativa clínica" rows={3} value={justification} onChange={e => setJustification(e.target.value)} placeholder="Hipótese diagnóstica ou motivo do pedido…" className="patients-textarea" />
         {err && <Alert tone="danger">{err}</Alert>}
@@ -906,6 +906,7 @@ function PrescriptionModal({ patient, user, token, onClose }) {
         dosage: med.dosage,
         instructions: [med.route ? `Via ${med.route}` : "", `${med.frequency}${med.duration ? ` por ${med.duration}` : ""}`, med.notes].filter(Boolean).join(" · "),
       })),
+      validity,
       professional: user,
     });
   }
@@ -965,9 +966,9 @@ function PrescriptionModal({ patient, user, token, onClose }) {
                 {MEDICATIONS_COMMON.map(item => <option key={item} value={item}>{item}</option>)}
               </Select>
               {meds.length > 1 && (
-                <button type="button" className="aclin-remove-btn" onClick={() => removeMed(idx)} aria-label="Remover medicamento">
+                <Button type="button" className="aclin-remove-btn" onClick={() => removeMed(idx)} aria-label="Remover medicamento" variant="ghost" size="sm">
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                </button>
+                </Button>
               )}
             </div>
             {med.name === "Outros (digitar)" && (
@@ -993,10 +994,10 @@ function PrescriptionModal({ patient, user, token, onClose }) {
             <Textarea label="Observação" rows={2} value={med.notes} onChange={e => updateMed(idx, "notes", e.target.value)} placeholder="Tomar em jejum, com alimentos…" className="patients-textarea" />
           </div>
         ))}
-        <button type="button" className="aclin-add-btn" onClick={addMed}>
+        <Button type="button" className="aclin-add-btn" onClick={addMed} variant="secondary" size="sm">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           Adicionar medicamento
-        </button>
+        </Button>
         <div className="aclin-divider" />
         <div className="aclin-validity-row">
           <span className="aclin-field-label">Validade da receita</span>
@@ -1086,11 +1087,11 @@ function InternalReferralModal({ patient, user, users, token, onClose }) {
             <span className="aclin-section-label">Prioridade</span>
             <div className="aclin-pill-group">
               {REFERRAL_PRIORITY_OPTS.map(opt => (
-                <button key={opt.v} type="button"
+                <Button key={opt.v} type="button" variant={priority === opt.v ? "primary" : "secondary"} size="sm"
                   className={`aclin-pill${priority === opt.v ? " aclin-pill--active" : ""}${opt.v === "urgent" ? " aclin-pill--danger" : ""}`}
                   onClick={() => setPriority(opt.v)}>
                   {opt.l}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -1113,6 +1114,167 @@ function InternalReferralModal({ patient, user, users, token, onClose }) {
   );
 }
 
+function AttendanceAttestModal({ patient, user, token, onClose }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function submit() {
+    setBusy(true); setErr("");
+    try {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      await createRecord(token, patient.id, {
+        type: "attendance_attest",
+        date: today,
+        time: now.toTimeString().slice(0, 5),
+        title: `Declaração de comparecimento — ${now.toLocaleDateString("pt-BR")} às ${timeStr}h`,
+        details: `Declaração de comparecimento emitida em ${now.toLocaleDateString("pt-BR")} às ${timeStr}h.\nProfissional: ${user?.name || ""}${getCouncilLabel(user) ? ` (${getCouncilLabel(user)})` : ""}`,
+        immutable: true,
+        professionalName: user?.name || "",
+        professionalCouncil: getCouncilLabel(user),
+      });
+      setSaved(true);
+    } catch (error) { setErr(error?.message || "Erro ao salvar."); } finally { setBusy(false); }
+  }
+
+  function handlePrint() {
+    printAttendanceAttest({ patient, professional: user });
+  }
+
+  if (saved) {
+    return (
+      <Modal title="Declaração de comparecimento" onClose={() => onClose(true)} className="modal--sm"
+        actions={<>
+          <Button variant="secondary" type="button" onClick={() => onClose(true)}>Fechar</Button>
+          <Button type="button" onClick={handlePrint}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{ marginRight: 6 }}><rect x="3" y="9" width="10" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M3 9V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v4" stroke="currentColor" strokeWidth="1.3"/><path d="M5 4V2h6v2" stroke="currentColor" strokeWidth="1.3"/><circle cx="12" cy="7" r=".75" fill="currentColor"/></svg>
+            Imprimir declaração
+          </Button>
+        </>}>
+        <div className="aclin-modal-stack">
+          <Alert tone="success">Declaração registrada com sucesso.</Alert>
+          <p style={{ fontSize: "var(--fs-sm)", color: "var(--text-2)" }}>Clique em <strong>Imprimir declaração</strong> para gerar o documento imprimível.</p>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title="Declaração de comparecimento" onClose={() => onClose(false)} className="modal--sm"
+      actions={<>
+        <Button variant="secondary" type="button" onClick={() => onClose(false)}>Cancelar</Button>
+        <Button type="button" onClick={submit} disabled={busy}>{busy ? "Registrando..." : "Emitir declaração"}</Button>
+      </>}>
+      <div className="aclin-modal-stack">
+        <div className="aclin-pw-confirm">
+          <p className="aclin-pw-confirm__text" style={{ textAlign: "left" }}>
+            Será emitida uma declaração de comparecimento para <strong>{patient?.name}</strong> com data e hora atuais, assinada por <strong>{user?.name}</strong>{getCouncilLabel(user) ? ` (${getCouncilLabel(user)})` : ""}.
+          </p>
+        </div>
+        <div style={{ padding: "12px 16px", background: "var(--surface-2)", borderRadius: "var(--r-md)", fontSize: "var(--t-sm)", color: "var(--text-muted)", lineHeight: 1.7 }}>
+          "Atesto, para os devidos fins, que o(a) paciente acima identificado(a) compareceu nesta unidade de saúde na data de <strong>{new Date().toLocaleDateString("pt-BR")}</strong>, para atendimento/acompanhamento em serviço de saúde."
+        </div>
+        {err && <Alert tone="danger">{err}</Alert>}
+      </div>
+    </Modal>
+  );
+}
+
+function MedicalAttestModal({ patient, user, token, onClose }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [days, setDays] = useState("");
+  const [cid, setCid] = useState("");
+  const [observations, setObservations] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function submit() {
+    if (!days || isNaN(Number(days)) || Number(days) < 1) { setErr("Informe o número de dias de afastamento."); return; }
+    setBusy(true); setErr("");
+    try {
+      const now = new Date();
+      const details = [
+        `ATESTADO MEDICO — emitido em ${now.toLocaleDateString("pt-BR")}`,
+        `Profissional: ${user?.name || ""}${getCouncilLabel(user) ? ` (${getCouncilLabel(user)})` : ""}`,
+        `Afastamento: ${days} dia(s) a partir de ${now.toLocaleDateString("pt-BR")}`,
+        cid ? `CID-10: ${cid}` : "",
+        observations ? `Observacoes: ${observations}` : "",
+      ].filter(Boolean).join("\n");
+      await createRecord(token, patient.id, {
+        type: "medical_attest",
+        date: today,
+        time: now.toTimeString().slice(0, 5),
+        title: `Atestado médico — ${days} dia(s)${cid ? ` (CID: ${cid})` : ""}`,
+        details,
+        immutable: true,
+        professionalName: user?.name || "",
+        professionalCouncil: getCouncilLabel(user),
+      });
+      setSaved(true);
+    } catch (error) { setErr(error?.message || "Erro ao salvar."); } finally { setBusy(false); }
+  }
+
+  function handlePrint() {
+    printMedicalAttest({ patient, days, cid, observations, professional: user });
+  }
+
+  if (saved) {
+    return (
+      <Modal title="Atestado médico" onClose={() => onClose(true)} className="modal--sm"
+        actions={<>
+          <Button variant="secondary" type="button" onClick={() => onClose(true)}>Fechar</Button>
+          <Button type="button" onClick={handlePrint}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{ marginRight: 6 }}><rect x="3" y="9" width="10" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M3 9V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v4" stroke="currentColor" strokeWidth="1.3"/><path d="M5 4V2h6v2" stroke="currentColor" strokeWidth="1.3"/><circle cx="12" cy="7" r=".75" fill="currentColor"/></svg>
+            Imprimir atestado
+          </Button>
+        </>}>
+        <div className="aclin-modal-stack">
+          <Alert tone="success">Atestado registrado com sucesso.</Alert>
+          <p style={{ fontSize: "var(--fs-sm)", color: "var(--text-2)" }}>Clique em <strong>Imprimir atestado</strong> para gerar o documento imprimível.</p>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title="Atestado médico" onClose={() => onClose(false)} className="modal--sm"
+      actions={<>
+        <Button variant="secondary" type="button" onClick={() => onClose(false)}>Cancelar</Button>
+        <Button type="button" onClick={submit} disabled={busy}>{busy ? "Registrando..." : "Emitir atestado"}</Button>
+      </>}>
+      <div className="aclin-modal-stack">
+        <Input
+          label="Dias de afastamento *"
+          type="number"
+          min="1"
+          max="365"
+          value={days}
+          onChange={e => setDays(e.target.value)}
+          placeholder="Ex: 3"
+        />
+        <Input
+          label="CID-10 (opcional)"
+          value={cid}
+          onChange={e => setCid(e.target.value.toUpperCase())}
+          placeholder="Ex: J06.9"
+        />
+        <Textarea
+          label="Observações (opcional)"
+          rows={3}
+          value={observations}
+          onChange={e => setObservations(e.target.value)}
+          placeholder="Repouso, restrição de atividades físicas…"
+          className="patients-textarea"
+        />
+        {err && <Alert tone="danger">{err}</Alert>}
+      </div>
+    </Modal>
+  );
+}
+
 function AcoesClinicasTab({ patient, user, users, token, canManageUser, canWriteRecords }) {
   const [modal, setModal] = useState(null);
   const [done, setDone] = useState([]);
@@ -1129,6 +1291,8 @@ function AcoesClinicasTab({ patient, user, users, token, canManageUser, canWrite
   const canPrescribe = canManageUser || ["doctor", "dentist", "nurse_manager"].includes(String(user?.role || ""));
   const canRefer = canWriteRecords;
   const canExam = canManageUser || canWriteRecords;
+  const canAttest = canWriteRecords;
+  const canMedicalAttest = canManageUser || ["doctor", "dentist", "nurse_manager"].includes(String(user?.role || ""));
 
   const ACTIONS = [
     canExam ? {
@@ -1163,19 +1327,44 @@ function AcoesClinicasTab({ patient, user, users, token, canManageUser, canWrite
         </svg>
       ),
     } : null,
+    canAttest ? {
+      id: "attendance_attest", colorKey: "note",
+      title: "Declaração de comparecimento",
+      desc: "Emita declaração institucional de comparecimento à unidade de saúde.",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <path d="M8 12l3 3 5-5"/>
+        </svg>
+      ),
+    } : null,
+    canMedicalAttest ? {
+      id: "medical_attest", colorKey: "exam",
+      title: "Atestado médico",
+      desc: "Emita atestado de afastamento com dias, CID-10 opcional e observações.",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+          <path d="M14 3v6h6"/>
+          <path d="M9 13h6M9 17h4"/>
+        </svg>
+      ),
+    } : null,
   ].filter(Boolean);
 
   const DONE_LABELS = {
     exam: "Pedido de exame emitido",
     prescription: "Prescrição emitida",
     referral: "Encaminhamento registrado",
+    attendance_attest: "Declaração de comparecimento emitida",
+    medical_attest: "Atestado médico emitido",
   };
 
   return (
     <div className="aclin-hub">
       <div className="aclin-launcher">
         {ACTIONS.map(action => (
-          <button key={action.id} type="button"
+          <Button key={action.id} type="button" variant="ghost" size="sm"
             className={`aclin-card aclin-card--${action.colorKey}`}
             onClick={() => setModal(action.id)}>
             <span className="aclin-card__icon">{action.icon}</span>
@@ -1188,7 +1377,7 @@ function AcoesClinicasTab({ patient, user, users, token, canManageUser, canWrite
                 <path d="M6 3.5l4.5 4.5L6 12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </span>
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -1214,6 +1403,8 @@ function AcoesClinicasTab({ patient, user, users, token, canManageUser, canWrite
       {modal === "exam" && <ExamRequestModal patient={patient} user={user} token={token} onClose={ok => handleClose("exam", ok)} />}
       {modal === "prescription" && <PrescriptionModal patient={patient} user={user} token={token} onClose={ok => handleClose("prescription", ok)} />}
       {modal === "referral" && <InternalReferralModal patient={patient} user={user} users={users} token={token} onClose={ok => handleClose("referral", ok)} />}
+      {modal === "attendance_attest" && <AttendanceAttestModal patient={patient} user={user} token={token} onClose={ok => handleClose("attendance_attest", ok)} />}
+      {modal === "medical_attest" && <MedicalAttestModal patient={patient} user={user} token={token} onClose={ok => handleClose("medical_attest", ok)} />}
     </div>
   );
 }
@@ -1470,11 +1661,11 @@ export default function PatientDetailPanel({
 
       <div className="tabs small-tabs" style={{ flexWrap: "nowrap", overflowX: "auto", whiteSpace: "nowrap", scrollbarWidth: "thin" }}>
         {DETAIL_TABS.map(tab => (
-          <button key={tab.id} className={`tab${activeTab === tab.id ? " active" : ""}`}
+          <Button key={tab.id} className={`tab${activeTab === tab.id ? " active" : ""}`} variant={activeTab === tab.id ? "primary" : "ghost"} size="sm"
             style={{ flexShrink: 0, whiteSpace: "nowrap" }}
             onClick={() => setPatientTab?.(tab.id)}>
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 

@@ -554,7 +554,7 @@ router.post("/patients/:id/records", validate(RecordCreateSchema), async (req, r
     return res.status(400).json({ error: "type, date e title sÃ£o obrigatÃ³rios" });
   }
 
-  const allowedTypes = ["visit", "consultation", "vaccine", "procedure", "note", "prescription", "exam_request", "referral", "nursing", "evolution"];
+  const allowedTypes = ["visit", "consultation", "vaccine", "procedure", "note", "prescription", "exam_request", "referral", "nursing", "evolution", "attendance_attest", "medical_attest"];
   const type = String(payload.type);
 
   if (!allowedTypes.includes(type)) {
