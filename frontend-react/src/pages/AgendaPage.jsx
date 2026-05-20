@@ -274,10 +274,16 @@ function AgendaPage({ patients, users, user, token, onNewPatient, onPatientCreat
             </div>
           </div>
         ) : !dayAppts.length && !isUnavailableDay(selectedDate) ? (
-          <EmptyState
-            title="Nenhum agendamento neste dia"
-            description="Use 'Novo agendamento' no cabeçalho para criar uma consulta."
-          />
+          <div className="agenda-day-empty">
+            <div className="agenda-day-empty__icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+            </div>
+            <h3 className="agenda-day-empty__title">Nenhum agendamento para este dia</h3>
+            <p className="agenda-day-empty__desc">Os agendamentos criados aparecerão aqui automaticamente.</p>
+          </div>
         ) : (
           dayAppts.map(appt => {
             const patObj = patients.find(p => p.id === appt.patientId);
