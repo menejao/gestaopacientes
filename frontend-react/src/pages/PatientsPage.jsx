@@ -3,7 +3,7 @@ import Button from "../components/ui/Button";
 import PageHeader from "../components/layout/PageHeader";
 import PatientsTable from "../components/patients/PatientsTable";
 import PatientDetailPanel from "../components/patients/PatientDetailPanel";
-import { calcAge, catLabel, gestationalAgeInfo, normalizeSearch, protocolChip } from "../utils/clinical";
+import { calcAge, catLabel, normalizeSearch, protocolChip } from "../utils/clinical";
 
 function normalizePatientCategory(value) {
   const normalized = String(value || "").trim().toLowerCase().replace(/\s+/g, "_");
@@ -11,33 +11,10 @@ function normalizePatientCategory(value) {
   return normalized || "general";
 }
 
-function rosaSort(list, isEquipeRosa) {
-  if (!isEquipeRosa) {
-    return [...list].sort((a, b) =>
-      String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
-    );
-  }
-  const puericultura = [], gestantes = [], outros = [];
-  list.forEach((p) => {
-    const cat = String(p.careCategory || "").toLowerCase();
-    if (cat === "child_followup") puericultura.push(p);
-    else if (cat === "pregnant") gestantes.push(p);
-    else outros.push(p);
-  });
-  puericultura.sort((a, b) => {
-    const da = a.birthDate ? new Date(a.birthDate) : new Date("9999-01-01");
-    const db = b.birthDate ? new Date(b.birthDate) : new Date("9999-01-01");
-    return da - db;
-  });
-  gestantes.sort((a, b) => {
-    const ga = gestationalAgeInfo(a);
-    const gb = gestationalAgeInfo(b);
-    return (gb ? gb.weeks * 7 + gb.days : 0) - (ga ? ga.weeks * 7 + ga.days : 0);
-  });
-  outros.sort((a, b) =>
+function sortByName(list) {
+  return [...list].sort((a, b) =>
     String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
   );
-  return [...puericultura, ...gestantes, ...outros];
 }
 
 export default function PatientsPage(props) {
@@ -65,7 +42,6 @@ export default function PatientsPage(props) {
   const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 1440);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef(null);
-  const isEquipeRosa = String(userObj?.teamId || userObj?.teamName || "").toLowerCase().includes("rosa");
 
   useEffect(() => {
     function onResize() { setIsNarrow(window.innerWidth < 1440); }
@@ -116,7 +92,7 @@ export default function PatientsPage(props) {
     });
   }, [patients, query, categoryFilter, acsFilter, conditionFilter, users, templates]);
 
-  const sorted = useMemo(() => rosaSort(filtered, isEquipeRosa), [filtered, isEquipeRosa]);
+  const sorted = useMemo(() => sortByName(filtered), [filtered]);
 
   useEffect(() => { setPage(1); }, [sorted.length]);
 

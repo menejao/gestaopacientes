@@ -28,6 +28,9 @@ export const PHARMA_USERS = [
 
 export const TRIAGE_VITALS_KEY = "vitras_triage_vitals_v1";
 
+export const IDLE_ACTIVITY_KEY = "vitras_last_activity";
+export const IDLE_LOGOUT_KEY   = "vitras_force_logout";
+
 export const PRIORITY_LABELS = { urgent:"Urgente", elderly:"Idoso/PCD", pregnant:"Gestante", child:"Criança", normal:"Normal" };
 export const PRIORITY_COLORS = {
   urgent:   { bg:"var(--rose-50)",   border:"var(--rose-200)",   text:"var(--rose-700)",   order:0 },

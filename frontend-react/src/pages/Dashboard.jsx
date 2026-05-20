@@ -122,10 +122,9 @@ function Dashboard({ patients, users, allUsers, templates, protocolByPatient, de
             </thead>
             <tbody>
               {[...adminUserList]
-                .sort((a, b) => {
-                  const order = { nurse_manager: 0, doctor: 1, dentist: 2, nursing_tech: 3, pharmacist: 4, pharmacy_tech: 5, acs: 6, receptionist: 7 };
-                  return (order[a.role] ?? 9) - (order[b.role] ?? 9);
-                })
+                .sort((a, b) =>
+                  String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
+                )
                 .map((u) => {
                   const online = u.online === true;
                   return (

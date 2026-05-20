@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createRecord } from "../../api";
+import { createRecord, createTask } from "../../api";
 import { parseLocalDate } from "../../utils/dates";
 import { googleCalendarUrl } from "../../utils/dates";
 import { initials } from "../../utils/formatting";
@@ -575,6 +575,33 @@ const MEDICATIONS_COMMON = [
   "Outros (digitar)"
 ];
 
+const INTERNAL_ROLE_LABEL = {
+  nurse_manager: "Enfermagem",
+  doctor: "Médico(a)",
+  dentist: "Dentista",
+  nursing_tech: "Téc. Enfermagem",
+  pharmacist: "Farmácia",
+  pharmacy_tech: "Farmácia",
+  acs: "Ag. de Saúde",
+};
+const INTERNAL_CLINICAL_ROLES = ["nurse_manager", "doctor", "dentist", "nursing_tech", "pharmacist", "pharmacy_tech"];
+function getRoleColor(role) {
+  const map = { nurse_manager: "#0d9488", doctor: "#2563eb", dentist: "#7c3aed", nursing_tech: "#059669", pharmacist: "#d97706", pharmacy_tech: "#d97706" };
+  return map[role] || "#64748b";
+}
+
+const EXAM_URGENCY_OPTS = [
+  { v: "routine", l: "Rotina" },
+  { v: "priority", l: "Prioritário" },
+  { v: "urgent", l: "Urgente" },
+];
+
+const REFERRAL_PRIORITY_OPTS = [
+  { v: "routine", l: "Rotina" },
+  { v: "priority", l: "Prioritário" },
+  { v: "urgent", l: "Imediato" },
+];
+
 function ExamRequestModal({ patient, user, token, onClose }) {
   const today = new Date().toISOString().slice(0, 10);
   const [exams, setExams] = useState([{ type: "Hemograma completo", name: "", urgency: "routine", notes: "" }]);
@@ -607,29 +634,50 @@ function ExamRequestModal({ patient, user, token, onClose }) {
 
   return (
     <Modal title="Pedido de exame" onClose={() => onClose(false)} className="modal--lg"
-      actions={<><Button variant="secondary" type="button" onClick={() => onClose(false)}>Cancelar</Button><Button type="button" onClick={submit} disabled={busy}>{busy ? "Registrando..." : "Emitir pedido"}</Button></>}>
-      <form onSubmit={submit} className="patients-panel-stack">
+      actions={<>
+        <Button variant="secondary" type="button" onClick={() => onClose(false)}>Cancelar</Button>
+        <Button type="button" onClick={submit} disabled={busy}>{busy ? "Registrando..." : "Emitir pedido"}</Button>
+      </>}>
+      <div className="aclin-modal-stack">
         {exams.map((exam, idx) => (
-          <div key={`${exam.type}-${idx}`} className="field-grid card card--soft">
-            <Select className="field field--span-2" label="Exame" value={exam.type} onChange={e => updateExam(idx, "type", e.target.value)}>
-              {EXAM_TYPES.map(item => <option key={item} value={item}>{item}</option>)}
-            </Select>
-            <div className="field" style={{ display: "flex", flexDirection: "column", gap: ".35rem" }}>
-              <Select label="Prioridade" value={exam.urgency} onChange={e => updateExam(idx, "urgency", e.target.value)}>
-                <option value="routine">Rotina</option>
-                <option value="priority">Prioritario</option>
-                <option value="urgent">Urgente</option>
+          <div key={`${exam.type}-${idx}`} className="aclin-exam-item">
+            <div className="aclin-exam-item__header">
+              <span className="aclin-exam-item__num">{idx + 1}</span>
+              <Select className="aclin-exam-select" value={exam.type} onChange={e => updateExam(idx, "type", e.target.value)}>
+                {EXAM_TYPES.map(item => <option key={item} value={item}>{item}</option>)}
               </Select>
-              {exams.length > 1 ? <Button variant="ghost" size="sm" type="button" onClick={() => removeExam(idx)}>Remover</Button> : null}
+              {exams.length > 1 && (
+                <button type="button" className="aclin-remove-btn" onClick={() => removeExam(idx)} aria-label="Remover exame">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                </button>
+              )}
             </div>
-            {exam.type === "Outros" ? <Input className="field field--span-3" label="Nome do exame" value={exam.name} onChange={e => updateExam(idx, "name", e.target.value)} /> : null}
-            <Textarea className="field field--span-3 patients-textarea" label="Observacao" rows={2} value={exam.notes} onChange={e => updateExam(idx, "notes", e.target.value)} placeholder="Observacao especifica (opcional)" />
+            {exam.type === "Outros" && (
+              <Input label="Nome do exame" value={exam.name} onChange={e => updateExam(idx, "name", e.target.value)} />
+            )}
+            <div className="aclin-priority-row">
+              <span className="aclin-field-label">Prioridade</span>
+              <div className="aclin-pill-group">
+                {EXAM_URGENCY_OPTS.map(opt => (
+                  <button key={opt.v} type="button"
+                    className={`aclin-pill${exam.urgency === opt.v ? " aclin-pill--active" : ""}${opt.v === "urgent" ? " aclin-pill--danger" : ""}`}
+                    onClick={() => updateExam(idx, "urgency", opt.v)}>
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Textarea label="Observação" rows={2} value={exam.notes} onChange={e => updateExam(idx, "notes", e.target.value)} placeholder="Observação específica (opcional)" className="patients-textarea" />
           </div>
         ))}
-        <div className="patients-form-actions"><Button variant="secondary" type="button" onClick={addExam}>Adicionar exame</Button></div>
-        <Textarea className="field field--span-2 patients-textarea" label="Justificativa clinica" rows={3} value={justification} onChange={e => setJustification(e.target.value)} placeholder="Hipotese diagnostica ou motivo do pedido..." />
-        {err ? <Alert tone="danger">{err}</Alert> : null}
-      </form>
+        <button type="button" className="aclin-add-btn" onClick={addExam}>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          Adicionar exame
+        </button>
+        <div className="aclin-divider" />
+        <Textarea label="Justificativa clínica" rows={3} value={justification} onChange={e => setJustification(e.target.value)} placeholder="Hipótese diagnóstica ou motivo do pedido…" className="patients-textarea" />
+        {err && <Alert tone="danger">{err}</Alert>}
+      </div>
     </Modal>
   );
 }
@@ -649,7 +697,7 @@ function PrescriptionModal({ patient, user, token, onClose }) {
     e.preventDefault();
     const valid = meds.filter(med => (med.name && med.name !== "Outros (digitar)") || med.custom.trim());
     if (!valid.length) { setErr("Adicione ao menos um medicamento."); return; }
-    if (valid.find(med => !med.dosage.trim() || !med.frequency.trim())) { setErr("Preencha dose e frequencia para todos os medicamentos."); return; }
+    if (valid.find(med => !med.dosage.trim() || !med.frequency.trim())) { setErr("Preencha dose e frequência para todos os medicamentos."); return; }
     setBusy(true); setErr("");
     try {
       const title = valid.map(med => med.name === "Outros (digitar)" ? med.custom.trim() : med.name).join(", ");
@@ -669,38 +717,57 @@ function PrescriptionModal({ patient, user, token, onClose }) {
   }
 
   return (
-    <Modal title="Prescricao de medicamentos" onClose={() => onClose(false)} className="modal--lg"
-      actions={<><Button variant="secondary" type="button" onClick={() => onClose(false)}>Cancelar</Button><Button type="button" onClick={submit} disabled={busy}>{busy ? "Registrando..." : "Emitir prescricao"}</Button></>}>
-      <form onSubmit={submit} className="patients-panel-stack">
+    <Modal title="Prescrição de medicamentos" onClose={() => onClose(false)} className="modal--lg"
+      actions={<>
+        <Button variant="secondary" type="button" onClick={() => onClose(false)}>Cancelar</Button>
+        <Button type="button" onClick={submit} disabled={busy}>{busy ? "Registrando..." : "Emitir prescrição"}</Button>
+      </>}>
+      <div className="aclin-modal-stack">
         {meds.map((med, idx) => (
-          <div key={`${med.name}-${idx}`} className="field-grid card card--soft">
-            <Select className="field field--span-2" label="Medicamento" value={med.name} onChange={e => updateMed(idx, "name", e.target.value)}>
-              <option value="">Selecione...</option>
-              {MEDICATIONS_COMMON.map(item => <option key={item} value={item}>{item}</option>)}
-            </Select>
-            {meds.length > 1 ? <div className="field patients-form-actions"><Button variant="ghost" type="button" onClick={() => removeMed(idx)}>Remover</Button></div> : null}
-            {med.name === "Outros (digitar)" ? <Input className="field field--span-3" label="Nome do medicamento" value={med.custom} onChange={e => updateMed(idx, "custom", e.target.value)} /> : null}
-            <Input className="field" label="Dose *" value={med.dosage} onChange={e => updateMed(idx, "dosage", e.target.value)} placeholder="Ex: 500mg" />
-            <Input className="field" label="Frequencia *" value={med.frequency} onChange={e => updateMed(idx, "frequency", e.target.value)} placeholder="Ex: 1x ao dia" />
-            <Select className="field" label="Via" value={med.route} onChange={e => updateMed(idx, "route", e.target.value)}>
-              <option value="">-</option>
-              <option value="Oral">Oral</option>
-              <option value="Sublingual">Sublingual</option>
-              <option value="Inalatoria">Inalatoria</option>
-              <option value="Topica">Topica</option>
-              <option value="Intramuscular">Intramuscular</option>
-              <option value="Subcutanea">Subcutanea</option>
-              <option value="Intravenosa">Intravenosa</option>
-              <option value="Retal">Retal</option>
-              <option value="Ocular">Ocular</option>
-            </Select>
-            <Input className="field field--span-3" label="Duracao" value={med.duration} onChange={e => updateMed(idx, "duration", e.target.value)} placeholder="Ex: 7 dias, uso continuo..." />
-            <Textarea className="field field--span-3 patients-textarea" label="Observacao" rows={2} value={med.notes} onChange={e => updateMed(idx, "notes", e.target.value)} placeholder="Tomar em jejum, com alimentos..." />
+          <div key={`${med.name}-${idx}`} className="aclin-med-item">
+            <div className="aclin-med-item__header">
+              <span className="aclin-exam-item__num">{idx + 1}</span>
+              <Select className="aclin-exam-select" value={med.name} onChange={e => updateMed(idx, "name", e.target.value)}>
+                <option value="">Selecione o medicamento…</option>
+                {MEDICATIONS_COMMON.map(item => <option key={item} value={item}>{item}</option>)}
+              </Select>
+              {meds.length > 1 && (
+                <button type="button" className="aclin-remove-btn" onClick={() => removeMed(idx)} aria-label="Remover medicamento">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                </button>
+              )}
+            </div>
+            {med.name === "Outros (digitar)" && (
+              <Input label="Nome do medicamento" value={med.custom} onChange={e => updateMed(idx, "custom", e.target.value)} />
+            )}
+            <div className="aclin-med-fields">
+              <Input label="Dose *" value={med.dosage} onChange={e => updateMed(idx, "dosage", e.target.value)} placeholder="Ex: 500mg" />
+              <Input label="Frequência *" value={med.frequency} onChange={e => updateMed(idx, "frequency", e.target.value)} placeholder="Ex: 1x ao dia" />
+              <Select label="Via" value={med.route} onChange={e => updateMed(idx, "route", e.target.value)}>
+                <option value="">—</option>
+                <option value="Oral">Oral</option>
+                <option value="Sublingual">Sublingual</option>
+                <option value="Inalatória">Inalatória</option>
+                <option value="Tópica">Tópica</option>
+                <option value="Intramuscular">Intramuscular</option>
+                <option value="Subcutânea">Subcutânea</option>
+                <option value="Intravenosa">Intravenosa</option>
+                <option value="Retal">Retal</option>
+                <option value="Ocular">Ocular</option>
+              </Select>
+              <Input label="Duração" value={med.duration} onChange={e => updateMed(idx, "duration", e.target.value)} placeholder="Ex: 7 dias, uso contínuo…" />
+            </div>
+            <Textarea label="Observação" rows={2} value={med.notes} onChange={e => updateMed(idx, "notes", e.target.value)} placeholder="Tomar em jejum, com alimentos…" className="patients-textarea" />
           </div>
         ))}
-        <div className="field-grid">
-          <div className="field patients-form-actions"><Button variant="secondary" type="button" onClick={addMed}>Adicionar medicamento</Button></div>
-          <Select className="field" label="Validade da receita" value={validity} onChange={e => setValidity(e.target.value)}>
+        <button type="button" className="aclin-add-btn" onClick={addMed}>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          Adicionar medicamento
+        </button>
+        <div className="aclin-divider" />
+        <div className="aclin-validity-row">
+          <span className="aclin-field-label">Validade da receita</span>
+          <Select value={validity} onChange={e => setValidity(e.target.value)} className="aclin-validity-select">
             <option value="10">10 dias</option>
             <option value="30">30 dias</option>
             <option value="60">60 dias</option>
@@ -708,60 +775,118 @@ function PrescriptionModal({ patient, user, token, onClose }) {
             <option value="180">180 dias</option>
           </Select>
         </div>
-        {err ? <Alert tone="danger">{err}</Alert> : null}
-      </form>
+        {err && <Alert tone="danger">{err}</Alert>}
+      </div>
     </Modal>
   );
 }
 
 function InternalReferralModal({ patient, user, users, token, onClose }) {
   const today = new Date().toISOString().slice(0, 10);
-  const doctors = (users || []).filter(item => ["doctor", "dentist"].includes(String(item.role || "")));
-  const [targetId, setTargetId] = useState(doctors[0]?.id || "");
-  const [reason, setReason] = useState("");
+  const targets = (users || []).filter(u =>
+    u.id !== user?.id &&
+    INTERNAL_CLINICAL_ROLES.includes(String(u.role || ""))
+  );
+  const [targetId, setTargetId] = useState(targets[0]?.id || "");
   const [priority, setPriority] = useState("routine");
+  const [reason, setReason] = useState("");
+  const [obs, setObs] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
     if (!reason.trim()) { setErr("Informe o motivo do encaminhamento."); return; }
-    const target = doctors.find(item => item.id === targetId);
-    if (!target) { setErr("Selecione o profissional."); return; }
+    const target = targets.find(u => u.id === targetId);
+    if (!target) { setErr("Selecione o profissional destino."); return; }
     setBusy(true); setErr("");
     try {
+      const priorityLabel = { urgent: "Imediato", priority: "Prioritário", routine: "Rotina" }[priority];
       const details = [
-        `ENCAMINHAMENTO INTERNO - ${new Date().toLocaleDateString("pt-BR")}`,
-        `De: ${user?.name || ""} (${String(user?.role || "").replace(/_/g, " ")})`,
-        `Para: ${target.name} (${String(target.role || "").replace(/_/g, " ")})`,
-        `Prioridade: ${priority === "urgent" ? "Urgente" : priority === "priority" ? "Prioritario" : "Rotina"}`,
-        "", "Motivo / hipotese diagnostica:", reason.trim(),
-      ].join("\n");
-      await createRecord(token, patient.id, { type: "referral", date: today, time: new Date().toTimeString().slice(0, 5), title: `Encaminhamento p/ ${target.name}`, details, immutable: true, professionalName: user?.name || "", professionalCouncil: getCouncilLabel(user) });
+        `ENCAMINHAMENTO INTERNO — ${new Date().toLocaleDateString("pt-BR")}`,
+        `De: ${user?.name || ""} (${INTERNAL_ROLE_LABEL[user?.role] || user?.role || ""})`,
+        `Para: ${target.name} (${INTERNAL_ROLE_LABEL[target.role] || target.role || ""})`,
+        `Prioridade: ${priorityLabel}`,
+        "",
+        "Motivo / hipótese diagnóstica:",
+        reason.trim(),
+        obs.trim() ? `\nObservações: ${obs.trim()}` : "",
+      ].filter(Boolean).join("\n");
+      await createRecord(token, patient.id, {
+        type: "referral", date: today,
+        time: new Date().toTimeString().slice(0, 5),
+        title: `Encaminhamento → ${target.name}`,
+        details, immutable: true,
+        professionalName: user?.name || "",
+        professionalCouncil: getCouncilLabel(user),
+      });
+      await createTask(token, {
+        patientId: patient.id,
+        assigneeId: targetId,
+        title: `Encaminhamento de ${user?.name || "profissional"}: ${patient.name}`,
+        notes: reason.trim(),
+        priority: priority === "urgent" ? "urgent" : "normal",
+        type: "return_visit",
+        dueDate: priority === "urgent" ? today : "",
+        status: "pending",
+      }).catch(() => {});
       onClose(true);
     } catch (error) { setErr(error?.message || "Erro ao salvar."); } finally { setBusy(false); }
   }
 
   return (
     <Modal title="Encaminhamento interno" onClose={() => onClose(false)} className="modal--lg"
-      actions={doctors.length ? <><Button variant="secondary" type="button" onClick={() => onClose(false)}>Cancelar</Button><Button type="button" onClick={submit} disabled={busy}>{busy ? "Registrando..." : "Encaminhar"}</Button></> : null}>
-      {!doctors.length ? (
-        <Alert tone="warning">Nenhum medico/dentista cadastrado na equipe para encaminhar.</Alert>
+      actions={targets.length ? <>
+        <Button variant="secondary" type="button" onClick={() => onClose(false)}>Cancelar</Button>
+        <Button type="button" onClick={submit} disabled={busy}>{busy ? "Encaminhando..." : "Encaminhar"}</Button>
+      </> : null}>
+      {!targets.length ? (
+        <Alert tone="warning">Nenhum profissional clínico disponível na equipe para encaminhar.</Alert>
       ) : (
-        <form onSubmit={submit} className="field-grid">
-          <Select className="field field--span-2" label="Encaminhar para" value={targetId} onChange={e => setTargetId(e.target.value)}>
-            {doctors.map(doctor => (
-              <option key={doctor.id} value={doctor.id}>{doctor.name} - {doctor.role === "dentist" ? "Dentista" : "Medico(a)"}</option>
-            ))}
-          </Select>
-          <Select className="field" label="Prioridade" value={priority} onChange={e => setPriority(e.target.value)}>
-            <option value="routine">Rotina</option>
-            <option value="priority">Prioritario</option>
-            <option value="urgent">Urgente - ver hoje</option>
-          </Select>
-          <Textarea className="field field--span-3 patients-textarea" label="Motivo / hipotese diagnostica *" rows={4} value={reason} onChange={e => setReason(e.target.value)} placeholder="Descreva o motivo do encaminhamento, sinais e sintomas relevantes..." />
-          {err ? <Alert tone="danger" className="field--span-3">{err}</Alert> : null}
-        </form>
+        <div className="aclin-modal-stack">
+          <div className="aclin-section">
+            <span className="aclin-section-label">Para quem?</span>
+            <div className="aclin-user-grid">
+              {targets.map(t => (
+                <button key={t.id} type="button"
+                  className={`aclin-user-card${targetId === t.id ? " aclin-user-card--selected" : ""}`}
+                  onClick={() => setTargetId(t.id)}>
+                  <span className="aclin-user-card__avatar" style={{ "--aclin-role-color": getRoleColor(t.role) }}>
+                    {initials(t.name)}
+                  </span>
+                  <span className="aclin-user-card__name">{t.name}</span>
+                  <span className="aclin-user-card__role">{INTERNAL_ROLE_LABEL[t.role] || t.role}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="aclin-section">
+            <span className="aclin-section-label">Prioridade</span>
+            <div className="aclin-pill-group">
+              {REFERRAL_PRIORITY_OPTS.map(opt => (
+                <button key={opt.v} type="button"
+                  className={`aclin-pill${priority === opt.v ? " aclin-pill--active" : ""}${opt.v === "urgent" ? " aclin-pill--danger" : ""}`}
+                  onClick={() => setPriority(opt.v)}>
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="aclin-section">
+            <Textarea label="Motivo / hipótese diagnóstica *" rows={4} value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Descreva o motivo do encaminhamento, sinais e sintomas relevantes…"
+              className="patients-textarea" />
+            <Textarea label="Observações adicionais" rows={2} value={obs}
+              onChange={e => setObs(e.target.value)}
+              placeholder="Informações complementares para o profissional destino…"
+              className="patients-textarea" />
+          </div>
+
+          {err && <Alert tone="danger">{err}</Alert>}
+        </div>
       )}
     </Modal>
   );
@@ -777,66 +902,91 @@ function AcoesClinicasTab({ patient, user, users, token, canManageUser, canWrite
   }
 
   if (!canWriteRecords) {
-    return <Alert tone="warning">Sem permissao para registrar acoes assistenciais neste paciente.</Alert>;
+    return <Alert tone="warning">Sem permissão para registrar ações assistenciais neste paciente.</Alert>;
   }
 
   const canPrescribe = canManageUser || ["doctor", "dentist", "nurse_manager"].includes(String(user?.role || ""));
-  const canRefer = String(user?.role || "") === "nurse_manager";
+  const canRefer = canWriteRecords;
   const canExam = canManageUser || canWriteRecords;
 
-  const actions = [
+  const ACTIONS = [
     canExam ? {
-      id: "exam", title: "Pedir exame", desc: "Solicite exames laboratoriais ou de imagem com prioridade e justificativa.",
-      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M9 3v10l-4 7h14l-4-7V3"/><circle cx="12" cy="17.5" r=".75" fill="currentColor" stroke="none"/></svg>,
+      id: "exam", colorKey: "exam",
+      title: "Pedido de exame",
+      desc: "Solicite exames laboratoriais ou de imagem com prioridade e justificativa clínica.",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 3h6M9 3v10l-4 7h14l-4-7V3"/>
+          <circle cx="12" cy="17.5" r=".75" fill="currentColor" stroke="none"/>
+        </svg>
+      ),
     } : null,
     canPrescribe ? {
-      id: "prescription", title: "Prescrever medicamento", desc: "Emita prescricao com medicamentos, dosagem, frequencia e via.",
-      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg>,
+      id: "prescription", colorKey: "prescription",
+      title: "Prescrição de medicamentos",
+      desc: "Emita prescrição com medicamentos, dosagem, frequência e via de administração.",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="9" width="16" height="6" rx="3"/>
+          <line x1="12" y1="9" x2="12" y2="15"/>
+        </svg>
+      ),
     } : null,
     canRefer ? {
-      id: "referral", title: "Encaminhar ao medico", desc: "Encaminhe o paciente a medico ou dentista da unidade com justificativa.",
-      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>,
+      id: "referral", colorKey: "referral",
+      title: "Encaminhamento interno",
+      desc: "Encaminhe o paciente para outro profissional da unidade com rastreabilidade completa.",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12h14M13 5l7 7-7 7"/>
+        </svg>
+      ),
     } : null,
   ].filter(Boolean);
 
-  const CARD_TYPE_CLASS = { exam: "assistencial-card--exam", prescription: "assistencial-card--prescription", referral: "assistencial-card--referral" };
-  const DONE_LABEL = { exam: "Pedido de exame emitido", prescription: "Prescrição emitida", referral: "Encaminhamento registrado" };
+  const DONE_LABELS = {
+    exam: "Pedido de exame emitido",
+    prescription: "Prescrição emitida",
+    referral: "Encaminhamento registrado",
+  };
 
   return (
-    <div className="patients-panel-stack">
-      <div className="assistencial-launcher">
-        {actions.map(action => (
-          <Button key={action.id} type="button" variant="secondary"
-            className={`assistencial-card ${CARD_TYPE_CLASS[action.id] || ""}`}
+    <div className="aclin-hub">
+      <div className="aclin-launcher">
+        {ACTIONS.map(action => (
+          <button key={action.id} type="button"
+            className={`aclin-card aclin-card--${action.colorKey}`}
             onClick={() => setModal(action.id)}>
-            <span className="assistencial-card__icon">{action.icon}</span>
-            <span className="assistencial-card__body">
-              <span className="assistencial-card__title">{action.title}</span>
-              <span className="assistencial-card__desc">{action.desc}</span>
+            <span className="aclin-card__icon">{action.icon}</span>
+            <span className="aclin-card__body">
+              <span className="aclin-card__title">{action.title}</span>
+              <span className="aclin-card__desc">{action.desc}</span>
             </span>
-            <span className="assistencial-card__arrow">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <span className="aclin-card__chevron" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path d="M6 3.5l4.5 4.5L6 12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </span>
-          </Button>
+          </button>
         ))}
       </div>
 
       {done.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
-          <span className="pat-section-label">Registrado nesta sessão</span>
-          {done.map((item, idx) => (
-            <div key={`${item.type}-${idx}`} className="session-log-item">
-              <span className="session-log-item__icon">
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                  <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </span>
-              <span className="session-log-item__title">{DONE_LABEL[item.type] || item.type}</span>
-              <span className="session-log-item__time">{item.ts}</span>
-            </div>
-          ))}
+        <div className="aclin-session-log">
+          <span className="aclin-session-log__label">Registrado nesta sessão</span>
+          <div className="aclin-session-log__items">
+            {done.map((item, idx) => (
+              <div key={`${item.type}-${idx}`} className="aclin-log-item">
+                <span className="aclin-log-item__dot" aria-hidden="true">
+                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                <span className="aclin-log-item__title">{DONE_LABELS[item.type] || item.type}</span>
+                <span className="aclin-log-item__time">{item.ts}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

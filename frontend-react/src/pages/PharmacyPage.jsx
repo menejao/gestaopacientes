@@ -323,12 +323,9 @@ function PharmacyPage({
           || String(item.category || "").toLowerCase().includes(normalizedQuery)
           || String(item.location || "").toLowerCase().includes(normalizedQuery);
       })
-      .sort((left, right) => {
-        const leftScore = stockStatusClass(left) === "zero" ? 0 : stockStatusClass(left) === "low" ? 1 : 2;
-        const rightScore = stockStatusClass(right) === "zero" ? 0 : stockStatusClass(right) === "low" ? 1 : 2;
-        if (leftScore !== rightScore) return leftScore - rightScore;
-        return String(left.name || "").localeCompare(String(right.name || ""), "pt-BR");
-      })
+      .sort((left, right) =>
+        String(left.name || "").localeCompare(String(right.name || ""), "pt-BR", { sensitivity: "base" })
+      )
   ), [stock, catFilter, showLowOnly, search]);
 
   const filteredLog = useMemo(() => {

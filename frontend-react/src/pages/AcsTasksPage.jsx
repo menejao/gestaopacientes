@@ -88,16 +88,9 @@ function AcsTasksPage({ patients, users, user, token, onNavigatePatient }) {
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (a.priority === "urgent" && b.priority !== "urgent") return -1;
-    if (b.priority === "urgent" && a.priority !== "urgent") return 1;
-    const da = a.dueDate ? new Date(a.dueDate + "T00:00:00") : null;
-    const db = b.dueDate ? new Date(b.dueDate + "T00:00:00") : null;
-    if (!da && !db) return 0;
-    if (!da) return 1;
-    if (!db) return -1;
-    return da - db;
-  });
+  const sorted = [...filtered].sort((a, b) =>
+    String(a.patientName || "").localeCompare(String(b.patientName || ""), "pt-BR", { sensitivity: "base" })
+  );
 
   const overdueCount = myTasks.filter(t => t.status !== "done" && t.dueDate && parseLocalDate(t.dueDate) < today).length;
   const pendingCount = myTasks.filter(t => t.status !== "done").length;

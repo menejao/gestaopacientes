@@ -237,3 +237,110 @@
     margin-left: 0;
   }
 }
+
+/* ── Session Timeout Modal ────────────────────────────────── */
+
+.session-timeout-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-toast, 9000);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-6);
+}
+
+.session-timeout-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 400px;
+  padding: var(--s-8) var(--s-6) var(--s-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-5);
+  text-align: center;
+  animation: modal-in var(--d-slow) var(--ease-out);
+}
+
+.session-timeout__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--orange-50, #fff7ed);
+  color: var(--orange-600, #ea580c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--d-base), color var(--d-base);
+}
+
+.session-timeout__icon--urgent {
+  background: var(--rose-50, #fff1f2);
+  color: var(--rose-600, #e11d48);
+  animation: pulse-ring 1s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.25); }
+  50%       { box-shadow: 0 0 0 8px rgba(225, 29, 72, 0); }
+}
+
+.session-timeout__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.session-timeout__title {
+  font: 700 var(--t-xl) var(--font-sans);
+  color: var(--text);
+  letter-spacing: var(--ls-snug);
+  margin: 0;
+}
+
+.session-timeout__desc {
+  font-size: var(--t-sm);
+  color: var(--text-muted);
+  line-height: var(--lh-base);
+  margin: 0;
+}
+
+.session-timeout__countdown {
+  font: 700 2.5rem/1 var(--font-sans);
+  letter-spacing: -0.04em;
+  color: var(--orange-600, #ea580c);
+  margin-top: var(--s-2);
+  transition: color var(--d-base);
+}
+
+.session-timeout__countdown--urgent {
+  color: var(--rose-600, #e11d48);
+}
+
+.session-timeout__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  width: 100%;
+}
+
+.session-timeout__actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+[data-theme="dark"] .session-timeout__icon {
+  background: rgba(234, 88, 12, 0.12);
+}
+
+[data-theme="dark"] .session-timeout__icon--urgent {
+  background: rgba(225, 29, 72, 0.12);
+}

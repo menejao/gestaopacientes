@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
-import { readUiState } from "./utils/storage";
+import { readUiState, writeLS } from "./utils/storage";
+import { UI_STATE_KEY } from "./config/constants";
 import { isReceptionist, isAdmin, canWriteRecords } from "./utils/roles";
 import AppShell from "./components/layout/AppShell";
 import Sidebar from "./components/layout/Sidebar";
@@ -19,12 +20,14 @@ import { useProfile } from "./hooks/useProfile";
 import { usePatientActivity } from "./hooks/usePatientActivity";
 import { useAiHandlers } from "./hooks/useAiHandlers";
 import { usePatientAlerts } from "./hooks/usePatientAlerts";
+import { useIdleTimeout } from "./hooks/useIdleTimeout";
 import ReceptionistApp from "./pages/ReceptionistApp";
 import AuthScreen from "./pages/AuthScreen";
 import ActivateAccountPage from "./pages/ActivateAccountPage";
 import AppErrorBoundary from "./components/feedback/AppErrorBoundary";
 import OfflineBanner from "./components/feedback/OfflineBanner";
 import ComplianceBadge from "./components/feedback/ComplianceBadge";
+import SessionTimeoutModal from "./components/feedback/SessionTimeoutModal";
 import { AppModals } from "./components/AppModals";
 import registerServiceWorker from "./services/registerServiceWorker";
 
@@ -53,6 +56,8 @@ function AppInner() {
   const [tab,  setTab]  = useState(()=>{ const t=uiState?.tab; if(t) return t; return "dashboard"; });
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [patientTab, setPatientTab] = useState(uiState?.patientTab==="history"?"chart":(uiState?.patientTab||"protocol"));
+
+  useEffect(() => { writeLS(UI_STATE_KEY, { tab, patientTab }); }, [tab, patientTab]);
   const {
     patients, setPatients,
     users, templates, protocolByPatient, allUsers, publicTeams,
@@ -163,7 +168,11 @@ function AppInner() {
 
   const { rosaAdjustedSummary, sortedSpecialAlerts } = usePatientAlerts({ selectedPatient, patientProtocolSummary, history, isEquipeRosaUser });
 
-
+  const isAuthenticated = !!(token && user && typeof user === "object");
+  const { showWarning: sessionShowWarning, remaining: sessionRemaining, stayActive, doLogout: forceLogout } = useIdleTimeout({
+    onLogout: logout,
+    enabled: isAuthenticated,
+  });
 
   /* â"€â"€ Auth guard â€" login Ãºnico, roteamento por perfil â"€â"€ */
   /* rota /activate — primeiro acesso via token (sem auth) */
@@ -282,6 +291,14 @@ function AppInner() {
         deleteReason={deleteReason} setDeleteReason={setDeleteReason}
         confirmUserDelete={confirmUserDelete} confirmTemplateDelete={confirmTemplateDelete}
       />
+
+      {sessionShowWarning && (
+        <SessionTimeoutModal
+          remaining={sessionRemaining}
+          onStay={stayActive}
+          onLogout={forceLogout}
+        />
+      )}
     </main>
   );
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { login, verifyLogin2fa, register, refreshSession, logoutApi } from "../api";
 import { readSession } from "../utils/storage";
-import { SESSION_KEY, UI_STATE_KEY, RECEPTION_KEY } from "../config/constants";
+import { SESSION_KEY, UI_STATE_KEY, RECEPTION_KEY, IDLE_ACTIVITY_KEY, IDLE_LOGOUT_KEY } from "../config/constants";
 import { onlyDigits } from "../utils/formatting";
 
 export const COOKIE_SESSION_SENTINEL = "__cookie_session__";
@@ -181,6 +181,8 @@ export function useAuth({ onSessionExpired, onLoginSuccess } = {}) {
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(UI_STATE_KEY);
     localStorage.removeItem(RECEPTION_KEY);
+    localStorage.removeItem(IDLE_ACTIVITY_KEY);
+    try { localStorage.setItem(IDLE_LOGOUT_KEY, Date.now().toString()); } catch {}
     onSessionExpired?.();
   }
 

@@ -1184,84 +1184,320 @@
   margin-top: 2px;
 }
 
-/* Assistencial launcher */
-.assistencial-launcher {
+/* ── Clinical Hub — Ações Clínicas ──────────────────────────── */
+.aclin-hub {
   display: flex;
   flex-direction: column;
-  gap: .4rem;
-  padding: 0;
+  gap: 1.1rem;
 }
 
-.assistencial-card {
+.aclin-launcher {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+/* Action cards */
+.aclin-card {
   display: flex;
   align-items: center;
-  gap: .85rem;
-  padding: .75rem .9rem;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
+  gap: .9rem;
+  padding: .9rem 1rem;
   background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: var(--r-lg);
   cursor: pointer;
   text-align: left;
   width: 100%;
-  transition: border-color var(--d-base), background var(--d-base), box-shadow var(--d-base), transform 80ms ease;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 100ms ease;
 }
-
-.assistencial-card:hover {
-  border-color: var(--accent);
-  background: var(--surface-2);
-  box-shadow: 0 1px 6px rgba(0,0,0,.07);
-  transform: translateY(-1px);
+.aclin-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
 }
-.assistencial-card:active { transform: none; box-shadow: none; }
+.aclin-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,.07); transform: translateY(-1px); }
+.aclin-card:hover::before { opacity: 1; }
+.aclin-card:active { transform: none; box-shadow: none; }
 
-/* Type-specific icon accent colors */
-.assistencial-card--exam         .assistencial-card__icon { background: #ecfdf5; border-color: #6ee7b7; color: #059669; }
-.assistencial-card--prescription .assistencial-card__icon { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
-.assistencial-card--referral     .assistencial-card__icon { background: #f5f3ff; border-color: #c4b5fd; color: #7c3aed; }
+/* Exam — emerald */
+.aclin-card--exam { border-left-color: #10b981; }
+.aclin-card--exam::before { background: linear-gradient(135deg, rgba(16,185,129,.04) 0%, transparent 65%); }
+.aclin-card--exam:hover { border-color: #10b981; }
+.aclin-card--exam .aclin-card__icon { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
 
-.assistencial-card__icon {
+/* Prescription — blue */
+.aclin-card--prescription { border-left-color: #3b82f6; }
+.aclin-card--prescription::before { background: linear-gradient(135deg, rgba(59,130,246,.04) 0%, transparent 65%); }
+.aclin-card--prescription:hover { border-color: #3b82f6; }
+.aclin-card--prescription .aclin-card__icon { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+
+/* Referral — violet */
+.aclin-card--referral { border-left-color: #8b5cf6; }
+.aclin-card--referral::before { background: linear-gradient(135deg, rgba(139,92,246,.04) 0%, transparent 65%); }
+.aclin-card--referral:hover { border-color: #8b5cf6; }
+.aclin-card--referral .aclin-card__icon { background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe; }
+
+/* Dark overrides */
+[data-theme="dark"] .aclin-card--exam .aclin-card__icon         { background: rgba(16,185,129,.12); color: #34d399; border-color: rgba(16,185,129,.25); }
+[data-theme="dark"] .aclin-card--prescription .aclin-card__icon { background: rgba(59,130,246,.12); color: #60a5fa; border-color: rgba(59,130,246,.25); }
+[data-theme="dark"] .aclin-card--referral .aclin-card__icon     { background: rgba(139,92,246,.12); color: #a78bfa; border-color: rgba(139,92,246,.25); }
+[data-theme="dark"] .aclin-card--exam::before       { background: linear-gradient(135deg, rgba(16,185,129,.07) 0%, transparent 65%); }
+[data-theme="dark"] .aclin-card--prescription::before { background: linear-gradient(135deg, rgba(59,130,246,.07) 0%, transparent 65%); }
+[data-theme="dark"] .aclin-card--referral::before   { background: linear-gradient(135deg, rgba(139,92,246,.07) 0%, transparent 65%); }
+
+.aclin-card__icon {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-md);
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--surface-2);
   color: var(--text-muted);
-  transition: background var(--d-base), border-color var(--d-base), color var(--d-base);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
-.assistencial-card__body {
+.aclin-card__body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: .1rem;
+  gap: .2rem;
 }
 
-.assistencial-card__title {
-  font: 600 .84rem var(--font-sans);
+.aclin-card__title {
+  font: 600 .875rem/1.3 var(--font-sans);
   color: var(--text);
+  letter-spacing: -.01em;
 }
 
-.assistencial-card__desc {
-  font: 400 .72rem var(--font-sans);
+.aclin-card__desc {
+  font: 400 .75rem/1.45 var(--font-sans);
   color: var(--text-muted);
-  line-height: 1.4;
 }
 
-.assistencial-card__arrow {
+.aclin-card__chevron {
   flex-shrink: 0;
   color: var(--text-dim);
-  opacity: .4;
-  transition: opacity var(--d-base), transform var(--d-base);
+  opacity: .35;
+  transition: opacity 140ms ease, transform 140ms ease;
 }
-.assistencial-card:hover .assistencial-card__arrow {
-  opacity: .85;
-  transform: translateX(2px);
+.aclin-card:hover .aclin-card__chevron { opacity: .8; transform: translateX(3px); }
+
+/* ── Session log ────────────────────────────────────────────── */
+.aclin-session-log { display: flex; flex-direction: column; gap: .35rem; }
+.aclin-session-log__label {
+  font-size: .64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-dim);
+  display: block;
 }
+.aclin-session-log__items { display: flex; flex-direction: column; gap: .28rem; }
+
+.aclin-log-item {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .42rem .65rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--r-md);
+  font-size: .76rem;
+}
+[data-theme="dark"] .aclin-log-item { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.2); }
+
+.aclin-log-item__dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.aclin-log-item__title { font-weight: 600; color: #15803d; flex: 1; }
+[data-theme="dark"] .aclin-log-item__title { color: #4ade80; }
+.aclin-log-item__time { font-size: .68rem; color: #15803d; font-family: var(--font-mono, monospace); opacity: .7; }
+[data-theme="dark"] .aclin-log-item__time { color: #4ade80; }
+
+/* ── Modal shared ───────────────────────────────────────────── */
+.aclin-modal-stack { display: flex; flex-direction: column; gap: 1rem; }
+.aclin-section { display: flex; flex-direction: column; gap: .5rem; }
+.aclin-section-label {
+  font-size: .64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-dim);
+  display: block;
+}
+.aclin-field-label { font-size: .75rem; font-weight: 500; color: var(--text-muted); }
+.aclin-divider { height: 1px; background: var(--border-subtle); margin: .15rem 0; }
+
+/* ── Priority pill group ────────────────────────────────────── */
+.aclin-priority-row { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+.aclin-pill-group { display: flex; gap: .3rem; flex-wrap: wrap; }
+
+.aclin-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 .8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font: 500 .74rem var(--font-sans);
+  cursor: pointer;
+  transition: all 110ms ease;
+  white-space: nowrap;
+}
+.aclin-pill:hover { border-color: var(--border-strong); color: var(--text); background: var(--surface-3); }
+.aclin-pill--active {
+  background: var(--accent-soft-2, rgba(20,184,166,.15));
+  border-color: var(--accent);
+  color: var(--accent-text, var(--accent));
+  font-weight: 600;
+}
+.aclin-pill--danger.aclin-pill--active { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+[data-theme="dark"] .aclin-pill--danger.aclin-pill--active { background: rgba(248,113,113,.14); border-color: rgba(248,113,113,.3); color: #f87171; }
+
+/* ── Exam item ──────────────────────────────────────────────── */
+.aclin-exam-item {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  padding: .85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+.aclin-exam-item__header { display: flex; align-items: center; gap: .6rem; }
+.aclin-exam-item__num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  font: 600 .68rem var(--font-sans);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.aclin-exam-select { flex: 1; min-width: 0; }
+
+.aclin-remove-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 110ms ease;
+}
+.aclin-remove-btn:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+[data-theme="dark"] .aclin-remove-btn:hover { background: rgba(248,113,113,.14); border-color: rgba(248,113,113,.3); color: #f87171; }
+
+/* ── Med item ───────────────────────────────────────────────── */
+.aclin-med-item {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  padding: .85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+.aclin-med-item__header { display: flex; align-items: center; gap: .6rem; }
+.aclin-med-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+@media (max-width: 480px) { .aclin-med-fields { grid-template-columns: 1fr; } }
+
+/* ── Add button ─────────────────────────────────────────────── */
+.aclin-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .42rem;
+  height: 32px;
+  padding: 0 .8rem;
+  border-radius: var(--r-md);
+  border: 1.5px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  font: 500 .76rem var(--font-sans);
+  cursor: pointer;
+  transition: all 110ms ease;
+  align-self: flex-start;
+}
+.aclin-add-btn:hover { border-color: var(--accent); color: var(--accent-text, var(--accent)); background: var(--accent-soft); }
+
+/* ── Validity row ───────────────────────────────────────────── */
+.aclin-validity-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.aclin-validity-select { width: auto; min-width: 110px; }
+
+/* ── User target grid (internal referral) ───────────────────── */
+.aclin-user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .4rem; }
+
+.aclin-user-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+  padding: .7rem .4rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: center;
+  transition: all 120ms ease;
+}
+.aclin-user-card:hover { border-color: var(--border-strong); background: var(--surface-2); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.aclin-user-card--selected {
+  border-color: var(--accent);
+  background: var(--accent-soft, rgba(20,184,166,.06));
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(20,184,166,.1));
+}
+
+.aclin-user-card__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--aclin-role-color, var(--accent));
+  color: #fff;
+  font: 600 .76rem/1 var(--font-sans);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: -.02em;
+  flex-shrink: 0;
+}
+.aclin-user-card__name {
+  font: 600 .72rem/1.3 var(--font-sans);
+  color: var(--text);
+  max-width: 105px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aclin-user-card__role { font: 400 .63rem/1 var(--font-sans); color: var(--text-muted); }
 
 /* ── Protocol status chips ──────────────────────────────── */
 .proto-chip {
@@ -1342,29 +1578,6 @@
   gap: .4rem;
 }
 
-/* ── Session log in AcoesClinicasTab ────────────────────── */
-.session-log-item {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  padding: .45rem .65rem;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: var(--r-md);
-  font-size: .76rem;
-}
-.session-log-item__icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #15803d;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.session-log-item__title { font-weight: 600; color: #15803d; flex: 1; }
-.session-log-item__time  { font-size: .7rem; color: #15803d; font-family: var(--font-mono, monospace); opacity: .7; }
 
 /* ── Skeleton loading ───────────────────────────────────── */
 @keyframes skeleton-shimmer {
